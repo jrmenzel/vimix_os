@@ -8,7 +8,7 @@ _*
 *.img
 initcode
 initcode.out
-mkfs
-kernel/kernel
 user/usys.S
 .gdbinit
+build/*
+tools/mkfs/mkfs

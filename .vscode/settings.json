@@ -1,5 +1,10 @@
 {
     "gitlens.advanced.blame.customArguments": [
         "-C"
-    ]
+    ],
+    "files.associations": {
+        "param.h": "c",
+        "riscv.h": "c",
+        "types.h": "c"
+    }
 }
