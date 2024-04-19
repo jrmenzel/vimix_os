@@ -1,0 +1,2 @@
+# git commits listed in here can get ignored by git blame
+# used for non-functional commits, e.g. re-formatting

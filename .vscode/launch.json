@@ -1,0 +1,45 @@
+{
+    "version": "0.2.0",
+    // need extension Native Debug
+    // run "make qemu-gdb" in a terminal, then "Run and Debug" in VSCode
+    "configurations": [
+        {
+            // debug the kernel in 64 bit
+            "name": "64 bit kernel",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "kernel/kernel",
+            "cwd": "${workspaceRoot}",
+            "miDebuggerPath": "riscv64-elf-gdb",
+            "miDebuggerServerAddress": "127.0.0.1:26002",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": false
+                }
+            ]
+        },
+        {
+            // debug a user space application
+            "name": "64 bit userspace: init",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "user/_init",
+            "cwd": "${workspaceRoot}",
+            "miDebuggerPath": "riscv64-elf-gdb",
+            "miDebuggerServerAddress": "127.0.0.1:26002",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": false
+                }
+            ]
+        }
+    ]
+}

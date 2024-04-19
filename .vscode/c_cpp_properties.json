@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "64 bit Kernel Dev",
+            "intelliSenseMode": "linux-gcc-x64",
+            "cStandard": "c17",
+            "compilerPath": "/usr/bin/riscv64-linux-gnu-gcc",
+            "includePath": [
+                "${workspaceFolder}/kernel"
+            ],
+            "defines": [
+                
+            ],
+            "compilerArgs": [
+                "-nostdinc"
+            ]
+        }
+    ],
+    "version": 4
+}
