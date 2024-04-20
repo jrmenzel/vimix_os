@@ -1,12 +1,13 @@
-#include "kernel/param.h"
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include <user.h>
-#include "kernel/fs.h"
-#include "kernel/fcntl.h"
+/* SPDX-License-Identifier: MIT */
+
+#include <arch/riscv/riscv.h>
+#include <kernel/fcntl.h>
+#include <kernel/fs.h>
+#include <kernel/kernel.h>
+#include <kernel/stat.h>
 #include <kernel/unistd.h>
 #include <mm/memlayout.h>
-#include <arch/riscv/riscv.h>
+#include <user.h>
 
 //
 // Tests xv6 system calls.  usertests without arguments runs them all

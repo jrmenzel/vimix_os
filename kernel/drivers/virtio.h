@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: MIT */
+#pragma once
+
+#include <kernel/kernel.h>
+
 //
 // virtio device definitions.
 // for both the mmio interface, and virtio descriptors.

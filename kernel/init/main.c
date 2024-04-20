@@ -1,8 +1,19 @@
-#include <kernel/types.h>
-#include <kernel/param.h>
+/* SPDX-License-Identifier: MIT */
+
+#include <arch/riscv/plic.h>
+#include <arch/trap.h>
+#include <drivers/virtio_disk.h>
+#include <kernel/bio.h>
+#include <kernel/console.h>
+#include <kernel/cpu.h>
+#include <kernel/file.h>
+#include <kernel/kalloc.h>
+#include <kernel/kernel.h>
+#include <kernel/printk.h>
+#include <kernel/proc.h>
+#include <kernel/vm.h>
 #include <mm/memlayout.h>
-#include "riscv.h"
-#include <kernel/defs.h>
+#include <kernel/scheduler.h>
 
 volatile static int started = 0;
 

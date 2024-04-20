@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: MIT */
+#pragma once
+
+#include <kernel/fs.h>
+#include <kernel/kernel.h>
+#include <kernel/sleeplock.h>
+
 struct buf
 {
     int valid;  ///< has data been read from disk?

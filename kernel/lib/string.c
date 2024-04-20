@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MIT */
+
 #include <kernel/types.h>
 
 void *memset(void *dst, int c, uint n)

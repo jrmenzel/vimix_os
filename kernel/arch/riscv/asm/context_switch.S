@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 # Context switch
 #
 #   void swtch(struct context *old, struct context *new);

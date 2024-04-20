@@ -1,10 +1,19 @@
-#include <kernel/types.h>
-#include <kernel/param.h>
-#include <mm/memlayout.h>
-#include "riscv.h"
-#include <kernel/spinlock.h>
+/* SPDX-License-Identifier: MIT */
+
+#include <arch/cpu.h>
+#include <arch/trap.h>
+#include <fs/xv6fs/log.h>
+#include <kernel/cpu.h>
+#include <kernel/file.h>
+#include <kernel/fs.h>
+#include <kernel/kalloc.h>
+#include <kernel/kernel.h>
+#include <kernel/printk.h>
 #include <kernel/proc.h>
-#include <kernel/defs.h>
+#include <kernel/spinlock.h>
+#include <kernel/string.h>
+#include <kernel/vm.h>
+#include <mm/memlayout.h>
 
 struct cpu cpus[NCPU];
 
@@ -436,45 +445,6 @@ int wait(uint64 addr)
     }
 }
 
-/// Per-CPU process scheduler.
-/// Each CPU calls scheduler() after setting itself up.
-/// Scheduler never returns.  It loops, doing:
-///  - choose a process to run.
-///  - swtch to start running that process.
-///  - eventually that process transfers control
-///    via swtch back to the scheduler.
-void scheduler(void)
-{
-    struct proc *p;
-    struct cpu *c = mycpu();
-
-    c->proc = 0;
-    for (;;)
-    {
-        // Avoid deadlock by ensuring that devices can interrupt.
-        intr_on();
-
-        for (p = proc; p < &proc[NPROC]; p++)
-        {
-            acquire(&p->lock);
-            if (p->state == RUNNABLE)
-            {
-                // Switch to chosen process.  It is the process's job
-                // to release its lock and then reacquire it
-                // before jumping back to us.
-                p->state = RUNNING;
-                c->proc = p;
-                swtch(&c->context, &p->context);
-
-                // Process is done running for now.
-                // It should have changed its p->state before coming back.
-                c->proc = 0;
-            }
-            release(&p->lock);
-        }
-    }
-}
-
 /// Switch to scheduler.  Must hold only p->lock
 /// and have changed proc->state. Saves and restores
 /// intena because intena is a property of this
@@ -677,4 +647,20 @@ void procdump(void)
         printf("%d %s %s", p->pid, state, p->name);
         printf("\n");
     }
+}
+
+int fdalloc(struct file *f)
+{
+    int fd;
+    struct proc *p = myproc();
+
+    for (fd = 0; fd < NOFILE; fd++)
+    {
+        if (p->ofile[fd] == 0)
+        {
+            p->ofile[fd] = f;
+            return fd;
+        }
+    }
+    return -1;
 }

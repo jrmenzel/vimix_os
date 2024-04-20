@@ -1,5 +1,7 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
+/* SPDX-License-Identifier: MIT */
+
+#include <kernel/kernel.h>
+#include <kernel/stat.h>
 #include <user.h>
 
 char buf[512];

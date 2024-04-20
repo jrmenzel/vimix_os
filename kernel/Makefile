@@ -14,6 +14,7 @@ OBJS = $(ARCH)/asm/entry.o \
 	$(ARCH)/asm/u_mode_trap_vector.o \
 	$(ARCH)/asm/context_switch.o \
 	$(ARCH)/start.o \
+	$(ARCH)/clint.o \
 	$(ARCH)/plic.o \
 	$(ARCH)/trap.o \
 	drivers/uart16550.o \
@@ -23,13 +24,17 @@ OBJS = $(ARCH)/asm/entry.o \
 	init/main.o \
 	ipc/pipe.o \
 	kernel/console.o \
+	kernel/cpu.o \
 	kernel/kalloc.o \
 	kernel/vm.o \
 	kernel/proc.o \
 	kernel/bio.o \
 	kernel/file.o \
 	kernel/exec.o \
+	kernel/scheduler.o \
 	syscalls/sys_file.o \
+	syscalls/sys_ipc.o \
+	syscalls/sys_system.o \
 	syscalls/sys_process.o \
 	syscalls/syscall.o \
 	lib/string.o \

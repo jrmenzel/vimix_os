@@ -1,10 +1,15 @@
-#include <kernel/param.h>
-#include <kernel/types.h>
-#include <mm/memlayout.h>
+/* SPDX-License-Identifier: MIT */
+
 #include <kernel/elf.h>
-#include "riscv.h"
-#include <kernel/defs.h>
 #include <kernel/fs.h>
+#include <kernel/kalloc.h>
+#include <kernel/param.h>
+#include <kernel/printk.h>
+#include <kernel/proc.h>
+#include <kernel/string.h>
+#include <kernel/types.h>
+#include <kernel/vm.h>
+#include <mm/memlayout.h>
 
 /*
  * the kernel's page table.

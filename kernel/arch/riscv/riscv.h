@@ -1,6 +1,9 @@
-#pragma once 
+/* SPDX-License-Identifier: MIT */
+#pragma once
 
 #ifndef __ASSEMBLER__
+
+#include <kernel/kernel.h>
 
 /// which hart (core) is this?
 static inline uint64 r_mhartid()
@@ -227,32 +230,10 @@ static inline uint64 r_time()
     return x;
 }
 
-/// enable device interrupts
-static inline void intr_on() { w_sstatus(r_sstatus() | SSTATUS_SIE); }
-
-/// disable device interrupts
-static inline void intr_off() { w_sstatus(r_sstatus() & ~SSTATUS_SIE); }
-
-/// are device interrupts enabled?
-static inline int intr_get()
-{
-    uint64 x = r_sstatus();
-    return (x & SSTATUS_SIE) != 0;
-}
-
 static inline uint64 r_sp()
 {
     uint64 x;
     asm volatile("mv %0, sp" : "=r"(x));
-    return x;
-}
-
-/// read and write tp, the thread pointer, which xv6 uses to hold
-/// this core's hartid (core number), the index into cpus[].
-static inline uint64 r_tp()
-{
-    uint64 x;
-    asm volatile("mv %0, tp" : "=r"(x));
     return x;
 }
 
@@ -272,37 +253,4 @@ static inline void sfence_vma()
     asm volatile("sfence.vma zero, zero");
 }
 
-typedef uint64 pte_t;
-typedef uint64 *pagetable_t;  // 512 PTEs
-
 #endif  // __ASSEMBLER__
-
-#define PGSIZE 4096  ///< bytes per page
-#define PGSHIFT 12   ///< bits of offset within a page
-
-#define PGROUNDUP(sz) (((sz) + PGSIZE - 1) & ~(PGSIZE - 1))
-#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE - 1))
-
-#define PTE_V (1L << 0)  // valid
-#define PTE_R (1L << 1)
-#define PTE_W (1L << 2)
-#define PTE_X (1L << 3)
-#define PTE_U (1L << 4)  // user can access
-
-/// shift a physical address to the right place for a PTE.
-#define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)
-
-#define PTE2PA(pte) (((pte) >> 10) << 12)
-
-#define PTE_FLAGS(pte) ((pte)&0x3FF)
-
-/// extract the three 9-bit page table indices from a virtual address.
-#define PXMASK 0x1FF  // 9 bits
-#define PXSHIFT(level) (PGSHIFT + (9 * (level)))
-#define PX(level, va) ((((uint64)(va)) >> PXSHIFT(level)) & PXMASK)
-
-/// one beyond the highest possible virtual address.
-/// MAXVA is actually one bit less than the max allowed by
-/// Sv39, to avoid having to sign-extend virtual addresses
-/// that have the high bit set.
-#define MAXVA (1L << (9 + 9 + 9 + 12 - 1))

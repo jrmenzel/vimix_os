@@ -1,7 +1,4 @@
 /* SPDX-License-Identifier: MIT */
-/*
- * Based on xv6.
- */
 #pragma once
 
 // System call numbers

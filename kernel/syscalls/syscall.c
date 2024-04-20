@@ -1,11 +1,16 @@
-#include <kernel/types.h>
-#include <kernel/param.h>
-#include <mm/memlayout.h>
-#include "riscv.h"
-#include <kernel/spinlock.h>
+/* SPDX-License-Identifier: MIT */
+
+#include <syscalls/syscall.h>
+
+#include <kernel/cpu.h>
+#include <kernel/kernel.h>
+#include <kernel/printk.h>
 #include <kernel/proc.h>
+#include <kernel/spinlock.h>
+#include <kernel/string.h>
 #include <kernel/unistd.h>
-#include <kernel/defs.h>
+#include <kernel/vm.h>
+#include <mm/memlayout.h>
 
 /// Fetch the uint64 at addr from the current process.
 int fetchaddr(uint64 addr, uint64 *ip)

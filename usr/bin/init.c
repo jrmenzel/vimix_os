@@ -1,13 +1,15 @@
+/* SPDX-License-Identifier: MIT */
+
 // init: The initial user-level program
 
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "kernel/spinlock.h"
-#include "kernel/sleeplock.h"
-#include "kernel/fs.h"
-#include "../kernel/file.h"
+#include <kernel/fs.h>
+#include <kernel/kernel.h>
+#include <kernel/stat.h>
 #include <user.h>
+#include "../kernel/file.h"
 #include "kernel/fcntl.h"
+#include "kernel/sleeplock.h"
+#include "kernel/spinlock.h"
 
 char *argv[] = {"sh", 0};
 

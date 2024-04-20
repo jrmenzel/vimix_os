@@ -1,12 +1,14 @@
+/* SPDX-License-Identifier: MIT */
+
 // Mutual exclusion spin locks.
 
-#include <kernel/types.h>
+#include <kernel/cpu.h>
 #include <kernel/param.h>
-#include <mm/memlayout.h>
-#include <kernel/spinlock.h>
-#include "riscv.h"
+#include <kernel/printk.h>
 #include <kernel/proc.h>
-#include <kernel/defs.h>
+#include <kernel/spinlock.h>
+#include <kernel/types.h>
+#include <mm/memlayout.h>
 
 void initlock(struct spinlock *lk, char *name)
 {
@@ -73,26 +75,4 @@ int holding(struct spinlock *lk)
     int r;
     r = (lk->locked && lk->cpu == mycpu());
     return r;
-}
-
-// push_off/pop_off are like intr_off()/intr_on() except that they are matched:
-// it takes two pop_off()s to undo two push_off()s.  Also, if interrupts
-// are initially off, then push_off, pop_off leaves them off.
-
-void push_off(void)
-{
-    int old = intr_get();
-
-    intr_off();
-    if (mycpu()->noff == 0) mycpu()->intena = old;
-    mycpu()->noff += 1;
-}
-
-void pop_off(void)
-{
-    struct cpu *c = mycpu();
-    if (intr_get()) panic("pop_off - interruptible");
-    if (c->noff < 1) panic("pop_off");
-    c->noff -= 1;
-    if (c->noff == 0 && c->intena) intr_on();
 }

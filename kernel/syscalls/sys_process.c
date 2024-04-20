@@ -1,10 +1,14 @@
-#include <kernel/types.h>
-#include "riscv.h"
-#include <kernel/defs.h>
-#include <kernel/param.h>
-#include <mm/memlayout.h>
-#include <kernel/spinlock.h>
+/* SPDX-License-Identifier: MIT */
+
+#include <syscalls/syscall.h>
+
+#include <arch/trap.h>
+#include <kernel/cpu.h>
+#include <kernel/kernel.h>
 #include <kernel/proc.h>
+#include <kernel/spinlock.h>
+#include <kernel/string.h>
+#include <mm/memlayout.h>
 
 uint64 sys_exit(void)
 {
@@ -63,16 +67,4 @@ uint64 sys_kill(void)
 
     argint(0, &pid);
     return kill(pid);
-}
-
-/// return how many clock tick interrupts have occurred
-/// since start.
-uint64 sys_uptime(void)
-{
-    uint xticks;
-
-    acquire(&tickslock);
-    xticks = ticks;
-    release(&tickslock);
-    return xticks;
 }

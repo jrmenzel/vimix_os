@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MIT */
+
 //
 // Console input and output, to the uart.
 // Reads are line at a time.
@@ -9,16 +11,14 @@
 //   control-p -- print process list
 //
 
-#include <kernel/types.h>
-#include <kernel/param.h>
-#include <kernel/spinlock.h>
-#include <kernel/sleeplock.h>
-#include <kernel/fs.h>
+#include <drivers/uart16550.h>
 #include <kernel/file.h>
-#include <mm/memlayout.h>
-#include "riscv.h"
-#include <kernel/defs.h>
+#include <kernel/fs.h>
+#include <kernel/kernel.h>
 #include <kernel/proc.h>
+#include <kernel/sleeplock.h>
+#include <kernel/spinlock.h>
+#include <mm/memlayout.h>
 
 #define BACKSPACE 0x100
 #define C(x) ((x) - '@')  // Control-x

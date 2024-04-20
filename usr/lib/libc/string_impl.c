@@ -1,6 +1,8 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "kernel/fcntl.h"
+/* SPDX-License-Identifier: MIT */
+
+#include <kernel/fcntl.h>
+#include <kernel/kernel.h>
+#include <kernel/stat.h>
 #include <user.h>
 
 //

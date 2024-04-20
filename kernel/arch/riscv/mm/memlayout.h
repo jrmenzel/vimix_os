@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: MIT */
+#pragma once
+
+#include <mm/mm.h>
+
 // Physical memory layout
 
 // qemu -machine virt is set up like this,

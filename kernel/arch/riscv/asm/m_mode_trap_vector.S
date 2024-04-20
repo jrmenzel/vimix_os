@@ -1,6 +1,8 @@
-        #
-        # machine-mode timer interrupt.
-        #
+# SPDX-License-Identifier: MIT
+
+#
+# machine-mode timer interrupt.
+#
 .globl timervec
 .align 4
 timervec:

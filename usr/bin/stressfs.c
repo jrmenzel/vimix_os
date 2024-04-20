@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MIT */
+
 // Demonstrate that moving the "acquire" in iderw after the loop that
 // appends to the idequeue results in a race.
 
@@ -7,10 +9,10 @@
 //    for (i = 0; i < 40000; i++)
 //      asm volatile("");
 
-#include "kernel/types.h"
-#include "kernel/stat.h"
+#include <kernel/fs.h>
+#include <kernel/kernel.h>
+#include <kernel/stat.h>
 #include <user.h>
-#include "kernel/fs.h"
 #include "kernel/fcntl.h"
 
 int main(int argc, char *argv[])

@@ -88,5 +88,3 @@ LDFLAGS = -z max-page-size=4096
 USER_SPACE_INC  = ../../usr/include     # /usr/include : general purpose C headers for userspace
 USER_SPACE_INC += ../../kernel/include  # OS public API, required for stdlib
 USER_SPACE_INC_PARAMS=$(foreach d, $(USER_SPACE_INC), -I$d)
-
-USER__LOCAL__INC_PARAMS=$(foreach d, $(USER_SPACE_INC), -I../../$d)

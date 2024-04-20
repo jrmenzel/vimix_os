@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 # Initial process that execs /init.
 # This code runs in user space.
 

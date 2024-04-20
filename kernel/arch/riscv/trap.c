@@ -1,10 +1,17 @@
-#include <kernel/types.h>
-#include <kernel/param.h>
-#include <mm/memlayout.h>
-#include "riscv.h"
-#include <kernel/spinlock.h>
+/* SPDX-License-Identifier: MIT */
+
+#include <arch/cpu.h>
+#include <arch/riscv/plic.h>
+#include <arch/trap.h>
+#include <drivers/uart16550.h>
+#include <drivers/virtio_disk.h>
+#include <kernel/cpu.h>
+#include <kernel/kernel.h>
+#include <kernel/printk.h>
 #include <kernel/proc.h>
-#include <kernel/defs.h>
+#include <kernel/spinlock.h>
+#include <mm/memlayout.h>
+#include <syscalls/syscall.h>
 
 struct spinlock tickslock;
 uint ticks;

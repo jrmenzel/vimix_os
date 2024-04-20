@@ -1,15 +1,16 @@
+/* SPDX-License-Identifier: MIT */
+
+#include <assert.h>
+#include <fcntl.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <assert.h>
+#include <unistd.h>
 
 #define stat xv6_stat  // avoid clash with host struct stat
-#include "kernel/types.h"
-#include "kernel/fs.h"
-#include "kernel/stat.h"
-#include "kernel/param.h"
+#include <kernel/fs.h>
+#include <kernel/kernel.h>
+#include <kernel/stat.h>
 
 #ifndef static_assert
 #define static_assert(a, b) \
@@ -42,7 +43,7 @@ void wsect(uint, void *);
 void winode(uint, struct dinode *);
 void rinode(uint inum, struct dinode *ip);
 void rsect(uint sec, void *buf);
-uint ialloc(ushort type);
+uint i_alloc(ushort type);
 void iappend(uint inum, void *p, int n);
 void die(const char *);
 
@@ -115,7 +116,7 @@ int main(int argc, char *argv[])
     memmove(buf, &sb, sizeof(sb));
     wsect(1, buf);
 
-    rootino = ialloc(T_DIR);
+    rootino = i_alloc(T_DIR);
     assert(rootino == ROOTINO);
 
     bzero(&de, sizeof(de));
@@ -147,7 +148,7 @@ int main(int argc, char *argv[])
         // in place of system binaries like rm and cat.
         if (shortname[0] == '_') shortname += 1;
 
-        inum = ialloc(T_FILE);
+        inum = i_alloc(T_FILE);
 
         bzero(&de, sizeof(de));
         de.inum = xshort(inum);
@@ -208,7 +209,7 @@ void rsect(uint sec, void *buf)
     if (read(fsfd, buf, BSIZE) != BSIZE) die("read");
 }
 
-uint ialloc(ushort type)
+uint i_alloc(ushort type)
 {
     uint inum = freeinode++;
     struct dinode din;

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MIT */
+
 // File system implementation.  Five layers:
 //   + Blocks: allocator for raw disk blocks.
 //   + Log: crash recovery for multi-step updates.
@@ -9,17 +11,18 @@
 // routines.  The (higher-level) system call implementations
 // are in sysfile.c.
 
-#include <kernel/types.h>
-#include "riscv.h"
-#include <kernel/defs.h>
-#include <kernel/param.h>
-#include <kernel/stat.h>
-#include <kernel/spinlock.h>
-#include <kernel/proc.h>
-#include <kernel/sleeplock.h>
-#include <kernel/fs.h>
+#include <fs/xv6fs/log.h>
+#include <kernel/bio.h>
 #include <kernel/buf.h>
 #include <kernel/file.h>
+#include <kernel/fs.h>
+#include <kernel/kernel.h>
+#include <kernel/printk.h>
+#include <kernel/proc.h>
+#include <kernel/sleeplock.h>
+#include <kernel/spinlock.h>
+#include <kernel/stat.h>
+#include <kernel/string.h>
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 /// there should be one superblock per disk device, but we run with

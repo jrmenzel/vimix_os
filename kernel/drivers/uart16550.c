@@ -1,14 +1,17 @@
+/* SPDX-License-Identifier: MIT */
+
 //
 // low-level driver routines for 16550a UART.
 //
 
-#include <kernel/types.h>
-#include <kernel/param.h>
-#include <mm/memlayout.h>
-#include "riscv.h"
-#include <kernel/spinlock.h>
+#include "uart16550.h"
+
+#include <kernel/console.h>
+#include <kernel/cpu.h>
+#include <kernel/kernel.h>
 #include <kernel/proc.h>
-#include <kernel/defs.h>
+#include <kernel/spinlock.h>
+#include <mm/memlayout.h>
 
 /// the UART control registers are memory-mapped
 /// at address UART0. this macro returns the

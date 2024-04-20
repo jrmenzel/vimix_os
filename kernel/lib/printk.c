@@ -1,19 +1,21 @@
+/* SPDX-License-Identifier: MIT */
+
 //
 // formatted console output -- printf, panic.
 //
 
 #include <kernel/stdarg.h>
 
-#include <kernel/types.h>
-#include <kernel/param.h>
-#include <kernel/spinlock.h>
-#include <kernel/sleeplock.h>
-#include <kernel/fs.h>
+#include <kernel/console.h>
 #include <kernel/file.h>
-#include <mm/memlayout.h>
-#include "riscv.h"
-#include <kernel/defs.h>
+#include <kernel/fs.h>
+#include <kernel/param.h>
+#include <kernel/printk.h>
 #include <kernel/proc.h>
+#include <kernel/sleeplock.h>
+#include <kernel/spinlock.h>
+#include <kernel/types.h>
+#include <mm/memlayout.h>
 
 volatile int panicked = 0;
 

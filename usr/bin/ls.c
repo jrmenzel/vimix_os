@@ -1,7 +1,9 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
+/* SPDX-License-Identifier: MIT */
+
+#include <kernel/fs.h>
+#include <kernel/kernel.h>
+#include <kernel/stat.h>
 #include <user.h>
-#include "kernel/fs.h"
 
 char *fmtname(char *path)
 {

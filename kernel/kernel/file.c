@@ -1,17 +1,20 @@
+/* SPDX-License-Identifier: MIT */
+
 //
 // Support functions for system calls that involve file descriptors.
 //
 
-#include <kernel/types.h>
-#include "riscv.h"
-#include <kernel/defs.h>
-#include <kernel/param.h>
-#include <kernel/fs.h>
-#include <kernel/spinlock.h>
-#include <kernel/sleeplock.h>
+#include <fs/xv6fs/log.h>
+#include <ipc/pipe.h>
 #include <kernel/file.h>
-#include <kernel/stat.h>
+#include <kernel/fs.h>
+#include <kernel/kernel.h>
+#include <kernel/printk.h>
 #include <kernel/proc.h>
+#include <kernel/sleeplock.h>
+#include <kernel/spinlock.h>
+#include <kernel/stat.h>
+#include <kernel/vm.h>
 
 struct devsw devsw[NDEV];
 struct

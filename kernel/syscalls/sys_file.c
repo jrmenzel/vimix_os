@@ -1,20 +1,29 @@
+/* SPDX-License-Identifier: MIT */
+
 //
 // File-system system calls.
 // Mostly argument checking, since we don't trust
 // user code, and calls into file.c and fs.c.
 //
 
-#include <kernel/types.h>
-#include "riscv.h"
-#include <kernel/defs.h>
-#include <kernel/param.h>
-#include <kernel/stat.h>
-#include <kernel/spinlock.h>
-#include <kernel/proc.h>
-#include <kernel/fs.h>
-#include <kernel/sleeplock.h>
-#include <kernel/file.h>
+#include <arch/riscv/mm/mm.h>
+#include <fs/xv6fs/log.h>
+#include <ipc/pipe.h>
+#include <kernel/exec.h>
 #include <kernel/fcntl.h>
+#include <kernel/file.h>
+#include <kernel/fs.h>
+#include <kernel/kalloc.h>
+#include <kernel/param.h>
+#include <kernel/printk.h>
+#include <kernel/proc.h>
+#include <kernel/sleeplock.h>
+#include <kernel/spinlock.h>
+#include <kernel/stat.h>
+#include <kernel/string.h>
+#include <kernel/types.h>
+#include <kernel/vm.h>
+#include <syscalls/syscall.h>
 
 /// Fetch the nth word-sized system call argument as a file descriptor
 /// and return both the descriptor and the corresponding struct file.
@@ -28,24 +37,6 @@ static int argfd(int n, int *pfd, struct file **pf)
     if (pfd) *pfd = fd;
     if (pf) *pf = f;
     return 0;
-}
-
-/// Allocate a file descriptor for the given file.
-/// Takes over file reference from caller on success.
-static int fdalloc(struct file *f)
-{
-    int fd;
-    struct proc *p = myproc();
-
-    for (fd = 0; fd < NOFILE; fd++)
-    {
-        if (p->ofile[fd] == 0)
-        {
-            p->ofile[fd] = f;
-            return fd;
-        }
-    }
-    return -1;
 }
 
 uint64 sys_dup(void)
@@ -466,34 +457,4 @@ uint64 sys_exec(void)
 bad:
     for (i = 0; i < NELEM(argv) && argv[i] != 0; i++) kfree(argv[i]);
     return -1;
-}
-
-uint64 sys_pipe(void)
-{
-    uint64 fdarray;  // user pointer to array of two integers
-    struct file *rf, *wf;
-    int fd0, fd1;
-    struct proc *p = myproc();
-
-    argaddr(0, &fdarray);
-    if (pipealloc(&rf, &wf) < 0) return -1;
-    fd0 = -1;
-    if ((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0)
-    {
-        if (fd0 >= 0) p->ofile[fd0] = 0;
-        fileclose(rf);
-        fileclose(wf);
-        return -1;
-    }
-    if (copyout(p->pagetable, fdarray, (char *)&fd0, sizeof(fd0)) < 0 ||
-        copyout(p->pagetable, fdarray + sizeof(fd0), (char *)&fd1,
-                sizeof(fd1)) < 0)
-    {
-        p->ofile[fd0] = 0;
-        p->ofile[fd1] = 0;
-        fileclose(rf);
-        fileclose(wf);
-        return -1;
-    }
-    return 0;
 }

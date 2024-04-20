@@ -1,13 +1,14 @@
+/* SPDX-License-Identifier: MIT */
+
 // Sleeping locks
 
-#include <kernel/types.h>
-#include "riscv.h"
-#include <kernel/defs.h>
 #include <kernel/param.h>
-#include <mm/memlayout.h>
-#include <kernel/spinlock.h>
+#include <kernel/printk.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
+#include <kernel/spinlock.h>
+#include <kernel/types.h>
+#include <mm/memlayout.h>
 
 void initsleeplock(struct sleeplock *lk, char *name)
 {

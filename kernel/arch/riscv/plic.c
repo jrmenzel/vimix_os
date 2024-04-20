@@ -1,8 +1,10 @@
-#include <kernel/types.h>
-#include <kernel/param.h>
+/* SPDX-License-Identifier: MIT */
+
+#include "plic.h"
+
+#include <kernel/kernel.h>
+#include <kernel/proc.h>
 #include <mm/memlayout.h>
-#include "riscv.h"
-#include <kernel/defs.h>
 
 //
 // the riscv Platform Level Interrupt Controller (PLIC).

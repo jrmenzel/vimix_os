@@ -1,11 +1,14 @@
-#include <kernel/types.h>
-#include <kernel/param.h>
-#include <mm/memlayout.h>
-#include "riscv.h"
-#include <kernel/spinlock.h>
-#include <kernel/proc.h>
-#include <kernel/defs.h>
+/* SPDX-License-Identifier: MIT */
+
+#include <fs/xv6fs/log.h>
 #include <kernel/elf.h>
+#include <kernel/kernel.h>
+#include <kernel/printk.h>
+#include <kernel/proc.h>
+#include <kernel/spinlock.h>
+#include <kernel/string.h>
+#include <kernel/vm.h>
+#include <mm/memlayout.h>
 
 static int loadseg(pde_t *, uint64, struct inode *, uint, uint);
 

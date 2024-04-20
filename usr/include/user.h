@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: MIT */
+#pragma once
+
 struct stat;
 
 // system calls

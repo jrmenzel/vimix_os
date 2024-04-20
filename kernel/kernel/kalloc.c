@@ -1,13 +1,15 @@
+/* SPDX-License-Identifier: MIT */
+
 // Physical memory allocator, for user processes,
 // kernel stacks, page-table pages,
 // and pipe buffers. Allocates whole 4096-byte pages.
 
-#include <kernel/types.h>
-#include <kernel/param.h>
-#include <mm/memlayout.h>
+#include <kernel/kalloc.h>
+#include <kernel/kernel.h>
+#include <kernel/printk.h>
 #include <kernel/spinlock.h>
-#include "riscv.h"
-#include <kernel/defs.h>
+#include <kernel/string.h>
+#include <mm/memlayout.h>
 
 void freerange(void *pa_start, void *pa_end);
 

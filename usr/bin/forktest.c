@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: MIT */
+
 // Test that fork fails gracefully.
 // Tiny executable so that the limit can be filling the proc table.
 
-#include "kernel/types.h"
-#include "kernel/stat.h"
+#include <kernel/kernel.h>
+#include <kernel/stat.h>
 #include <user.h>
 
 #define N 1000

@@ -1,24 +1,14 @@
-#include <kernel/types.h>
-#include "riscv.h"
-#include <kernel/defs.h>
-#include <kernel/param.h>
-#include <kernel/spinlock.h>
-#include <kernel/proc.h>
-#include <kernel/fs.h>
-#include <kernel/sleeplock.h>
+/* SPDX-License-Identifier: MIT */
+
 #include <kernel/file.h>
-
-#define PIPESIZE 512
-
-struct pipe
-{
-    struct spinlock lock;
-    char data[PIPESIZE];
-    uint nread;     ///< number of bytes read
-    uint nwrite;    ///< number of bytes written
-    int readopen;   ///< read fd is still open
-    int writeopen;  ///< write fd is still open
-};
+#include <kernel/fs.h>
+#include <kernel/kalloc.h>
+#include <kernel/kernel.h>
+#include <kernel/proc.h>
+#include <kernel/sleeplock.h>
+#include <kernel/spinlock.h>
+#include <kernel/vm.h>
+#include <ipc/pipe.h>
 
 int pipealloc(struct file **f0, struct file **f1)
 {

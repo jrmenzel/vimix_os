@@ -1,6 +1,8 @@
+/* SPDX-License-Identifier: MIT */
+
 // Shell.
 
-#include "kernel/types.h"
+#include <kernel/kernel.h>
 #include <user.h>
 #include "kernel/fcntl.h"
 

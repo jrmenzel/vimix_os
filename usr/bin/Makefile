@@ -20,6 +20,7 @@ UPROGS_NAME=\
 	mkdir\
 	rm\
 	sh\
+	stressfs\
 	usertests\
 	grind\
 	wc\
@@ -38,11 +39,6 @@ $(B_BUILD_DIR)/%.o: %.c
 $(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a
 	$(LD) $(LDFLAGS) -T user.ld $(LIB_PATH)/stdlib.a -o $@ $^
 	$(OBJDUMP) -S $@ > $(B_BUILD_DIR)/$*.S
-
-$(LIB_PATH)/stdlib.a: 
-	pushd ../lib; \
-	$(MAKE) all; \
-	popd;
 
 # special case:
 # usertest includes internal kernel API and needs more include search paths
