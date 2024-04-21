@@ -8,7 +8,7 @@ ARCH=arch/riscv
 BUILD_TYPE=debug
 #BUILD_TYPE=release
 
-KERNEL_NAME=kernel-xv6
+KERNEL_NAME=kernel-vimix
 KERNEL_FILE=$(BUILD_DIR)/$(KERNEL_NAME)
 
 #####

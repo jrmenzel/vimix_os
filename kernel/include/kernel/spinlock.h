@@ -13,7 +13,7 @@ struct spinlock
     struct cpu *cpu;  ///< The cpu holding the lock.
 };
 
-void acquire(struct spinlock *);
-int holding(struct spinlock *);
-void initlock(struct spinlock *, char *);
-void release(struct spinlock *);
+void spin_lock(struct spinlock *);
+int spin_lock_is_held_by_this_cpu(struct spinlock *);
+void spin_lock_init(struct spinlock *, char *);
+void spin_unlock(struct spinlock *);

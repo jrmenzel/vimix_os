@@ -19,7 +19,7 @@
 
 // the kernel uses physical memory thus:
 // 80000000 -- entry.S, then kernel text and data
-// end -- start of kernel page allocation area
+// end_of_kernel -- start of kernel page allocation area
 // PHYSTOP -- end RAM used by the kernel
 
 /// qemu puts UART registers here in physical memory.
@@ -54,11 +54,11 @@
 
 /// map the trampoline page to the highest address,
 /// in both user and kernel space.
-#define TRAMPOLINE (MAXVA - PGSIZE)
+#define TRAMPOLINE (MAXVA - PAGE_SIZE)
 
 /// map kernel stacks beneath the trampoline,
 /// each surrounded by invalid guard pages.
-#define KSTACK(p) (TRAMPOLINE - ((p) + 1) * 2 * PGSIZE)
+#define KSTACK(p) (TRAMPOLINE - ((p) + 1) * 2 * PAGE_SIZE)
 
 /// User memory layout.
 /// Address zero first:
@@ -69,4 +69,4 @@
 ///   ...
 ///   TRAPFRAME (p->trapframe, used by the trampoline)
 ///   TRAMPOLINE (the same page as in the kernel)
-#define TRAPFRAME (TRAMPOLINE - PGSIZE)
+#define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)

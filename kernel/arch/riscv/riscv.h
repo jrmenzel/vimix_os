@@ -176,9 +176,9 @@ static inline void w_pmpaddr0(uint64 x)
 
 /// supervisor address translation and protection;
 /// holds the address of the page table.
-static inline void w_satp(uint64 x)
+static inline void cpu_set_page_table(uint64 addr)
 {
-    asm volatile("csrw satp, %0" : : "r"(x));
+    asm volatile("csrw satp, %0" : : "r"(addr));
 }
 
 static inline uint64 r_satp()
@@ -247,7 +247,7 @@ static inline uint64 r_ra()
 }
 
 /// flush the TLB.
-static inline void sfence_vma()
+static inline void rv_sfence_vma()
 {
     // the zero, zero means flush all TLB entries.
     asm volatile("sfence.vma zero, zero");

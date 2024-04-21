@@ -18,8 +18,8 @@
 .globl trampoline
 trampoline:
 .align 4
-.globl uservec
-uservec:    
+.globl u_mode_trap_vector
+u_mode_trap_vector:    
 	#
         # trap.c sets stvec to point here, so
         # traps from user space start here,
@@ -78,11 +78,11 @@ uservec:
         # make tp hold the current hartid, from p->trapframe->kernel_hartid
         ld tp, 32(a0)
 
-        # load the address of usertrap(), from p->trapframe->kernel_trap
+        # load the address of user_mode_interrupt_handler(), from p->trapframe->kernel_trap
         ld t0, 16(a0)
 
 
-        # fetch the kernel page table address, from p->trapframe->kernel_satp.
+        # fetch the kernel page table address, from p->trapframe->kernel_page_table.
         ld t1, 0(a0)
 
         # wait for any previous memory operations to complete, so that
@@ -95,13 +95,13 @@ uservec:
         # flush now-stale user entries from the TLB.
         sfence.vma zero, zero
 
-        # jump to usertrap(), which does not return
+        # jump to user_mode_interrupt_handler(), which does not return
         jr t0
 
-.globl userret
-userret:
-        # userret(pagetable)
-        # called by usertrapret() in trap.c to
+.globl return_to_user_mode_asm
+return_to_user_mode_asm:
+        # return_to_user_mode_asm(pagetable)
+        # called by return_to_user_mode() in trap.c to
         # switch from kernel to user.
         # a0: user page table, for satp.
 
@@ -148,5 +148,5 @@ userret:
         ld a0, 112(a0)
         
         # return to user mode and user pc.
-        # usertrapret() set up sstatus and sepc.
+        # return_to_user_mode() set up sstatus and sepc.
         sret

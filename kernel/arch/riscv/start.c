@@ -8,9 +8,9 @@
 void main();
 
 /// entry.S needs one stack per CPU.
-__attribute__((aligned(16))) char stack0[4096 * NCPU];
+__attribute__((aligned(16))) char g_kernel_cpu_stack[4096 * MAX_CPUS];
 
-/// entry.S jumps here in machine mode on stack0.
+/// entry.S jumps here in machine mode on g_kernel_cpu_stack.
 void start()
 {
     // set M Previous Privilege mode to Supervisor, for mret.
@@ -24,7 +24,7 @@ void start()
     w_mepc((uint64)main);
 
     // disable paging for now.
-    w_satp(0);
+    cpu_set_page_table(0);
 
     // delegate all interrupts and exceptions to supervisor mode.
     w_medeleg(0xffff);
@@ -37,9 +37,9 @@ void start()
     w_pmpcfg0(0xf);
 
     // ask for clock interrupts.
-    timerinit();
+    clint_init_timer_interrupt();
 
-    // keep each CPU's hartid in its tp register, for cpuid().
+    // keep each CPU's hartid in its tp register, for smp_processor_id().
     int id = r_mhartid();
     w_tp(id);
 

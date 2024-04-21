@@ -14,7 +14,7 @@ struct sleeplock
     int pid;     ///< Process holding lock
 };
 
-void acquiresleep(struct sleeplock *);
-void releasesleep(struct sleeplock *);
-int holdingsleep(struct sleeplock *);
-void initsleeplock(struct sleeplock *, char *);
+void sleep_lock(struct sleeplock *);
+void sleep_unlock(struct sleeplock *);
+int sleep_lock_is_held_by_this_cpu(struct sleeplock *);
+void sleep_lock_init(struct sleeplock *, char *);

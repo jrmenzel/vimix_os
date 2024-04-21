@@ -23,79 +23,80 @@ struct
     struct file file[NFILE];
 } ftable;
 
-void fileinit(void) { initlock(&ftable.lock, "ftable"); }
+void file_init() { spin_lock_init(&ftable.lock, "ftable"); }
 
 /// Allocate a file structure.
-struct file *filealloc(void)
+struct file *file_alloc()
 {
     struct file *f;
 
-    acquire(&ftable.lock);
+    spin_lock(&ftable.lock);
     for (f = ftable.file; f < ftable.file + NFILE; f++)
     {
         if (f->ref == 0)
         {
             f->ref = 1;
-            release(&ftable.lock);
+            spin_unlock(&ftable.lock);
             return f;
         }
     }
-    release(&ftable.lock);
+    spin_unlock(&ftable.lock);
     return 0;
 }
 
 /// Increment ref count for file f.
-struct file *filedup(struct file *f)
+struct file *file_dup(struct file *f)
 {
-    acquire(&ftable.lock);
-    if (f->ref < 1) panic("filedup");
+    spin_lock(&ftable.lock);
+    if (f->ref < 1) panic("file_dup");
     f->ref++;
-    release(&ftable.lock);
+    spin_unlock(&ftable.lock);
     return f;
 }
 
 /// Close file f.  (Decrement ref count, close when reaches 0.)
-void fileclose(struct file *f)
+void file_close(struct file *f)
 {
     struct file ff;
 
-    acquire(&ftable.lock);
-    if (f->ref < 1) panic("fileclose");
+    spin_lock(&ftable.lock);
+    if (f->ref < 1) panic("file_close");
     if (--f->ref > 0)
     {
-        release(&ftable.lock);
+        spin_unlock(&ftable.lock);
         return;
     }
     ff = *f;
     f->ref = 0;
     f->type = FD_NONE;
-    release(&ftable.lock);
+    spin_unlock(&ftable.lock);
 
     if (ff.type == FD_PIPE)
     {
-        pipeclose(ff.pipe, ff.writable);
+        pipe_close(ff.pipe, ff.writable);
     }
     else if (ff.type == FD_INODE || ff.type == FD_DEVICE)
     {
-        begin_op();
-        iput(ff.ip);
-        end_op();
+        log_begin_fs_transaction();
+        inode_put(ff.ip);
+        log_end_fs_transaction();
     }
 }
 
 /// Get metadata about file f.
 /// addr is a user virtual address, pointing to a struct stat.
-int filestat(struct file *f, uint64 addr)
+int file_stat(struct file *f, uint64 addr)
 {
-    struct proc *p = myproc();
+    struct process *proc = get_current();
     struct stat st;
 
     if (f->type == FD_INODE || f->type == FD_DEVICE)
     {
-        ilock(f->ip);
-        stati(f->ip, &st);
-        iunlock(f->ip);
-        if (copyout(p->pagetable, addr, (char *)&st, sizeof(st)) < 0) return -1;
+        inode_lock(f->ip);
+        inode_stat(f->ip, &st);
+        inode_unlock(f->ip);
+        if (uvm_copy_out(proc->pagetable, addr, (char *)&st, sizeof(st)) < 0)
+            return -1;
         return 0;
     }
     return -1;
@@ -103,39 +104,40 @@ int filestat(struct file *f, uint64 addr)
 
 /// Read from file f.
 /// addr is a user virtual address.
-int fileread(struct file *f, uint64 addr, int n)
+int file_read(struct file *f, uint64 addr, int n)
 {
-    int r = 0;
+    int read_bytes = 0;
 
     if (f->readable == 0) return -1;
 
     if (f->type == FD_PIPE)
     {
-        r = piperead(f->pipe, addr, n);
+        read_bytes = pipe_read(f->pipe, addr, n);
     }
     else if (f->type == FD_DEVICE)
     {
         if (f->major < 0 || f->major >= NDEV || !devsw[f->major].read)
             return -1;
-        r = devsw[f->major].read(1, addr, n);
+        read_bytes = devsw[f->major].read(1, addr, n);
     }
     else if (f->type == FD_INODE)
     {
-        ilock(f->ip);
-        if ((r = readi(f->ip, 1, addr, f->off, n)) > 0) f->off += r;
-        iunlock(f->ip);
+        inode_lock(f->ip);
+        if ((read_bytes = inode_read(f->ip, 1, addr, f->off, n)) > 0)
+            f->off += read_bytes;
+        inode_unlock(f->ip);
     }
     else
     {
-        panic("fileread");
+        panic("file_read");
     }
 
-    return r;
+    return read_bytes;
 }
 
 /// Write to file f.
 /// addr is a user virtual address.
-int filewrite(struct file *f, uint64 addr, int n)
+int file_write(struct file *f, uint64 addr, int n)
 {
     int r, ret = 0;
 
@@ -143,7 +145,7 @@ int filewrite(struct file *f, uint64 addr, int n)
 
     if (f->type == FD_PIPE)
     {
-        ret = pipewrite(f->pipe, addr, n);
+        ret = pipe_write(f->pipe, addr, n);
     }
     else if (f->type == FD_DEVICE)
     {
@@ -157,24 +159,25 @@ int filewrite(struct file *f, uint64 addr, int n)
         // the maximum log transaction size, including
         // i-node, indirect block, allocation blocks,
         // and 2 blocks of slop for non-aligned writes.
-        // this really belongs lower down, since writei()
+        // this really belongs lower down, since inode_write()
         // might be writing a device like the console.
-        int max = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * BSIZE;
+        int max = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * BLOCK_SIZE;
         int i = 0;
         while (i < n)
         {
             int n1 = n - i;
             if (n1 > max) n1 = max;
 
-            begin_op();
-            ilock(f->ip);
-            if ((r = writei(f->ip, 1, addr + i, f->off, n1)) > 0) f->off += r;
-            iunlock(f->ip);
-            end_op();
+            log_begin_fs_transaction();
+            inode_lock(f->ip);
+            if ((r = inode_write(f->ip, 1, addr + i, f->off, n1)) > 0)
+                f->off += r;
+            inode_unlock(f->ip);
+            log_end_fs_transaction();
 
             if (r != n1)
             {
-                // error from writei
+                // error from inode_write
                 break;
             }
             i += r;
@@ -183,7 +186,7 @@ int filewrite(struct file *f, uint64 addr, int n)
     }
     else
     {
-        panic("filewrite");
+        panic("file_write");
     }
 
     return ret;

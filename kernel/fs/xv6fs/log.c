@@ -30,98 +30,100 @@ struct log
     int dev;
     struct logheader lh;
 };
-struct log log;
+struct log g_log;
 
-static void recover_from_log(void);
+static void recover_from_log();
 static void commit();
 
-void initlog(int dev, struct superblock *sb)
+void log_init(int dev, struct xv6fs_superblock *sb)
 {
-    if (sizeof(struct logheader) >= BSIZE) panic("initlog: too big logheader");
+    if (sizeof(struct logheader) >= BLOCK_SIZE)
+        panic("log_init: too big logheader");
 
-    initlock(&log.lock, "log");
-    log.start = sb->logstart;
-    log.size = sb->nlog;
-    log.dev = dev;
+    spin_lock_init(&g_log.lock, "log");
+    g_log.start = sb->logstart;
+    g_log.size = sb->nlog;
+    g_log.dev = dev;
     recover_from_log();
 }
 
-/// Copy committed blocks from log to their home location
+/// Copy committed blocks from g_log to their home location
 static void install_trans(int recovering)
 {
     int tail;
 
-    for (tail = 0; tail < log.lh.n; tail++)
+    for (tail = 0; tail < g_log.lh.n; tail++)
     {
         struct buf *lbuf =
-            bread(log.dev, log.start + tail + 1);  // read log block
-        struct buf *dbuf = bread(log.dev, log.lh.block[tail]);  // read dst
-        memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
-        bwrite(dbuf);                            // write dst to disk
-        if (recovering == 0) bunpin(dbuf);
-        brelse(lbuf);
-        brelse(dbuf);
+            bio_read(g_log.dev, g_log.start + tail + 1);  // read log block
+        struct buf *dbuf =
+            bio_read(g_log.dev, g_log.lh.block[tail]);  // read dst
+        memmove(dbuf->data, lbuf->data, BLOCK_SIZE);    // copy block to dst
+        bio_write(dbuf);                                // write dst to disk
+        if (recovering == 0) bio_unpin(dbuf);
+        bio_release(lbuf);
+        bio_release(dbuf);
     }
 }
 
 /// Read the log header from disk into the in-memory log header
-static void read_head(void)
+static void read_head()
 {
-    struct buf *buf = bread(log.dev, log.start);
+    struct buf *buf = bio_read(g_log.dev, g_log.start);
     struct logheader *lh = (struct logheader *)(buf->data);
     int i;
-    log.lh.n = lh->n;
-    for (i = 0; i < log.lh.n; i++)
+    g_log.lh.n = lh->n;
+    for (i = 0; i < g_log.lh.n; i++)
     {
-        log.lh.block[i] = lh->block[i];
+        g_log.lh.block[i] = lh->block[i];
     }
-    brelse(buf);
+    bio_release(buf);
 }
 
 /// Write in-memory log header to disk.
 /// This is the true point at which the
 /// current transaction commits.
-static void write_head(void)
+static void write_head()
 {
-    struct buf *buf = bread(log.dev, log.start);
+    struct buf *buf = bio_read(g_log.dev, g_log.start);
     struct logheader *hb = (struct logheader *)(buf->data);
     int i;
-    hb->n = log.lh.n;
-    for (i = 0; i < log.lh.n; i++)
+    hb->n = g_log.lh.n;
+    for (i = 0; i < g_log.lh.n; i++)
     {
-        hb->block[i] = log.lh.block[i];
+        hb->block[i] = g_log.lh.block[i];
     }
-    bwrite(buf);
-    brelse(buf);
+    bio_write(buf);
+    bio_release(buf);
 }
 
-static void recover_from_log(void)
+static void recover_from_log()
 {
     read_head();
-    install_trans(1);  // if committed, copy from log to disk
-    log.lh.n = 0;
+    install_trans(1);  // if committed, copy from g_log to disk
+    g_log.lh.n = 0;
     write_head();  // clear the log
 }
 
 /// called at the start of each FS system call.
-void begin_op(void)
+void log_begin_fs_transaction()
 {
-    acquire(&log.lock);
+    spin_lock(&g_log.lock);
     while (1)
     {
-        if (log.committing)
+        if (g_log.committing)
         {
-            sleep(&log, &log.lock);
+            sleep(&g_log, &g_log.lock);
         }
-        else if (log.lh.n + (log.outstanding + 1) * MAXOPBLOCKS > LOGSIZE)
+        else if (g_log.lh.n + (g_log.outstanding + 1) * MAXOPBLOCKS > LOGSIZE)
         {
-            // this op might exhaust log space; wait for commit.
-            sleep(&log, &log.lock);
+            // this op might exhaust g_log space; wait for commit.
+            sleep(&g_log, &g_log.lock);
         }
         else
         {
-            log.outstanding += 1;
-            release(&log.lock);
+            g_log.outstanding += 1;
+            spin_unlock(&g_log.lock);
             break;
         }
     }
@@ -129,63 +131,65 @@ void begin_op(void)
 
 /// called at the end of each FS system call.
 /// commits if this was the last outstanding operation.
-void end_op(void)
+void log_end_fs_transaction()
 {
     int do_commit = 0;
 
-    acquire(&log.lock);
-    log.outstanding -= 1;
-    if (log.committing) panic("log.committing");
-    if (log.outstanding == 0)
+    spin_lock(&g_log.lock);
+    g_log.outstanding -= 1;
+    if (g_log.committing) panic("g_log.committing");
+    if (g_log.outstanding == 0)
     {
         do_commit = 1;
-        log.committing = 1;
+        g_log.committing = 1;
     }
     else
     {
-        // begin_op() may be waiting for log space,
-        // and decrementing log.outstanding has decreased
+        // log_begin_fs_transaction() may be waiting for g_log space,
+        // and decrementing g_log.outstanding has decreased
         // the amount of reserved space.
-        wakeup(&log);
+        wakeup(&g_log);
     }
-    release(&log.lock);
+    spin_unlock(&g_log.lock);
 
     if (do_commit)
     {
         // call commit w/o holding locks, since not allowed
         // to sleep with locks.
         commit();
-        acquire(&log.lock);
-        log.committing = 0;
-        wakeup(&log);
-        release(&log.lock);
+        spin_lock(&g_log.lock);
+        g_log.committing = 0;
+        wakeup(&g_log);
+        spin_unlock(&g_log.lock);
     }
 }
 
 /// Copy modified blocks from cache to log.
-static void write_log(void)
+static void write_log()
 {
     int tail;
 
-    for (tail = 0; tail < log.lh.n; tail++)
+    for (tail = 0; tail < g_log.lh.n; tail++)
     {
-        struct buf *to = bread(log.dev, log.start + tail + 1);  // log block
-        struct buf *from = bread(log.dev, log.lh.block[tail]);  // cache block
-        memmove(to->data, from->data, BSIZE);
-        bwrite(to);  // write the log
-        brelse(from);
-        brelse(to);
+        struct buf *to =
+            bio_read(g_log.dev, g_log.start + tail + 1);  // log block
+        struct buf *from =
+            bio_read(g_log.dev, g_log.lh.block[tail]);  // cache block
+        memmove(to->data, from->data, BLOCK_SIZE);
+        bio_write(to);  // write the log
+        bio_release(from);
+        bio_release(to);
     }
 }
 
 static void commit()
 {
-    if (log.lh.n > 0)
+    if (g_log.lh.n > 0)
     {
         write_log();       // Write modified blocks from cache to log
         write_head();      // Write header to disk -- the real commit
         install_trans(0);  // Now install writes to home locations
-        log.lh.n = 0;
+        g_log.lh.n = 0;
         write_head();  // Erase the transaction from the log
     }
 }
@@ -194,21 +198,21 @@ void log_write(struct buf *b)
 {
     int i;
 
-    acquire(&log.lock);
-    if (log.lh.n >= LOGSIZE || log.lh.n >= log.size - 1)
+    spin_lock(&g_log.lock);
+    if (g_log.lh.n >= LOGSIZE || g_log.lh.n >= g_log.size - 1)
         panic("too big a transaction");
-    if (log.outstanding < 1) panic("log_write outside of trans");
+    if (g_log.outstanding < 1) panic("log_write outside of trans");
 
-    for (i = 0; i < log.lh.n; i++)
+    for (i = 0; i < g_log.lh.n; i++)
     {
-        if (log.lh.block[i] == b->blockno)  // log absorption
+        if (g_log.lh.block[i] == b->blockno)  // log absorption
             break;
     }
-    log.lh.block[i] = b->blockno;
-    if (i == log.lh.n)
+    g_log.lh.block[i] = b->blockno;
+    if (i == g_log.lh.n)
     {  // Add new block to log?
-        bpin(b);
-        log.lh.n++;
+        bio_pin(b);
+        g_log.lh.n++;
     }
-    release(&log.lock);
+    spin_unlock(&g_log.lock);
 }

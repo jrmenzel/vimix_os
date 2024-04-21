@@ -17,24 +17,24 @@ struct
     // Sorted by how recently the buffer was used.
     // head.next is most recent, head.prev is least.
     struct buf head;
-} bcache;
+} g_buf_cache;
 
-void binit(void)
+void bio_init()
 {
     struct buf *b;
 
-    initlock(&bcache.lock, "bcache");
+    spin_lock_init(&g_buf_cache.lock, "g_buf_cache");
 
     // Create linked list of buffers
-    bcache.head.prev = &bcache.head;
-    bcache.head.next = &bcache.head;
-    for (b = bcache.buf; b < bcache.buf + NBUF; b++)
+    g_buf_cache.head.prev = &g_buf_cache.head;
+    g_buf_cache.head.next = &g_buf_cache.head;
+    for (b = g_buf_cache.buf; b < g_buf_cache.buf + NBUF; b++)
     {
-        b->next = bcache.head.next;
-        b->prev = &bcache.head;
-        initsleeplock(&b->lock, "buffer");
-        bcache.head.next->prev = b;
-        bcache.head.next = b;
+        b->next = g_buf_cache.head.next;
+        b->prev = &g_buf_cache.head;
+        sleep_lock_init(&b->lock, "buffer");
+        g_buf_cache.head.next->prev = b;
+        g_buf_cache.head.next = b;
     }
 }
 
@@ -45,23 +45,23 @@ static struct buf *bget(uint dev, uint blockno)
 {
     struct buf *b;
 
-    acquire(&bcache.lock);
+    spin_lock(&g_buf_cache.lock);
 
     // Is the block already cached?
-    for (b = bcache.head.next; b != &bcache.head; b = b->next)
+    for (b = g_buf_cache.head.next; b != &g_buf_cache.head; b = b->next)
     {
         if (b->dev == dev && b->blockno == blockno)
         {
             b->refcnt++;
-            release(&bcache.lock);
-            acquiresleep(&b->lock);
+            spin_unlock(&g_buf_cache.lock);
+            sleep_lock(&b->lock);
             return b;
         }
     }
 
     // Not cached.
     // Recycle the least recently used (LRU) unused buffer.
-    for (b = bcache.head.prev; b != &bcache.head; b = b->prev)
+    for (b = g_buf_cache.head.prev; b != &g_buf_cache.head; b = b->prev)
     {
         if (b->refcnt == 0)
         {
@@ -69,8 +69,8 @@ static struct buf *bget(uint dev, uint blockno)
             b->blockno = blockno;
             b->valid = 0;
             b->refcnt = 1;
-            release(&bcache.lock);
-            acquiresleep(&b->lock);
+            spin_unlock(&g_buf_cache.lock);
+            sleep_lock(&b->lock);
             return b;
         }
     }
@@ -78,7 +78,7 @@ static struct buf *bget(uint dev, uint blockno)
 }
 
 /// Return a locked buf with the contents of the indicated block.
-struct buf *bread(uint dev, uint blockno)
+struct buf *bio_read(uint dev, uint blockno)
 {
     struct buf *b;
 
@@ -92,46 +92,46 @@ struct buf *bread(uint dev, uint blockno)
 }
 
 /// Write b's contents to disk.  Must be locked.
-void bwrite(struct buf *b)
+void bio_write(struct buf *b)
 {
-    if (!holdingsleep(&b->lock)) panic("bwrite");
+    if (!sleep_lock_is_held_by_this_cpu(&b->lock)) panic("bio_write");
     virtio_disk_rw(b, 1);
 }
 
 /// Release a locked buffer.
 /// Move to the head of the most-recently-used list.
-void brelse(struct buf *b)
+void bio_release(struct buf *b)
 {
-    if (!holdingsleep(&b->lock)) panic("brelse");
+    if (!sleep_lock_is_held_by_this_cpu(&b->lock)) panic("bio_release");
 
-    releasesleep(&b->lock);
+    sleep_unlock(&b->lock);
 
-    acquire(&bcache.lock);
+    spin_lock(&g_buf_cache.lock);
     b->refcnt--;
     if (b->refcnt == 0)
     {
         // no one is waiting for it.
         b->next->prev = b->prev;
         b->prev->next = b->next;
-        b->next = bcache.head.next;
-        b->prev = &bcache.head;
-        bcache.head.next->prev = b;
-        bcache.head.next = b;
+        b->next = g_buf_cache.head.next;
+        b->prev = &g_buf_cache.head;
+        g_buf_cache.head.next->prev = b;
+        g_buf_cache.head.next = b;
     }
 
-    release(&bcache.lock);
+    spin_unlock(&g_buf_cache.lock);
 }
 
-void bpin(struct buf *b)
+void bio_pin(struct buf *b)
 {
-    acquire(&bcache.lock);
+    spin_lock(&g_buf_cache.lock);
     b->refcnt++;
-    release(&bcache.lock);
+    spin_unlock(&g_buf_cache.lock);
 }
 
-void bunpin(struct buf *b)
+void bio_unpin(struct buf *b)
 {
-    acquire(&bcache.lock);
+    spin_lock(&g_buf_cache.lock);
     b->refcnt--;
-    release(&bcache.lock);
+    spin_unlock(&g_buf_cache.lock);
 }

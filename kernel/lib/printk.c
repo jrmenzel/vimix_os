@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 //
-// formatted console output -- printf, panic.
+// formatted console output -- printk, panic.
 //
 
 #include <kernel/stdarg.h>
@@ -17,9 +17,9 @@
 #include <kernel/types.h>
 #include <mm/memlayout.h>
 
-volatile int panicked = 0;
+volatile int g_kernel_panicked = 0;
 
-/// lock to avoid interleaving concurrent printf's.
+/// lock to avoid interleaving concurrent printk's.
 static struct
 {
     struct spinlock lock;
@@ -46,27 +46,27 @@ static void printint(int xx, int base, int sign)
 
     if (sign) buf[i++] = '-';
 
-    while (--i >= 0) consputc(buf[i]);
+    while (--i >= 0) console_putc(buf[i]);
 }
 
 static void printptr(uint64 x)
 {
     int i;
-    consputc('0');
-    consputc('x');
+    console_putc('0');
+    console_putc('x');
     for (i = 0; i < (sizeof(uint64) * 2); i++, x <<= 4)
-        consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
+        console_putc(digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
 /// Print to the console. only understands %d, %x, %p, %s.
-void printf(char *fmt, ...)
+void printk(char *fmt, ...)
 {
     va_list ap;
     int i, c, locking;
     char *s;
 
     locking = pr.locking;
-    if (locking) acquire(&pr.lock);
+    if (locking) spin_lock(&pr.lock);
 
     if (fmt == 0) panic("null fmt");
 
@@ -75,7 +75,7 @@ void printf(char *fmt, ...)
     {
         if (c != '%')
         {
-            consputc(c);
+            console_putc(c);
             continue;
         }
         c = fmt[++i] & 0xff;
@@ -87,34 +87,34 @@ void printf(char *fmt, ...)
             case 'p': printptr(va_arg(ap, uint64)); break;
             case 's':
                 if ((s = va_arg(ap, char *)) == 0) s = "(null)";
-                for (; *s; s++) consputc(*s);
+                for (; *s; s++) console_putc(*s);
                 break;
-            case '%': consputc('%'); break;
+            case '%': console_putc('%'); break;
             default:
                 // Print unknown % sequence to draw attention.
-                consputc('%');
-                consputc(c);
+                console_putc('%');
+                console_putc(c);
                 break;
         }
     }
     va_end(ap);
 
-    if (locking) release(&pr.lock);
+    if (locking) spin_unlock(&pr.lock);
 }
 
 void panic(char *s)
 {
     pr.locking = 0;
-    printf("panic: ");
-    printf(s);
-    printf("\n");
-    panicked = 1;  // freeze uart output from other CPUs
+    printk("panic: ");
+    printk(s);
+    printk("\n");
+    g_kernel_panicked = 1;  // freeze uart output from other CPUs
     for (;;)
         ;
 }
 
-void printfinit(void)
+void printk_init()
 {
-    initlock(&pr.lock, "pr");
+    spin_lock_init(&pr.lock, "pr");
     pr.locking = 1;
 }

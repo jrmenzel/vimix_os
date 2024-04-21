@@ -13,7 +13,7 @@
 #define LIST 4
 #define BACK 5
 
-#define MAXARGS 10
+#define MAX_EXEC_ARGSS 10
 
 struct cmd
 {
@@ -23,8 +23,8 @@ struct cmd
 struct execcmd
 {
     int type;
-    char *argv[MAXARGS];
-    char *eargv[MAXARGS];
+    char *argv[MAX_EXEC_ARGSS];
+    char *eargv[MAX_EXEC_ARGSS];
 };
 
 struct redircmd
@@ -57,7 +57,7 @@ struct backcmd
     struct cmd *cmd;
 };
 
-int fork1(void);  // Fork but panics on failure.
+int fork1();  // Fork but panics on failure.
 void panic(char *);
 struct cmd *parsecmd(char *);
 void runcmd(struct cmd *) __attribute__((noreturn));
@@ -81,8 +81,8 @@ void runcmd(struct cmd *cmd)
         case EXEC:
             ecmd = (struct execcmd *)cmd;
             if (ecmd->argv[0] == 0) exit(1);
-            exec(ecmd->argv[0], ecmd->argv);
-            fprintf(2, "exec %s failed\n", ecmd->argv[0]);
+            execv(ecmd->argv[0], ecmd->argv);
+            fprintf(2, "execv %s failed\n", ecmd->argv[0]);
             break;
 
         case REDIR:
@@ -146,7 +146,7 @@ int getcmd(char *buf, int nbuf)
     return 0;
 }
 
-int main(void)
+int main()
 {
     static char buf[100];
     int fd;
@@ -183,7 +183,7 @@ void panic(char *s)
     exit(1);
 }
 
-int fork1(void)
+int fork1()
 {
     int pid;
 
@@ -192,7 +192,7 @@ int fork1(void)
     return pid;
 }
 
-struct cmd *execcmd(void)
+struct cmd *execcmd()
 {
     struct execcmd *cmd;
 
@@ -416,7 +416,7 @@ struct cmd *parseexec(char **ps, char *es)
         cmd->argv[argc] = q;
         cmd->eargv[argc] = eq;
         argc++;
-        if (argc >= MAXARGS) panic("too many args");
+        if (argc >= MAX_EXEC_ARGSS) panic("too many args");
         ret = parseredirs(ret, ps, es);
     }
     cmd->argv[argc] = 0;

@@ -36,10 +36,10 @@ extern struct devsw devsw[];
 
 #define CONSOLE 1
 
-struct file* filealloc(void);
-void fileclose(struct file*);
-struct file* filedup(struct file*);
-void fileinit(void);
-int fileread(struct file*, uint64, int n);
-int filestat(struct file*, uint64 addr);
-int filewrite(struct file*, uint64, int n);
+struct file* file_alloc();
+void file_close(struct file*);
+struct file* file_dup(struct file*);
+void file_init();
+int file_read(struct file*, uint64, int n);
+int file_stat(struct file*, uint64 addr);
+int file_write(struct file*, uint64, int n);

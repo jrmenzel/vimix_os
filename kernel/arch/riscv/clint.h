@@ -1,4 +1,4 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-void timerinit();
+void clint_init_timer_interrupt();

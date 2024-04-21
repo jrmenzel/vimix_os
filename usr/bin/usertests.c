@@ -10,15 +10,15 @@
 #include <user.h>
 
 //
-// Tests xv6 system calls.  usertests without arguments runs them all
+// Tests VIMIX system calls.  usertests without arguments runs them all
 // and usertests <name> runs <name> test. The test runner creates for
 // each test a process and based on the exit status of the process,
 // the test runner reports "OK" or "FAILED".  Some tests result in
-// kernel printing usertrap messages, which can be ignored if test
-// prints "OK".
+// kernel printing user_mode_interrupt_handler messages, which can be ignored if
+// test prints "OK".
 //
 
-#define BUFSZ ((MAXOPBLOCKS + 2) * BSIZE)
+#define BUFSZ ((MAXOPBLOCKS + 2) * BLOCK_SIZE)
 
 char buf[BUFSZ];
 
@@ -29,7 +29,7 @@ char buf[BUFSZ];
 //
 
 // what if you pass ridiculous pointers to system calls
-// that read user memory with copyin?
+// that read user memory with uvm_copy_in?
 void copyin(char *s)
 {
     uint64 addrs[] = {0x80000000LL, 0xffffffffffffffff};
@@ -78,7 +78,7 @@ void copyin(char *s)
 }
 
 // what if you pass ridiculous pointers to system calls
-// that write user memory with copyout?
+// that write user memory with uvm_copy_out?
 void copyout(char *s)
 {
     uint64 addrs[] = {0x80000000LL, 0xffffffffffffffff};
@@ -174,10 +174,10 @@ void copyinstr2(char *s)
     }
 
     char *args[] = {"xx", 0};
-    ret = exec(b, args);
+    ret = execv(b, args);
     if (ret != -1)
     {
-        printf("exec(%s) returned %d, not -1\n", b, fd);
+        printf("execv(%s) returned %d, not -1\n", b, fd);
         exit(1);
     }
 
@@ -189,14 +189,14 @@ void copyinstr2(char *s)
     }
     if (pid == 0)
     {
-        static char big[PGSIZE + 1];
-        for (int i = 0; i < PGSIZE; i++) big[i] = 'x';
-        big[PGSIZE] = '\0';
+        static char big[PAGE_SIZE + 1];
+        for (int i = 0; i < PAGE_SIZE; i++) big[i] = 'x';
+        big[PAGE_SIZE] = '\0';
         char *args2[] = {big, big, big, 0};
-        ret = exec("echo", args2);
+        ret = execv("echo", args2);
         if (ret != -1)
         {
-            printf("exec(echo, BIG) returned %d, not -1\n", fd);
+            printf("execv(echo, BIG) returned %d, not -1\n", fd);
             exit(1);
         }
         exit(747);  // OK
@@ -206,7 +206,7 @@ void copyinstr2(char *s)
     wait(&st);
     if (st != 747)
     {
-        printf("exec(echo, BIG) succeeded, should have failed\n");
+        printf("execv(echo, BIG) succeeded, should have failed\n");
         exit(1);
     }
 }
@@ -216,12 +216,12 @@ void copyinstr3(char *s)
 {
     sbrk(8192);
     uint64 top = (uint64)sbrk(0);
-    if ((top % PGSIZE) != 0)
+    if ((top % PAGE_SIZE) != 0)
     {
-        sbrk(PGSIZE - (top % PGSIZE));
+        sbrk(PAGE_SIZE - (top % PAGE_SIZE));
     }
     top = (uint64)sbrk(0);
-    if (top % PGSIZE)
+    if (top % PAGE_SIZE)
     {
         printf("oops\n");
         exit(1);
@@ -252,10 +252,10 @@ void copyinstr3(char *s)
     }
 
     char *args[] = {"xx", 0};
-    ret = exec(b, args);
+    ret = execv(b, args);
     if (ret != -1)
     {
-        printf("exec(%s) returned %d, not -1\n", b, fd);
+        printf("execv(%s) returned %d, not -1\n", b, fd);
         exit(1);
     }
 }
@@ -374,7 +374,7 @@ void truncate1(char *s)
 
 // write to an open FD whose file has just been truncated.
 // this causes a write at an offset beyond the end of the file.
-// such writes fail on xv6 (unlike POSIX) but at least
+// such writes fail on VIMIX (unlike POSIX) but at least
 // they don't crash.
 void truncate2(char *s)
 {
@@ -457,7 +457,7 @@ void truncate3(char *s)
     exit(xstatus);
 }
 
-// does chdir() call iput(p->cwd) in a transaction?
+// does chdir() call inode_put(p->cwd) in a transaction?
 void iputtest(char *s)
 {
     if (mkdir("iputdir") < 0)
@@ -482,7 +482,7 @@ void iputtest(char *s)
     }
 }
 
-// does exit() call iput(p->cwd) in a transaction?
+// does exit() call inode_put(p->cwd) in a transaction?
 void exitiputtest(char *s)
 {
     int pid, xstatus;
@@ -517,10 +517,10 @@ void exitiputtest(char *s)
 }
 
 // does the error path in open() for attempt to write a
-// directory call iput() in a transaction?
-// needs a hacked kernel that pauses just after the namei()
+// directory call inode_put() in a transaction?
+// needs a hacked kernel that pauses just after the inode_from_path()
 // call in sys_open():
-//    if((ip = namei(path)) == 0)
+//    if((ip = inode_from_path(path)) == 0)
 //      return -1;
 //    {
 //      int i;
@@ -648,7 +648,7 @@ void writebig(char *s)
     for (i = 0; i < MAXFILE; i++)
     {
         ((int *)buf)[0] = i;
-        if (write(fd, buf, BSIZE) != BSIZE)
+        if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
         {
             printf("%s: error: write big file failed\n", s, i);
             exit(1);
@@ -667,7 +667,7 @@ void writebig(char *s)
     n = 0;
     for (;;)
     {
-        i = read(fd, buf, BSIZE);
+        i = read(fd, buf, BLOCK_SIZE);
         if (i == 0)
         {
             if (n == MAXFILE - 1)
@@ -677,7 +677,7 @@ void writebig(char *s)
             }
             break;
         }
-        else if (i != BSIZE)
+        else if (i != BLOCK_SIZE)
         {
             printf("%s: read failed %d\n", s, i);
             exit(1);
@@ -779,9 +779,9 @@ void exectest(char *s)
             printf("%s: wrong fd\n", s);
             exit(1);
         }
-        if (exec("echo", echoargv) < 0)
+        if (execv("echo", echoargv) < 0)
         {
-            printf("%s: exec echo failed\n", s);
+            printf("%s: execv echo failed\n", s);
             exit(1);
         }
         // won't get to here
@@ -1607,7 +1607,7 @@ void concreate(char *s)
     struct
     {
         ushort inum;
-        char name[DIRSIZ];
+        char name[XV6_NAME_MAX];
     } de;
 
     file[0] = 'C';
@@ -1971,7 +1971,7 @@ void bigwrite(char *s)
     int fd, sz;
 
     unlink("bigwrite");
-    for (sz = 499; sz < (MAXOPBLOCKS + 2) * BSIZE; sz += 471)
+    for (sz = 499; sz < (MAXOPBLOCKS + 2) * BLOCK_SIZE; sz += 471)
     {
         fd = open("bigwrite", O_CREATE | O_RDWR);
         if (fd < 0)
@@ -2062,7 +2062,7 @@ void fourteen(char *s)
 {
     int fd;
 
-    // DIRSIZ is 14.
+    // XV6_NAME_MAX is 14.
 
     if (mkdir("12345678901234") != 0)
     {
@@ -2221,7 +2221,7 @@ void dirfile(char *s)
     close(fd);
 }
 
-// test that iput() is called at the end of _namei().
+// test that inode_put() is called at the end of _namei().
 // also tests empty file names.
 void iref(char *s)
 {
@@ -2412,14 +2412,14 @@ void sbrkmuch(char *s)
 
     // can one de-allocate?
     a = sbrk(0);
-    c = sbrk(-PGSIZE);
+    c = sbrk(-PAGE_SIZE);
     if (c == (char *)0xffffffffffffffffL)
     {
         printf("%s: sbrk could not deallocate\n", s);
         exit(1);
     }
     c = sbrk(0);
-    if (c != a - PGSIZE)
+    if (c != a - PAGE_SIZE)
     {
         printf("%s: sbrk deallocation produced wrong address, a %x c %x\n", s,
                a, c);
@@ -2428,8 +2428,8 @@ void sbrkmuch(char *s)
 
     // can one re-allocate that page?
     a = sbrk(0);
-    c = sbrk(PGSIZE);
-    if (c != a || sbrk(0) != a + PGSIZE)
+    c = sbrk(PAGE_SIZE);
+    if (c != a || sbrk(0) != a + PAGE_SIZE)
     {
         printf("%s: sbrk re-allocation failed, a %x c %x\n", s, a, c);
         exit(1);
@@ -2537,7 +2537,7 @@ void sbrkfail(char *s)
 
     // if those failed allocations freed up the pages they did allocate,
     // we'll be able to allocate here
-    c = sbrk(PGSIZE);
+    c = sbrk(PAGE_SIZE);
     for (i = 0; i < sizeof(pids) / sizeof(pids[0]); i++)
     {
         if (pids[i] == -1) continue;
@@ -2565,7 +2565,7 @@ void sbrkfail(char *s)
         a = sbrk(0);
         sbrk(10 * BIG);
         int n = 0;
-        for (i = 0; i < 10 * BIG; i += PGSIZE)
+        for (i = 0; i < 10 * BIG; i += PAGE_SIZE)
         {
             n += *(a + i);
         }
@@ -2584,7 +2584,7 @@ void sbrkarg(char *s)
     char *a;
     int fd, n;
 
-    a = sbrk(PGSIZE);
+    a = sbrk(PAGE_SIZE);
     fd = open("sbrk", O_CREATE | O_WRONLY);
     unlink("sbrk");
     if (fd < 0)
@@ -2592,7 +2592,7 @@ void sbrkarg(char *s)
         printf("%s: open sbrk failed\n", s);
         exit(1);
     }
-    if ((n = write(fd, a, PGSIZE)) < 0)
+    if ((n = write(fd, a, PAGE_SIZE)) < 0)
     {
         printf("%s: write sbrk failed\n", s);
         exit(1);
@@ -2600,7 +2600,7 @@ void sbrkarg(char *s)
     close(fd);
 
     // test writes to allocated memory
-    a = sbrk(PGSIZE);
+    a = sbrk(PAGE_SIZE);
     if (pipe((int *)a) != 0)
     {
         printf("%s: pipe() failed\n", s);
@@ -2614,7 +2614,7 @@ void validatetest(char *s)
     uint64 p;
 
     hi = 1100 * 1024;
-    for (p = 0; p <= (uint)hi; p += PGSIZE)
+    for (p = 0; p <= (uint)hi; p += PAGE_SIZE)
     {
         // try to crash the kernel by passing in a bad string pointer
         if (link("nosuchfile", (char *)p) != -1)
@@ -2641,7 +2641,7 @@ void bsstest(char *s)
     }
 }
 
-// does exec return an error if the arguments
+// does execv return an error if the arguments
 // are larger than a page? or does it write
 // below the stack and wreck the instructions/data?
 void bigargtest(char *s)
@@ -2652,16 +2652,16 @@ void bigargtest(char *s)
     pid = fork();
     if (pid == 0)
     {
-        static char *args[MAXARG];
+        static char *args[MAX_EXEC_ARGS];
         int i;
-        for (i = 0; i < MAXARG - 1; i++)
+        for (i = 0; i < MAX_EXEC_ARGS - 1; i++)
             args[i] =
                 "bigargs test: failed\n                                        "
                 "                                                              "
                 "                                                              "
                 "                                   ";
-        args[MAXARG - 1] = 0;
-        exec("echo", args);
+        args[MAX_EXEC_ARGS - 1] = 0;
+        execv("echo", args);
         fd = open("bigarg-ok", O_CREATE);
         close(fd);
         exit(0);
@@ -2711,8 +2711,8 @@ void fsfull()
         int total = 0;
         while (1)
         {
-            int cc = write(fd, buf, BSIZE);
-            if (cc < BSIZE) break;
+            int cc = write(fd, buf, BLOCK_SIZE);
+            if (cc < BLOCK_SIZE) break;
             total += cc;
             fsblocks++;
         }
@@ -2761,7 +2761,7 @@ void stacktest(char *s)
     if (pid == 0)
     {
         char *sp = (char *)r_sp();
-        sp -= PGSIZE;
+        sp -= PAGE_SIZE;
         // the *sp should cause a trap.
         printf("%s: stacktest: read below stack %p\n", s, *sp);
         exit(1);
@@ -2803,15 +2803,15 @@ void textwrite(char *s)
         exit(xstatus);
 }
 
-// regression test. copyin(), copyout(), and copyinstr() used to cast
-// the virtual page address to uint, which (with certain wild system
-// call arguments) resulted in a kernel page faults.
+// regression test. uvm_copy_in(), uvm_copy_out(), and uvm_copy_in_str() used to
+// cast the virtual page address to uint, which (with certain wild system call
+// arguments) resulted in a kernel page faults.
 void *big = (void *)0xeaeb0b5b00002f5e;
 void pgbug(char *s)
 {
     char *argv[1];
     argv[0] = 0;
-    exec(big, argv);
+    execv(big, argv);
     pipe(big);
 
     exit(0);
@@ -2882,7 +2882,7 @@ void sbrkbugs(char *s)
 
 // if process size was somewhat more than a page boundary, and then
 // shrunk to be somewhat less than that page boundary, can the kernel
-// still copyin() from addresses in the last page?
+// still uvm_copy_in() from addresses in the last page?
 void sbrklast(char *s)
 {
     uint64 top = (uint64)sbrk(0);
@@ -2912,7 +2912,7 @@ void sbrk8000(char *s)
     *(top - 1) = *(top - 1) + 1;
 }
 
-// regression test. test whether exec() leaks memory if one of the
+// regression test. test whether execv() leaks memory if one of the
 // arguments is invalid. the test passes if the kernel doesn't panic.
 void badarg(char *s)
 {
@@ -2921,7 +2921,7 @@ void badarg(char *s)
         char *argv[2];
         argv[0] = (char *)0xffffffff;
         argv[1] = 0;
-        exec("echo", argv);
+        execv("echo", argv);
     }
 
     exit(0);
@@ -3148,7 +3148,7 @@ void badwrite(char *s)
     exit(0);
 }
 
-// test the exec() code that cleans up if it runs out
+// test the execv() code that cleans up if it runs out
 // of memory. it's really a test that such a condition
 // doesn't cause a panic.
 void execout(char *s)
@@ -3171,13 +3171,13 @@ void execout(char *s)
                 *(char *)(a + 4096 - 1) = 1;
             }
 
-            // free a few pages, in order to let exec() make some
+            // free a few pages, in order to let execv() make some
             // progress.
             for (int i = 0; i < avail; i++) sbrk(-4096);
 
             close(1);
             char *args[] = {"echo", "x", 0};
-            exec("echo", args);
+            execv("echo", args);
             exit(0);
         }
         else
@@ -3216,8 +3216,8 @@ void diskfull(char *s)
         }
         for (int i = 0; i < MAXFILE; i++)
         {
-            char buf[BSIZE];
-            if (write(fd, buf, BSIZE) != BSIZE)
+            char buf[BLOCK_SIZE];
+            if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
             {
                 done = 1;
                 close(fd);
@@ -3227,7 +3227,7 @@ void diskfull(char *s)
         close(fd);
     }
 
-    // now that there are no free blocks, test that dirlink()
+    // now that there are no free blocks, test that inode_dir_link()
     // merely fails (doesn't panic) if it can't extend
     // directory content. one of these file creations
     // is expected to fail.

@@ -3,7 +3,7 @@
 
 #include <kernel/kernel.h>
 
-void plicinit(void);
-void plicinithart(void);
-int plic_claim(void);
+void plic_init();
+void plic_init_per_cpu();
+int plic_claim();
 void plic_complete(int);

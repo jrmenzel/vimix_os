@@ -40,7 +40,7 @@ int do_rand(unsigned long *ctx)
 
 unsigned long rand_next = 1;
 
-int rand(void) { return (do_rand(&rand_next)); }
+int rand() { return (do_rand(&rand_next)); }
 
 void go(int which_child)
 {
@@ -269,14 +269,14 @@ void go(int which_child)
                 printf("grind: fstat failed\n");
                 exit(1);
             }
-            if (st.size != 1)
+            if (st.st_size != 1)
             {
-                printf("grind: fstat reports wrong size %d\n", (int)st.size);
+                printf("grind: fstat reports wrong size %d\n", (int)st.st_size);
                 exit(1);
             }
-            if (st.ino > 200)
+            if (st.st_ino > 200)
             {
-                printf("grind: fstat reports crazy i-number %d\n", st.ino);
+                printf("grind: fstat reports crazy i-number %d\n", st.st_ino);
                 exit(1);
             }
             close(fd1);
@@ -310,7 +310,7 @@ void go(int which_child)
                 }
                 close(aa[1]);
                 char *args[3] = {"echo", "hi", 0};
-                exec("grindir/../echo", args);
+                execv("grindir/../echo", args);
                 fprintf(2, "grind: echo: not found\n");
                 exit(2);
             }
@@ -339,7 +339,7 @@ void go(int which_child)
                 }
                 close(bb[1]);
                 char *args[2] = {"cat", 0};
-                exec("/cat", args);
+                execv("/cat", args);
                 fprintf(2, "grind: cat: not found\n");
                 exit(6);
             }
@@ -361,7 +361,7 @@ void go(int which_child)
             wait(&st2);
             if (st1 != 0 || st2 != 0 || strcmp(buf, "hi\n") != 0)
             {
-                printf("grind: exec pipeline failed %d %d \"%s\"\n", st1, st2,
+                printf("grind: execv pipeline failed %d %d \"%s\"\n", st1, st2,
                        buf);
                 exit(1);
             }

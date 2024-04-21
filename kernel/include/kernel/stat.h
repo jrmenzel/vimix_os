@@ -3,15 +3,15 @@
 
 #include <kernel/kernel.h>
 
-#define T_DIR 1     ///< Directory
-#define T_FILE 2    ///< File
-#define T_DEVICE 3  ///< Device
+#define XV6_FT_DIR 1     ///< Directory
+#define XV6_FT_FILE 2    ///< File
+#define XV6_FT_DEVICE 3  ///< Device
 
 struct stat
 {
-    int dev;      ///< File system's disk device
-    uint ino;     ///< Inode number
-    short type;   ///< Type of file
-    short nlink;  ///< Number of links to file
-    uint64 size;  ///< Size of file in bytes
+    int st_dev;      ///< File system's disk device
+    uint st_ino;     ///< Inode number
+    short type;      ///< Type of file
+    short st_nlink;  ///< Number of links to file
+    uint64 st_size;  ///< Size of file in bytes
 };

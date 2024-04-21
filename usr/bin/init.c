@@ -13,7 +13,7 @@
 
 char *argv[] = {"sh", 0};
 
-int main(void)
+int main()
 {
     int pid, wpid;
 
@@ -36,8 +36,8 @@ int main(void)
         }
         if (pid == 0)
         {
-            exec("sh", argv);
-            printf("init: exec sh failed\n");
+            execv("sh", argv);
+            printf("init: execv sh failed\n");
             exit(1);
         }
 

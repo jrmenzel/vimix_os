@@ -10,7 +10,7 @@
 #include <kernel/types.h>
 #include <mm/memlayout.h>
 
-void initlock(struct spinlock *lk, char *name)
+void spin_lock_init(struct spinlock *lk, char *name)
 {
     lk->name = name;
     lk->locked = 0;
@@ -19,10 +19,11 @@ void initlock(struct spinlock *lk, char *name)
 
 /// Acquire the lock.
 /// Loops (spins) until the lock is acquired.
-void acquire(struct spinlock *lk)
+void spin_lock(struct spinlock *lk)
 {
-    push_off();  // disable interrupts to avoid deadlock.
-    if (holding(lk)) panic("acquire");
+    cpu_push_disable_device_interrupt_stack();  // disable interrupts to avoid
+                                                // deadlock.
+    if (spin_lock_is_held_by_this_cpu(lk)) panic("acquire");
 
     // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
     //   a5 = 1
@@ -38,13 +39,13 @@ void acquire(struct spinlock *lk)
     __sync_synchronize();
 
     // Record info about lock acquisition for holding() and debugging.
-    lk->cpu = mycpu();
+    lk->cpu = get_cpu();
 }
 
 /// Release the lock.
-void release(struct spinlock *lk)
+void spin_unlock(struct spinlock *lk)
 {
-    if (!holding(lk)) panic("release");
+    if (!spin_lock_is_held_by_this_cpu(lk)) panic("release");
 
     lk->cpu = 0;
 
@@ -65,14 +66,14 @@ void release(struct spinlock *lk)
     //   amoswap.w zero, zero, (s1)
     __sync_lock_release(&lk->locked);
 
-    pop_off();
+    cpu_pop_disable_device_interrupt_stack();
 }
 
 /// Check whether this cpu is holding the lock.
 /// Interrupts must be off.
-int holding(struct spinlock *lk)
+int spin_lock_is_held_by_this_cpu(struct spinlock *lk)
 {
     int r;
-    r = (lk->locked && lk->cpu == mycpu());
+    r = (lk->locked && lk->cpu == get_cpu());
     return r;
 }

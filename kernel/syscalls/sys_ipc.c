@@ -1,7 +1,4 @@
 /* SPDX-License-Identifier: MIT */
-/*
- * Based on xv6.
- */
 
 //
 // Inter process communication system calls.
@@ -13,31 +10,31 @@
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 
-uint64 sys_pipe(void)
+uint64 sys_pipe()
 {
     uint64 fdarray;  // user pointer to array of two integers
     struct file *rf, *wf;
     int fd0, fd1;
-    struct proc *p = myproc();
+    struct process *proc = get_current();
 
     argaddr(0, &fdarray);
-    if (pipealloc(&rf, &wf) < 0) return -1;
+    if (pipe_alloc(&rf, &wf) < 0) return -1;
     fd0 = -1;
-    if ((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0)
+    if ((fd0 = fd_alloc(rf)) < 0 || (fd1 = fd_alloc(wf)) < 0)
     {
-        if (fd0 >= 0) p->ofile[fd0] = 0;
-        fileclose(rf);
-        fileclose(wf);
+        if (fd0 >= 0) proc->files[fd0] = 0;
+        file_close(rf);
+        file_close(wf);
         return -1;
     }
-    if (copyout(p->pagetable, fdarray, (char *)&fd0, sizeof(fd0)) < 0 ||
-        copyout(p->pagetable, fdarray + sizeof(fd0), (char *)&fd1,
-                sizeof(fd1)) < 0)
+    if (uvm_copy_out(proc->pagetable, fdarray, (char *)&fd0, sizeof(fd0)) < 0 ||
+        uvm_copy_out(proc->pagetable, fdarray + sizeof(fd0), (char *)&fd1,
+                     sizeof(fd1)) < 0)
     {
-        p->ofile[fd0] = 0;
-        p->ofile[fd1] = 0;
-        fileclose(rf);
-        fileclose(wf);
+        proc->files[fd0] = 0;
+        proc->files[fd1] = 0;
+        file_close(rf);
+        file_close(wf);
         return -1;
     }
     return 0;

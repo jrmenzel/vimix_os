@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#define PGSIZE 4096  ///< bytes per page
-#define PGSHIFT 12   ///< bits of offset within a page
+#define PAGE_SIZE 4096  ///< bytes per page
+#define PAGE_SHIFT 12   ///< bits of offset within a page
 
-#define PGROUNDUP(sz) (((sz) + PGSIZE - 1) & ~(PGSIZE - 1))
-#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE - 1))
+#define PAGE_ROUND_UP(sz) (((sz) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
+#define PAGE_ROUND_DOWN(a) (((a)) & ~(PAGE_SIZE - 1))
 
 #define PTE_V (1L << 0)  // valid
 #define PTE_R (1L << 1)
@@ -22,7 +22,7 @@
 
 /// extract the three 9-bit page table indices from a virtual address.
 #define PXMASK 0x1FF  // 9 bits
-#define PXSHIFT(level) (PGSHIFT + (9 * (level)))
+#define PXSHIFT(level) (PAGE_SHIFT + (9 * (level)))
 #define PX(level, va) ((((uint64)(va)) >> PXSHIFT(level)) & PXMASK)
 
 /// one beyond the highest possible virtual address.

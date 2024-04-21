@@ -11,47 +11,47 @@
 #include <kernel/kernel.h>
 #include <kernel/printk.h>
 #include <kernel/proc.h>
+#include <kernel/scheduler.h>
 #include <kernel/vm.h>
 #include <mm/memlayout.h>
-#include <kernel/scheduler.h>
 
-volatile static int started = 0;
+volatile static int g_global_init_done = 0;
 
 /// start() jumps here in supervisor mode on all CPUs.
 void main()
 {
-    if (cpuid() == 0)
+    if (smp_processor_id() == 0)
     {
-        consoleinit();
-        printfinit();
-        printf("\n");
-        printf("xv6 kernel is booting\n");
-        printf("\n");
-        kinit();             // physical page allocator
-        kvminit();           // create kernel page table
-        kvminithart();       // turn on paging
-        procinit();          // process table
-        trapinit();          // trap vectors
-        trapinithart();      // install kernel trap vector
-        plicinit();          // set up interrupt controller
-        plicinithart();      // ask PLIC for device interrupts
-        binit();             // buffer cache
-        iinit();             // inode table
-        fileinit();          // file table
-        virtio_disk_init();  // emulated hard disk
-        userinit();          // first user process
+        console_init();
+        printk_init();
+        printk("\n");
+        printk("VIMIX kernel is booting\n");
+        printk("\n");
+        kalloc_init();        // physical page allocator
+        kvm_init();           // create kernel page table
+        kvm_init_per_cpu();   // turn on paging
+        proc_init();          // process table
+        trap_init();          // trap vectors
+        trap_init_per_cpu();  // install kernel trap vector
+        plic_init();          // set up interrupt controller
+        plic_init_per_cpu();  // ask PLIC for device interrupts
+        bio_init();           // buffer cache
+        inode_init();         // inode table
+        file_init();          // file table
+        virtio_disk_init();   // emulated hard disk
+        userspace_init();     // first user process
         __sync_synchronize();
-        started = 1;
+        g_global_init_done = 1;
     }
     else
     {
-        while (started == 0)
+        while (g_global_init_done == 0)
             ;
         __sync_synchronize();
-        printf("hart %d starting\n", cpuid());
-        kvminithart();   // turn on paging
-        trapinithart();  // install kernel trap vector
-        plicinithart();  // ask PLIC for device interrupts
+        printk("hart %d starting\n", smp_processor_id());
+        kvm_init_per_cpu();   // turn on paging
+        trap_init_per_cpu();  // install kernel trap vector
+        plic_init_per_cpu();  // ask PLIC for device interrupts
     }
 
     scheduler();

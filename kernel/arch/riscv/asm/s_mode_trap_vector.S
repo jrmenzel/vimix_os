@@ -5,13 +5,13 @@
 # mode come here.
 #
 # the current stack is a kernel stack.
-# push all registers, call kerneltrap().
-# when kerneltrap() returns, restore registers, return.
+# push all registers, call kernel_mode_interrupt_handler().
+# when kernel_mode_interrupt_handler() returns, restore registers, return.
 #
-.globl kerneltrap
-.globl kernelvec
+.globl kernel_mode_interrupt_handler
+.globl s_mode_trap_vector
 .align 4
-kernelvec:
+s_mode_trap_vector:
         # make room to save registers.
         addi sp, sp, -256
 
@@ -49,7 +49,7 @@ kernelvec:
         sd t6, 240(sp)
 
         # call the C trap handler in trap.c
-        call kerneltrap
+        call kernel_mode_interrupt_handler
 
         # restore registers.
         ld ra, 0(sp)

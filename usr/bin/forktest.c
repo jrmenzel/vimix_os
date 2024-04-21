@@ -11,7 +11,7 @@
 
 void print(const char *s) { write(1, s, strlen(s)); }
 
-void forktest(void)
+void forktest()
 {
     int n, pid;
 
@@ -48,7 +48,7 @@ void forktest(void)
     print("fork test OK\n");
 }
 
-int main(void)
+int main()
 {
     forktest();
     exit(0);

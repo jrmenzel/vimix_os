@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-void* kalloc(void);
+void* kalloc();
 void kfree(void*);
-void kinit(void);
+void kalloc_init();

@@ -1,4 +1,4 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-int exec(char*, char**);
+int execv(char*, char**);

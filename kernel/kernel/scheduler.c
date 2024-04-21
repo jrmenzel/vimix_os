@@ -1,43 +1,40 @@
 /* SPDX-License-Identifier: MIT */
-/*
- * Based on xv6.
- */
 
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 
-extern struct proc proc[NPROC];
+extern struct process g_process_list[MAX_PROCS];
 
-void scheduler(void)
+void scheduler()
 {
-    struct proc *p;
-    struct cpu *c = mycpu();
+    struct process *proc;
+    struct cpu *cpu = get_cpu();
 
-    c->proc = 0;
+    cpu->proc = 0;
     for (;;)
     {
         // Avoid deadlock by ensuring that devices can interrupt.
-        intr_on();
+        cpu_enable_device_interrupts();
 
-        for (p = proc; p < &proc[NPROC]; p++)
+        for (proc = g_process_list; proc < &g_process_list[MAX_PROCS]; proc++)
         {
-            acquire(&p->lock);
-            if (p->state == RUNNABLE)
+            spin_lock(&proc->lock);
+            if (proc->state == RUNNABLE)
             {
                 // Switch to chosen process.  It is the process's job
                 // to release its lock and then reacquire it
                 // before jumping back to us.
-                p->state = RUNNING;
-                c->proc = p;
-                swtch(&c->context, &p->context);
+                proc->state = RUNNING;
+                cpu->proc = proc;
+                context_switch(&cpu->context, &proc->context);
 
                 // Process is done running for now.
-                // It should have changed its p->state before coming back.
-                c->proc = 0;
+                // It should have changed its proc->state before coming back.
+                cpu->proc = 0;
             }
-            release(&p->lock);
+            spin_unlock(&proc->lock);
         }
     }
 }

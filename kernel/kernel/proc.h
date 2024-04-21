@@ -10,13 +10,16 @@
 /// Per-CPU state.
 struct cpu
 {
-    struct proc *proc;       // The process running on this cpu, or null.
-    struct context context;  // swtch() here to enter scheduler().
-    int noff;                // Depth of push_off() nesting.
-    int intena;              // Were interrupts enabled before push_off()?
+    struct process *proc;    // The process running on this cpu, or null.
+    struct context context;  // context_switch() here to enter scheduler().
+    int disable_dev_int_stack_depth;  // Depth of
+                                      // cpu_push_disable_device_interrupt_stack()
+                                      // nesting.
+    int disable_dev_int_stack_original_state;  // Were interrupts enabled before
+                                               // cpu_push_disable_device_interrupt_stack()?
 };
 
-extern struct cpu cpus[NCPU];
+extern struct cpu g_cpus[MAX_CPUS];
 
 enum procstate
 {
@@ -29,7 +32,7 @@ enum procstate
 };
 
 /// Per-process state
-struct proc
+struct process
 {
     struct spinlock lock;
 
@@ -41,41 +44,40 @@ struct proc
     int pid;               ///< Process ID
 
     // wait_lock must be held when using this:
-    struct proc *parent;  ///< Parent process
+    struct process *parent;  ///< Parent process
 
     // these are private to the process, so p->lock need not be held.
     uint64 kstack;                ///< Virtual address of kernel stack
     uint64 sz;                    ///< Size of process memory (bytes)
     pagetable_t pagetable;        ///< User page table
-    struct trapframe *trapframe;  ///< data page for trampoline.S
-    struct context context;       ///< swtch() here to run process
-    struct file *ofile[NOFILE];   ///< Open files
+    struct trapframe *trapframe;  ///< data page for u_mode_trap_vector.S
+    struct context context;       ///< context_switch() here to run process
+    struct file *files[NOFILE];   ///< Open files
     struct inode *cwd;            ///< Current directory
     char name[16];                ///< Process name (debugging)
 };
 
-int cpuid(void);
+int smp_processor_id();
 void exit(int);
-int fork(void);
-int growproc(int);
-void proc_mapstacks(pagetable_t);
-pagetable_t proc_pagetable(struct proc *);
-void proc_freepagetable(pagetable_t, uint64);
-int kill(int);
-int killed(struct proc *);
-void setkilled(struct proc *);
-struct cpu *mycpu(void);
-struct cpu *getmycpu(void);
-struct proc *myproc();
-void procinit(void);
-void sched(void);
+int fork();
+int proc_grow_memory(int);
+void init_per_process_kernel_stack(pagetable_t);
+pagetable_t proc_pagetable(struct process *);
+void proc_free_pagetable(pagetable_t, uint64);
+int proc_kill(int);
+int proc_is_killed(struct process *);
+void proc_set_killed(struct process *);
+struct cpu *get_cpu();
+struct process *get_current();
+void proc_init();
+void sched();
 void sleep(void *, struct spinlock *);
-void userinit(void);
+void userspace_init();
 int wait(uint64);
 void wakeup(void *);
-void yield(void);
-int either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
-int either_copyin(void *dst, int user_src, uint64 src, uint64 len);
-void procdump(void);
+void yield();
+int either_copyout(int addr_is_userspace, uint64 dst, void *src, uint64 len);
+int either_copyin(void *dst, int addr_is_userspace, uint64 src, uint64 len);
+void debug_print_process_list();
 
-int fdalloc(struct file *f);
+int fd_alloc(struct file *f);

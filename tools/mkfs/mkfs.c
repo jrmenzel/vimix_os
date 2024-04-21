@@ -21,27 +21,27 @@
     } while (0)
 #endif
 
-#define NINODES 200
+#define MAX_ACTIVE_INODESS 200
 
 // Disk layout:
 // [ boot block | sb block | log | inode blocks | free bit map | data blocks ]
 
-int nbitmap = FSSIZE / (BSIZE * 8) + 1;
-int ninodeblocks = NINODES / IPB + 1;
+int nbitmap = FSSIZE / (BLOCK_SIZE * 8) + 1;
+int ninodeblocks = MAX_ACTIVE_INODESS / IPB + 1;
 int nlog = LOGSIZE;
 int nmeta;    // Number of meta blocks (boot, sb, nlog, inode, bitmap)
 int nblocks;  // Number of data blocks
 
 int fsfd;
-struct superblock sb;
-char zeroes[BSIZE];
+struct xv6fs_superblock sb;
+char zeroes[BLOCK_SIZE];
 uint freeinode = 1;
 uint freeblock;
 
 void balloc(int);
 void wsect(uint, void *);
-void winode(uint, struct dinode *);
-void rinode(uint inum, struct dinode *ip);
+void winode(uint, struct vx6fs_dinode *);
+void rinode(uint inum, struct vx6fs_dinode *ip);
 void rsect(uint sec, void *buf);
 uint i_alloc(ushort type);
 void iappend(uint inum, void *p, int n);
@@ -72,9 +72,9 @@ int main(int argc, char *argv[])
 {
     int i, cc, fd;
     uint rootino, inum, off;
-    struct dirent de;
-    char buf[BSIZE];
-    struct dinode din;
+    struct xv6fs_dirent de;
+    char buf[BLOCK_SIZE];
+    struct vx6fs_dinode din;
 
     static_assert(sizeof(int) == 4, "Integers must be 4 bytes!");
 
@@ -84,8 +84,8 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    assert((BSIZE % sizeof(struct dinode)) == 0);
-    assert((BSIZE % sizeof(struct dirent)) == 0);
+    assert((BLOCK_SIZE % sizeof(struct vx6fs_dinode)) == 0);
+    assert((BLOCK_SIZE % sizeof(struct xv6fs_dirent)) == 0);
 
     fsfd = open(argv[1], O_RDWR | O_CREAT | O_TRUNC, 0666);
     if (fsfd < 0) die(argv[1]);
@@ -94,10 +94,10 @@ int main(int argc, char *argv[])
     nmeta = 2 + nlog + ninodeblocks + nbitmap;
     nblocks = FSSIZE - nmeta;
 
-    sb.magic = FSMAGIC;
+    sb.magic = XV6FS_MAGIC;
     sb.size = xint(FSSIZE);
     sb.nblocks = xint(nblocks);
-    sb.ninodes = xint(NINODES);
+    sb.ninodes = xint(MAX_ACTIVE_INODESS);
     sb.nlog = xint(nlog);
     sb.logstart = xint(2);
     sb.inodestart = xint(2 + nlog);
@@ -116,8 +116,8 @@ int main(int argc, char *argv[])
     memmove(buf, &sb, sizeof(sb));
     wsect(1, buf);
 
-    rootino = i_alloc(T_DIR);
-    assert(rootino == ROOTINO);
+    rootino = i_alloc(XV6_FT_DIR);
+    assert(rootino == ROOT_INODE);
 
     bzero(&de, sizeof(de));
     de.inum = xshort(rootino);
@@ -148,11 +148,11 @@ int main(int argc, char *argv[])
         // in place of system binaries like rm and cat.
         if (shortname[0] == '_') shortname += 1;
 
-        inum = i_alloc(T_FILE);
+        inum = i_alloc(XV6_FT_FILE);
 
         bzero(&de, sizeof(de));
         de.inum = xshort(inum);
-        strncpy(de.name, shortname, DIRSIZ);
+        strncpy(de.name, shortname, XV6_NAME_MAX);
         iappend(rootino, &de, sizeof(de));
 
         while ((cc = read(fd, buf, sizeof(buf))) > 0) iappend(inum, buf, cc);
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
     // fix size of root inode dir
     rinode(rootino, &din);
     off = xint(din.size);
-    off = ((off / BSIZE) + 1) * BSIZE;
+    off = ((off / BLOCK_SIZE) + 1) * BLOCK_SIZE;
     din.size = xint(off);
     winode(rootino, &din);
 
@@ -174,45 +174,45 @@ int main(int argc, char *argv[])
 
 void wsect(uint sec, void *buf)
 {
-    if (lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE) die("lseek");
-    if (write(fsfd, buf, BSIZE) != BSIZE) die("write");
+    if (lseek(fsfd, sec * BLOCK_SIZE, 0) != sec * BLOCK_SIZE) die("lseek");
+    if (write(fsfd, buf, BLOCK_SIZE) != BLOCK_SIZE) die("write");
 }
 
-void winode(uint inum, struct dinode *ip)
+void winode(uint inum, struct vx6fs_dinode *ip)
 {
-    char buf[BSIZE];
+    char buf[BLOCK_SIZE];
     uint bn;
-    struct dinode *dip;
+    struct vx6fs_dinode *dip;
 
     bn = IBLOCK(inum, sb);
     rsect(bn, buf);
-    dip = ((struct dinode *)buf) + (inum % IPB);
+    dip = ((struct vx6fs_dinode *)buf) + (inum % IPB);
     *dip = *ip;
     wsect(bn, buf);
 }
 
-void rinode(uint inum, struct dinode *ip)
+void rinode(uint inum, struct vx6fs_dinode *ip)
 {
-    char buf[BSIZE];
+    char buf[BLOCK_SIZE];
     uint bn;
-    struct dinode *dip;
+    struct vx6fs_dinode *dip;
 
     bn = IBLOCK(inum, sb);
     rsect(bn, buf);
-    dip = ((struct dinode *)buf) + (inum % IPB);
+    dip = ((struct vx6fs_dinode *)buf) + (inum % IPB);
     *ip = *dip;
 }
 
 void rsect(uint sec, void *buf)
 {
-    if (lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE) die("lseek");
-    if (read(fsfd, buf, BSIZE) != BSIZE) die("read");
+    if (lseek(fsfd, sec * BLOCK_SIZE, 0) != sec * BLOCK_SIZE) die("lseek");
+    if (read(fsfd, buf, BLOCK_SIZE) != BLOCK_SIZE) die("read");
 }
 
 uint i_alloc(ushort type)
 {
     uint inum = freeinode++;
-    struct dinode din;
+    struct vx6fs_dinode din;
 
     bzero(&din, sizeof(din));
     din.type = xshort(type);
@@ -224,12 +224,12 @@ uint i_alloc(ushort type)
 
 void balloc(int used)
 {
-    uchar buf[BSIZE];
+    uchar buf[BLOCK_SIZE];
     int i;
 
     printf("balloc: first %d blocks have been allocated\n", used);
-    assert(used < BSIZE * 8);
-    bzero(buf, BSIZE);
+    assert(used < BLOCK_SIZE * 8);
+    bzero(buf, BLOCK_SIZE);
     for (i = 0; i < used; i++)
     {
         buf[i / 8] = buf[i / 8] | (0x1 << (i % 8));
@@ -244,8 +244,8 @@ void iappend(uint inum, void *xp, int n)
 {
     char *p = (char *)xp;
     uint fbn, off, n1;
-    struct dinode din;
-    char buf[BSIZE];
+    struct vx6fs_dinode din;
+    char buf[BLOCK_SIZE];
     uint indirect[NINDIRECT];
     uint x;
 
@@ -254,7 +254,7 @@ void iappend(uint inum, void *xp, int n)
     // printf("append inum %d at off %d sz %d\n", inum, off, n);
     while (n > 0)
     {
-        fbn = off / BSIZE;
+        fbn = off / BLOCK_SIZE;
         assert(fbn < MAXFILE);
         if (fbn < NDIRECT)
         {
@@ -278,9 +278,9 @@ void iappend(uint inum, void *xp, int n)
             }
             x = xint(indirect[fbn - NDIRECT]);
         }
-        n1 = min(n, (fbn + 1) * BSIZE - off);
+        n1 = min(n, (fbn + 1) * BLOCK_SIZE - off);
         rsect(x, buf);
-        bcopy(p, buf + off - (fbn * BSIZE), n1);
+        bcopy(p, buf + off - (fbn * BLOCK_SIZE), n1);
         wsect(x, buf);
         n -= n1;
         off += n1;

@@ -17,7 +17,7 @@ struct pipe
     int writeopen;  ///< write fd is still open
 };
 
-int pipealloc(struct file**, struct file**);
-void pipeclose(struct pipe*, int);
-int piperead(struct pipe*, uint64, int);
-int pipewrite(struct pipe*, uint64, int);
+int pipe_alloc(struct file**, struct file**);
+void pipe_close(struct pipe*, int);
+int pipe_read(struct pipe*, uint64, int);
+int pipe_write(struct pipe*, uint64, int);

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <ipc/pipe.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
@@ -8,21 +9,20 @@
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/vm.h>
-#include <ipc/pipe.h>
 
-int pipealloc(struct file **f0, struct file **f1)
+int pipe_alloc(struct file **f0, struct file **f1)
 {
     struct pipe *pi;
 
     pi = 0;
     *f0 = *f1 = 0;
-    if ((*f0 = filealloc()) == 0 || (*f1 = filealloc()) == 0) goto bad;
+    if ((*f0 = file_alloc()) == 0 || (*f1 = file_alloc()) == 0) goto bad;
     if ((pi = (struct pipe *)kalloc()) == 0) goto bad;
     pi->readopen = 1;
     pi->writeopen = 1;
     pi->nwrite = 0;
     pi->nread = 0;
-    initlock(&pi->lock, "pipe");
+    spin_lock_init(&pi->lock, "pipe");
     (*f0)->type = FD_PIPE;
     (*f0)->readable = 1;
     (*f0)->writable = 0;
@@ -35,88 +35,90 @@ int pipealloc(struct file **f0, struct file **f1)
 
 bad:
     if (pi) kfree((char *)pi);
-    if (*f0) fileclose(*f0);
-    if (*f1) fileclose(*f1);
+    if (*f0) file_close(*f0);
+    if (*f1) file_close(*f1);
     return -1;
 }
 
-void pipeclose(struct pipe *pi, int writable)
+void pipe_close(struct pipe *pipe, int writable)
 {
-    acquire(&pi->lock);
+    spin_lock(&pipe->lock);
     if (writable)
     {
-        pi->writeopen = 0;
-        wakeup(&pi->nread);
+        pipe->writeopen = 0;
+        wakeup(&pipe->nread);
     }
     else
     {
-        pi->readopen = 0;
-        wakeup(&pi->nwrite);
+        pipe->readopen = 0;
+        wakeup(&pipe->nwrite);
     }
-    if (pi->readopen == 0 && pi->writeopen == 0)
+    if (pipe->readopen == 0 && pipe->writeopen == 0)
     {
-        release(&pi->lock);
-        kfree((char *)pi);
+        spin_unlock(&pipe->lock);
+        kfree((char *)pipe);
     }
     else
-        release(&pi->lock);
+        spin_unlock(&pipe->lock);
 }
 
-int pipewrite(struct pipe *pi, uint64 addr, int n)
+int pipe_write(struct pipe *pipe, uint64 src_user_addr, int n)
 {
     int i = 0;
-    struct proc *pr = myproc();
+    struct process *proc = get_current();
 
-    acquire(&pi->lock);
+    spin_lock(&pipe->lock);
     while (i < n)
     {
-        if (pi->readopen == 0 || killed(pr))
+        if (pipe->readopen == 0 || proc_is_killed(proc))
         {
-            release(&pi->lock);
+            spin_unlock(&pipe->lock);
             return -1;
         }
-        if (pi->nwrite == pi->nread + PIPESIZE)
+        if (pipe->nwrite == pipe->nread + PIPESIZE)
         {
-            wakeup(&pi->nread);
-            sleep(&pi->nwrite, &pi->lock);
+            wakeup(&pipe->nread);
+            sleep(&pipe->nwrite, &pipe->lock);
         }
         else
         {
             char ch;
-            if (copyin(pr->pagetable, &ch, addr + i, 1) == -1) break;
-            pi->data[pi->nwrite++ % PIPESIZE] = ch;
+            if (uvm_copy_in(proc->pagetable, &ch, src_user_addr + i, 1) == -1)
+                break;
+            pipe->data[pipe->nwrite++ % PIPESIZE] = ch;
             i++;
         }
     }
-    wakeup(&pi->nread);
-    release(&pi->lock);
+    wakeup(&pipe->nread);
+    spin_unlock(&pipe->lock);
 
     return i;
 }
 
-int piperead(struct pipe *pi, uint64 addr, int n)
+int pipe_read(struct pipe *pipe, uint64 src_kernel_addr, int n)
 {
     int i;
-    struct proc *pr = myproc();
+    struct process *proc = get_current();
     char ch;
 
-    acquire(&pi->lock);
-    while (pi->nread == pi->nwrite && pi->writeopen)
+    spin_lock(&pipe->lock);
+    while (pipe->nread == pipe->nwrite && pipe->writeopen)
     {
-        if (killed(pr))
+        if (proc_is_killed(proc))
         {
-            release(&pi->lock);
+            spin_unlock(&pipe->lock);
             return -1;
         }
-        sleep(&pi->nread, &pi->lock);
+        sleep(&pipe->nread, &pipe->lock);
     }
     for (i = 0; i < n; i++)
     {
-        if (pi->nread == pi->nwrite) break;
-        ch = pi->data[pi->nread++ % PIPESIZE];
-        if (copyout(pr->pagetable, addr + i, &ch, 1) == -1) break;
+        if (pipe->nread == pipe->nwrite) break;
+        ch = pipe->data[pipe->nread++ % PIPESIZE];
+        if (uvm_copy_out(proc->pagetable, src_kernel_addr + i, &ch, 1) == -1)
+            break;
     }
-    wakeup(&pi->nwrite);
-    release(&pi->lock);
+    wakeup(&pipe->nwrite);
+    spin_unlock(&pipe->lock);
     return i;
 }

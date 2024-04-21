@@ -3,9 +3,9 @@
 #
 # machine-mode timer interrupt.
 #
-.globl timervec
+.globl m_mode_trap_vector
 .align 4
-timervec:
+m_mode_trap_vector:
         # start.c has set up the memory that mscratch points to:
         # scratch[0,8,16] : register save area.
         # scratch[24] : address of CLINT's MTIMECMP register.

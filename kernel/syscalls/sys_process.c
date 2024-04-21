@@ -10,7 +10,7 @@
 #include <kernel/string.h>
 #include <mm/memlayout.h>
 
-uint64 sys_exit(void)
+uint64 sys_exit()
 {
     int n;
     argint(0, &n);
@@ -18,53 +18,53 @@ uint64 sys_exit(void)
     return 0;  // not reached
 }
 
-uint64 sys_getpid(void) { return myproc()->pid; }
+uint64 sys_getpid() { return get_current()->pid; }
 
-uint64 sys_fork(void) { return fork(); }
+uint64 sys_fork() { return fork(); }
 
-uint64 sys_wait(void)
+uint64 sys_wait()
 {
     uint64 p;
     argaddr(0, &p);
     return wait(p);
 }
 
-uint64 sys_sbrk(void)
+uint64 sys_sbrk()
 {
     uint64 addr;
     int n;
 
     argint(0, &n);
-    addr = myproc()->sz;
-    if (growproc(n) < 0) return -1;
+    addr = get_current()->sz;
+    if (proc_grow_memory(n) < 0) return -1;
     return addr;
 }
 
-uint64 sys_sleep(void)
+uint64 sys_sleep()
 {
     int n;
     uint ticks0;
 
     argint(0, &n);
-    acquire(&tickslock);
-    ticks0 = ticks;
-    while (ticks - ticks0 < n)
+    spin_lock(&g_tickslock);
+    ticks0 = g_ticks;
+    while (g_ticks - ticks0 < n)
     {
-        if (killed(myproc()))
+        if (proc_is_killed(get_current()))
         {
-            release(&tickslock);
+            spin_unlock(&g_tickslock);
             return -1;
         }
-        sleep(&ticks, &tickslock);
+        sleep(&g_ticks, &g_tickslock);
     }
-    release(&tickslock);
+    spin_unlock(&g_tickslock);
     return 0;
 }
 
-uint64 sys_kill(void)
+uint64 sys_kill()
 {
     int pid;
 
     argint(0, &pid);
-    return kill(pid);
+    return proc_kill(pid);
 }

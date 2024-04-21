@@ -1,7 +1,4 @@
 /* SPDX-License-Identifier: MIT */
-/*
- * Based on xv6.
- */
 
 //
 // System Information system calls.
@@ -14,12 +11,12 @@
 
 /// return how many clock tick interrupts have occurred
 /// since start.
-uint64 sys_uptime(void)
+uint64 sys_uptime()
 {
     uint xticks;
 
-    acquire(&tickslock);
-    xticks = ticks;
-    release(&tickslock);
+    spin_lock(&g_tickslock);
+    xticks = g_ticks;
+    spin_unlock(&g_tickslock);
     return xticks;
 }

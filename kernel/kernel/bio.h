@@ -12,16 +12,16 @@
 // a synchronization point for disk blocks used by multiple processes.
 //
 // Interface:
-// * To get a buffer for a particular disk block, call bread.
-// * After changing buffer data, call bwrite to write it to disk.
-// * When done with the buffer, call brelse.
-// * Do not use the buffer after calling brelse.
+// * To get a buffer for a particular disk block, call bio_read.
+// * After changing buffer data, call bio_write to write it to disk.
+// * When done with the buffer, call bio_release.
+// * Do not use the buffer after calling bio_release.
 // * Only one process at a time can use a buffer,
 //     so do not keep them longer than necessary.
 
-void binit(void);
-struct buf* bread(uint, uint);
-void brelse(struct buf*);
-void bwrite(struct buf*);
-void bpin(struct buf*);
-void bunpin(struct buf*);
+void bio_init();
+struct buf* bio_read(uint, uint);
+void bio_release(struct buf*);
+void bio_write(struct buf*);
+void bio_pin(struct buf*);
+void bio_unpin(struct buf*);

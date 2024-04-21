@@ -25,7 +25,7 @@ struct context
     uint64 s11;
 };
 
-void swtch(struct context*, struct context*);
+void context_switch(struct context*, struct context*);
 
 /// per-process data for the trap handling code in u_mode_trap_vector.S.
 /// sits in a page by itself just under the trampoline page in the
@@ -40,11 +40,11 @@ void swtch(struct context*, struct context*);
 /// return_to_user_mode() doesn't return through the entire kernel call stack.
 struct trapframe
 {
-    /*   0 */ uint64 kernel_satp;    // kernel page table
-    /*   8 */ uint64 kernel_sp;      // top of process's kernel stack
-    /*  16 */ uint64 kernel_trap;    // user_mode_interrupt_handler()
-    /*  24 */ uint64 epc;            // saved user program counter
-    /*  32 */ uint64 kernel_hartid;  // saved kernel tp
+    /*   0 */ uint64 kernel_page_table;  // kernel page table
+    /*   8 */ uint64 kernel_sp;          // top of process's kernel stack
+    /*  16 */ uint64 kernel_trap;        // user_mode_interrupt_handler()
+    /*  24 */ uint64 epc;                // saved user program counter
+    /*  32 */ uint64 kernel_hartid;      // saved kernel tp
     /*  40 */ uint64 ra;
     /*  48 */ uint64 sp;
     /*  56 */ uint64 gp;

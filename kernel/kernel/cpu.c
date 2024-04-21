@@ -7,20 +7,25 @@
 #include <kernel/printk.h>
 #include <kernel/proc.h>
 
-void push_off(void)
+void cpu_push_disable_device_interrupt_stack()
 {
-    int old = intr_get();
+    int old = cpu_is_device_interrupts_enabled();
 
-    intr_off();
-    if (mycpu()->noff == 0) mycpu()->intena = old;
-    mycpu()->noff += 1;
+    cpu_disable_device_interrupts();
+    if (get_cpu()->disable_dev_int_stack_depth == 0)
+        get_cpu()->disable_dev_int_stack_original_state = old;
+    get_cpu()->disable_dev_int_stack_depth += 1;
 }
 
-void pop_off(void)
+void cpu_pop_disable_device_interrupt_stack()
 {
-    struct cpu *c = mycpu();
-    if (intr_get()) panic("pop_off - interruptible");
-    if (c->noff < 1) panic("pop_off");
-    c->noff -= 1;
-    if (c->noff == 0 && c->intena) intr_on();
+    struct cpu *c = get_cpu();
+    if (cpu_is_device_interrupts_enabled())
+        panic("cpu_pop_disable_device_interrupt_stack - interruptible");
+    if (c->disable_dev_int_stack_depth < 1)
+        panic("cpu_pop_disable_device_interrupt_stack");
+    c->disable_dev_int_stack_depth -= 1;
+    if (c->disable_dev_int_stack_depth == 0 &&
+        c->disable_dev_int_stack_original_state)
+        cpu_enable_device_interrupts();
 }

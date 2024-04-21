@@ -8,7 +8,7 @@
             "name": "64 bit kernel",
             "type": "cppdbg",
             "request": "launch",
-            "program": "build/kernel-xv6",
+            "program": "build/kernel-vimix",
             "cwd": "${workspaceRoot}",
             "miDebuggerPath": "riscv64-elf-gdb",
             "miDebuggerServerAddress": "127.0.0.1:26002",

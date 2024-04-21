@@ -10,41 +10,41 @@
 #include <kernel/types.h>
 #include <mm/memlayout.h>
 
-void initsleeplock(struct sleeplock *lk, char *name)
+void sleep_lock_init(struct sleeplock *lk, char *name)
 {
-    initlock(&lk->lk, "sleep lock");
+    spin_lock_init(&lk->lk, "sleep lock");
     lk->name = name;
     lk->locked = 0;
     lk->pid = 0;
 }
 
-void acquiresleep(struct sleeplock *lk)
+void sleep_lock(struct sleeplock *lk)
 {
-    acquire(&lk->lk);
+    spin_lock(&lk->lk);
     while (lk->locked)
     {
         sleep(lk, &lk->lk);
     }
     lk->locked = 1;
-    lk->pid = myproc()->pid;
-    release(&lk->lk);
+    lk->pid = get_current()->pid;
+    spin_unlock(&lk->lk);
 }
 
-void releasesleep(struct sleeplock *lk)
+void sleep_unlock(struct sleeplock *lk)
 {
-    acquire(&lk->lk);
+    spin_lock(&lk->lk);
     lk->locked = 0;
     lk->pid = 0;
     wakeup(lk);
-    release(&lk->lk);
+    spin_unlock(&lk->lk);
 }
 
-int holdingsleep(struct sleeplock *lk)
+int sleep_lock_is_held_by_this_cpu(struct sleeplock *lk)
 {
     int r;
 
-    acquire(&lk->lk);
-    r = lk->locked && (lk->pid == myproc()->pid);
-    release(&lk->lk);
+    spin_lock(&lk->lk);
+    r = lk->locked && (lk->pid == get_current()->pid);
+    spin_unlock(&lk->lk);
     return r;
 }
