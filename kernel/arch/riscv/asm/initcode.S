@@ -5,19 +5,22 @@
 
 #include <kernel/unistd.h>
 
-# exec(init, argv)
+# execv(init, argv)
 .globl start
 start:
-        la a0, init
-        la a1, argv
-        li a7, SYS_execv
-        ecall
+    la a0, init
+    la a1, argv
+    li a7, SYS_execv
+    ecall
+    # execv only returns if there was an error
 
 # for(;;) exit();
 exit:
-        li a7, SYS_exit
-        ecall
-        jal exit
+    # return -0xDEAD to signal the kernel that initcode returned, not /init
+    li a0, (-0xDEAD)
+    li a7, SYS_exit
+    ecall
+    jal exit
 
 # char init[] = "/init\0";
 init:
@@ -26,5 +29,5 @@ init:
 # char *argv[] = { init, 0 };
 .p2align 2
 argv:
-  .long init
-  .long 0
+    .quad init
+    .quad 0

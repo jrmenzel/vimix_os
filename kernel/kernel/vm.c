@@ -192,21 +192,6 @@ pagetable_t uvm_create()
     return pagetable;
 }
 
-/// Load the user initcode into address 0 of pagetable,
-/// for the very first process.
-/// sz must be less than a page.
-void uvm_first(pagetable_t pagetable, uchar *src, uint sz)
-{
-    char *mem;
-
-    if (sz >= PAGE_SIZE) panic("uvm_first: more than a page");
-    mem = kalloc();
-    memset(mem, 0, PAGE_SIZE);
-    kvm_map(pagetable, 0, PAGE_SIZE, (uint64)mem,
-            PTE_W | PTE_R | PTE_X | PTE_U);
-    memmove(mem, src, sz);
-}
-
 /// Allocate PTEs and physical memory to grow process from oldsz to
 /// newsz, which need not be page aligned.  Returns new size or 0 on error.
 uint64 uvm_alloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)

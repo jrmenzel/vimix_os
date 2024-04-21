@@ -12,7 +12,6 @@ void kvm_init_per_cpu();
 void kvm_map_or_panic(pagetable_t, uint64, uint64, uint64, int);
 int kvm_map(pagetable_t, uint64, uint64, uint64, int);
 pagetable_t uvm_create();
-void uvm_first(pagetable_t, uchar*, uint);
 uint64 uvm_alloc(pagetable_t, uint64, uint64, int);
 uint64 uvm_dealloc(pagetable_t, uint64, uint64);
 int uvm_copy(pagetable_t, pagetable_t, uint64);

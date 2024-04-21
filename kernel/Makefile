@@ -66,7 +66,7 @@ KERNEL_SPACE_INC += ./include   # public kernel API
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I$d)
 
 .PHONY: all directories clean
-all: directories $(KERNEL_FILE) 
+all: directories $(ARCH)/asm/initcode.h $(KERNEL_FILE) 
 
 directories:
 	mkdir -p $(SUB_DIRS_TO_MAKE)
@@ -81,13 +81,22 @@ $(K_BUILD_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 	$(OBJDUMP) -S $@ > $(basename $@).s
 
+# special case: initcode
+INIT_BUILD_DIR=$(K_BUILD_DIR)/$(ARCH)/asm
+$(ARCH)/asm/initcode.h: $(ARCH)/asm/initcode.S directories
+	$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(ARCH)/asm/initcode.S -o $(INIT_BUILD_DIR)/initcode.o
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode.o
+	$(OBJCOPY) -S -O binary $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode
+	xxd -i $(INIT_BUILD_DIR)/initcode > $(ARCH)/asm/initcode.h
+
 # the kernel itself
 KERNEL_PATH=../$(KERNEL_FILE)
-$(KERNEL_FILE): $(OBJECT_FILES) $(ARCH)/kernel.ld
+$(KERNEL_FILE): $(ARCH)/asm/initcode.h $(OBJECT_FILES) $(ARCH)/kernel.ld
 	$(LD) $(LDFLAGS) $(LD_DEFINES) -T $(ARCH)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES) 
 	$(OBJDUMP) -S $(KERNEL_PATH) > $(K_BUILD_DIR)/$(KERNEL_NAME).asm
 
 clean:
 	-@rm $(KERNEL_PATH)
 	-@rm -rf $(K_BUILD_DIR)
+	-@rm $(ARCH)/asm/initcode.h
 

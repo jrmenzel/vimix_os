@@ -6,9 +6,9 @@ _*
 *.asm
 *.sym
 *.img
-initcode
-initcode.out
-user/usys.S
-.gdbinit
 build/*
 tools/mkfs/mkfs
+
+# auto generated:
+kernel/arch/riscv/asm/initcode.h
+.gdbinit

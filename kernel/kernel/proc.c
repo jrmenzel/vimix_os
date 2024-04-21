@@ -15,11 +15,22 @@
 #include <kernel/vm.h>
 #include <mm/memlayout.h>
 
+/// a user program that calls execv("/init")
+/// assembled from initcode.S
+/// od -t xC initcode
+#include <arch/riscv/asm/initcode.h>
+#define g_initcode ___build_kernel_arch_riscv_asm_initcode
+_Static_assert((sizeof(g_initcode) <= PAGE_SIZE),
+               "Initcode must fit into one page");
+
 struct cpu g_cpus[MAX_CPUS];
 
+/// @brief All user processes
 struct process g_process_list[MAX_PROCS];
 
-struct process *initproc;
+/// @brief The init process in user mode.
+/// Created in userspace_init(), the only process not created by fork()
+struct process *g_initial_user_process;
 
 int nextpid = 1;
 struct spinlock pid_lock;
@@ -220,27 +231,20 @@ void proc_free_pagetable(pagetable_t pagetable, uint64 sz)
     uvm_free(pagetable, sz);
 }
 
-/// a user program that calls execv("/init")
-/// assembled from ../user/initcode.S
-/// od -t xC ../user/initcode
-uchar initcode[] = {0x17, 0x05, 0x00, 0x00, 0x13, 0x05, 0x45, 0x02, 0x97,
-                    0x05, 0x00, 0x00, 0x93, 0x85, 0x35, 0x02, 0x93, 0x08,
-                    0x70, 0x00, 0x73, 0x00, 0x00, 0x00, 0x93, 0x08, 0x20,
-                    0x00, 0x73, 0x00, 0x00, 0x00, 0xef, 0xf0, 0x9f, 0xff,
-                    0x2f, 0x69, 0x6e, 0x69, 0x74, 0x00, 0x00, 0x24, 0x00,
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
 /// Set up first user process.
 void userspace_init()
 {
-    struct process *proc;
+    struct process *proc = allocproc();
+    g_initial_user_process = proc;
 
-    proc = allocproc();
-    initproc = proc;
-
-    // allocate one user page and copy initcode's instructions
-    // and data into it.
-    uvm_first(proc->pagetable, initcode, sizeof(initcode));
+    // Allocate one user page and load the user initcode into
+    // address 0 of pagetable
+    char *mem = kalloc();
+    memset(mem, 0, PAGE_SIZE);
+    kvm_map(proc->pagetable, 0, PAGE_SIZE, (uint64)mem,
+            PTE_W | PTE_R | PTE_X | PTE_U);
+    memmove(mem, g_initcode, sizeof(g_initcode));
+    
     proc->sz = PAGE_SIZE;
 
     // prepare for the very first "return" from kernel to user.
@@ -339,8 +343,8 @@ void reparent(struct process *proc)
     {
         if (pp->parent == proc)
         {
-            pp->parent = initproc;
-            wakeup(initproc);
+            pp->parent = g_initial_user_process;
+            wakeup(g_initial_user_process);
         }
     }
 }
@@ -352,7 +356,17 @@ void exit(int status)
 {
     struct process *proc = get_current();
 
-    if (proc == initproc) panic("init exiting");
+    if (proc == g_initial_user_process)
+    {
+        uint64 return_value = proc->trapframe->a0;
+        if (return_value == -0xDEAD)
+        {
+            panic("initcode.S could not load /init - check filesystem");
+        }
+
+        printk("/init returned: %d\n", return_value);
+        panic("/init should not have returned");
+    }
 
     // Close all open files.
     for (int fd = 0; fd < NOFILE; fd++)
