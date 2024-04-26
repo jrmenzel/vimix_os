@@ -35,8 +35,8 @@ userspace: userspace_lib
 
 
 # filesystem in a file containing userspace to run with qemu (kernel is set manually)
-$(BUILD_DIR)/filesystem.img: tools README userspace
-	tools/mkfs/mkfs $(BUILD_DIR)/filesystem.img README $(BUILD_DIR)/root/* 
+$(BUILD_DIR)/filesystem.img: tools README.md userspace
+	tools/mkfs/mkfs $(BUILD_DIR)/filesystem.img README.md $(BUILD_DIR)/root/* 
 
 ###
 # qemu
