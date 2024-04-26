@@ -12,3 +12,6 @@ tools/mkfs/mkfs
 # auto generated:
 kernel/arch/riscv/asm/initcode.h
 .gdbinit
+
+# 3rd party tools
+.obsidian
