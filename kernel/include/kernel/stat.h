@@ -9,9 +9,9 @@
 
 struct stat
 {
-    int st_dev;      ///< File system's disk device
-    uint st_ino;     ///< Inode number
-    short type;      ///< Type of file
-    short st_nlink;  ///< Number of links to file
-    uint64 st_size;  ///< Size of file in bytes
+    int st_dev;        ///< File system's disk device
+    uint32_t st_ino;   ///< Inode number
+    short type;        ///< Type of file
+    short st_nlink;    ///< Number of links to file
+    uint64_t st_size;  ///< Size of file in bytes
 };

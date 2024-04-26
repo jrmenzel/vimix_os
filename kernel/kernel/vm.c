@@ -39,15 +39,15 @@ pagetable_t kvmmake()
 
     // map kernel text executable and read-only.
     kvm_map_or_panic(kpage_table, KERNBASE, KERNBASE,
-                     (uint64)end_of_text - KERNBASE, PTE_R | PTE_X);
+                     (uint64_t)end_of_text - KERNBASE, PTE_R | PTE_X);
 
     // map kernel data and the physical RAM we'll make use of.
-    kvm_map_or_panic(kpage_table, (uint64)end_of_text, (uint64)end_of_text,
-                     PHYSTOP - (uint64)end_of_text, PTE_R | PTE_W);
+    kvm_map_or_panic(kpage_table, (uint64_t)end_of_text, (uint64_t)end_of_text,
+                     PHYSTOP - (uint64_t)end_of_text, PTE_R | PTE_W);
 
     // map the trampoline for trap entry/exit to
     // the highest virtual address in the kernel.
-    kvm_map_or_panic(kpage_table, TRAMPOLINE, (uint64)trampoline, PAGE_SIZE,
+    kvm_map_or_panic(kpage_table, TRAMPOLINE, (uint64_t)trampoline, PAGE_SIZE,
                      PTE_R | PTE_X);
 
     // allocate and map a kernel stack for each process.
@@ -84,7 +84,7 @@ void kvm_init_per_cpu()
 ///   21..29 -- 9 bits of level-1 index.
 ///   12..20 -- 9 bits of level-0 index.
 ///    0..11 -- 12 bits of byte offset within the page.
-pte_t *vm_walk(pagetable_t pagetable, uint64 va, int alloc)
+pte_t *vm_walk(pagetable_t pagetable, uint64_t va, int alloc)
 {
     if (va >= MAXVA) panic("vm_walk");
 
@@ -108,10 +108,10 @@ pte_t *vm_walk(pagetable_t pagetable, uint64 va, int alloc)
 /// Look up a virtual address, return the physical address,
 /// or 0 if not mapped.
 /// Can only be used to look up user pages.
-uint64 uvm_get_physical_addr(pagetable_t pagetable, uint64 va)
+uint64_t uvm_get_physical_addr(pagetable_t pagetable, uint64_t va)
 {
     pte_t *pte;
-    uint64 pa;
+    uint64_t pa;
 
     if (va >= MAXVA) return 0;
 
@@ -126,8 +126,8 @@ uint64 uvm_get_physical_addr(pagetable_t pagetable, uint64 va)
 /// add a mapping to the kernel page table.
 /// only used when booting.
 /// does not flush TLB or enable paging.
-void kvm_map_or_panic(pagetable_t k_pagetable, uint64 va, uint64 pa, uint64 sz,
-                      int perm)
+void kvm_map_or_panic(pagetable_t k_pagetable, uint64_t va, uint64_t pa,
+                      uint64_t sz, int perm)
 {
     if (kvm_map(k_pagetable, va, sz, pa, perm) != 0) panic("kvm_map_or_panic");
 }
@@ -136,9 +136,10 @@ void kvm_map_or_panic(pagetable_t k_pagetable, uint64 va, uint64 pa, uint64 sz,
 /// physical addresses starting at pa. va and size might not
 /// be page-aligned. Returns 0 on success, -1 if vm_walk() couldn't
 /// allocate a needed page-table page.
-int kvm_map(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
+int kvm_map(pagetable_t pagetable, uint64_t va, uint64_t size, uint64_t pa,
+            int perm)
 {
-    uint64 a, last;
+    uint64_t a, last;
     pte_t *pte;
 
     if (size == 0) panic("kvm_map: size");
@@ -160,9 +161,9 @@ int kvm_map(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 /// Remove npages of mappings starting from va. va must be
 /// page-aligned. The mappings must exist.
 /// Optionally free the physical memory.
-void uvm_unmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
+void uvm_unmap(pagetable_t pagetable, uint64_t va, uint64_t npages, int do_free)
 {
-    uint64 a;
+    uint64_t a;
     pte_t *pte;
 
     if ((va % PAGE_SIZE) != 0) panic("uvm_unmap: not aligned");
@@ -174,7 +175,7 @@ void uvm_unmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
         if (PTE_FLAGS(*pte) == PTE_V) panic("uvm_unmap: not a leaf");
         if (do_free)
         {
-            uint64 pa = PTE2PA(*pte);
+            uint64_t pa = PTE2PA(*pte);
             kfree((void *)pa);
         }
         *pte = 0;
@@ -194,10 +195,11 @@ pagetable_t uvm_create()
 
 /// Allocate PTEs and physical memory to grow process from oldsz to
 /// newsz, which need not be page aligned.  Returns new size or 0 on error.
-uint64 uvm_alloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
+uint64_t uvm_alloc(pagetable_t pagetable, uint64_t oldsz, uint64_t newsz,
+                   int xperm)
 {
     char *mem;
-    uint64 a;
+    uint64_t a;
 
     if (newsz < oldsz) return oldsz;
 
@@ -211,7 +213,7 @@ uint64 uvm_alloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
             return 0;
         }
         memset(mem, 0, PAGE_SIZE);
-        if (kvm_map(pagetable, a, PAGE_SIZE, (uint64)mem,
+        if (kvm_map(pagetable, a, PAGE_SIZE, (uint64_t)mem,
                     PTE_R | PTE_U | xperm) != 0)
         {
             kfree(mem);
@@ -226,7 +228,7 @@ uint64 uvm_alloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 /// newsz.  oldsz and newsz need not be page-aligned, nor does newsz
 /// need to be less than oldsz.  oldsz can be larger than the actual
 /// process size.  Returns the new process size.
-uint64 uvm_dealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
+uint64_t uvm_dealloc(pagetable_t pagetable, uint64_t oldsz, uint64_t newsz)
 {
     if (newsz >= oldsz) return oldsz;
 
@@ -250,7 +252,7 @@ void freewalk(pagetable_t pagetable)
         if ((pte & PTE_V) && (pte & (PTE_R | PTE_W | PTE_X)) == 0)
         {
             // this PTE points to a lower-level page table.
-            uint64 child = PTE2PA(pte);
+            uint64_t child = PTE2PA(pte);
             freewalk((pagetable_t)child);
             pagetable[i] = 0;
         }
@@ -264,7 +266,7 @@ void freewalk(pagetable_t pagetable)
 
 /// Free user memory pages,
 /// then free page-table pages.
-void uvm_free(pagetable_t pagetable, uint64 sz)
+void uvm_free(pagetable_t pagetable, uint64_t sz)
 {
     if (sz > 0) uvm_unmap(pagetable, 0, PAGE_ROUND_UP(sz) / PAGE_SIZE, 1);
     freewalk(pagetable);
@@ -276,11 +278,11 @@ void uvm_free(pagetable_t pagetable, uint64 sz)
 /// physical memory.
 /// returns 0 on success, -1 on failure.
 /// frees any allocated pages on failure.
-int uvm_copy(pagetable_t old, pagetable_t new, uint64 sz)
+int uvm_copy(pagetable_t old, pagetable_t new, uint64_t sz)
 {
     pte_t *pte;
-    uint64 pa, i;
-    uint flags;
+    uint64_t pa, i;
+    uint32_t flags;
     char *mem;
 
     for (i = 0; i < sz; i += PAGE_SIZE)
@@ -292,7 +294,7 @@ int uvm_copy(pagetable_t old, pagetable_t new, uint64 sz)
         flags = PTE_FLAGS(*pte);
         if ((mem = kalloc()) == 0) goto err;
         memmove(mem, (char *)pa, PAGE_SIZE);
-        if (kvm_map(new, i, PAGE_SIZE, (uint64)mem, flags) != 0)
+        if (kvm_map(new, i, PAGE_SIZE, (uint64_t)mem, flags) != 0)
         {
             kfree(mem);
             goto err;
@@ -307,7 +309,7 @@ err:
 
 /// mark a PTE invalid for user access.
 /// used by execv for the user stack guard page.
-void uvm_clear(pagetable_t pagetable, uint64 va)
+void uvm_clear(pagetable_t pagetable, uint64_t va)
 {
     pte_t *pte;
 
@@ -319,9 +321,9 @@ void uvm_clear(pagetable_t pagetable, uint64 va)
 /// Copy from kernel to user.
 /// Copy len bytes from src to virtual address dstva in a given page table.
 /// Return 0 on success, -1 on error.
-int uvm_copy_out(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
+int uvm_copy_out(pagetable_t pagetable, uint64_t dstva, char *src, uint64_t len)
 {
-    uint64 n, va0, pa0;
+    uint64_t n, va0, pa0;
 
     while (len > 0)
     {
@@ -342,9 +344,9 @@ int uvm_copy_out(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 /// Copy from user to kernel.
 /// Copy len bytes to dst from virtual address srcva in a given page table.
 /// Return 0 on success, -1 on error.
-int uvm_copy_in(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
+int uvm_copy_in(pagetable_t pagetable, char *dst, uint64_t srcva, uint64_t len)
 {
-    uint64 n, va0, pa0;
+    uint64_t n, va0, pa0;
 
     while (len > 0)
     {
@@ -366,9 +368,10 @@ int uvm_copy_in(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 /// Copy bytes to dst from virtual address srcva in a given page table,
 /// until a '\0', or max.
 /// Return 0 on success, -1 on error.
-int uvm_copy_in_str(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
+int uvm_copy_in_str(pagetable_t pagetable, char *dst, uint64_t srcva,
+                    uint64_t max)
 {
-    uint64 n, va0, pa0;
+    uint64_t n, va0, pa0;
     int got_null = 0;
 
     while (got_null == 0 && max > 0)

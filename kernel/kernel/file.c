@@ -85,7 +85,7 @@ void file_close(struct file *f)
 
 /// Get metadata about file f.
 /// addr is a user virtual address, pointing to a struct stat.
-int file_stat(struct file *f, uint64 addr)
+int file_stat(struct file *f, uint64_t addr)
 {
     struct process *proc = get_current();
     struct stat st;
@@ -104,7 +104,7 @@ int file_stat(struct file *f, uint64 addr)
 
 /// Read from file f.
 /// addr is a user virtual address.
-int file_read(struct file *f, uint64 addr, int n)
+int file_read(struct file *f, uint64_t addr, int n)
 {
     int read_bytes = 0;
 
@@ -137,7 +137,7 @@ int file_read(struct file *f, uint64 addr, int n)
 
 /// Write to file f.
 /// addr is a user virtual address.
-int file_write(struct file *f, uint64 addr, int n)
+int file_write(struct file *f, uint64_t addr, int n)
 {
     int r, ret = 0;
 

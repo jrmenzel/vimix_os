@@ -62,7 +62,7 @@ void pipe_close(struct pipe *pipe, int writable)
         spin_unlock(&pipe->lock);
 }
 
-int pipe_write(struct pipe *pipe, uint64 src_user_addr, int n)
+int pipe_write(struct pipe *pipe, uint64_t src_user_addr, int n)
 {
     int i = 0;
     struct process *proc = get_current();
@@ -95,7 +95,7 @@ int pipe_write(struct pipe *pipe, uint64 src_user_addr, int n)
     return i;
 }
 
-int pipe_read(struct pipe *pipe, uint64 src_kernel_addr, int n)
+int pipe_read(struct pipe *pipe, uint64_t src_kernel_addr, int n)
 {
     int i;
     struct process *proc = get_current();

@@ -3,7 +3,7 @@
 
 #include <kernel/kernel.h>
 
-extern uint g_ticks;
+extern uint32_t g_ticks;
 void trap_init();
 void trap_init_per_cpu();
 extern struct spinlock g_tickslock;

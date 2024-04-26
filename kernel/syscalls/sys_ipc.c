@@ -10,9 +10,9 @@
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 
-uint64 sys_pipe()
+uint64_t sys_pipe()
 {
-    uint64 fdarray;  // user pointer to array of two integers
+    uint64_t fdarray;  // user pointer to array of two integers
     struct file *rf, *wf;
     int fd0, fd1;
     struct process *proc = get_current();

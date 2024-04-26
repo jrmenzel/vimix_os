@@ -40,7 +40,7 @@ static int argfd(int n, int *pfd, struct file **pf)
     return 0;
 }
 
-uint64 sys_dup()
+uint64_t sys_dup()
 {
     struct file *f;
     int fd;
@@ -51,11 +51,11 @@ uint64 sys_dup()
     return fd;
 }
 
-uint64 sys_read()
+uint64_t sys_read()
 {
     struct file *f;
     int n;
-    uint64 buffer;
+    uint64_t buffer;
 
     argaddr(1, &buffer);
     argint(2, &n);
@@ -63,11 +63,11 @@ uint64 sys_read()
     return file_read(f, buffer, n);
 }
 
-uint64 sys_write()
+uint64_t sys_write()
 {
     struct file *f;
     int n;
-    uint64 buffer;
+    uint64_t buffer;
 
     argaddr(1, &buffer);
     argint(2, &n);
@@ -76,7 +76,7 @@ uint64 sys_write()
     return file_write(f, buffer, n);
 }
 
-uint64 sys_close()
+uint64_t sys_close()
 {
     int fd;
     struct file *f;
@@ -87,10 +87,10 @@ uint64 sys_close()
     return 0;
 }
 
-uint64 sys_fstat()
+uint64_t sys_fstat()
 {
     struct file *f;
-    uint64 stat_buffer;  // user pointer to struct stat
+    uint64_t stat_buffer;  // user pointer to struct stat
 
     argaddr(1, &stat_buffer);
     if (argfd(0, 0, &f) < 0) return -1;
@@ -98,13 +98,12 @@ uint64 sys_fstat()
 }
 
 /// Create the path path_to as a link to the same inode as path_from.
-uint64 sys_link()
+uint64_t sys_link()
 {
     char name[XV6_NAME_MAX], path_to[MAXPATH], path_from[MAXPATH];
     struct inode *dir, *ip;
 
-    if (argstr(0, path_from, MAXPATH) < 0 ||
-        argstr(1, path_to, MAXPATH) < 0)
+    if (argstr(0, path_from, MAXPATH) < 0 || argstr(1, path_to, MAXPATH) < 0)
         return -1;
 
     log_begin_fs_transaction();
@@ -157,19 +156,19 @@ static int isdirempty(struct inode *dir)
 
     for (off = 2 * sizeof(de); off < dir->size; off += sizeof(de))
     {
-        if (inode_read(dir, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
+        if (inode_read(dir, 0, (uint64_t)&de, off, sizeof(de)) != sizeof(de))
             panic("isdirempty: inode_read");
         if (de.inum != 0) return 0;
     }
     return 1;
 }
 
-uint64 sys_unlink()
+uint64_t sys_unlink()
 {
     struct inode *ip, *dir;
     struct xv6fs_dirent de;
     char name[XV6_NAME_MAX], path[MAXPATH];
-    uint off;
+    uint32_t off;
 
     if (argstr(0, path, MAXPATH) < 0) return -1;
 
@@ -197,7 +196,7 @@ uint64 sys_unlink()
     }
 
     memset(&de, 0, sizeof(de));
-    if (inode_write(dir, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
+    if (inode_write(dir, 0, (uint64_t)&de, off, sizeof(de)) != sizeof(de))
         panic("unlink: inode_write");
     if (ip->type == XV6_FT_DIR)
     {
@@ -220,8 +219,7 @@ bad:
     return -1;
 }
 
-static struct inode *create(char *path, short type, short major,
-                            short minor)
+static struct inode *create(char *path, short type, short major, short minor)
 {
     struct inode *ip, *dir;
     char name[XV6_NAME_MAX];
@@ -283,7 +281,7 @@ fail:
     return 0;
 }
 
-uint64 sys_open()
+uint64_t sys_open()
 {
     char path[MAXPATH];
     int fd, flags;
@@ -361,7 +359,7 @@ uint64 sys_open()
     return fd;
 }
 
-uint64 sys_mkdir()
+uint64_t sys_mkdir()
 {
     char path[MAXPATH];
     struct inode *ip;
@@ -378,7 +376,7 @@ uint64 sys_mkdir()
     return 0;
 }
 
-uint64 sys_mknod()
+uint64_t sys_mknod()
 {
     struct inode *ip;
     char path[MAXPATH];
@@ -398,15 +396,14 @@ uint64 sys_mknod()
     return 0;
 }
 
-uint64 sys_chdir()
+uint64_t sys_chdir()
 {
     char path[MAXPATH];
     struct inode *ip;
     struct process *proc = get_current();
 
     log_begin_fs_transaction();
-    if (argstr(0, path, MAXPATH) < 0 ||
-        (ip = inode_from_path(path)) == 0)
+    if (argstr(0, path, MAXPATH) < 0 || (ip = inode_from_path(path)) == 0)
     {
         log_end_fs_transaction();
         return -1;
@@ -425,11 +422,11 @@ uint64 sys_chdir()
     return 0;
 }
 
-uint64 sys_execv()
+uint64_t sys_execv()
 {
     char path[MAXPATH], *argv[MAX_EXEC_ARGS];
     int i;
-    uint64 uargv, uarg;
+    uint64_t uargv, uarg;
 
     argaddr(1, &uargv);
     if (argstr(0, path, MAXPATH) < 0)
@@ -443,7 +440,7 @@ uint64 sys_execv()
         {
             goto bad;
         }
-        if (fetchaddr(uargv + sizeof(uint64) * i, (uint64 *)&uarg) < 0)
+        if (fetchaddr(uargv + sizeof(uint64_t) * i, (uint64_t *)&uarg) < 0)
         {
             goto bad;
         }

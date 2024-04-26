@@ -17,31 +17,31 @@
 /// super block describes the disk layout:
 struct xv6fs_superblock
 {
-    uint magic;       ///< Must be XV6FS_MAGIC
-    uint size;        ///< Size of file system image (blocks)
-    uint nblocks;     ///< Number of data blocks
-    uint ninodes;     ///< Number of inodes.
-    uint nlog;        ///< Number of log blocks
-    uint logstart;    ///< Block number of first log block
-    uint inodestart;  ///< Block number of first inode block
-    uint bmapstart;   ///< Block number of first free map block
+    uint32_t magic;       ///< Must be XV6FS_MAGIC
+    uint32_t size;        ///< Size of file system image (blocks)
+    uint32_t nblocks;     ///< Number of data blocks
+    uint32_t ninodes;     ///< Number of inodes.
+    uint32_t nlog;        ///< Number of log blocks
+    uint32_t logstart;    ///< Block number of first log block
+    uint32_t inodestart;  ///< Block number of first inode block
+    uint32_t bmapstart;   ///< Block number of first free map block
 };
 
 #define XV6FS_MAGIC 0x10203040
 
 #define NDIRECT 12
-#define NINDIRECT (BLOCK_SIZE / sizeof(uint))
+#define NINDIRECT (BLOCK_SIZE / sizeof(uint32_t))
 #define MAXFILE (NDIRECT + NINDIRECT)
 
 // On-disk inode structure
 struct vx6fs_dinode
 {
-    short type;               ///< File type
-    short major;              ///< Major device number (XV6_FT_DEVICE only)
-    short minor;              ///< Minor device number (XV6_FT_DEVICE only)
-    short nlink;              ///< Number of links to inode in file system
-    uint size;                ///< Size of file (bytes)
-    uint addrs[NDIRECT + 1];  ///< Data block addresses
+    short type;                   ///< File type
+    short major;                  ///< Major device number (XV6_FT_DEVICE only)
+    short minor;                  ///< Minor device number (XV6_FT_DEVICE only)
+    short nlink;                  ///< Number of links to inode in file system
+    uint32_t size;                ///< Size of file (bytes)
+    uint32_t addrs[NDIRECT + 1];  ///< Data block addresses
 };
 
 /// Inodes per block.
@@ -61,6 +61,6 @@ struct vx6fs_dinode
 
 struct xv6fs_dirent
 {
-    ushort inum;
+    uint16_t inum;
     char name[XV6_NAME_MAX];
 };

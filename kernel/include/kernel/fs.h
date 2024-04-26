@@ -9,8 +9,8 @@
 /// in-memory copy of an inode
 struct inode
 {
-    uint dev;               ///< Device number
-    uint inum;              ///< Inode number
+    uint32_t dev;           ///< Device number
+    uint32_t inum;          ///< Inode number
     int ref;                ///< Reference count
     struct sleeplock lock;  ///< protects everything below here
     int valid;              ///< inode has been read from disk?
@@ -19,14 +19,14 @@ struct inode
     short major;
     short minor;
     short nlink;
-    uint size;
-    uint addrs[NDIRECT + 1];
+    uint32_t size;
+    uint32_t addrs[NDIRECT + 1];
 };
 
 void init_root_file_system(int);
-int inode_dir_link(struct inode*, char*, uint);
-struct inode* inode_dir_lookup(struct inode*, char*, uint*);
-struct inode* inode_alloc(uint, short);
+int inode_dir_link(struct inode*, char*, uint32_t);
+struct inode* inode_dir_lookup(struct inode*, char*, uint32_t*);
+struct inode* inode_alloc(uint32_t, short);
 struct inode* inode_dup(struct inode*);
 void inode_init();
 void inode_lock(struct inode*);
@@ -37,7 +37,7 @@ void inode_update(struct inode*);
 int file_name_cmp(const char*, const char*);
 struct inode* inode_from_path(char*);
 struct inode* inode_of_parent_from_path(char*, char*);
-int inode_read(struct inode*, int, uint64, uint, uint);
+int inode_read(struct inode*, int, uint64_t, uint32_t, uint32_t);
 void inode_stat(struct inode*, struct stat*);
-int inode_write(struct inode*, int, uint64, uint, uint);
+int inode_write(struct inode*, int, uint64_t, uint32_t, uint32_t);
 void inode_trunc(struct inode*);

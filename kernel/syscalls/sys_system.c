@@ -11,9 +11,9 @@
 
 /// return how many clock tick interrupts have occurred
 /// since start.
-uint64 sys_uptime()
+uint64_t sys_uptime()
 {
-    uint xticks;
+    uint32_t xticks;
 
     spin_lock(&g_tickslock);
     xticks = g_ticks;

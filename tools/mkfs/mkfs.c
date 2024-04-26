@@ -35,31 +35,31 @@ int nblocks;  // Number of data blocks
 int fsfd;
 struct xv6fs_superblock sb;
 char zeroes[BLOCK_SIZE];
-uint freeinode = 1;
-uint freeblock;
+uint32_t freeinode = 1;
+uint32_t freeblock;
 
 void balloc(int);
-void wsect(uint, void *);
-void winode(uint, struct vx6fs_dinode *);
-void rinode(uint inum, struct vx6fs_dinode *ip);
-void rsect(uint sec, void *buf);
-uint i_alloc(ushort type);
-void iappend(uint inum, void *p, int n);
+void wsect(uint32_t, void *);
+void winode(uint32_t, struct vx6fs_dinode *);
+void rinode(uint32_t inum, struct vx6fs_dinode *ip);
+void rsect(uint32_t sec, void *buf);
+uint32_t i_alloc(uint16_t type);
+void iappend(uint32_t inum, void *p, int n);
 void die(const char *);
 
 /// convert to riscv byte order
-ushort xshort(ushort x)
+uint16_t xshort(uint16_t x)
 {
-    ushort y;
+    uint16_t y;
     uchar *a = (uchar *)&y;
     a[0] = x;
     a[1] = x >> 8;
     return y;
 }
 
-uint xint(uint x)
+uint32_t xint(uint32_t x)
 {
-    uint y;
+    uint32_t y;
     uchar *a = (uchar *)&y;
     a[0] = x;
     a[1] = x >> 8;
@@ -71,7 +71,7 @@ uint xint(uint x)
 int main(int argc, char *argv[])
 {
     int i, cc, fd;
-    uint rootino, inum, off;
+    uint32_t rootino, inum, off;
     struct xv6fs_dirent de;
     char buf[BLOCK_SIZE];
     struct vx6fs_dinode din;
@@ -172,16 +172,16 @@ int main(int argc, char *argv[])
     exit(0);
 }
 
-void wsect(uint sec, void *buf)
+void wsect(uint32_t sec, void *buf)
 {
     if (lseek(fsfd, sec * BLOCK_SIZE, 0) != sec * BLOCK_SIZE) die("lseek");
     if (write(fsfd, buf, BLOCK_SIZE) != BLOCK_SIZE) die("write");
 }
 
-void winode(uint inum, struct vx6fs_dinode *ip)
+void winode(uint32_t inum, struct vx6fs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
-    uint bn;
+    uint32_t bn;
     struct vx6fs_dinode *dip;
 
     bn = IBLOCK(inum, sb);
@@ -191,10 +191,10 @@ void winode(uint inum, struct vx6fs_dinode *ip)
     wsect(bn, buf);
 }
 
-void rinode(uint inum, struct vx6fs_dinode *ip)
+void rinode(uint32_t inum, struct vx6fs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
-    uint bn;
+    uint32_t bn;
     struct vx6fs_dinode *dip;
 
     bn = IBLOCK(inum, sb);
@@ -203,15 +203,15 @@ void rinode(uint inum, struct vx6fs_dinode *ip)
     *ip = *dip;
 }
 
-void rsect(uint sec, void *buf)
+void rsect(uint32_t sec, void *buf)
 {
     if (lseek(fsfd, sec * BLOCK_SIZE, 0) != sec * BLOCK_SIZE) die("lseek");
     if (read(fsfd, buf, BLOCK_SIZE) != BLOCK_SIZE) die("read");
 }
 
-uint i_alloc(ushort type)
+uint32_t i_alloc(uint16_t type)
 {
-    uint inum = freeinode++;
+    uint32_t inum = freeinode++;
     struct vx6fs_dinode din;
 
     bzero(&din, sizeof(din));
@@ -240,14 +240,14 @@ void balloc(int used)
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-void iappend(uint inum, void *xp, int n)
+void iappend(uint32_t inum, void *xp, int n)
 {
     char *p = (char *)xp;
-    uint fbn, off, n1;
+    uint32_t fbn, off, n1;
     struct vx6fs_dinode din;
     char buf[BLOCK_SIZE];
-    uint indirect[NINDIRECT];
-    uint x;
+    uint32_t indirect[NINDIRECT];
+    uint32_t x;
 
     rinode(inum, &din);
     off = xint(din.size);

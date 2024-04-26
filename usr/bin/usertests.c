@@ -32,11 +32,11 @@ char buf[BUFSZ];
 // that read user memory with uvm_copy_in?
 void copyin(char *s)
 {
-    uint64 addrs[] = {0x80000000LL, 0xffffffffffffffff};
+    uint64_t addrs[] = {0x80000000LL, 0xffffffffffffffff};
 
     for (int ai = 0; ai < 2; ai++)
     {
-        uint64 addr = addrs[ai];
+        uint64_t addr = addrs[ai];
 
         int fd = open("copyin1", O_CREATE | O_WRONLY);
         if (fd < 0)
@@ -81,11 +81,11 @@ void copyin(char *s)
 // that write user memory with uvm_copy_out?
 void copyout(char *s)
 {
-    uint64 addrs[] = {0x80000000LL, 0xffffffffffffffff};
+    uint64_t addrs[] = {0x80000000LL, 0xffffffffffffffff};
 
     for (int ai = 0; ai < 2; ai++)
     {
-        uint64 addr = addrs[ai];
+        uint64_t addr = addrs[ai];
 
         int fd = open("README.md", 0);
         if (fd < 0)
@@ -127,11 +127,11 @@ void copyout(char *s)
 // what if you pass ridiculous string pointers to system calls?
 void copyinstr1(char *s)
 {
-    uint64 addrs[] = {0x80000000LL, 0xffffffffffffffff};
+    uint64_t addrs[] = {0x80000000LL, 0xffffffffffffffff};
 
     for (int ai = 0; ai < 2; ai++)
     {
-        uint64 addr = addrs[ai];
+        uint64_t addr = addrs[ai];
 
         int fd = open((char *)addr, O_CREATE | O_WRONLY);
         if (fd >= 0)
@@ -215,12 +215,12 @@ void copyinstr2(char *s)
 void copyinstr3(char *s)
 {
     sbrk(8192);
-    uint64 top = (uint64)sbrk(0);
+    uint64_t top = (uint64_t)sbrk(0);
     if ((top % PAGE_SIZE) != 0)
     {
         sbrk(PAGE_SIZE - (top % PAGE_SIZE));
     }
-    top = (uint64)sbrk(0);
+    top = (uint64_t)sbrk(0);
     if (top % PAGE_SIZE)
     {
         printf("oops\n");
@@ -266,7 +266,7 @@ void rwsbrk()
 {
     int fd, n;
 
-    uint64 a = (uint64)sbrk(8192);
+    uint64_t a = (uint64_t)sbrk(8192);
 
     if (a == 0xffffffffffffffffLL)
     {
@@ -274,7 +274,7 @@ void rwsbrk()
         exit(1);
     }
 
-    if ((uint64)sbrk(-8192) == 0xffffffffffffffffLL)
+    if ((uint64_t)sbrk(-8192) == 0xffffffffffffffffLL)
     {
         printf("sbrk(rwsbrk) shrink failed\n");
         exit(1);
@@ -1606,7 +1606,7 @@ void concreate(char *s)
     char fa[N];
     struct
     {
-        ushort inum;
+        uint16_t inum;
         char name[XV6_NAME_MAX];
     } de;
 
@@ -2386,13 +2386,13 @@ void sbrkmuch(char *s)
         BIG = 100 * 1024 * 1024
     };
     char *c, *oldbrk, *a, *lastaddr, *p;
-    uint64 amt;
+    uint64_t amt;
 
     oldbrk = sbrk(0);
 
     // can one grow address space to something big?
     a = sbrk(0);
-    amt = BIG - (uint64)a;
+    amt = BIG - (uint64_t)a;
     p = sbrk(amt);
     if (p != a)
     {
@@ -2479,7 +2479,7 @@ void kernmem(char *s)
 // user code should not be able to write to addresses above MAXVA.
 void MAXVAplus(char *s)
 {
-    volatile uint64 a = MAXVA;
+    volatile uint64_t a = MAXVA;
     for (; a != 0; a <<= 1)
     {
         int pid;
@@ -2527,7 +2527,7 @@ void sbrkfail(char *s)
         if ((pids[i] = fork()) == 0)
         {
             // allocate a lot of memory
-            sbrk(BIG - (uint64)sbrk(0));
+            sbrk(BIG - (uint64_t)sbrk(0));
             write(fds[1], "x", 1);
             // sit around until killed
             for (;;) sleep(1000);
@@ -2611,10 +2611,10 @@ void sbrkarg(char *s)
 void validatetest(char *s)
 {
     int hi;
-    uint64 p;
+    uint64_t p;
 
     hi = 1100 * 1024;
-    for (p = 0; p <= (uint)hi; p += PAGE_SIZE)
+    for (p = 0; p <= (uint32_t)hi; p += PAGE_SIZE)
     {
         // try to crash the kernel by passing in a bad string pointer
         if (link("nosuchfile", (char *)p) != -1)
@@ -2804,8 +2804,8 @@ void textwrite(char *s)
 }
 
 // regression test. uvm_copy_in(), uvm_copy_out(), and uvm_copy_in_str() used to
-// cast the virtual page address to uint, which (with certain wild system call
-// arguments) resulted in a kernel page faults.
+// cast the virtual page address to uint32_t, which (with certain wild system
+// call arguments) resulted in a kernel page faults.
 void *big = (void *)0xeaeb0b5b00002f5e;
 void pgbug(char *s)
 {
@@ -2830,7 +2830,7 @@ void sbrkbugs(char *s)
     }
     if (pid == 0)
     {
-        int sz = (uint64)sbrk(0);
+        int sz = (uint64_t)sbrk(0);
         // free all user memory; there used to be a bug that
         // would not adjust p->sz correctly in this case,
         // causing exit() to panic.
@@ -2848,7 +2848,7 @@ void sbrkbugs(char *s)
     }
     if (pid == 0)
     {
-        int sz = (uint64)sbrk(0);
+        int sz = (uint64_t)sbrk(0);
         // set the break to somewhere in the very first
         // page; there used to be a bug that would incorrectly
         // free the first page.
@@ -2866,7 +2866,7 @@ void sbrkbugs(char *s)
     if (pid == 0)
     {
         // set the break in the middle of a page.
-        sbrk((10 * 4096 + 2048) - (uint64)sbrk(0));
+        sbrk((10 * 4096 + 2048) - (uint64_t)sbrk(0));
 
         // reduce the break a bit, but not enough to
         // cause a page to be freed. this used to cause
@@ -2885,12 +2885,12 @@ void sbrkbugs(char *s)
 // still uvm_copy_in() from addresses in the last page?
 void sbrklast(char *s)
 {
-    uint64 top = (uint64)sbrk(0);
+    uint64_t top = (uint64_t)sbrk(0);
     if ((top % 4096) != 0) sbrk(4096 - (top % 4096));
     sbrk(4096);
     sbrk(10);
     sbrk(-20);
-    top = (uint64)sbrk(0);
+    top = (uint64_t)sbrk(0);
     char *p = (char *)(top - 64);
     p[0] = 'x';
     p[1] = '\0';
@@ -3166,7 +3166,7 @@ void execout(char *s)
             // allocate all of memory.
             while (1)
             {
-                uint64 a = (uint64)sbrk(4096);
+                uint64_t a = (uint64_t)sbrk(4096);
                 if (a == 0xffffffffffffffffLL) break;
                 *(char *)(a + 4096 - 1) = 1;
             }
@@ -3398,7 +3398,7 @@ int countfree()
 
         while (1)
         {
-            uint64 a = (uint64)sbrk(4096);
+            uint64_t a = (uint64_t)sbrk(4096);
             if (a == 0xffffffffffffffff)
             {
                 break;

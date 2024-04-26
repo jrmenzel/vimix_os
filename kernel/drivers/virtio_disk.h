@@ -27,7 +27,7 @@ struct virtio_disk
 
     // our own book-keeping.
     char free[VIRTIO_DESCRIPTORS];  // is a descriptor free?
-    uint16 used_idx;  // we've looked this far in used[2..VIRTIO_DESCRIPTORS].
+    uint16_t used_idx;  // we've looked this far in used[2..VIRTIO_DESCRIPTORS].
 
     // track info about in-flight operations,
     // for use when completion interrupt arrives.

@@ -57,8 +57,9 @@ void init_per_process_kernel_stack(pagetable_t kpage_table)
     {
         char *pa = kalloc();
         if (pa == 0) panic("kalloc");
-        uint64 va = KSTACK((int)(proc - g_process_list));
-        kvm_map_or_panic(kpage_table, va, (uint64)pa, PAGE_SIZE, PTE_R | PTE_W);
+        uint64_t va = KSTACK((int)(proc - g_process_list));
+        kvm_map_or_panic(kpage_table, va, (uint64_t)pa, PAGE_SIZE,
+                         PTE_R | PTE_W);
     }
 }
 
@@ -163,7 +164,7 @@ found:
     // Set up new context to start executing at forkret,
     // which returns to user space.
     memset(&proc->context, 0, sizeof(proc->context));
-    proc->context.ra = (uint64)forkret;
+    proc->context.ra = (uint64_t)forkret;
     proc->context.sp = proc->kstack + PAGE_SIZE;
 
     return proc;
@@ -202,7 +203,7 @@ pagetable_t proc_pagetable(struct process *proc)
     // at the highest user virtual address.
     // only the supervisor uses it, on the way
     // to/from user space, so not PTE_U.
-    if (kvm_map(pagetable, TRAMPOLINE, PAGE_SIZE, (uint64)trampoline,
+    if (kvm_map(pagetable, TRAMPOLINE, PAGE_SIZE, (uint64_t)trampoline,
                 PTE_R | PTE_X) < 0)
     {
         uvm_free(pagetable, 0);
@@ -211,7 +212,7 @@ pagetable_t proc_pagetable(struct process *proc)
 
     // map the trapframe page just below the trampoline page, for
     // u_mode_trap_vector.S.
-    if (kvm_map(pagetable, TRAPFRAME, PAGE_SIZE, (uint64)(proc->trapframe),
+    if (kvm_map(pagetable, TRAPFRAME, PAGE_SIZE, (uint64_t)(proc->trapframe),
                 PTE_R | PTE_W) < 0)
     {
         uvm_unmap(pagetable, TRAMPOLINE, 1, 0);
@@ -224,7 +225,7 @@ pagetable_t proc_pagetable(struct process *proc)
 
 /// Free a process's page table, and free the
 /// physical memory it refers to.
-void proc_free_pagetable(pagetable_t pagetable, uint64 sz)
+void proc_free_pagetable(pagetable_t pagetable, uint64_t sz)
 {
     uvm_unmap(pagetable, TRAMPOLINE, 1, 0);
     uvm_unmap(pagetable, TRAPFRAME, 1, 0);
@@ -241,10 +242,10 @@ void userspace_init()
     // address 0 of pagetable
     char *mem = kalloc();
     memset(mem, 0, PAGE_SIZE);
-    kvm_map(proc->pagetable, 0, PAGE_SIZE, (uint64)mem,
+    kvm_map(proc->pagetable, 0, PAGE_SIZE, (uint64_t)mem,
             PTE_W | PTE_R | PTE_X | PTE_U);
     memmove(mem, g_initcode, sizeof(g_initcode));
-    
+
     proc->sz = PAGE_SIZE;
 
     // prepare for the very first "return" from kernel to user.
@@ -263,7 +264,7 @@ void userspace_init()
 /// Return 0 on success, -1 on failure.
 int proc_grow_memory(int n)
 {
-    uint64 sz;
+    uint64_t sz;
     struct process *proc = get_current();
 
     sz = proc->sz;
@@ -358,7 +359,7 @@ void exit(int status)
 
     if (proc == g_initial_user_process)
     {
-        uint64 return_value = proc->trapframe->a0;
+        uint64_t return_value = proc->trapframe->a0;
         if (return_value == -0xDEAD)
         {
             panic("initcode.S could not load /init - check filesystem");
@@ -406,7 +407,7 @@ void exit(int status)
 
 /// Wait for a child process to exit and return its pid.
 /// Return -1 if this process has no children.
-int wait(uint64 addr)
+int wait(uint64_t addr)
 {
     struct process *pp;
     int havekids, pid;
@@ -609,7 +610,7 @@ int proc_is_killed(struct process *proc)
 /// Copy to either a user address, or kernel address,
 /// depending on usr_dst.
 /// Returns 0 on success, -1 on error.
-int either_copyout(int addr_is_userspace, uint64 dst, void *src, uint64 len)
+int either_copyout(int addr_is_userspace, uint64_t dst, void *src, uint64_t len)
 {
     struct process *proc = get_current();
     if (addr_is_userspace)
@@ -626,7 +627,7 @@ int either_copyout(int addr_is_userspace, uint64 dst, void *src, uint64 len)
 /// Copy from either a user address, or kernel address,
 /// depending on usr_src.
 /// Returns 0 on success, -1 on error.
-int either_copyin(void *dst, int addr_is_userspace, uint64 src, uint64 len)
+int either_copyin(void *dst, int addr_is_userspace, uint64_t src, uint64_t len)
 {
     struct process *proc = get_current();
     if (addr_is_userspace)

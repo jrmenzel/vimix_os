@@ -14,4 +14,4 @@ Compile and try out:
 
 ## Changes from xv6
 
-- Reorganized code, separate headers, renamed many functions and variables
+- Reorganized code, separate headers, renamed many functions and variables, using stdint types

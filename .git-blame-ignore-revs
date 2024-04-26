@@ -6,3 +6,6 @@
 
 # Renamed various functions and variable names
 65bd7be94b0a3b9220ee20f8e635fce8f798945b
+
+# Renamed README -> README.md in usertests after the README got renamed
+212c33938d83d1f6e0dc820c241db5fe7beb97fa

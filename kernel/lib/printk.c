@@ -32,7 +32,7 @@ static void printint(int xx, int base, int sign)
 {
     char buf[16];
     int i;
-    uint x;
+    uint32_t x;
 
     if (sign && (sign = xx < 0))
         x = -xx;
@@ -49,13 +49,13 @@ static void printint(int xx, int base, int sign)
     while (--i >= 0) console_putc(buf[i]);
 }
 
-static void printptr(uint64 x)
+static void printptr(uint64_t x)
 {
     int i;
     console_putc('0');
     console_putc('x');
-    for (i = 0; i < (sizeof(uint64) * 2); i++, x <<= 4)
-        console_putc(digits[x >> (sizeof(uint64) * 8 - 4)]);
+    for (i = 0; i < (sizeof(uint64_t) * 2); i++, x <<= 4)
+        console_putc(digits[x >> (sizeof(uint64_t) * 8 - 4)]);
 }
 
 /// Print to the console. only understands %d, %x, %p, %s.
@@ -84,7 +84,7 @@ void printk(char *fmt, ...)
         {
             case 'd': printint(va_arg(ap, int), 10, 1); break;
             case 'x': printint(va_arg(ap, int), 16, 1); break;
-            case 'p': printptr(va_arg(ap, uint64)); break;
+            case 'p': printptr(va_arg(ap, uint64_t)); break;
             case 's':
                 if ((s = va_arg(ap, char *)) == 0) s = "(null)";
                 for (; *s; s++) console_putc(*s);

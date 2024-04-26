@@ -47,8 +47,8 @@ struct process
     struct process *parent;  ///< Parent process
 
     // these are private to the process, so p->lock need not be held.
-    uint64 kstack;                ///< Virtual address of kernel stack
-    uint64 sz;                    ///< Size of process memory (bytes)
+    uint64_t kstack;              ///< Virtual address of kernel stack
+    uint64_t sz;                  ///< Size of process memory (bytes)
     pagetable_t pagetable;        ///< User page table
     struct trapframe *trapframe;  ///< data page for u_mode_trap_vector.S
     struct context context;       ///< context_switch() here to run process
@@ -63,7 +63,7 @@ int fork();
 int proc_grow_memory(int);
 void init_per_process_kernel_stack(pagetable_t);
 pagetable_t proc_pagetable(struct process *);
-void proc_free_pagetable(pagetable_t, uint64);
+void proc_free_pagetable(pagetable_t, uint64_t);
 int proc_kill(int);
 int proc_is_killed(struct process *);
 void proc_set_killed(struct process *);
@@ -73,11 +73,12 @@ void proc_init();
 void sched();
 void sleep(void *, struct spinlock *);
 void userspace_init();
-int wait(uint64);
+int wait(uint64_t);
 void wakeup(void *);
 void yield();
-int either_copyout(int addr_is_userspace, uint64 dst, void *src, uint64 len);
-int either_copyin(void *dst, int addr_is_userspace, uint64 src, uint64 len);
+int either_copyout(int addr_is_userspace, uint64_t dst, void *src,
+                   uint64_t len);
+int either_copyin(void *dst, int addr_is_userspace, uint64_t src, uint64_t len);
 void debug_print_process_list();
 
 int fd_alloc(struct file *f);

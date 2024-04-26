@@ -41,7 +41,7 @@ void bio_init()
 /// Look through buffer cache for block on device dev.
 /// If not found, allocate a buffer.
 /// In either case, return locked buffer.
-static struct buf *bget(uint dev, uint blockno)
+static struct buf *bget(uint32_t dev, uint32_t blockno)
 {
     struct buf *b;
 
@@ -78,7 +78,7 @@ static struct buf *bget(uint dev, uint blockno)
 }
 
 /// Return a locked buf with the contents of the indicated block.
-struct buf *bio_read(uint dev, uint blockno)
+struct buf *bio_read(uint32_t dev, uint32_t blockno)
 {
     struct buf *b;
 

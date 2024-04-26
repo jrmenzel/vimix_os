@@ -22,13 +22,13 @@
 #include <mm/memlayout.h>
 
 /// the address of virtio mmio register r.
-#define R(r) ((volatile uint32 *)(VIRTIO0 + (r)))
+#define R(r) ((volatile uint32_t *)(VIRTIO0 + (r)))
 
 struct virtio_disk g_virtio_disk;
 
 void virtio_disk_init()
 {
-    uint32 status = 0;
+    uint32_t status = 0;
 
     spin_lock_init(&g_virtio_disk.vdisk_lock, "virtio_disk");
 
@@ -51,7 +51,7 @@ void virtio_disk_init()
     *R(VIRTIO_MMIO_STATUS) = status;
 
     // negotiate features
-    uint64 features = *R(VIRTIO_MMIO_DEVICE_FEATURES);
+    uint64_t features = *R(VIRTIO_MMIO_DEVICE_FEATURES);
     features &= ~(1 << VIRTIO_BLK_F_RO);
     features &= ~(1 << VIRTIO_BLK_F_SCSI);
     features &= ~(1 << VIRTIO_BLK_F_CONFIG_WCE);
@@ -77,7 +77,7 @@ void virtio_disk_init()
     if (*R(VIRTIO_MMIO_QUEUE_READY)) panic("virtio disk should not be ready");
 
     // check maximum queue size.
-    uint32 max = *R(VIRTIO_MMIO_QUEUE_VIRTIO_DESCRIPTORS_MAX);
+    uint32_t max = *R(VIRTIO_MMIO_QUEUE_VIRTIO_DESCRIPTORS_MAX);
     if (max == 0) panic("virtio disk has no queue 0");
     if (max < VIRTIO_DESCRIPTORS) panic("virtio disk max queue too short");
 
@@ -95,12 +95,12 @@ void virtio_disk_init()
     *R(VIRTIO_MMIO_QUEUE_VIRTIO_DESCRIPTORS) = VIRTIO_DESCRIPTORS;
 
     // write physical addresses.
-    *R(VIRTIO_MMIO_QUEUE_DESC_LOW) = (uint64)g_virtio_disk.desc;
-    *R(VIRTIO_MMIO_QUEUE_DESC_HIGH) = (uint64)g_virtio_disk.desc >> 32;
-    *R(VIRTIO_MMIO_DRIVER_DESC_LOW) = (uint64)g_virtio_disk.avail;
-    *R(VIRTIO_MMIO_DRIVER_DESC_HIGH) = (uint64)g_virtio_disk.avail >> 32;
-    *R(VIRTIO_MMIO_DEVICE_DESC_LOW) = (uint64)g_virtio_disk.used;
-    *R(VIRTIO_MMIO_DEVICE_DESC_HIGH) = (uint64)g_virtio_disk.used >> 32;
+    *R(VIRTIO_MMIO_QUEUE_DESC_LOW) = (uint64_t)g_virtio_disk.desc;
+    *R(VIRTIO_MMIO_QUEUE_DESC_HIGH) = (uint64_t)g_virtio_disk.desc >> 32;
+    *R(VIRTIO_MMIO_DRIVER_DESC_LOW) = (uint64_t)g_virtio_disk.avail;
+    *R(VIRTIO_MMIO_DRIVER_DESC_HIGH) = (uint64_t)g_virtio_disk.avail >> 32;
+    *R(VIRTIO_MMIO_DEVICE_DESC_LOW) = (uint64_t)g_virtio_disk.used;
+    *R(VIRTIO_MMIO_DEVICE_DESC_HIGH) = (uint64_t)g_virtio_disk.used >> 32;
 
     // queue is ready.
     *R(VIRTIO_MMIO_QUEUE_READY) = 0x1;
@@ -175,7 +175,7 @@ static int alloc3_desc(int *idx)
 
 void virtio_disk_rw(struct buf *b, int write)
 {
-    uint64 sector = b->blockno * (BLOCK_SIZE / 512);
+    uint64_t sector = b->blockno * (BLOCK_SIZE / 512);
 
     spin_lock(&g_virtio_disk.vdisk_lock);
 
@@ -206,12 +206,12 @@ void virtio_disk_rw(struct buf *b, int write)
     buf0->reserved = 0;
     buf0->sector = sector;
 
-    g_virtio_disk.desc[idx[0]].addr = (uint64)buf0;
+    g_virtio_disk.desc[idx[0]].addr = (uint64_t)buf0;
     g_virtio_disk.desc[idx[0]].len = sizeof(struct virtio_blk_req);
     g_virtio_disk.desc[idx[0]].flags = VRING_DESC_F_NEXT;
     g_virtio_disk.desc[idx[0]].next = idx[1];
 
-    g_virtio_disk.desc[idx[1]].addr = (uint64)b->data;
+    g_virtio_disk.desc[idx[1]].addr = (uint64_t)b->data;
     g_virtio_disk.desc[idx[1]].len = BLOCK_SIZE;
     if (write)
         g_virtio_disk.desc[idx[1]].flags = 0;  // device reads b->data
@@ -223,7 +223,7 @@ void virtio_disk_rw(struct buf *b, int write)
 
     g_virtio_disk.info[idx[0]].status = 0xff;  // device writes 0 on success
     g_virtio_disk.desc[idx[2]].addr =
-        (uint64)&g_virtio_disk.info[idx[0]].status;
+        (uint64_t)&g_virtio_disk.info[idx[0]].status;
     g_virtio_disk.desc[idx[2]].len = 1;
     g_virtio_disk.desc[idx[2]].flags =
         VRING_DESC_F_WRITE;  // device writes the status

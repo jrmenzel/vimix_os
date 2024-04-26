@@ -14,7 +14,7 @@
 #define PTE_U (1L << 4)  // user can access
 
 /// shift a physical address to the right place for a PTE.
-#define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)
+#define PA2PTE(pa) ((((uint64_t)pa) >> 12) << 10)
 
 #define PTE2PA(pte) (((pte) >> 10) << 12)
 
@@ -23,7 +23,7 @@
 /// extract the three 9-bit page table indices from a virtual address.
 #define PXMASK 0x1FF  // 9 bits
 #define PXSHIFT(level) (PAGE_SHIFT + (9 * (level)))
-#define PX(level, va) ((((uint64)(va)) >> PXSHIFT(level)) & PXMASK)
+#define PX(level, va) ((((uint64_t)(va)) >> PXSHIFT(level)) & PXMASK)
 
 /// one beyond the highest possible virtual address.
 /// MAXVA is actually one bit less than the max allowed by

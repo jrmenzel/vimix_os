@@ -21,7 +21,7 @@ void start()
 
     // set M Exception Program Counter to main, for mret.
     // requires gcc -mcmodel=medany
-    w_mepc((uint64)main);
+    w_mepc((uint64_t)main);
 
     // disable paging for now.
     cpu_set_page_table(0);

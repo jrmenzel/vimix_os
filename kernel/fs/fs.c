@@ -62,7 +62,7 @@ static void block_zero(int dev, int bno)
 
 /// Allocate a zeroed disk block.
 /// returns 0 if out of disk space.
-static uint balloc(uint dev)
+static uint32_t balloc(uint32_t dev)
 {
     int b, bi, m;
     struct buf *bp;
@@ -90,7 +90,7 @@ static uint balloc(uint dev)
 }
 
 /// Free a disk block.
-static void bfree(int dev, uint b)
+static void bfree(int dev, uint32_t b)
 {
     struct buf *bp;
     int bi, m;
@@ -190,13 +190,13 @@ void inode_init()
     }
 }
 
-static struct inode *iget(uint dev, uint inum);
+static struct inode *iget(uint32_t dev, uint32_t inum);
 
 /// Allocate an inode on device dev.
 /// Mark it as allocated by  giving it type type.
 /// Returns an unlocked but allocated and referenced inode,
 /// or NULL if there is no free inode.
-struct inode *inode_alloc(uint dev, short type)
+struct inode *inode_alloc(uint32_t dev, short type)
 {
     int inum;
     struct buf *bp;
@@ -244,7 +244,7 @@ void inode_update(struct inode *ip)
 /// Find the inode with number inum on device dev
 /// and return the in-memory copy. Does not lock
 /// the inode and does not read it from disk.
-static struct inode *iget(uint dev, uint inum)
+static struct inode *iget(uint32_t dev, uint32_t inum)
 {
     struct inode *ip, *empty;
 
@@ -375,9 +375,9 @@ void inode_unlock_put(struct inode *ip)
 /// Return the disk block address of the nth block in inode ip.
 /// If there is no such block, bmap allocates one.
 /// returns 0 if out of disk space.
-static uint bmap(struct inode *ip, uint bn)
+static uint32_t bmap(struct inode *ip, uint32_t bn)
 {
-    uint addr, *a;
+    uint32_t addr, *a;
     struct buf *bp;
 
     if (bn < NDIRECT)
@@ -402,7 +402,7 @@ static uint bmap(struct inode *ip, uint bn)
             ip->addrs[NDIRECT] = addr;
         }
         bp = bio_read(ip->dev, addr);
-        a = (uint *)bp->data;
+        a = (uint32_t *)bp->data;
         if ((addr = a[bn]) == 0)
         {
             addr = balloc(ip->dev);
@@ -425,7 +425,7 @@ void inode_trunc(struct inode *ip)
 {
     int i, j;
     struct buf *bp;
-    uint *a;
+    uint32_t *a;
 
     for (i = 0; i < NDIRECT; i++)
     {
@@ -439,7 +439,7 @@ void inode_trunc(struct inode *ip)
     if (ip->addrs[NDIRECT])
     {
         bp = bio_read(ip->dev, ip->addrs[NDIRECT]);
-        a = (uint *)bp->data;
+        a = (uint32_t *)bp->data;
         for (j = 0; j < NINDIRECT; j++)
         {
             if (a[j]) bfree(ip->dev, a[j]);
@@ -468,10 +468,10 @@ void inode_stat(struct inode *ip, struct stat *st)
 /// Caller must hold ip->lock.
 /// If addr_is_userspace==1, then dst is a user virtual address;
 /// otherwise, dst is a kernel address.
-int inode_read(struct inode *ip, int addr_is_userspace, uint64 dst, uint off,
-               uint n)
+int inode_read(struct inode *ip, int addr_is_userspace, uint64_t dst,
+               uint32_t off, uint32_t n)
 {
-    uint tot, m;
+    uint32_t tot, m;
     struct buf *bp;
 
     if (off > ip->size || off + n < off) return 0;
@@ -479,7 +479,7 @@ int inode_read(struct inode *ip, int addr_is_userspace, uint64 dst, uint off,
 
     for (tot = 0; tot < n; tot += m, off += m, dst += m)
     {
-        uint addr = bmap(ip, off / BLOCK_SIZE);
+        uint32_t addr = bmap(ip, off / BLOCK_SIZE);
         if (addr == 0) break;
         bp = bio_read(ip->dev, addr);
         m = min(n - tot, BLOCK_SIZE - off % BLOCK_SIZE);
@@ -502,10 +502,10 @@ int inode_read(struct inode *ip, int addr_is_userspace, uint64 dst, uint off,
 /// Returns the number of bytes successfully written.
 /// If the return value is less than the requested n,
 /// there was an error of some kind.
-int inode_write(struct inode *ip, int addr_is_userspace, uint64 src, uint off,
-                uint n)
+int inode_write(struct inode *ip, int addr_is_userspace, uint64_t src,
+                uint32_t off, uint32_t n)
 {
-    uint tot, m;
+    uint32_t tot, m;
     struct buf *bp;
 
     if (off > ip->size || off + n < off) return -1;
@@ -513,7 +513,7 @@ int inode_write(struct inode *ip, int addr_is_userspace, uint64 src, uint off,
 
     for (tot = 0; tot < n; tot += m, off += m, src += m)
     {
-        uint addr = bmap(ip, off / BLOCK_SIZE);
+        uint32_t addr = bmap(ip, off / BLOCK_SIZE);
         if (addr == 0) break;
         bp = bio_read(ip->dev, addr);
         m = min(n - tot, BLOCK_SIZE - off % BLOCK_SIZE);
@@ -546,16 +546,16 @@ int file_name_cmp(const char *s, const char *t)
 
 /// Look for a directory entry in a directory.
 /// If found, set *poff to byte offset of entry.
-struct inode *inode_dir_lookup(struct inode *dir, char *name, uint *poff)
+struct inode *inode_dir_lookup(struct inode *dir, char *name, uint32_t *poff)
 {
-    uint off, inum;
+    uint32_t off, inum;
     struct xv6fs_dirent de;
 
     if (dir->type != XV6_FT_DIR) panic("inode_dir_lookup not DIR");
 
     for (off = 0; off < dir->size; off += sizeof(de))
     {
-        if (inode_read(dir, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
+        if (inode_read(dir, 0, (uint64_t)&de, off, sizeof(de)) != sizeof(de))
             panic("inode_dir_lookup read");
         if (de.inum == 0) continue;
         if (file_name_cmp(name, de.name) == 0)
@@ -572,7 +572,7 @@ struct inode *inode_dir_lookup(struct inode *dir, char *name, uint *poff)
 
 /// Write a new directory entry (name, inum) into the directory dir.
 /// Returns 0 on success, -1 on failure (e.g. out of disk blocks).
-int inode_dir_link(struct inode *dir, char *name, uint inum)
+int inode_dir_link(struct inode *dir, char *name, uint32_t inum)
 {
     int off;
     struct xv6fs_dirent de;
@@ -588,14 +588,14 @@ int inode_dir_link(struct inode *dir, char *name, uint inum)
     // Look for an empty xv6fs_dirent.
     for (off = 0; off < dir->size; off += sizeof(de))
     {
-        if (inode_read(dir, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
+        if (inode_read(dir, 0, (uint64_t)&de, off, sizeof(de)) != sizeof(de))
             panic("inode_dir_link read");
         if (de.inum == 0) break;
     }
 
     strncpy(de.name, name, XV6_NAME_MAX);
     de.inum = inum;
-    if (inode_write(dir, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
+    if (inode_write(dir, 0, (uint64_t)&de, off, sizeof(de)) != sizeof(de))
         return -1;
 
     return 0;

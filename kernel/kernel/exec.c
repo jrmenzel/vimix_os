@@ -10,7 +10,7 @@
 #include <kernel/vm.h>
 #include <mm/memlayout.h>
 
-static int loadseg(pde_t *, uint64, struct inode *, uint, uint);
+static int loadseg(pde_t *, uint64_t, struct inode *, uint32_t, uint32_t);
 
 int flags2perm(int flags)
 {
@@ -24,7 +24,7 @@ int execv(char *path, char **argv)
 {
     char *s, *last;
     int i, off;
-    uint64 argc, sz = 0, sp, ustack[MAX_EXEC_ARGS], stackbase;
+    uint64_t argc, sz = 0, sp, ustack[MAX_EXEC_ARGS], stackbase;
     struct elfhdr elf;
     struct inode *ip;
     struct proghdr ph;
@@ -41,7 +41,7 @@ int execv(char *path, char **argv)
     inode_lock(ip);
 
     // Check ELF header
-    if (inode_read(ip, 0, (uint64)&elf, 0, sizeof(elf)) != sizeof(elf))
+    if (inode_read(ip, 0, (uint64_t)&elf, 0, sizeof(elf)) != sizeof(elf))
         goto bad;
 
     if (elf.magic != ELF_MAGIC) goto bad;
@@ -51,13 +51,13 @@ int execv(char *path, char **argv)
     // Load program into memory.
     for (i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph))
     {
-        if (inode_read(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
+        if (inode_read(ip, 0, (uint64_t)&ph, off, sizeof(ph)) != sizeof(ph))
             goto bad;
         if (ph.type != ELF_PROG_LOAD) continue;
         if (ph.memsz < ph.filesz) goto bad;
         if (ph.vaddr + ph.memsz < ph.vaddr) goto bad;
         if (ph.vaddr % PAGE_SIZE != 0) goto bad;
-        uint64 sz1;
+        uint64_t sz1;
         if ((sz1 = uvm_alloc(pagetable, sz, ph.vaddr + ph.memsz,
                              flags2perm(ph.flags))) == 0)
             goto bad;
@@ -69,13 +69,13 @@ int execv(char *path, char **argv)
     ip = 0;
 
     proc = get_current();
-    uint64 oldsz = proc->sz;
+    uint64_t oldsz = proc->sz;
 
     // Allocate two pages at the next page boundary.
     // Make the first inaccessible as a stack guard.
     // Use the second as the user stack.
     sz = PAGE_ROUND_UP(sz);
-    uint64 sz1;
+    uint64_t sz1;
     if ((sz1 = uvm_alloc(pagetable, sz, sz + 2 * PAGE_SIZE, PTE_W)) == 0)
         goto bad;
     sz = sz1;
@@ -97,11 +97,11 @@ int execv(char *path, char **argv)
     ustack[argc] = 0;
 
     // push the array of argv[] pointers.
-    sp -= (argc + 1) * sizeof(uint64);
+    sp -= (argc + 1) * sizeof(uint64_t);
     sp -= sp % 16;
     if (sp < stackbase) goto bad;
     if (uvm_copy_out(pagetable, sp, (char *)ustack,
-                     (argc + 1) * sizeof(uint64)) < 0)
+                     (argc + 1) * sizeof(uint64_t)) < 0)
         goto bad;
 
     // arguments to user main(argc, argv)
@@ -138,11 +138,11 @@ bad:
 /// va must be page-aligned
 /// and the pages from va to va+sz must already be mapped.
 /// Returns 0 on success, -1 on failure.
-static int loadseg(pagetable_t pagetable, uint64 va, struct inode *ip,
-                   uint offset, uint sz)
+static int loadseg(pagetable_t pagetable, uint64_t va, struct inode *ip,
+                   uint32_t offset, uint32_t sz)
 {
-    uint i, n;
-    uint64 pa;
+    uint32_t i, n;
+    uint64_t pa;
 
     for (i = 0; i < sz; i += PAGE_SIZE)
     {
@@ -152,7 +152,7 @@ static int loadseg(pagetable_t pagetable, uint64 va, struct inode *ip,
             n = sz - i;
         else
             n = PAGE_SIZE;
-        if (inode_read(ip, 0, (uint64)pa, offset + i, n) != n) return -1;
+        if (inode_read(ip, 0, (uint64_t)pa, offset + i, n) != n) return -1;
     }
 
     return 0;

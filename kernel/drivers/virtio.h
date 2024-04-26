@@ -62,10 +62,10 @@
 /// a single descriptor, from the spec.
 struct virtq_desc
 {
-    uint64 addr;
-    uint32 len;
-    uint16 flags;
-    uint16 next;
+    uint64_t addr;
+    uint32_t len;
+    uint16_t flags;
+    uint16_t next;
 };
 #define VRING_DESC_F_NEXT 1   // chained with another descriptor
 #define VRING_DESC_F_WRITE 2  // device writes (vs read)
@@ -73,24 +73,24 @@ struct virtq_desc
 /// the (entire) avail ring, from the spec.
 struct virtq_avail
 {
-    uint16 flags;                     ///< always zero
-    uint16 idx;                       ///< driver will write ring[idx] next
-    uint16 ring[VIRTIO_DESCRIPTORS];  ///< descriptor numbers of chain heads
-    uint16 unused;
+    uint16_t flags;                     ///< always zero
+    uint16_t idx;                       ///< driver will write ring[idx] next
+    uint16_t ring[VIRTIO_DESCRIPTORS];  ///< descriptor numbers of chain heads
+    uint16_t unused;
 };
 
 /// one entry in the "used" ring, with which the
 /// device tells the driver about completed requests.
 struct virtq_used_elem
 {
-    uint32 id;  ///< index of start of completed descriptor chain
-    uint32 len;
+    uint32_t id;  ///< index of start of completed descriptor chain
+    uint32_t len;
 };
 
 struct virtq_used
 {
-    uint16 flags;  ///< always zero
-    uint16 idx;    ///< device increments when it adds a ring[] entry
+    uint16_t flags;  ///< always zero
+    uint16_t idx;    ///< device increments when it adds a ring[] entry
     struct virtq_used_elem ring[VIRTIO_DESCRIPTORS];
 };
 
@@ -105,7 +105,7 @@ struct virtq_used
 /// the block, and a one-byte status.
 struct virtio_blk_req
 {
-    uint32 type;  ///< VIRTIO_BLK_T_IN or ..._OUT
-    uint32 reserved;
-    uint64 sector;
+    uint32_t type;  ///< VIRTIO_BLK_T_IN or ..._OUT
+    uint32_t reserved;
+    uint64_t sector;
 };

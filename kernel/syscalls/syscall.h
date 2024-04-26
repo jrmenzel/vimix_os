@@ -5,7 +5,7 @@
 
 void argint(int, int*);
 int argstr(int, char*, int);
-void argaddr(int, uint64*);
-int fetchstr(uint64, char*, int);
-int fetchaddr(uint64, uint64*);
+void argaddr(int, uint64_t*);
+int fetchstr(uint64_t, char*, int);
+int fetchaddr(uint64_t, uint64_t*);
 void syscall();

@@ -36,7 +36,7 @@ void kalloc_init()
 void freerange(void *pa_start, void *pa_end)
 {
     char *p;
-    p = (char *)PAGE_ROUND_UP((uint64)pa_start);
+    p = (char *)PAGE_ROUND_UP((uint64_t)pa_start);
     for (; p + PAGE_SIZE <= (char *)pa_end; p += PAGE_SIZE) kfree(p);
 }
 
@@ -48,8 +48,8 @@ void kfree(void *pa)
 {
     struct run *r;
 
-    if (((uint64)pa % PAGE_SIZE) != 0 || (char *)pa < end_of_kernel ||
-        (uint64)pa >= PHYSTOP)
+    if (((uint64_t)pa % PAGE_SIZE) != 0 || (char *)pa < end_of_kernel ||
+        (uint64_t)pa >= PHYSTOP)
         panic("kfree");
 
     // Fill with junk to catch dangling refs.

@@ -6,7 +6,7 @@
 /// Long-term locks for processes
 struct sleeplock
 {
-    uint locked;         ///< Is the lock held?
+    uint32_t locked;     ///< Is the lock held?
     struct spinlock lk;  ///< spinlock protecting this sleep lock
 
     // For debugging:

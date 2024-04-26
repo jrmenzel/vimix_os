@@ -20,7 +20,7 @@
 //     so do not keep them longer than necessary.
 
 void bio_init();
-struct buf* bio_read(uint, uint);
+struct buf* bio_read(uint32_t, uint32_t);
 void bio_release(struct buf*);
 void bio_write(struct buf*);
 void bio_pin(struct buf*);

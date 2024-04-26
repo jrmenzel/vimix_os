@@ -10,7 +10,7 @@
 #include <kernel/string.h>
 #include <mm/memlayout.h>
 
-uint64 sys_exit()
+uint64_t sys_exit()
 {
     int n;
     argint(0, &n);
@@ -18,20 +18,20 @@ uint64 sys_exit()
     return 0;  // not reached
 }
 
-uint64 sys_getpid() { return get_current()->pid; }
+uint64_t sys_getpid() { return get_current()->pid; }
 
-uint64 sys_fork() { return fork(); }
+uint64_t sys_fork() { return fork(); }
 
-uint64 sys_wait()
+uint64_t sys_wait()
 {
-    uint64 p;
+    uint64_t p;
     argaddr(0, &p);
     return wait(p);
 }
 
-uint64 sys_sbrk()
+uint64_t sys_sbrk()
 {
-    uint64 addr;
+    uint64_t addr;
     int n;
 
     argint(0, &n);
@@ -40,10 +40,10 @@ uint64 sys_sbrk()
     return addr;
 }
 
-uint64 sys_sleep()
+uint64_t sys_sleep()
 {
     int n;
-    uint ticks0;
+    uint32_t ticks0;
 
     argint(0, &n);
     spin_lock(&g_tickslock);
@@ -61,7 +61,7 @@ uint64 sys_sleep()
     return 0;
 }
 
-uint64 sys_kill()
+uint64_t sys_kill()
 {
     int pid;
 
