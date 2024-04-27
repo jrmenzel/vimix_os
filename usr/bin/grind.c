@@ -47,7 +47,6 @@ void go(int which_child)
     int fd = -1;
     static char buf[999];
     char *break0 = sbrk(0);
-    uint64_t iters = 0;
 
     mkdir("grindir");
     if (chdir("grindir") != 0)
@@ -57,7 +56,8 @@ void go(int which_child)
     }
     chdir("/");
 
-    while (1)
+    size_t iters = 0;
+    while (true)
     {
         iters++;
         if ((iters % 500) == 0) write(1, which_child ? "B" : "A", 1);
@@ -126,7 +126,7 @@ void go(int which_child)
         }
         else if (what == 13)
         {
-            int pid = fork();
+            pid_t pid = fork();
             if (pid == 0)
             {
                 exit(0);
@@ -136,11 +136,11 @@ void go(int which_child)
                 printf("grind: fork failed\n");
                 exit(1);
             }
-            wait(0);
+            wait(NULL);
         }
         else if (what == 14)
         {
-            int pid = fork();
+            pid_t pid = fork();
             if (pid == 0)
             {
                 fork();
@@ -152,7 +152,7 @@ void go(int which_child)
                 printf("grind: fork failed\n");
                 exit(1);
             }
-            wait(0);
+            wait(NULL);
         }
         else if (what == 15)
         {
@@ -160,11 +160,14 @@ void go(int which_child)
         }
         else if (what == 16)
         {
-            if (sbrk(0) > break0) sbrk(-(sbrk(0) - break0));
+            if ((char *)sbrk(0) > break0)
+            {
+                sbrk(-((char *)sbrk(0) - break0));
+            }
         }
         else if (what == 17)
         {
-            int pid = fork();
+            pid_t pid = fork();
             if (pid == 0)
             {
                 close(open("a", O_CREATE | O_RDWR));
@@ -181,11 +184,11 @@ void go(int which_child)
                 exit(1);
             }
             kill(pid);
-            wait(0);
+            wait(NULL);
         }
         else if (what == 18)
         {
-            int pid = fork();
+            pid_t pid = fork();
             if (pid == 0)
             {
                 kill(getpid());
@@ -196,7 +199,7 @@ void go(int which_child)
                 printf("grind: fork failed\n");
                 exit(1);
             }
-            wait(0);
+            wait(NULL);
         }
         else if (what == 19)
         {
@@ -206,7 +209,7 @@ void go(int which_child)
                 printf("grind: pipe failed\n");
                 exit(1);
             }
-            int pid = fork();
+            pid_t pid = fork();
             if (pid == 0)
             {
                 fork();
@@ -225,11 +228,11 @@ void go(int which_child)
             }
             close(fds[0]);
             close(fds[1]);
-            wait(0);
+            wait(NULL);
         }
         else if (what == 20)
         {
-            int pid = fork();
+            pid_t pid = fork();
             if (pid == 0)
             {
                 unlink("a");
@@ -245,7 +248,7 @@ void go(int which_child)
                 printf("grind: fork failed\n");
                 exit(1);
             }
-            wait(0);
+            wait(NULL);
         }
         else if (what == 21)
         {
@@ -296,7 +299,7 @@ void go(int which_child)
                 fprintf(2, "grind: pipe failed\n");
                 exit(1);
             }
-            int pid1 = fork();
+            pid_t pid1 = fork();
             if (pid1 == 0)
             {
                 close(bb[0]);
@@ -319,7 +322,7 @@ void go(int which_child)
                 fprintf(2, "grind: fork failed\n");
                 exit(3);
             }
-            int pid2 = fork();
+            pid_t pid2 = fork();
             if (pid2 == 0)
             {
                 close(aa[1]);
@@ -374,7 +377,7 @@ void iter()
     unlink("a");
     unlink("b");
 
-    int pid1 = fork();
+    pid_t pid1 = fork();
     if (pid1 < 0)
     {
         printf("grind: fork failed\n");
@@ -387,7 +390,7 @@ void iter()
         exit(0);
     }
 
-    int pid2 = fork();
+    pid_t pid2 = fork();
     if (pid2 < 0)
     {
         printf("grind: fork failed\n");
@@ -415,9 +418,9 @@ void iter()
 
 int main()
 {
-    while (1)
+    while (true)
     {
-        int pid = fork();
+        pid_t pid = fork();
         if (pid == 0)
         {
             iter();
@@ -425,9 +428,11 @@ int main()
         }
         if (pid > 0)
         {
-            wait(0);
+            wait(NULL);
         }
         sleep(20);
         rand_next += 1;
     }
+
+    return 0;
 }

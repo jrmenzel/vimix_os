@@ -2,12 +2,11 @@
 
 // Sleeping locks
 
-#include <kernel/param.h>
+#include <kernel/kernel.h>
 #include <kernel/printk.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
-#include <kernel/types.h>
 #include <mm/memlayout.h>
 
 void sleep_lock_init(struct sleeplock *lk, char *name)

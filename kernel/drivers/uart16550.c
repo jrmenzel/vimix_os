@@ -48,7 +48,7 @@ char uart_tx_buf[UART_TX_BUF_SIZE];
 uint64_t uart_tx_w;  // write next to uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE]
 uint64_t uart_tx_r;  // read next from uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE]
 
-extern volatile int g_kernel_panicked;  // from printk.c
+extern volatile bool g_kernel_panicked;  // from printk.c
 
 void uartstart();
 
@@ -76,23 +76,19 @@ void uart_init()
     // enable transmit and receive interrupts.
     WriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
 
+    // init uart_16550 object
     spin_lock_init(&uart_tx_lock, "uart");
 }
 
-/// add a character to the output buffer and tell the
-/// UART to start sending if it isn't already.
-/// blocks if the output buffer is full.
-/// because it may block, it can't be called
-/// from interrupts; it's only suitable for use
-/// by write().
-void uart_putc(int c)
+void uart_putc(int32_t c)
 {
     spin_lock(&uart_tx_lock);
 
     if (g_kernel_panicked)
     {
-        for (;;)
-            ;
+        while (true)
+        {
+        }
     }
     while (uart_tx_w == uart_tx_r + UART_TX_BUF_SIZE)
     {
@@ -106,18 +102,15 @@ void uart_putc(int c)
     spin_unlock(&uart_tx_lock);
 }
 
-/// alternate version of uart_putc() that doesn't
-/// use interrupts, for use by kernel printk() and
-/// to echo characters. it spins waiting for the uart's
-/// output register to be empty.
-void uart_putc_sync(int c)
+void uart_putc_sync(int32_t c)
 {
     cpu_push_disable_device_interrupt_stack();
 
     if (g_kernel_panicked)
     {
-        for (;;)
-            ;
+        while (true)
+        {
+        }
     }
 
     // wait for Transmit Holding Empty to be set in LSR.
@@ -128,13 +121,13 @@ void uart_putc_sync(int c)
     cpu_pop_disable_device_interrupt_stack();
 }
 
-/// if the UART is idle, and a character is waiting
+/// @brief If the UART is idle, and a character is waiting
 /// in the transmit buffer, send it.
-/// caller must hold uart_tx_lock.
-/// called from both the top- and bottom-half.
+/// Caller must hold uart_tx_lock.
+/// Called from both the top- and bottom-half.
 void uartstart()
 {
-    while (1)
+    while (true)
     {
         if (uart_tx_w == uart_tx_r)
         {
@@ -150,7 +143,7 @@ void uartstart()
             return;
         }
 
-        int c = uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE];
+        int32_t c = uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE];
         uart_tx_r += 1;
 
         // maybe uart_putc() is waiting for space in the buffer.
@@ -160,9 +153,9 @@ void uartstart()
     }
 }
 
-/// read one input character from the UART.
-/// return -1 if none is waiting.
-int uart_getc()
+/// @brief Read a character from UART
+/// @return The char on success or -1 on failure
+int32_t uart_getc()
 {
     if (ReadReg(LSR) & 0x01)
     {
@@ -175,13 +168,13 @@ int uart_getc()
     }
 }
 
-/// handle a uart interrupt, raised because input has
+/// @brief Handle a uart interrupt, raised because input has
 /// arrived, or the uart is ready for more output, or
 /// both. called from interrupt_handler().
 void uart_interrupt_handler()
 {
     // read and process incoming characters.
-    while (1)
+    while (true)
     {
         int c = uart_getc();
         if (c == -1) break;

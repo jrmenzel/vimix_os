@@ -25,7 +25,6 @@ struct
 
 void file_init() { spin_lock_init(&ftable.lock, "ftable"); }
 
-/// Allocate a file structure.
 struct file *file_alloc()
 {
     struct file *f;
@@ -44,7 +43,6 @@ struct file *file_alloc()
     return 0;
 }
 
-/// Increment ref count for file f.
 struct file *file_dup(struct file *f)
 {
     spin_lock(&ftable.lock);
@@ -54,7 +52,6 @@ struct file *file_dup(struct file *f)
     return f;
 }
 
-/// Close file f.  (Decrement ref count, close when reaches 0.)
 void file_close(struct file *f)
 {
     struct file ff;
@@ -83,9 +80,7 @@ void file_close(struct file *f)
     }
 }
 
-/// Get metadata about file f.
-/// addr is a user virtual address, pointing to a struct stat.
-int file_stat(struct file *f, uint64_t addr)
+int32_t file_stat(struct file *f, size_t addr)
 {
     struct process *proc = get_current();
     struct stat st;
@@ -102,11 +97,9 @@ int file_stat(struct file *f, uint64_t addr)
     return -1;
 }
 
-/// Read from file f.
-/// addr is a user virtual address.
-int file_read(struct file *f, uint64_t addr, int n)
+ssize_t file_read(struct file *f, size_t addr, size_t n)
 {
-    int read_bytes = 0;
+    ssize_t read_bytes = 0;
 
     if (f->readable == 0) return -1;
 
@@ -123,7 +116,7 @@ int file_read(struct file *f, uint64_t addr, int n)
     else if (f->type == FD_INODE)
     {
         inode_lock(f->ip);
-        if ((read_bytes = inode_read(f->ip, 1, addr, f->off, n)) > 0)
+        if ((read_bytes = inode_read(f->ip, true, addr, f->off, n)) > 0)
             f->off += read_bytes;
         inode_unlock(f->ip);
     }
@@ -135,11 +128,9 @@ int file_read(struct file *f, uint64_t addr, int n)
     return read_bytes;
 }
 
-/// Write to file f.
-/// addr is a user virtual address.
-int file_write(struct file *f, uint64_t addr, int n)
+ssize_t file_write(struct file *f, size_t addr, size_t n)
 {
-    int r, ret = 0;
+    ssize_t r, ret = 0;
 
     if (f->writable == 0) return -1;
 
@@ -161,16 +152,16 @@ int file_write(struct file *f, uint64_t addr, int n)
         // and 2 blocks of slop for non-aligned writes.
         // this really belongs lower down, since inode_write()
         // might be writing a device like the console.
-        int max = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * BLOCK_SIZE;
-        int i = 0;
+        ssize_t max = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * BLOCK_SIZE;
+        ssize_t i = 0;
         while (i < n)
         {
-            int n1 = n - i;
+            ssize_t n1 = n - i;
             if (n1 > max) n1 = max;
 
             log_begin_fs_transaction();
             inode_lock(f->ip);
-            if ((r = inode_write(f->ip, 1, addr + i, f->off, n1)) > 0)
+            if ((r = inode_write(f->ip, true, addr + i, f->off, n1)) > 0)
                 f->off += r;
             inode_unlock(f->ip);
             log_end_fs_transaction();

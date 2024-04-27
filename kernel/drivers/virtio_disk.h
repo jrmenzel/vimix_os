@@ -45,6 +45,9 @@ struct virtio_disk
     struct spinlock vdisk_lock;
 };
 
+/// @brief Inits the virtio disk driver (for qemu) and inits the hardware.
 void virtio_disk_init();
-void virtio_disk_rw(struct buf *, int);
+
+void virtio_disk_rw(struct buf *b, bool write);
+
 void virtio_disk_intr();

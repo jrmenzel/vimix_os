@@ -40,7 +40,7 @@ void grep(char *pattern, int fd)
 
 int main(int argc, char *argv[])
 {
-    int fd, i;
+    int fd;
     char *pattern;
 
     if (argc <= 1)
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    for (i = 2; i < argc; i++)
+    for (size_t i = 2; i < argc; i++)
     {
         if ((fd = open(argv[i], 0)) < 0)
         {

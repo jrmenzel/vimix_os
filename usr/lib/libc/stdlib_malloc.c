@@ -62,7 +62,7 @@ static Header *morecore(uint32_t nu)
     return freep;
 }
 
-void *malloc(uint32_t nbytes)
+void *malloc(size_t nbytes)
 {
     Header *p, *prevp;
     uint32_t nunits;

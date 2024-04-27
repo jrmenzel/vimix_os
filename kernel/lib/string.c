@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <kernel/types.h>
+#include <kernel/kernel.h>
+#include <kernel/string.h>
 
-void *memset(void *dst, int c, uint32_t n)
+void *memset(void *dst, int c, size_t n)
 {
     char *cdst = (char *)dst;
-    int i;
-    for (i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
     {
-        cdst[i] = c;
+        cdst[i] = (char)c;
     }
     return dst;
 }
 
-int memcmp(const void *v1, const void *v2, uint32_t n)
+int memcmp(const void *v1, const void *v2, size_t n)
 {
     const uchar *s1, *s2;
 
@@ -28,53 +28,67 @@ int memcmp(const void *v1, const void *v2, uint32_t n)
     return 0;
 }
 
-void *memmove(void *dst, const void *src, uint32_t n)
+void *memmove(void *dst, const void *src, size_t n)
 {
+    ssize_t signed_n = n;
     const char *s;
     char *d;
 
-    if (n == 0) return dst;
+    if (signed_n == 0) return dst;
 
     s = src;
     d = dst;
-    if (s < d && s + n > d)
+    if (s < d && s + signed_n > d)
     {
-        s += n;
-        d += n;
-        while (n-- > 0) *--d = *--s;
+        s += signed_n;
+        d += signed_n;
+        while (signed_n-- > 0) *--d = *--s;
     }
     else
-        while (n-- > 0) *d++ = *s++;
+        while (signed_n-- > 0) *d++ = *s++;
 
     return dst;
 }
 
-/// memcpy exists to placate GCC.  Use memmove.
-void *memcpy(void *dst, const void *src, uint32_t n)
+void *memcpy(void *dst, const void *src, size_t n)
 {
     return memmove(dst, src, n);
 }
 
-int strncmp(const char *p, const char *q, uint32_t n)
+int strncmp(const char *p, const char *q, size_t n)
 {
     while (n > 0 && *p && *p == *q) n--, p++, q++;
     if (n == 0) return 0;
     return (uchar)*p - (uchar)*q;
 }
 
-char *strncpy(char *s, const char *t, int n)
+char *strncpy(char *s, const char *t, size_t n)
 {
-    char *os;
+    char *input_dst = s;
 
-    os = s;
-    while (n-- > 0 && (*s++ = *t++) != 0)
-        ;
-    while (n-- > 0) *s++ = 0;
-    return os;
+    while (n)
+    {
+        n--;
+        // copy char and test for null terminator
+        const char current_char = (*s++ = *t++);
+        if (current_char == '\0')
+        {
+            break;
+        }
+    }
+
+    // fill string with 0
+    while (n)
+    {
+        n--;
+        *s++ = 0;
+    }
+
+    return input_dst;
 }
 
 /// Like strncpy but guaranteed to NUL-terminate.
-char *safestrcpy(char *s, const char *t, int n)
+char *safestrcpy(char *s, const char *t, size_t n)
 {
     char *os;
 
@@ -86,9 +100,9 @@ char *safestrcpy(char *s, const char *t, int n)
     return os;
 }
 
-int strlen(const char *s)
+size_t strlen(const char *s)
 {
-    int n;
+    size_t n;
 
     for (n = 0; s[n]; n++)
         ;

@@ -38,10 +38,11 @@ void bio_init()
     }
 }
 
-/// Look through buffer cache for block on device dev.
+/// Look through buffer cache for the requested block on device dev.
+/// If the block was cached, increase the ref count and return.
 /// If not found, allocate a buffer.
-/// In either case, return locked buffer.
-static struct buf *bget(uint32_t dev, uint32_t blockno)
+/// In either case, return a locked buffer.
+static struct buf *bget(dev_t dev, uint32_t blockno)
 {
     struct buf *b;
 
@@ -77,7 +78,6 @@ static struct buf *bget(uint32_t dev, uint32_t blockno)
     panic("bget: no buffers");
 }
 
-/// Return a locked buf with the contents of the indicated block.
 struct buf *bio_read(uint32_t dev, uint32_t blockno)
 {
     struct buf *b;
@@ -91,15 +91,12 @@ struct buf *bio_read(uint32_t dev, uint32_t blockno)
     return b;
 }
 
-/// Write b's contents to disk.  Must be locked.
 void bio_write(struct buf *b)
 {
     if (!sleep_lock_is_held_by_this_cpu(&b->lock)) panic("bio_write");
     virtio_disk_rw(b, 1);
 }
 
-/// Release a locked buffer.
-/// Move to the head of the most-recently-used list.
 void bio_release(struct buf *b)
 {
     if (!sleep_lock_is_held_by_this_cpu(&b->lock)) panic("bio_release");

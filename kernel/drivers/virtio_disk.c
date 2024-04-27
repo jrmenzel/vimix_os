@@ -28,8 +28,6 @@ struct virtio_disk g_virtio_disk;
 
 void virtio_disk_init()
 {
-    uint32_t status = 0;
-
     spin_lock_init(&g_virtio_disk.vdisk_lock, "virtio_disk");
 
     if (*R(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 ||
@@ -39,6 +37,7 @@ void virtio_disk_init()
         panic("could not find virtio disk");
     }
 
+    uint32_t status = 0;
     // reset device
     *R(VIRTIO_MMIO_STATUS) = status;
 
@@ -51,7 +50,7 @@ void virtio_disk_init()
     *R(VIRTIO_MMIO_STATUS) = status;
 
     // negotiate features
-    uint64_t features = *R(VIRTIO_MMIO_DEVICE_FEATURES);
+    uint32_t features = *R(VIRTIO_MMIO_DEVICE_FEATURES);
     features &= ~(1 << VIRTIO_BLK_F_RO);
     features &= ~(1 << VIRTIO_BLK_F_SCSI);
     features &= ~(1 << VIRTIO_BLK_F_CONFIG_WCE);
@@ -95,18 +94,21 @@ void virtio_disk_init()
     *R(VIRTIO_MMIO_QUEUE_VIRTIO_DESCRIPTORS) = VIRTIO_DESCRIPTORS;
 
     // write physical addresses.
-    *R(VIRTIO_MMIO_QUEUE_DESC_LOW) = (uint64_t)g_virtio_disk.desc;
-    *R(VIRTIO_MMIO_QUEUE_DESC_HIGH) = (uint64_t)g_virtio_disk.desc >> 32;
-    *R(VIRTIO_MMIO_DRIVER_DESC_LOW) = (uint64_t)g_virtio_disk.avail;
-    *R(VIRTIO_MMIO_DRIVER_DESC_HIGH) = (uint64_t)g_virtio_disk.avail >> 32;
-    *R(VIRTIO_MMIO_DEVICE_DESC_LOW) = (uint64_t)g_virtio_disk.used;
-    *R(VIRTIO_MMIO_DEVICE_DESC_HIGH) = (uint64_t)g_virtio_disk.used >> 32;
+    *R(VIRTIO_MMIO_QUEUE_DESC_LOW) = (size_t)g_virtio_disk.desc;
+    *R(VIRTIO_MMIO_QUEUE_DESC_HIGH) = (size_t)g_virtio_disk.desc >> 32;
+    *R(VIRTIO_MMIO_DRIVER_DESC_LOW) = (size_t)g_virtio_disk.avail;
+    *R(VIRTIO_MMIO_DRIVER_DESC_HIGH) = (size_t)g_virtio_disk.avail >> 32;
+    *R(VIRTIO_MMIO_DEVICE_DESC_LOW) = (size_t)g_virtio_disk.used;
+    *R(VIRTIO_MMIO_DEVICE_DESC_HIGH) = (size_t)g_virtio_disk.used >> 32;
 
     // queue is ready.
     *R(VIRTIO_MMIO_QUEUE_READY) = 0x1;
 
     // all VIRTIO_DESCRIPTORS descriptors start out unused.
-    for (int i = 0; i < VIRTIO_DESCRIPTORS; i++) g_virtio_disk.free[i] = 1;
+    for (size_t i = 0; i < VIRTIO_DESCRIPTORS; i++)
+    {
+        g_virtio_disk.free[i] = 1;
+    }
 
     // tell device we're completely ready.
     status |= VIRTIO_CONFIG_S_DRIVER_OK;
@@ -116,9 +118,9 @@ void virtio_disk_init()
 }
 
 /// find a free descriptor, mark it non-free, return its index.
-static int alloc_desc()
+static int32_t alloc_desc()
 {
-    for (int i = 0; i < VIRTIO_DESCRIPTORS; i++)
+    for (size_t i = 0; i < VIRTIO_DESCRIPTORS; i++)
     {
         if (g_virtio_disk.free[i])
         {
@@ -130,10 +132,16 @@ static int alloc_desc()
 }
 
 /// mark a descriptor as free.
-static void free_desc(int i)
+static void free_desc(int32_t i)
 {
-    if (i >= VIRTIO_DESCRIPTORS) panic("free_desc 1");
-    if (g_virtio_disk.free[i]) panic("free_desc 2");
+    if (i >= VIRTIO_DESCRIPTORS)
+    {
+        panic("free_desc: i too large");
+    }
+    if (g_virtio_disk.free[i])
+    {
+        panic("free_desc: double free");
+    }
     g_virtio_disk.desc[i].addr = 0;
     g_virtio_disk.desc[i].len = 0;
     g_virtio_disk.desc[i].flags = 0;
@@ -143,37 +151,44 @@ static void free_desc(int i)
 }
 
 /// free a chain of descriptors.
-static void free_chain(int i)
+static void free_chain(int32_t i)
 {
-    while (1)
+    while (true)
     {
-        int flag = g_virtio_disk.desc[i].flags;
-        int nxt = g_virtio_disk.desc[i].next;
+        int32_t flag = g_virtio_disk.desc[i].flags;
+        int32_t nxt = g_virtio_disk.desc[i].next;
         free_desc(i);
         if (flag & VRING_DESC_F_NEXT)
+        {
             i = nxt;
+        }
         else
+        {
             break;
+        }
     }
 }
 
 /// allocate three descriptors (they need not be contiguous).
 /// disk transfers always use three descriptors.
-static int alloc3_desc(int *idx)
+static int32_t alloc3_desc(int32_t *idx)
 {
-    for (int i = 0; i < 3; i++)
+    for (size_t i = 0; i < 3; i++)
     {
         idx[i] = alloc_desc();
         if (idx[i] < 0)
         {
-            for (int j = 0; j < i; j++) free_desc(idx[j]);
+            for (size_t j = 0; j < i; j++)
+            {
+                free_desc(idx[j]);
+            }
             return -1;
         }
     }
     return 0;
 }
 
-void virtio_disk_rw(struct buf *b, int write)
+void virtio_disk_rw(struct buf *b, bool write)
 {
     uint64_t sector = b->blockno * (BLOCK_SIZE / 512);
 
@@ -184,8 +199,8 @@ void virtio_disk_rw(struct buf *b, int write)
     // data, one for a 1-byte status result.
 
     // allocate the three descriptors.
-    int idx[3];
-    while (1)
+    int32_t idx[3];
+    while (true)
     {
         if (alloc3_desc(idx) == 0)
         {
@@ -200,30 +215,38 @@ void virtio_disk_rw(struct buf *b, int write)
     struct virtio_blk_req *buf0 = &g_virtio_disk.ops[idx[0]];
 
     if (write)
+    {
         buf0->type = VIRTIO_BLK_T_OUT;  // write the disk
+    }
     else
+    {
         buf0->type = VIRTIO_BLK_T_IN;  // read the disk
+    }
     buf0->reserved = 0;
     buf0->sector = sector;
 
-    g_virtio_disk.desc[idx[0]].addr = (uint64_t)buf0;
+    g_virtio_disk.desc[idx[0]].addr = (size_t)buf0;
     g_virtio_disk.desc[idx[0]].len = sizeof(struct virtio_blk_req);
     g_virtio_disk.desc[idx[0]].flags = VRING_DESC_F_NEXT;
     g_virtio_disk.desc[idx[0]].next = idx[1];
 
-    g_virtio_disk.desc[idx[1]].addr = (uint64_t)b->data;
+    g_virtio_disk.desc[idx[1]].addr = (size_t)b->data;
     g_virtio_disk.desc[idx[1]].len = BLOCK_SIZE;
     if (write)
+    {
         g_virtio_disk.desc[idx[1]].flags = 0;  // device reads b->data
+    }
     else
+    {
         g_virtio_disk.desc[idx[1]].flags =
             VRING_DESC_F_WRITE;  // device writes b->data
+    }
     g_virtio_disk.desc[idx[1]].flags |= VRING_DESC_F_NEXT;
     g_virtio_disk.desc[idx[1]].next = idx[2];
 
     g_virtio_disk.info[idx[0]].status = 0xff;  // device writes 0 on success
     g_virtio_disk.desc[idx[2]].addr =
-        (uint64_t)&g_virtio_disk.info[idx[0]].status;
+        (size_t)&g_virtio_disk.info[idx[0]].status;
     g_virtio_disk.desc[idx[2]].len = 1;
     g_virtio_disk.desc[idx[2]].flags =
         VRING_DESC_F_WRITE;  // device writes the status

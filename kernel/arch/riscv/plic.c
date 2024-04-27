@@ -19,7 +19,7 @@ void plic_init()
 
 void plic_init_per_cpu()
 {
-    int hart = smp_processor_id();
+    size_t hart = smp_processor_id();
 
     // set enable bits for this hart's S-mode
     // for the uart and virtio disk.
@@ -29,17 +29,15 @@ void plic_init_per_cpu()
     *(uint32_t*)PLIC_SPRIORITY(hart) = 0;
 }
 
-/// ask the PLIC what interrupt we should serve.
-int plic_claim()
+int32_t plic_claim()
 {
-    int hart = smp_processor_id();
-    int irq = *(uint32_t*)PLIC_SCLAIM(hart);
+    size_t hart = smp_processor_id();
+    int32_t irq = *(uint32_t*)PLIC_SCLAIM(hart);
     return irq;
 }
 
-/// tell the PLIC we've served this IRQ.
-void plic_complete(int irq)
+void plic_complete(int32_t irq)
 {
-    int hart = smp_processor_id();
+    size_t hart = smp_processor_id();
     *(uint32_t*)PLIC_SCLAIM(hart) = irq;
 }

@@ -4,6 +4,7 @@
 #include <kernel/file.h>
 #include <kernel/kernel.h>
 #include <kernel/spinlock.h>
+#include <mm/mm.h>
 
 #define PIPESIZE 512
 
@@ -11,13 +12,37 @@ struct pipe
 {
     struct spinlock lock;
     char data[PIPESIZE];
-    uint32_t nread;   ///< number of bytes read
-    uint32_t nwrite;  ///< number of bytes written
-    int readopen;     ///< read fd is still open
-    int writeopen;    ///< write fd is still open
+    size_t nread;    ///< number of bytes read
+    size_t nwrite;   ///< number of bytes written
+    bool readopen;   ///< read fd is still open
+    bool writeopen;  ///< write fd is still open
 };
+_Static_assert(sizeof(struct pipe) <= PAGE_SIZE, "struct pipe too big");
 
-int pipe_alloc(struct file**, struct file**);
-void pipe_close(struct pipe*, int);
-int pipe_read(struct pipe*, uint64_t, int);
-int pipe_write(struct pipe*, uint64_t, int);
+/// @brief Creates a pipe: two files and a struct pipe in the
+/// background.
+/// @param f0 read end
+/// @param f1 write end
+/// @return 0 on success
+int32_t pipe_alloc(struct file **f0, struct file **f1);
+
+/// @brief Close the pipe, called from the files belonging
+/// to this pipe. After being called from both files it will
+/// free the pipe *pipe.
+/// @param pipe Pipe to close from either the reading or writing end.
+/// @param close_writing_end If true close from the writing end.
+void pipe_close(struct pipe *pipe, bool close_writing_end);
+
+/// @brief Read up to n bytes from the pipe.
+/// @param pipe Pipe to read from.
+/// @param dst_va Destination address in user virtual address space.
+/// @param n Max number of bytes to read.
+/// @return Number of bytes read or -1 on error.
+ssize_t pipe_read(struct pipe *pipe, size_t src_kernel_addr, size_t n);
+
+/// @brief Write up to n bytes to a pipe.
+/// @param pipe Pipe to write to.
+/// @param src_va Source address of data in user virtual address space.
+/// @param n Max number of bytes to write.
+/// @return Number of bytes written or -1 on error.
+ssize_t pipe_write(struct pipe *pipe, size_t src_user_addr, size_t n);

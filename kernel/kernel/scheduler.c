@@ -9,16 +9,16 @@ extern struct process g_process_list[MAX_PROCS];
 
 void scheduler()
 {
-    struct process *proc;
     struct cpu *cpu = get_cpu();
+    cpu->proc = NULL;
 
-    cpu->proc = 0;
-    for (;;)
+    while (true)
     {
         // Avoid deadlock by ensuring that devices can interrupt.
         cpu_enable_device_interrupts();
 
-        for (proc = g_process_list; proc < &g_process_list[MAX_PROCS]; proc++)
+        for (struct process *proc = g_process_list;
+             proc < &g_process_list[MAX_PROCS]; proc++)
         {
             spin_lock(&proc->lock);
             if (proc->state == RUNNABLE)
@@ -32,7 +32,7 @@ void scheduler()
 
                 // Process is done running for now.
                 // It should have changed its proc->state before coming back.
-                cpu->proc = 0;
+                cpu->proc = NULL;
             }
             spin_unlock(&proc->lock);
         }

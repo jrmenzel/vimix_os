@@ -115,7 +115,7 @@ void *memmove(void *vdst, const void *vsrc, int n)
     return vdst;
 }
 
-int memcmp(const void *s1, const void *s2, uint32_t n)
+int32_t memcmp(const void *s1, const void *s2, size_t n)
 {
     const char *p1 = s1, *p2 = s2;
     while (n-- > 0)

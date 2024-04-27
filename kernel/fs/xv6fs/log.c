@@ -10,24 +10,25 @@
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
-#include <kernel/types.h>
 
 /// Contents of the header block, used for both the on-disk header block
 /// and to keep track in memory of logged block# before commit.
 struct logheader
 {
-    int n;
-    int block[LOGSIZE];
+    int32_t n;
+    int32_t block[LOGSIZE];
 };
+_Static_assert((sizeof(struct logheader) < BLOCK_SIZE),
+               "Size incorrect for logheader! Must be smaller than one page.");
 
 struct log
 {
     struct spinlock lock;
-    int start;
-    int size;
-    int outstanding;  // how many FS sys calls are executing.
-    int committing;   // in commit(), please wait.
-    int dev;
+    int32_t start;
+    int32_t size;
+    int32_t outstanding;  // how many FS sys calls are executing.
+    int32_t committing;   // in commit(), please wait.
+    dev_t dev;
     struct logheader lh;
 };
 struct log g_log;
@@ -35,7 +36,7 @@ struct log g_log;
 static void recover_from_log();
 static void commit();
 
-void log_init(int dev, struct xv6fs_superblock *sb)
+void log_init(dev_t dev, struct xv6fs_superblock *sb)
 {
     if (sizeof(struct logheader) >= BLOCK_SIZE)
         panic("log_init: too big logheader");
@@ -48,11 +49,9 @@ void log_init(int dev, struct xv6fs_superblock *sb)
 }
 
 /// Copy committed blocks from g_log to their home location
-static void install_trans(int recovering)
+static void install_trans(int32_t recovering)
 {
-    int tail;
-
-    for (tail = 0; tail < g_log.lh.n; tail++)
+    for (int32_t tail = 0; tail < g_log.lh.n; tail++)
     {
         struct buf *lbuf =
             bio_read(g_log.dev, g_log.start + tail + 1);  // read log block
@@ -60,7 +59,10 @@ static void install_trans(int recovering)
             bio_read(g_log.dev, g_log.lh.block[tail]);  // read dst
         memmove(dbuf->data, lbuf->data, BLOCK_SIZE);    // copy block to dst
         bio_write(dbuf);                                // write dst to disk
-        if (recovering == 0) bio_unpin(dbuf);
+        if (recovering == 0)
+        {
+            bio_unpin(dbuf);
+        }
         bio_release(lbuf);
         bio_release(dbuf);
     }
@@ -71,9 +73,9 @@ static void read_head()
 {
     struct buf *buf = bio_read(g_log.dev, g_log.start);
     struct logheader *lh = (struct logheader *)(buf->data);
-    int i;
     g_log.lh.n = lh->n;
-    for (i = 0; i < g_log.lh.n; i++)
+
+    for (size_t i = 0; i < g_log.lh.n; i++)
     {
         g_log.lh.block[i] = lh->block[i];
     }
@@ -87,9 +89,8 @@ static void write_head()
 {
     struct buf *buf = bio_read(g_log.dev, g_log.start);
     struct logheader *hb = (struct logheader *)(buf->data);
-    int i;
     hb->n = g_log.lh.n;
-    for (i = 0; i < g_log.lh.n; i++)
+    for (size_t i = 0; i < g_log.lh.n; i++)
     {
         hb->block[i] = g_log.lh.block[i];
     }
@@ -109,7 +110,7 @@ static void recover_from_log()
 void log_begin_fs_transaction()
 {
     spin_lock(&g_log.lock);
-    while (1)
+    while (true)
     {
         if (g_log.committing)
         {
@@ -133,14 +134,17 @@ void log_begin_fs_transaction()
 /// commits if this was the last outstanding operation.
 void log_end_fs_transaction()
 {
-    int do_commit = 0;
+    bool do_commit = false;
 
     spin_lock(&g_log.lock);
     g_log.outstanding -= 1;
-    if (g_log.committing) panic("g_log.committing");
+    if (g_log.committing)
+    {
+        panic("g_log.committing");
+    }
     if (g_log.outstanding == 0)
     {
-        do_commit = 1;
+        do_commit = true;
         g_log.committing = 1;
     }
     else
@@ -167,9 +171,7 @@ void log_end_fs_transaction()
 /// Copy modified blocks from cache to log.
 static void write_log()
 {
-    int tail;
-
-    for (tail = 0; tail < g_log.lh.n; tail++)
+    for (int32_t tail = 0; tail < g_log.lh.n; tail++)
     {
         struct buf *to =
             bio_read(g_log.dev, g_log.start + tail + 1);  // log block
@@ -196,13 +198,12 @@ static void commit()
 
 void log_write(struct buf *b)
 {
-    int i;
-
     spin_lock(&g_log.lock);
     if (g_log.lh.n >= LOGSIZE || g_log.lh.n >= g_log.size - 1)
         panic("too big a transaction");
     if (g_log.outstanding < 1) panic("log_write outside of trans");
 
+    int32_t i;
     for (i = 0; i < g_log.lh.n; i++)
     {
         if (g_log.lh.block[i] == b->blockno)  // log absorption

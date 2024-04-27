@@ -14,14 +14,13 @@
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
-#include <kernel/param.h>
+#include <kernel/kernel.h>
 #include <kernel/printk.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/stat.h>
 #include <kernel/string.h>
-#include <kernel/types.h>
 #include <kernel/vm.h>
 #include <syscalls/syscall.h>
 
@@ -33,72 +32,72 @@ static int argfd(int n, int *pfd, struct file **pf)
     struct file *f;
 
     argint(n, &fd);
-    if (fd < 0 || fd >= NOFILE || (f = get_current()->files[fd]) == 0)
+    if (fd < 0 || fd >= NOFILE || (f = get_current()->files[fd]) == NULL)
         return -1;
     if (pfd) *pfd = fd;
     if (pf) *pf = f;
     return 0;
 }
 
-uint64_t sys_dup()
+size_t sys_dup()
 {
     struct file *f;
     int fd;
 
-    if (argfd(0, 0, &f) < 0) return -1;
+    if (argfd(0, NULL, &f) < 0) return -1;
     if ((fd = fd_alloc(f)) < 0) return -1;
     file_dup(f);
     return fd;
 }
 
-uint64_t sys_read()
+size_t sys_read()
 {
     struct file *f;
-    int n;
-    uint64_t buffer;
+    size_t buffer;
 
     argaddr(1, &buffer);
+
+    int32_t n;
     argint(2, &n);
-    if (argfd(0, 0, &f) < 0) return -1;
+    if (argfd(0, NULL, &f) < 0) return -1;
     return file_read(f, buffer, n);
 }
 
-uint64_t sys_write()
+size_t sys_write()
 {
     struct file *f;
-    int n;
-    uint64_t buffer;
-
+    size_t buffer;
     argaddr(1, &buffer);
+
+    int32_t n;
     argint(2, &n);
-    if (argfd(0, 0, &f) < 0) return -1;
+    if (argfd(0, NULL, &f) < 0) return -1;
 
     return file_write(f, buffer, n);
 }
 
-uint64_t sys_close()
+size_t sys_close()
 {
     int fd;
     struct file *f;
 
     if (argfd(0, &fd, &f) < 0) return -1;
-    get_current()->files[fd] = 0;
+    get_current()->files[fd] = NULL;
     file_close(f);
     return 0;
 }
 
-uint64_t sys_fstat()
+size_t sys_fstat()
 {
     struct file *f;
-    uint64_t stat_buffer;  // user pointer to struct stat
+    size_t stat_buffer;  // user pointer to struct stat
 
     argaddr(1, &stat_buffer);
-    if (argfd(0, 0, &f) < 0) return -1;
+    if (argfd(0, NULL, &f) < 0) return -1;
     return file_stat(f, stat_buffer);
 }
 
-/// Create the path path_to as a link to the same inode as path_from.
-uint64_t sys_link()
+size_t sys_link()
 {
     char name[XV6_NAME_MAX], path_to[MAXPATH], path_from[MAXPATH];
     struct inode *dir, *ip;
@@ -107,7 +106,7 @@ uint64_t sys_link()
         return -1;
 
     log_begin_fs_transaction();
-    if ((ip = inode_from_path(path_from)) == 0)
+    if ((ip = inode_from_path(path_from)) == NULL)
     {
         log_end_fs_transaction();
         return -1;
@@ -125,7 +124,7 @@ uint64_t sys_link()
     inode_update(ip);
     inode_unlock(ip);
 
-    if ((dir = inode_of_parent_from_path(path_to, name)) == 0) goto bad;
+    if ((dir = inode_of_parent_from_path(path_to, name)) == NULL) goto bad;
     inode_lock(dir);
     if (dir->dev != ip->dev || inode_dir_link(dir, name, ip->inum) < 0)
     {
@@ -151,19 +150,18 @@ bad:
 /// Is the directory dp empty except for "." and ".." ?
 static int isdirempty(struct inode *dir)
 {
-    int off;
     struct xv6fs_dirent de;
 
-    for (off = 2 * sizeof(de); off < dir->size; off += sizeof(de))
+    for (size_t off = 2 * sizeof(de); off < dir->size; off += sizeof(de))
     {
-        if (inode_read(dir, 0, (uint64_t)&de, off, sizeof(de)) != sizeof(de))
+        if (inode_read(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
             panic("isdirempty: inode_read");
         if (de.inum != 0) return 0;
     }
     return 1;
 }
 
-uint64_t sys_unlink()
+size_t sys_unlink()
 {
     struct inode *ip, *dir;
     struct xv6fs_dirent de;
@@ -173,7 +171,7 @@ uint64_t sys_unlink()
     if (argstr(0, path, MAXPATH) < 0) return -1;
 
     log_begin_fs_transaction();
-    if ((dir = inode_of_parent_from_path(path, name)) == 0)
+    if ((dir = inode_of_parent_from_path(path, name)) == NULL)
     {
         log_end_fs_transaction();
         return -1;
@@ -185,7 +183,7 @@ uint64_t sys_unlink()
     if (file_name_cmp(name, ".") == 0 || file_name_cmp(name, "..") == 0)
         goto bad;
 
-    if ((ip = inode_dir_lookup(dir, name, &off)) == 0) goto bad;
+    if ((ip = inode_dir_lookup(dir, name, &off)) == NULL) goto bad;
     inode_lock(ip);
 
     if (ip->nlink < 1) panic("unlink: nlink < 1");
@@ -196,7 +194,7 @@ uint64_t sys_unlink()
     }
 
     memset(&de, 0, sizeof(de));
-    if (inode_write(dir, 0, (uint64_t)&de, off, sizeof(de)) != sizeof(de))
+    if (inode_write(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
         panic("unlink: inode_write");
     if (ip->type == XV6_FT_DIR)
     {
@@ -224,11 +222,11 @@ static struct inode *create(char *path, short type, short major, short minor)
     struct inode *ip, *dir;
     char name[XV6_NAME_MAX];
 
-    if ((dir = inode_of_parent_from_path(path, name)) == 0) return 0;
+    if ((dir = inode_of_parent_from_path(path, name)) == NULL) return 0;
 
     inode_lock(dir);
 
-    if ((ip = inode_dir_lookup(dir, name, 0)) != 0)
+    if ((ip = inode_dir_lookup(dir, name, 0)) != NULL)
     {
         inode_unlock_put(dir);
         inode_lock(ip);
@@ -239,7 +237,7 @@ static struct inode *create(char *path, short type, short major, short minor)
         return 0;
     }
 
-    if ((ip = inode_alloc(dir->dev, type)) == 0)
+    if ((ip = inode_alloc(dir->dev, type)) == NULL)
     {
         inode_unlock_put(dir);
         return 0;
@@ -281,7 +279,7 @@ fail:
     return 0;
 }
 
-uint64_t sys_open()
+size_t sys_open()
 {
     char path[MAXPATH];
     int fd, flags;
@@ -305,7 +303,7 @@ uint64_t sys_open()
     }
     else
     {
-        if ((ip = inode_from_path(path)) == 0)
+        if ((ip = inode_from_path(path)) == NULL)
         {
             log_end_fs_transaction();
             return -1;
@@ -359,7 +357,7 @@ uint64_t sys_open()
     return fd;
 }
 
-uint64_t sys_mkdir()
+size_t sys_mkdir()
 {
     char path[MAXPATH];
     struct inode *ip;
@@ -376,7 +374,7 @@ uint64_t sys_mkdir()
     return 0;
 }
 
-uint64_t sys_mknod()
+size_t sys_mknod()
 {
     struct inode *ip;
     char path[MAXPATH];
@@ -396,7 +394,7 @@ uint64_t sys_mknod()
     return 0;
 }
 
-uint64_t sys_chdir()
+size_t sys_chdir()
 {
     char path[MAXPATH];
     struct inode *ip;
@@ -422,11 +420,10 @@ uint64_t sys_chdir()
     return 0;
 }
 
-uint64_t sys_execv()
+size_t sys_execv()
 {
     char path[MAXPATH], *argv[MAX_EXEC_ARGS];
-    int i;
-    uint64_t uargv, uarg;
+    size_t uargv, uarg;
 
     argaddr(1, &uargv);
     if (argstr(0, path, MAXPATH) < 0)
@@ -434,13 +431,13 @@ uint64_t sys_execv()
         return -1;
     }
     memset(argv, 0, sizeof(argv));
-    for (i = 0;; i++)
+    for (size_t i = 0;; i++)
     {
         if (i >= NELEM(argv))
         {
             goto bad;
         }
-        if (fetchaddr(uargv + sizeof(uint64_t) * i, (uint64_t *)&uarg) < 0)
+        if (fetchaddr(uargv + sizeof(size_t) * i, (size_t *)&uarg) < 0)
         {
             goto bad;
         }
@@ -450,17 +447,22 @@ uint64_t sys_execv()
             break;
         }
         argv[i] = kalloc();
-        if (argv[i] == 0) goto bad;
+        if (argv[i] == NULL) goto bad;
         if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0) goto bad;
     }
 
-    int ret = execv(path, argv);
+    size_t ret = execv(path, argv);
 
-    for (i = 0; i < NELEM(argv) && argv[i] != 0; i++) kfree(argv[i]);
-
+    for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    {
+        kfree(argv[i]);
+    }
     return ret;
 
 bad:
-    for (i = 0; i < NELEM(argv) && argv[i] != 0; i++) kfree(argv[i]);
+    for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    {
+        kfree(argv[i]);
+    }
     return -1;
 }

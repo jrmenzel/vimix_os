@@ -7,21 +7,22 @@
 
 void main();
 
-/// entry.S needs one stack per CPU.
-__attribute__((aligned(16))) char g_kernel_cpu_stack[4096 * MAX_CPUS];
+/// entry.S needs one kernel stack per CPU (4KB each)
+/// As long as the kernel stack is fixed at 4K, recursion can be deadly.
+__attribute__((aligned(16))) char g_kernel_cpu_stack[PAGE_SIZE * MAX_CPUS];
 
 /// entry.S jumps here in machine mode on g_kernel_cpu_stack.
 void start()
 {
     // set M Previous Privilege mode to Supervisor, for mret.
-    unsigned long x = r_mstatus();
+    xlen_t x = r_mstatus();
     x &= ~MSTATUS_MPP_MASK;
     x |= MSTATUS_MPP_S;
     w_mstatus(x);
 
     // set M Exception Program Counter to main, for mret.
     // requires gcc -mcmodel=medany
-    w_mepc((uint64_t)main);
+    w_mepc((xlen_t)main);
 
     // disable paging for now.
     cpu_set_page_table(0);
@@ -40,7 +41,7 @@ void start()
     clint_init_timer_interrupt();
 
     // keep each CPU's hartid in its tp register, for smp_processor_id().
-    int id = r_mhartid();
+    xlen_t id = r_mhartid();
     w_tp(id);
 
     // switch to supervisor mode and jump to main().

@@ -10,28 +10,30 @@
 #include <kernel/string.h>
 #include <mm/memlayout.h>
 
-uint64_t sys_exit()
+size_t sys_exit()
 {
-    int n;
-    argint(0, &n);
-    exit(n);
+    // parameter 0: int32_t status
+    int32_t status;
+    argint(0, &status);
+
+    exit(status);
     return 0;  // not reached
 }
 
-uint64_t sys_getpid() { return get_current()->pid; }
+size_t sys_getpid() { return get_current()->pid; }
 
-uint64_t sys_fork() { return fork(); }
+size_t sys_fork() { return fork(); }
 
-uint64_t sys_wait()
+size_t sys_wait()
 {
-    uint64_t p;
+    size_t p;
     argaddr(0, &p);
-    return wait(p);
+    return wait((int32_t *)p);
 }
 
-uint64_t sys_sbrk()
+size_t sys_sbrk()
 {
-    uint64_t addr;
+    size_t addr;
     int n;
 
     argint(0, &n);
@@ -40,14 +42,13 @@ uint64_t sys_sbrk()
     return addr;
 }
 
-uint64_t sys_sleep()
+size_t sys_sleep()
 {
+    // parameter 0: seconds
     int n;
-    uint32_t ticks0;
-
     argint(0, &n);
     spin_lock(&g_tickslock);
-    ticks0 = g_ticks;
+    size_t ticks0 = g_ticks;
     while (g_ticks - ticks0 < n)
     {
         if (proc_is_killed(get_current()))
@@ -61,7 +62,7 @@ uint64_t sys_sleep()
     return 0;
 }
 
-uint64_t sys_kill()
+size_t sys_kill()
 {
     int pid;
 

@@ -13,13 +13,13 @@ void print(const char *s) { write(1, s, strlen(s)); }
 
 void forktest()
 {
-    int n, pid;
+    int n;
 
     print("fork test\n");
 
     for (n = 0; n < N; n++)
     {
-        pid = fork();
+        pid_t pid = fork();
         if (pid < 0) break;
         if (pid == 0) exit(0);
     }
@@ -32,14 +32,14 @@ void forktest()
 
     for (; n > 0; n--)
     {
-        if (wait(0) < 0)
+        if (wait(NULL) < 0)
         {
             print("wait stopped early\n");
             exit(1);
         }
     }
 
-    if (wait(0) != -1)
+    if (wait(NULL) != -1)
     {
         print("wait got too many\n");
         exit(1);

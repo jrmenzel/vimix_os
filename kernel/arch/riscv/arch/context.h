@@ -2,30 +2,38 @@
 #pragma once
 
 #include <arch/riscv/riscv.h>
-#include <kernel/types.h>
+#include <kernel/kernel.h>
 
 /// Saved registers for kernel context switches.
 struct context
 {
-    uint64_t ra;
-    uint64_t sp;
+    xlen_t ra;
+    xlen_t sp;
 
     // callee-saved
-    uint64_t s0;
-    uint64_t s1;
-    uint64_t s2;
-    uint64_t s3;
-    uint64_t s4;
-    uint64_t s5;
-    uint64_t s6;
-    uint64_t s7;
-    uint64_t s8;
-    uint64_t s9;
-    uint64_t s10;
-    uint64_t s11;
+    xlen_t s0;
+    xlen_t s1;
+    xlen_t s2;
+    xlen_t s3;
+    xlen_t s4;
+    xlen_t s5;
+    xlen_t s6;
+    xlen_t s7;
+    xlen_t s8;
+    xlen_t s9;
+    xlen_t s10;
+    xlen_t s11;
 };
 
-void context_switch(struct context*, struct context*);
+/// @brief Stores the current register values and restores the ones from
+/// src_of_register. As the ra register holds the functions return address,
+/// and the sp register holds its stack pointer, the function return in
+/// context_switch will return to the thread of execution that was stored in
+/// src_of_register. (implementation: context_switch.S)
+/// @param dst_for_registers Where the current registers are stored to.
+/// @param src_of_register Where the new register values are loaded from.
+void context_switch(struct context *dst_for_registers,
+                    struct context *src_of_register);
 
 /// per-process data for the trap handling code in u_mode_trap_vector.S.
 /// sits in a page by itself just under the trampoline page in the
@@ -40,40 +48,40 @@ void context_switch(struct context*, struct context*);
 /// return_to_user_mode() doesn't return through the entire kernel call stack.
 struct trapframe
 {
-    /*   0 */ uint64_t kernel_page_table;  // kernel page table
-    /*   8 */ uint64_t kernel_sp;          // top of process's kernel stack
-    /*  16 */ uint64_t kernel_trap;        // user_mode_interrupt_handler()
-    /*  24 */ uint64_t epc;                // saved user program counter
-    /*  32 */ uint64_t kernel_hartid;      // saved kernel tp
-    /*  40 */ uint64_t ra;
-    /*  48 */ uint64_t sp;
-    /*  56 */ uint64_t gp;
-    /*  64 */ uint64_t tp;
-    /*  72 */ uint64_t t0;
-    /*  80 */ uint64_t t1;
-    /*  88 */ uint64_t t2;
-    /*  96 */ uint64_t s0;
-    /* 104 */ uint64_t s1;
-    /* 112 */ uint64_t a0;
-    /* 120 */ uint64_t a1;
-    /* 128 */ uint64_t a2;
-    /* 136 */ uint64_t a3;
-    /* 144 */ uint64_t a4;
-    /* 152 */ uint64_t a5;
-    /* 160 */ uint64_t a6;
-    /* 168 */ uint64_t a7;
-    /* 176 */ uint64_t s2;
-    /* 184 */ uint64_t s3;
-    /* 192 */ uint64_t s4;
-    /* 200 */ uint64_t s5;
-    /* 208 */ uint64_t s6;
-    /* 216 */ uint64_t s7;
-    /* 224 */ uint64_t s8;
-    /* 232 */ uint64_t s9;
-    /* 240 */ uint64_t s10;
-    /* 248 */ uint64_t s11;
-    /* 256 */ uint64_t t3;
-    /* 264 */ uint64_t t4;
-    /* 272 */ uint64_t t5;
-    /* 280 */ uint64_t t6;
+    size_t kernel_page_table;  // kernel page table
+    size_t kernel_sp;          // top of process's kernel stack
+    size_t kernel_trap;        // user_mode_interrupt_handler()
+    size_t epc;                // saved user program counter
+    size_t kernel_hartid;      // saved kernel tp
+    size_t ra;                 // first register to save, index 5
+    size_t sp;
+    size_t gp;
+    size_t tp;
+    size_t t0;
+    size_t t1;
+    size_t t2;
+    size_t s0;
+    size_t s1;
+    size_t a0;
+    size_t a1;
+    size_t a2;
+    size_t a3;
+    size_t a4;
+    size_t a5;
+    size_t a6;
+    size_t a7;
+    size_t s2;
+    size_t s3;
+    size_t s4;
+    size_t s5;
+    size_t s6;
+    size_t s7;
+    size_t s8;
+    size_t s9;
+    size_t s10;
+    size_t s11;
+    size_t t3;
+    size_t t4;
+    size_t t5;
+    size_t t6;
 };

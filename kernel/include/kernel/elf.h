@@ -7,7 +7,7 @@
 
 #define ELF_MAGIC 0x464C457FU  // "\x7FELF" in little endian
 
-/// File header
+/// ELF file header
 struct elfhdr
 {
     uint32_t magic;  // must equal ELF_MAGIC
@@ -15,9 +15,9 @@ struct elfhdr
     uint16_t type;
     uint16_t machine;
     uint32_t version;
-    uint64_t entry;
-    uint64_t phoff;
-    uint64_t shoff;
+    size_t entry;
+    size_t phoff;
+    size_t shoff;
     uint32_t flags;
     uint16_t ehsize;
     uint16_t phentsize;
@@ -27,17 +27,17 @@ struct elfhdr
     uint16_t shstrndx;
 };
 
-/// Program section header
+/// ELF program section header
 struct proghdr
 {
     uint32_t type;
     uint32_t flags;
-    uint64_t off;
-    uint64_t vaddr;
-    uint64_t paddr;
-    uint64_t filesz;
-    uint64_t memsz;
-    uint64_t align;
+    size_t off;
+    size_t vaddr;
+    size_t paddr;
+    size_t filesz;
+    size_t memsz;
+    size_t align;
 };
 
 /// Values for Proghdr type

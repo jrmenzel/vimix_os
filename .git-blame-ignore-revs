@@ -9,3 +9,6 @@
 
 # Renamed README -> README.md in usertests after the README got renamed
 212c33938d83d1f6e0dc820c241db5fe7beb97fa
+
+# renamed int types (e.g. uint64 -> uint64_t)
+f902035e905a3b75ca42b65702803372025e560b

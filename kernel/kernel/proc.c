@@ -32,7 +32,7 @@ struct process g_process_list[MAX_PROCS];
 /// Created in userspace_init(), the only process not created by fork()
 struct process *g_initial_user_process;
 
-int nextpid = 1;
+pid_t nextpid = 1;
 struct spinlock pid_lock;
 
 extern void forkret();
@@ -57,9 +57,8 @@ void init_per_process_kernel_stack(pagetable_t kpage_table)
     {
         char *pa = kalloc();
         if (pa == 0) panic("kalloc");
-        uint64_t va = KSTACK((int)(proc - g_process_list));
-        kvm_map_or_panic(kpage_table, va, (uint64_t)pa, PAGE_SIZE,
-                         PTE_R | PTE_W);
+        size_t va = KSTACK((int)(proc - g_process_list));
+        kvm_map_or_panic(kpage_table, va, (size_t)pa, PAGE_SIZE, PTE_R | PTE_W);
     }
 }
 
@@ -88,15 +87,17 @@ int smp_processor_id()
 }
 
 /// Return this CPU's cpu struct.
-/// Interrupts must be disabled.
+/// Interrupts must be disabled as long as the
+/// returned struct is used (as a context switch
+/// invalidates the cpu if the kernel process switched cores)
 struct cpu *get_cpu()
 {
-    int id = smp_processor_id();
+    size_t id = smp_processor_id();
     struct cpu *c = &g_cpus[id];
     return c;
 }
 
-/// Return the current struct proc *, or zero if none.
+/// Return the current struct process *, or NULL if none.
 struct process *get_current()
 {
     cpu_push_disable_device_interrupt_stack();
@@ -106,12 +107,11 @@ struct process *get_current()
     return proc;
 }
 
-int allocpid()
+/// Get a new unique process ID
+pid_t allocpid()
 {
-    int pid;
-
     spin_lock(&pid_lock);
-    pid = nextpid;
+    pid_t pid = nextpid;
     nextpid = nextpid + 1;
     spin_unlock(&pid_lock);
 
@@ -164,7 +164,7 @@ found:
     // Set up new context to start executing at forkret,
     // which returns to user space.
     memset(&proc->context, 0, sizeof(proc->context));
-    proc->context.ra = (uint64_t)forkret;
+    proc->context.ra = (size_t)forkret;
     proc->context.sp = proc->kstack + PAGE_SIZE;
 
     return proc;
@@ -203,7 +203,7 @@ pagetable_t proc_pagetable(struct process *proc)
     // at the highest user virtual address.
     // only the supervisor uses it, on the way
     // to/from user space, so not PTE_U.
-    if (kvm_map(pagetable, TRAMPOLINE, PAGE_SIZE, (uint64_t)trampoline,
+    if (kvm_map(pagetable, TRAMPOLINE, PAGE_SIZE, (size_t)trampoline,
                 PTE_R | PTE_X) < 0)
     {
         uvm_free(pagetable, 0);
@@ -212,7 +212,7 @@ pagetable_t proc_pagetable(struct process *proc)
 
     // map the trapframe page just below the trampoline page, for
     // u_mode_trap_vector.S.
-    if (kvm_map(pagetable, TRAPFRAME, PAGE_SIZE, (uint64_t)(proc->trapframe),
+    if (kvm_map(pagetable, TRAPFRAME, PAGE_SIZE, (size_t)(proc->trapframe),
                 PTE_R | PTE_W) < 0)
     {
         uvm_unmap(pagetable, TRAMPOLINE, 1, 0);
@@ -225,7 +225,7 @@ pagetable_t proc_pagetable(struct process *proc)
 
 /// Free a process's page table, and free the
 /// physical memory it refers to.
-void proc_free_pagetable(pagetable_t pagetable, uint64_t sz)
+void proc_free_pagetable(pagetable_t pagetable, size_t sz)
 {
     uvm_unmap(pagetable, TRAMPOLINE, 1, 0);
     uvm_unmap(pagetable, TRAPFRAME, 1, 0);
@@ -233,6 +233,7 @@ void proc_free_pagetable(pagetable_t pagetable, uint64_t sz)
 }
 
 /// Set up first user process.
+/// This creates the only process not created by fork()
 void userspace_init()
 {
     struct process *proc = allocproc();
@@ -242,7 +243,7 @@ void userspace_init()
     // address 0 of pagetable
     char *mem = kalloc();
     memset(mem, 0, PAGE_SIZE);
-    kvm_map(proc->pagetable, 0, PAGE_SIZE, (uint64_t)mem,
+    kvm_map(proc->pagetable, 0, PAGE_SIZE, (size_t)mem,
             PTE_W | PTE_R | PTE_X | PTE_U);
     memmove(mem, g_initcode, sizeof(g_initcode));
 
@@ -262,12 +263,11 @@ void userspace_init()
 
 /// Grow or shrink user memory by n bytes.
 /// Return 0 on success, -1 on failure.
-int proc_grow_memory(int n)
+int32_t proc_grow_memory(ssize_t n)
 {
-    uint64_t sz;
     struct process *proc = get_current();
+    size_t sz = proc->sz;
 
-    sz = proc->sz;
     if (n > 0)
     {
         if ((sz = uvm_alloc(proc->pagetable, sz, sz + n, PTE_W)) == 0)
@@ -283,16 +283,14 @@ int proc_grow_memory(int n)
     return 0;
 }
 
-/// Create a new process, copying the parent.
-/// Sets up child kernel stack to return as if from fork() system call.
-int fork()
+int32_t fork()
 {
     int i, pid;
     struct process *np;
     struct process *proc = get_current();
 
     // Allocate process.
-    if ((np = allocproc()) == 0)
+    if ((np = allocproc()) == NULL)
     {
         return -1;
     }
@@ -353,13 +351,14 @@ void reparent(struct process *proc)
 /// Exit the current process.  Does not return.
 /// An exited process remains in the zombie state
 /// until its parent calls wait().
-void exit(int status)
+void exit(int32_t status)
 {
     struct process *proc = get_current();
 
+    // special case: "/init" or even initcode.S returned
     if (proc == g_initial_user_process)
     {
-        uint64_t return_value = proc->trapframe->a0;
+        size_t return_value = proc->trapframe->a0;
         if (return_value == -0xDEAD)
         {
             panic("initcode.S could not load /init - check filesystem");
@@ -407,7 +406,7 @@ void exit(int status)
 
 /// Wait for a child process to exit and return its pid.
 /// Return -1 if this process has no children.
-int wait(uint64_t addr)
+int wait(int32_t *wstatus)
 {
     struct process *pp;
     int havekids, pid;
@@ -432,8 +431,9 @@ int wait(uint64_t addr)
                 {
                     // Found one.
                     pid = pp->pid;
-                    if (addr != 0 &&
-                        uvm_copy_out(proc->pagetable, addr, (char *)&pp->xstate,
+                    if (wstatus != NULL &&
+                        uvm_copy_out(proc->pagetable, (size_t)wstatus,
+                                     (char *)&pp->xstate,
                                      sizeof(pp->xstate)) < 0)
                     {
                         spin_unlock(&pp->lock);
@@ -470,7 +470,6 @@ int wait(uint64_t addr)
 /// where a lock is held but there's no process.
 void sched()
 {
-    int intena;
     struct process *proc = get_current();
 
     if (!spin_lock_is_held_by_this_cpu(&proc->lock)) panic("sched p->lock");
@@ -478,9 +477,9 @@ void sched()
     if (proc->state == RUNNING) panic("sched running");
     if (cpu_is_device_interrupts_enabled()) panic("sched interruptible");
 
-    intena = get_cpu()->disable_dev_int_stack_original_state;
+    bool state_before_switch = get_cpu()->disable_dev_int_stack_original_state;
     context_switch(&proc->context, &get_cpu()->context);
-    get_cpu()->disable_dev_int_stack_original_state = intena;
+    get_cpu()->disable_dev_int_stack_original_state = state_before_switch;
 }
 
 /// Give up the CPU for one scheduling round.
@@ -593,24 +592,19 @@ int proc_kill(int pid)
 void proc_set_killed(struct process *proc)
 {
     spin_lock(&proc->lock);
-    proc->killed = 1;
+    proc->killed = true;
     spin_unlock(&proc->lock);
 }
 
-int proc_is_killed(struct process *proc)
+bool proc_is_killed(struct process *proc)
 {
-    int k;
-
     spin_lock(&proc->lock);
-    k = proc->killed;
+    bool is_killed = proc->killed;
     spin_unlock(&proc->lock);
-    return k;
+    return is_killed;
 }
 
-/// Copy to either a user address, or kernel address,
-/// depending on usr_dst.
-/// Returns 0 on success, -1 on error.
-int either_copyout(int addr_is_userspace, uint64_t dst, void *src, uint64_t len)
+int either_copyout(bool addr_is_userspace, size_t dst, void *src, size_t len)
 {
     struct process *proc = get_current();
     if (addr_is_userspace)
@@ -624,15 +618,12 @@ int either_copyout(int addr_is_userspace, uint64_t dst, void *src, uint64_t len)
     }
 }
 
-/// Copy from either a user address, or kernel address,
-/// depending on usr_src.
-/// Returns 0 on success, -1 on error.
-int either_copyin(void *dst, int addr_is_userspace, uint64_t src, uint64_t len)
+int either_copyin(void *dst, bool addr_is_userspace, size_t src, size_t len)
 {
     struct process *proc = get_current();
     if (addr_is_userspace)
     {
-        return uvm_copy_in(proc->pagetable, dst, src, len);
+        return uvm_copy_in(proc->pagetable, (char *)dst, src, len);
     }
     else
     {

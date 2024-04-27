@@ -9,6 +9,21 @@
 #define ROOT_INODE 1     // root i-number
 #define BLOCK_SIZE 1024  // block size
 
+/// Inodes per block.
+#define IPB (BLOCK_SIZE / sizeof(struct vx6fs_dinode))
+
+/// Block containing inode i
+#define IBLOCK(i, sb) ((i) / IPB + sb.inodestart)
+
+/// Bitmap bits per block
+#define BPB (BLOCK_SIZE * 8)
+
+/// Block of free map containing bit for block b
+#define BBLOCK(b, sb) ((b) / BPB + sb.bmapstart)
+
+/// Max file name length (without the NULL-terminator)
+#define XV6_NAME_MAX 14
+
 /// Disk layout:
 /// [ boot block | super block | log | inode blocks |
 ///                                          free bit map | data blocks]
@@ -43,21 +58,6 @@ struct vx6fs_dinode
     uint32_t size;                ///< Size of file (bytes)
     uint32_t addrs[NDIRECT + 1];  ///< Data block addresses
 };
-
-/// Inodes per block.
-#define IPB (BLOCK_SIZE / sizeof(struct vx6fs_dinode))
-
-/// Block containing inode i
-#define IBLOCK(i, sb) ((i) / IPB + sb.inodestart)
-
-/// Bitmap bits per block
-#define BPB (BLOCK_SIZE * 8)
-
-/// Block of free map containing bit for block b
-#define BBLOCK(b, sb) ((b) / BPB + sb.bmapstart)
-
-/// Directory is a file containing a sequence of xv6fs_dirent structures.
-#define XV6_NAME_MAX 14
 
 struct xv6fs_dirent
 {

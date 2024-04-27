@@ -16,11 +16,13 @@ void freerange(void *pa_start, void *pa_end);
 extern char end_of_kernel[];  /// first address after kernel.
                               /// defined by kernel.ld.
 
+/// each free 4KB page will contain this struct to form a linked list
 struct run
 {
     struct run *next;
 };
 
+/// a linked list of all free 4KB pages for the kernel to allocate
 struct
 {
     struct spinlock lock;
@@ -33,23 +35,26 @@ void kalloc_init()
     freerange(end_of_kernel, (void *)PHYSTOP);
 }
 
+/// @brief helper for init_physical_page_allocator. Frees all pages in
+/// a given range for the kernel to use.
+/// @param pa_start physical address of the start
+/// @param pa_end physical address of the end
 void freerange(void *pa_start, void *pa_end)
 {
     char *p;
-    p = (char *)PAGE_ROUND_UP((uint64_t)pa_start);
-    for (; p + PAGE_SIZE <= (char *)pa_end; p += PAGE_SIZE) kfree(p);
+    p = (char *)PAGE_ROUND_UP((size_t)pa_start);
+    for (; p + PAGE_SIZE <= (char *)pa_end; p += PAGE_SIZE)
+    {
+        kfree(p);
+    }
 }
 
-/// Free the page of physical memory pointed at by pa,
-/// which normally should have been returned by a
-/// call to kalloc().  (The exception is when
-/// initializing the allocator; see kalloc_init above.)
 void kfree(void *pa)
 {
     struct run *r;
 
-    if (((uint64_t)pa % PAGE_SIZE) != 0 || (char *)pa < end_of_kernel ||
-        (uint64_t)pa >= PHYSTOP)
+    if (((size_t)pa % PAGE_SIZE) != 0 || (char *)pa < end_of_kernel ||
+        (size_t)pa >= PHYSTOP)
         panic("kfree");
 
     // Fill with junk to catch dangling refs.
@@ -63,9 +68,6 @@ void kfree(void *pa)
     spin_unlock(&kmem.lock);
 }
 
-/// Allocate one 4096-byte page of physical memory.
-/// Returns a pointer that the kernel can use.
-/// Returns 0 if the memory cannot be allocated.
 void *kalloc()
 {
     struct run *r;

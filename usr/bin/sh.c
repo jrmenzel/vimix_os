@@ -99,7 +99,7 @@ void runcmd(struct cmd *cmd)
         case LIST:
             lcmd = (struct listcmd *)cmd;
             if (fork1() == 0) runcmd(lcmd->left);
-            wait(0);
+            wait(NULL);
             runcmd(lcmd->right);
             break;
 
@@ -124,8 +124,8 @@ void runcmd(struct cmd *cmd)
             }
             close(p[0]);
             close(p[1]);
-            wait(0);
-            wait(0);
+            wait(NULL);
+            wait(NULL);
             break;
 
         case BACK:
@@ -185,9 +185,7 @@ void panic(char *s)
 
 int fork1()
 {
-    int pid;
-
-    pid = fork();
+    pid_t pid = fork();
     if (pid == -1) panic("fork");
     return pid;
 }

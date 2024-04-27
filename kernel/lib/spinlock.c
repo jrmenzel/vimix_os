@@ -3,11 +3,10 @@
 // Mutual exclusion spin locks.
 
 #include <kernel/cpu.h>
-#include <kernel/param.h>
+#include <kernel/kernel.h>
 #include <kernel/printk.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
-#include <kernel/types.h>
 #include <mm/memlayout.h>
 
 void spin_lock_init(struct spinlock *lk, char *name)
@@ -25,6 +24,7 @@ void spin_lock(struct spinlock *lk)
                                                 // deadlock.
     if (spin_lock_is_held_by_this_cpu(lk)) panic("acquire");
 
+    // sync_lock_test_and_set() is a GCC build-in function
     // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
     //   a5 = 1
     //   s1 = &lk->locked
@@ -42,12 +42,13 @@ void spin_lock(struct spinlock *lk)
     lk->cpu = get_cpu();
 }
 
-/// Release the lock.
+/// Release/unlock the lock.
+/// Re-enables interrupts (if they were enabled at time of spin_lock())
 void spin_unlock(struct spinlock *lk)
 {
     if (!spin_lock_is_held_by_this_cpu(lk)) panic("release");
 
-    lk->cpu = 0;
+    lk->cpu = NULL;
 
     // Tell the C compiler and the CPU to not move loads or stores
     // past this point, to ensure that all the stores in the critical

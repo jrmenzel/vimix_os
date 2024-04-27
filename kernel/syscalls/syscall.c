@@ -12,12 +12,11 @@
 #include <kernel/vm.h>
 #include <mm/memlayout.h>
 
-/// Fetch the uint64_t at addr from the current process.
-int fetchaddr(uint64_t addr, uint64_t *ip)
+int32_t fetchaddr(size_t addr, size_t *ip)
 {
     struct process *proc = get_current();
     if (addr >= proc->sz ||
-        addr + sizeof(uint64_t) >
+        addr + sizeof(size_t) >
             proc->sz)  // both tests needed, in case of overflow
         return -1;
     if (uvm_copy_in(proc->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
@@ -25,16 +24,14 @@ int fetchaddr(uint64_t addr, uint64_t *ip)
     return 0;
 }
 
-/// Fetch the nul-terminated string at addr from the current process.
-/// Returns length of string, not including nul, or -1 for error.
-int fetchstr(uint64_t addr, char *buf, int max)
+int32_t fetchstr(size_t addr, char *buf, int32_t max)
 {
     struct process *proc = get_current();
     if (uvm_copy_in_str(proc->pagetable, buf, addr, max) < 0) return -1;
     return strlen(buf);
 }
 
-static uint64_t argraw(int n)
+static size_t argraw(int n)
 {
     struct process *proc = get_current();
     switch (n)
@@ -50,51 +47,21 @@ static uint64_t argraw(int n)
     return -1;
 }
 
-/// Fetch the nth 32-bit system call argument.
 void argint(int n, int *ip) { *ip = argraw(n); }
 
-/// Retrieve an argument as a pointer.
-/// Doesn't check for legality, since
-/// uvm_copy_in/uvm_copy_out will do that.
-void argaddr(int n, uint64_t *ip) { *ip = argraw(n); }
+void argaddr(int n, size_t *ip) { *ip = argraw(n); }
 
-/// Fetch the nth word-sized system call argument as a null-terminated string.
-/// Copies into buf, at most max.
-/// Returns string length if OK (including nul), -1 if error.
-int argstr(int n, char *buf, int max)
+int32_t argstr(int32_t n, char *buf, int32_t max)
 {
-    uint64_t addr;
+    size_t addr;
     argaddr(n, &addr);
     return fetchstr(addr, buf, max);
 }
 
-// Prototypes for the functions that handle system calls.
-extern uint64_t sys_fork();
-extern uint64_t sys_exit();
-extern uint64_t sys_wait();
-extern uint64_t sys_pipe();
-extern uint64_t sys_read();
-extern uint64_t sys_kill();
-extern uint64_t sys_execv();
-extern uint64_t sys_fstat();
-extern uint64_t sys_chdir();
-extern uint64_t sys_dup();
-extern uint64_t sys_getpid();
-extern uint64_t sys_sbrk();
-extern uint64_t sys_sleep();
-extern uint64_t sys_uptime();
-extern uint64_t sys_open();
-extern uint64_t sys_write();
-extern uint64_t sys_mknod();
-extern uint64_t sys_unlink();
-extern uint64_t sys_link();
-extern uint64_t sys_mkdir();
-extern uint64_t sys_close();
-
 // clang-format off
 /// An array mapping syscall numbers from syscall.h
 /// to the function that handles the system call.
-static uint64_t (*syscalls[])() = {
+static size_t (*syscalls[])() = {
     [SYS_fork] sys_fork,
     [SYS_exit] sys_exit,
     [SYS_wait] sys_wait,
@@ -121,7 +88,7 @@ static uint64_t (*syscalls[])() = {
 
 void syscall()
 {
-    int num;
+    size_t num;
     struct process *proc = get_current();
 
     num = proc->trapframe->a7;

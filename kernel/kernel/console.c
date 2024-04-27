@@ -54,9 +54,9 @@ struct
 } cons;
 
 /// user write()s to the console go here.
-int console_write(int addr_is_userspace, uint64_t src, int n)
+ssize_t console_write(bool addr_is_userspace, size_t src, size_t n)
 {
-    int i;
+    ssize_t i;
 
     for (i = 0; i < n; i++)
     {
@@ -72,9 +72,9 @@ int console_write(int addr_is_userspace, uint64_t src, int n)
 /// copy (up to) a whole input line to dst.
 /// user_dist indicates whether dst is a user
 /// or kernel address.
-int console_read(int addr_is_userspace, uint64_t dst, int n)
+ssize_t console_read(bool addr_is_userspace, size_t dst, size_t n)
 {
-    uint32_t target;
+    size_t target;
     int c;
     char cbuf;
 

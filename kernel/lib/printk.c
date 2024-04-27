@@ -17,13 +17,13 @@
 #include <kernel/types.h>
 #include <mm/memlayout.h>
 
-volatile int g_kernel_panicked = 0;
+volatile bool g_kernel_panicked = false;
 
 /// lock to avoid interleaving concurrent printk's.
 static struct
 {
     struct spinlock lock;
-    int locking;
+    bool locking;
 } pr;
 
 static char digits[] = "0123456789abcdef";
@@ -104,13 +104,14 @@ void printk(char *fmt, ...)
 
 void panic(char *s)
 {
-    pr.locking = 0;
+    pr.locking = false;
     printk("panic: ");
     printk(s);
     printk("\n");
-    g_kernel_panicked = 1;  // freeze uart output from other CPUs
-    for (;;)
-        ;
+    g_kernel_panicked = true;  // freeze uart output from other CPUs
+    while (true)
+    {
+    }
 }
 
 void printk_init()

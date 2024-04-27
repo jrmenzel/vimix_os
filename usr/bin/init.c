@@ -15,8 +15,6 @@ char *argv[] = {"sh", 0};
 
 int main()
 {
-    int pid, wpid;
-
     if (open("console", O_RDWR) < 0)
     {
         mknod("console", CONSOLE, 0);
@@ -25,10 +23,11 @@ int main()
     dup(0);  // stdout
     dup(0);  // stderr
 
-    for (;;)
+    while (true)
     {
         printf("init: starting sh\n");
-        pid = fork();
+        pid_t pid = fork();
+
         if (pid < 0)
         {
             printf("init: fork failed\n");
@@ -41,11 +40,12 @@ int main()
             exit(1);
         }
 
-        for (;;)
+        while (true)
         {
             // this call to wait() returns if the shell exits,
             // or if a parentless process exits.
-            wpid = wait((int *)0);
+            int32_t status = 0;
+            pid_t wpid = wait(&status);
             if (wpid == pid)
             {
                 // the shell exited; restart it.

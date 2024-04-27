@@ -13,8 +13,9 @@
 #include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
+// each call to the timer interrupt is one tick
 struct spinlock g_tickslock;
-uint32_t g_ticks;
+size_t g_ticks;
 
 extern char trampoline[], u_mode_trap_vector[], return_to_user_mode_asm[];
 
@@ -26,7 +27,7 @@ extern int interrupt_handler();
 void trap_init() { spin_lock_init(&g_tickslock, "time"); }
 
 /// set up to take exceptions and traps while in the kernel.
-void trap_init_per_cpu() { w_stvec((uint64_t)s_mode_trap_vector); }
+void trap_init_per_cpu() { w_stvec((xlen_t)s_mode_trap_vector); }
 
 /// handle an interrupt, exception, or system call from user space.
 /// called from u_mode_trap_vector.S
@@ -95,7 +96,7 @@ void return_to_user_mode()
 
     // send syscalls, interrupts, and exceptions to u_mode_trap_vector in
     // u_mode_trap_vector.S
-    uint64_t trampoline_u_mode_trap_vector =
+    size_t trampoline_u_mode_trap_vector =
         TRAMPOLINE + (u_mode_trap_vector - trampoline);
     w_stvec(trampoline_u_mode_trap_vector);
 
@@ -104,7 +105,7 @@ void return_to_user_mode()
     proc->trapframe->kernel_page_table = r_satp();  // kernel page table
     proc->trapframe->kernel_sp =
         proc->kstack + PAGE_SIZE;  // process's kernel stack
-    proc->trapframe->kernel_trap = (uint64_t)user_mode_interrupt_handler;
+    proc->trapframe->kernel_trap = (size_t)user_mode_interrupt_handler;
     proc->trapframe->kernel_hartid =
         __arch_smp_processor_id();  // hartid for smp_processor_id()
 
@@ -112,7 +113,7 @@ void return_to_user_mode()
     // to get to user space.
 
     // set S Previous Privilege mode to User.
-    unsigned long x = r_sstatus();
+    xlen_t x = r_sstatus();
     x &= ~SSTATUS_SPP;  // clear SPP to 0 for user mode
     x |= SSTATUS_SPIE;  // enable interrupts in user mode
     w_sstatus(x);
@@ -121,24 +122,24 @@ void return_to_user_mode()
     w_sepc(proc->trapframe->epc);
 
     // tell u_mode_trap_vector.S the user page table to switch to.
-    uint64_t satp = MAKE_SATP(proc->pagetable);
+    size_t satp = MAKE_SATP(proc->pagetable);
 
     // jump to return_to_user_mode_asm in u_mode_trap_vector.S at the top of
     // memory, which switches to the user page table, restores user registers,
     // and switches to user mode with sret.
-    uint64_t trampoline_userret =
+    size_t trampoline_userret =
         TRAMPOLINE + (return_to_user_mode_asm - trampoline);
-    ((void (*)(uint64_t))trampoline_userret)(satp);
+    ((void (*)(size_t))trampoline_userret)(satp);
 }
 
-/// interrupts and exceptions from kernel code go here via s_mode_trap_vector,
+/// Interrupts and exceptions go here via s_mode_trap_vector,
 /// on whatever the current kernel stack is.
 void kernel_mode_interrupt_handler()
 {
     int which_dev = 0;
-    uint64_t sepc = r_sepc();
-    uint64_t sstatus = r_sstatus();
-    uint64_t scause = r_scause();
+    xlen_t sepc = r_sepc();
+    xlen_t sstatus = r_sstatus();
+    xlen_t scause = r_scause();
 
     if ((sstatus & SSTATUS_SPP) == 0)
         panic("kernel_mode_interrupt_handler: not from supervisor mode");
@@ -178,7 +179,7 @@ void clockintr()
 /// 0 if not recognized.
 int interrupt_handler()
 {
-    uint64_t scause = r_scause();
+    xlen_t scause = r_scause();
 
     if ((scause & 0x8000000000000000L) && (scause & 0xff) == 9)
     {

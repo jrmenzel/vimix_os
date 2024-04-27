@@ -10,11 +10,10 @@
 #include <kernel/spinlock.h>
 #include <kernel/vm.h>
 
-int pipe_alloc(struct file **f0, struct file **f1)
+int32_t pipe_alloc(struct file **f0, struct file **f1)
 {
-    struct pipe *pi;
+    struct pipe *pi = NULL;
 
-    pi = 0;
     *f0 = *f1 = 0;
     if ((*f0 = file_alloc()) == 0 || (*f1 = file_alloc()) == 0) goto bad;
     if ((pi = (struct pipe *)kalloc()) == 0) goto bad;
@@ -40,20 +39,20 @@ bad:
     return -1;
 }
 
-void pipe_close(struct pipe *pipe, int writable)
+void pipe_close(struct pipe *pipe, bool close_writing_end)
 {
     spin_lock(&pipe->lock);
-    if (writable)
+    if (close_writing_end)
     {
-        pipe->writeopen = 0;
+        pipe->writeopen = false;
         wakeup(&pipe->nread);
     }
     else
     {
-        pipe->readopen = 0;
+        pipe->readopen = false;
         wakeup(&pipe->nwrite);
     }
-    if (pipe->readopen == 0 && pipe->writeopen == 0)
+    if (pipe->readopen == false && pipe->writeopen == false)
     {
         spin_unlock(&pipe->lock);
         kfree((char *)pipe);
@@ -62,15 +61,15 @@ void pipe_close(struct pipe *pipe, int writable)
         spin_unlock(&pipe->lock);
 }
 
-int pipe_write(struct pipe *pipe, uint64_t src_user_addr, int n)
+ssize_t pipe_write(struct pipe *pipe, size_t src_user_addr, size_t n)
 {
-    int i = 0;
+    size_t i = 0;
     struct process *proc = get_current();
 
     spin_lock(&pipe->lock);
     while (i < n)
     {
-        if (pipe->readopen == 0 || proc_is_killed(proc))
+        if (pipe->readopen == false || proc_is_killed(proc))
         {
             spin_unlock(&pipe->lock);
             return -1;
@@ -78,6 +77,7 @@ int pipe_write(struct pipe *pipe, uint64_t src_user_addr, int n)
         if (pipe->nwrite == pipe->nread + PIPESIZE)
         {
             wakeup(&pipe->nread);
+            // wait till another process read from the pipe
             sleep(&pipe->nwrite, &pipe->lock);
         }
         else
@@ -95,7 +95,7 @@ int pipe_write(struct pipe *pipe, uint64_t src_user_addr, int n)
     return i;
 }
 
-int pipe_read(struct pipe *pipe, uint64_t src_kernel_addr, int n)
+ssize_t pipe_read(struct pipe *pipe, size_t src_kernel_addr, size_t n)
 {
     int i;
     struct process *proc = get_current();
