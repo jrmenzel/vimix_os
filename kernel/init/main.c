@@ -21,27 +21,19 @@
 /// init is done which should only run on one core
 volatile size_t g_global_init_done = GLOBAL_INIT_NOT_STARTED;
 
+#ifdef __ENABLE_SBI__
+#define FEATURE_STRING "(SBI enabled)"
+#else
+#define FEATURE_STRING "(bare metal)"
+#endif
+
 /// start() jumps here in supervisor mode on all CPUs.
 void main(void *device_tree, size_t is_first_thread)
 {
-#ifdef __ENABLE_SBI__
-    // On SBI one hart boots initially (it can be any hart ID).
-    // Other harts are started later but they all call this main().
-    // So only the first one will be the one performing the global init
-    // (there is no race condition, all later harts are started by the
-    // first one explicitly in init_platform())
-    bool perform_global_init = (g_global_init_done == GLOBAL_INIT_NOT_STARTED);
-#define FEATURE_STRING "(SBI enabled)"
-#else
-    // On bare metal, we pick hart 0 for the global init
-    bool perform_global_init = (smp_processor_id() == 0);
-#define FEATURE_STRING "(bare metal)"
-#endif  // __ENABLE_SBI__
-
-    if (perform_global_init)
+    if (is_first_thread)
     {
         // this init code is executed on one hart while the others wait:
-        g_global_init_done = GLOBAL_INIT_IN_PROCESS;
+        g_global_init_done = GLOBAL_INIT_BSS_CLEAR;
 
         // init a way to print, also starts uart:
         console_init();

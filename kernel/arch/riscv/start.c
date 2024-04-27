@@ -5,13 +5,44 @@
 #include <init/main.h>
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
+#include <kernel/string.h>
 #include <mm/memlayout.h>
 
-void main();
-
-/// entry.S needs one kernel stack per CPU (4KB each)
+/// entry.S needs one kernel stack per CPU (one page of 4KB each)
 /// As long as the kernel stack is fixed at 4K, recursion can be deadly.
-__attribute__((aligned(16))) char g_kernel_cpu_stack[PAGE_SIZE * MAX_CPUS];
+/// Placed in section STACK to not be placed in .bss (see kernel.ld).
+/// This is because the .bss will be cleared by C code already relying on the
+/// stack.
+__attribute__((aligned(PAGE_SIZE)))
+__attribute__((section("STACK"))) char g_kernel_cpu_stack[PAGE_SIZE * MAX_CPUS];
+
+/// @brief Clears the BSS section (uninitialized and Zero-initialized C
+/// variables) with zeros.
+///        All kernel threads should call this as early as possible (before
+///        reading or writing any variables that could be in BSS), but only one
+///        should perform the clear. All other threads will wait.
+///        Note that the kernel stack is not in bss (see kernel.ld) - if it
+///        would be, the bss clear would have to be done from assembly before
+///        jumping to C.
+/// @param this_thread_clears Should be true for only one thread.
+void wait_on_bss_clear(bool this_thread_clears)
+{
+    if (this_thread_clears)
+    {
+        // clears the .bss section with zeros
+        size_t size = (size_t)bss_end - (size_t)bss_start;
+        memset((void *)bss_start, 0, size);
+
+        g_global_init_done = GLOBAL_INIT_BSS_CLEAR;
+    }
+    else
+    {
+        while (g_global_init_done < GLOBAL_INIT_BSS_CLEAR)
+        {
+            __sync_synchronize();
+        }
+    }
+}
 
 #ifdef __ENABLE_SBI__
 
@@ -29,6 +60,9 @@ void start(xlen_t cpuid, void *device_tree)
     // disable paging for now.
     cpu_set_page_table(0);
     rv_write_csr_sie(rv_read_csr_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
+
+    // clear BSS
+    wait_on_bss_clear(is_first_thread);
 
     // keep each CPU's hartid in its tp register, for smp_processor_id().
     w_tp(cpuid);
@@ -64,6 +98,9 @@ void start(xlen_t cpuid, void *device_tree)
     rv_write_csr_pmpaddr0(0x3fffffffffffffull);
 #endif
     rv_write_csr_pmpcfg0(PMP_R | PMP_W | PMP_X | PMP_MATCH_NAPOT);
+
+    // clear BSS
+    wait_on_bss_clear(is_first_thread);
 
     // keep each CPU's hartid in its tp register, for smp_processor_id().
     w_tp(rv_read_csr_mhartid());

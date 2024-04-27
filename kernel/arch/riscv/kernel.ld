@@ -38,10 +38,23 @@ SECTIONS
 
   .bss : {
     . = ALIGN(16);
+    PROVIDE(bss_start = .);
     *(.sbss .sbss.*) /* do not need to distinguish this from .bss */
     . = ALIGN(16);
     *(.bss .bss.*)
+    PROVIDE(bss_end = .);
+  }
+
+  /* keep the kernel stack out of .bss to allow clearing the .bss
+     early from C instead of from entry.S */
+  STACK : {
+    g_kernel_cpu_stack = .;
   }
 
   PROVIDE(end_of_kernel = .);
+
+  PROVIDE(size_of_text = SIZEOF(.text));
+  PROVIDE(size_of_rodata = SIZEOF(.rodata));
+  PROVIDE(size_of_data = SIZEOF(.data));
+  PROVIDE(size_of_bss = SIZEOF(.bss));
 }
