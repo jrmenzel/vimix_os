@@ -24,6 +24,18 @@
 
 #define PTE_FLAGS(pte) ((pte)&0x3FF)
 
+#if (__riscv_xlen == 32)
+// 32 bit
+#define PXMASK 0x3FF  // 10 bits
+#define PXSHIFT(level) (PAGE_SHIFT + (10 * (level)))
+/// Extract one of the two 10-bit page table index from a virtual address.
+/// va is [[10 bit idx level 1][10 bit idx level 0][12 bits address in page]]
+#define PAGE_TABLE_INDEX(level, va) \
+    ((((size_t)(va)) >> PXSHIFT(level)) & PXMASK)
+
+#else
+// 64 bit
+
 /// extract the three 9-bit page table indices from a virtual address.
 #define PXMASK 0x1FF  // 9 bits
 #define PXSHIFT(level) (PAGE_SHIFT + (9 * (level)))
@@ -39,3 +51,4 @@
 /// Sv39, to avoid having to sign-extend virtual addresses
 /// that have the high bit set.
 #define MAXVA (1L << (9 + 9 + 9 + PAGE_SHIFT - 1))
+#endif

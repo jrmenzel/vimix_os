@@ -2,6 +2,7 @@
 #pragma once
 
 #include <kernel/kernel.h>
+#include <kernel/spinlock.h>
 
 extern size_t g_ticks;
 extern struct spinlock g_tickslock;
@@ -11,7 +12,7 @@ extern struct spinlock g_tickslock;
 void trap_init();
 
 /// @brief Set kernel mode trap vector
-void trap_init_per_cpu();
+void set_s_mode_trap_vector();
 
 /// @brief called after serving syscalls and after a fork
 void return_to_user_mode();

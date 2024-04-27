@@ -12,3 +12,6 @@
 
 # renamed int types (e.g. uint64 -> uint64_t)
 f902035e905a3b75ca42b65702803372025e560b
+
+# Renamed some functions and variables
+a3e92cba6b45b1c777b45c4a040f8a9cc0f9a0c2

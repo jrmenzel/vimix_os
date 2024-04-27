@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/cpu.h>
-#include <arch/riscv/plic.h>
+#include <arch/interrupts.h>
 #include <arch/trap.h>
 #include <drivers/uart16550.h>
 #include <drivers/virtio_disk.h>
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
-#include <kernel/printk.h>
 #include <kernel/proc.h>
+#include <kernel/smp.h>
 #include <kernel/spinlock.h>
 #include <mm/memlayout.h>
 #include <syscalls/syscall.h>
@@ -20,34 +20,49 @@ size_t g_ticks;
 extern char trampoline[], u_mode_trap_vector[], return_to_user_mode_asm[];
 
 /// in s_mode_trap_vector.S, calls kernel_mode_interrupt_handler().
-void s_mode_trap_vector();
+extern void s_mode_trap_vector();
 
-extern int interrupt_handler();
+enum interrupt_source
+{
+    INTERRUPT_SOURCE_NOT_RECOGNIZED = 0,
+    INTERRUPT_SOURCE_OTHER_DEVICE = 1,
+    INTERRUPT_SOURCE_TIMER = 2,
+    INTERRUPT_SOURCE_SYSCALL = 3
+};
+enum interrupt_source interrupt_handler();
 
-void trap_init() { spin_lock_init(&g_tickslock, "time"); }
+void trap_init()
+{
+    g_ticks = 0;
+    spin_lock_init(&g_tickslock, "time");
+}
 
-/// set up to take exceptions and traps while in the kernel.
-void trap_init_per_cpu() { w_stvec((xlen_t)s_mode_trap_vector); }
+void set_s_mode_trap_vector()
+{
+    cpu_set_s_mode_trap_vector(s_mode_trap_vector);
+}
 
-/// handle an interrupt, exception, or system call from user space.
-/// called from u_mode_trap_vector.S
+/// Handle an interrupt, exception, or system call from user space.
+/// called from u_mode_trap_vector.S, first C function after storing the
+/// CPU state / registers in assembly.
 void user_mode_interrupt_handler()
 {
-    int which_dev = 0;
-
-    if ((r_sstatus() & SSTATUS_SPP) != 0)
-        panic("user_mode_interrupt_handler: not from user mode");
+    if ((rv_read_csr_sstatus() & SSTATUS_SPP) != 0)
+    {
+        panic("user_mode_interrupt_handler was *not* called from user mode");
+    }
 
     // send interrupts and exceptions to kernel_mode_interrupt_handler(),
     // since we're now in the kernel.
-    w_stvec((uint64_t)s_mode_trap_vector);
+    set_s_mode_trap_vector();
 
     struct process *proc = get_current();
 
     // save user program counter.
-    proc->trapframe->epc = r_sepc();
+    trapframe_set_program_counter(proc->trapframe, rv_read_csr_sepc());
 
-    if (r_scause() == 8)
+    enum interrupt_source int_src = interrupt_handler();
+    if (rv_read_csr_scause() == 8)
     {
         // system call
 
@@ -63,22 +78,27 @@ void user_mode_interrupt_handler()
 
         syscall();
     }
-    else if ((which_dev = interrupt_handler()) != 0)
+    else if (int_src != INTERRUPT_SOURCE_NOT_RECOGNIZED)
     {
         // ok
     }
     else
     {
-        printk("user_mode_interrupt_handler(): unexpected scause %p pid=%d\n",
-               r_scause(), proc->pid);
-        printk("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+        printk("user_mode_interrupt_handler(): unexpected scause for pid=%d\n",
+               proc->pid);
         proc_set_killed(proc);
     }
 
-    if (proc_is_killed(proc)) exit(-1);
+    if (proc_is_killed(proc))
+    {
+        exit(-1);
+    }
 
     // give up the CPU if this is a timer interrupt.
-    if (which_dev == 2) yield();
+    if (int_src == INTERRUPT_SOURCE_TIMER)
+    {
+        yield();
+    }
 
     return_to_user_mode();
 }
@@ -86,40 +106,40 @@ void user_mode_interrupt_handler()
 /// return to user space
 void return_to_user_mode()
 {
-    struct process *proc = get_current();
-
     // we're about to switch the destination of traps from
     // kernel_mode_interrupt_handler() to user_mode_interrupt_handler(), so turn
     // off interrupts until we're back in user space, where
     // user_mode_interrupt_handler() is correct.
     cpu_disable_device_interrupts();
 
+    struct process *proc = get_current();
+
     // send syscalls, interrupts, and exceptions to u_mode_trap_vector in
     // u_mode_trap_vector.S
     size_t trampoline_u_mode_trap_vector =
         TRAMPOLINE + (u_mode_trap_vector - trampoline);
-    w_stvec(trampoline_u_mode_trap_vector);
+    rv_write_csr_stvec(trampoline_u_mode_trap_vector);
 
     // set up trapframe values that u_mode_trap_vector will need when
     // the process next traps into the kernel.
-    proc->trapframe->kernel_page_table = r_satp();  // kernel page table
+    proc->trapframe->kernel_page_table =
+        cpu_get_page_table();  // kernel page table
     proc->trapframe->kernel_sp =
         proc->kstack + PAGE_SIZE;  // process's kernel stack
     proc->trapframe->kernel_trap = (size_t)user_mode_interrupt_handler;
-    proc->trapframe->kernel_hartid =
-        __arch_smp_processor_id();  // hartid for smp_processor_id()
+    proc->trapframe->kernel_hartid = smp_processor_id();
 
     // set up the registers that u_mode_trap_vector.S's sret will use
     // to get to user space.
 
     // set S Previous Privilege mode to User.
-    xlen_t x = r_sstatus();
+    xlen_t x = rv_read_csr_sstatus();
     x &= ~SSTATUS_SPP;  // clear SPP to 0 for user mode
     x |= SSTATUS_SPIE;  // enable interrupts in user mode
-    w_sstatus(x);
+    rv_write_csr_sstatus(x);
 
     // set S Exception Program Counter to the saved user pc.
-    w_sepc(proc->trapframe->epc);
+    rv_write_csr_sepc(trapframe_get_program_counter(proc->trapframe));
 
     // tell u_mode_trap_vector.S the user page table to switch to.
     size_t satp = MAKE_SATP(proc->pagetable);
@@ -127,105 +147,134 @@ void return_to_user_mode()
     // jump to return_to_user_mode_asm in u_mode_trap_vector.S at the top of
     // memory, which switches to the user page table, restores user registers,
     // and switches to user mode with sret.
-    size_t trampoline_userret =
+    size_t return_to_user_mode_asm_ptr =
         TRAMPOLINE + (return_to_user_mode_asm - trampoline);
-    ((void (*)(size_t))trampoline_userret)(satp);
+    ((void (*)(size_t))return_to_user_mode_asm_ptr)(satp);
 }
 
 /// Interrupts and exceptions go here via s_mode_trap_vector,
 /// on whatever the current kernel stack is.
 void kernel_mode_interrupt_handler()
 {
-    int which_dev = 0;
-    xlen_t sepc = r_sepc();
-    xlen_t sstatus = r_sstatus();
-    xlen_t scause = r_scause();
+    xlen_t sepc = rv_read_csr_sepc();
+    xlen_t sstatus = rv_read_csr_sstatus();
 
     if ((sstatus & SSTATUS_SPP) == 0)
-        panic("kernel_mode_interrupt_handler: not from supervisor mode");
-    if (cpu_is_device_interrupts_enabled() != 0)
-        panic("kernel_mode_interrupt_handler: interrupts enabled");
-
-    if ((which_dev = interrupt_handler()) == 0)
     {
-        printk("scause %p\n", scause);
-        printk("sepc=%p stval=%p\n", r_sepc(), r_stval());
+        panic(
+            "kernel_mode_interrupt_handler called *not* from supervisor mode");
+    }
+    if (cpu_is_device_interrupts_enabled())
+    {
+        panic("kernel_mode_interrupt_handler: interrupts are still enabled");
+    }
+
+    enum interrupt_source int_src = interrupt_handler();
+
+    if (int_src == INTERRUPT_SOURCE_NOT_RECOGNIZED)
+    {
+        printk(
+            "\nFatal: unhandled interrupt in "
+            "kernel_mode_interrupt_handler()\n");
         panic("kernel_mode_interrupt_handler");
     }
 
-    // give up the CPU if this is a timer interrupt.
-    if (which_dev == 2 && get_current() != 0 && get_current()->state == RUNNING)
-        yield();
+    if (int_src == INTERRUPT_SOURCE_TIMER)
+    {
+        // give up the CPU
+        struct process *proc = get_current();
+        if (proc != NULL && proc->state == RUNNING)
+        {
+            yield();
+        }
+    }
 
     // the yield() may have caused some traps to occur,
     // so restore trap registers for use by s_mode_trap_vector.S's sepc
     // instruction.
-    w_sepc(sepc);
-    w_sstatus(sstatus);
+    rv_write_csr_sepc(sepc);
+    rv_write_csr_sstatus(sstatus);
 }
 
-void clockintr()
+void update_kernel_ticks()
 {
+    if (smp_processor_id() != 0) return;
+
     spin_lock(&g_tickslock);
     g_ticks++;
     wakeup(&g_ticks);
     spin_unlock(&g_tickslock);
 }
 
+void handle_plic_device_interrupt()
+{
+    // irq indicates which device interrupted.
+    int irq = plic_claim();
+
+    if (irq == UART0_IRQ)
+    {
+        uart_interrupt_handler();
+    }
+    else if (irq == VIRTIO0_IRQ)
+    {
+        virtio_block_device_interrupt();
+    }
+    else if (irq)
+    {
+        printk("unexpected interrupt irq=%d\n", irq);
+    }
+
+    // the PLIC allows each device to raise at most one
+    // interrupt at a time; tell the PLIC the device is
+    // now allowed to interrupt again.
+    if (irq)
+    {
+        plic_complete(irq);
+    }
+}
+
+#if defined(_arch_is_32bit)
+const size_t SCAUSE_OTHER_DEVICE = 0x80000000L;
+const size_t SCAUSE_TIMER_DEVICE = 0x80000001L;
+const size_t SCAUSE_TIMER_EVENT = 0x80000005L;  // timer from SBI
+#else
+const size_t SCAUSE_OTHER_DEVICE = 0x8000000000000000L;
+const size_t SCAUSE_TIMER_DEVICE = 0x8000000000000001L;  // timer from M-Mode
+const size_t SCAUSE_TIMER_EVENT = 0x8000000000000005L;   // timer from SBI
+#endif
+
 /// check if it's an external interrupt or software interrupt,
 /// and handle it.
-/// returns 2 if timer interrupt,
-/// 1 if other device,
-/// 0 if not recognized.
-int interrupt_handler()
+enum interrupt_source interrupt_handler()
 {
-    xlen_t scause = r_scause();
+    xlen_t scause = rv_read_csr_scause();
 
-    if ((scause & 0x8000000000000000L) && (scause & 0xff) == 9)
+    if ((scause & SCAUSE_OTHER_DEVICE) && (scause & 0xff) == 9)
     {
-        // this is a supervisor external interrupt, via PLIC.
-
-        // irq indicates which device interrupted.
-        int irq = plic_claim();
-
-        if (irq == UART0_IRQ)
-        {
-            uart_interrupt_handler();
-        }
-        else if (irq == VIRTIO0_IRQ)
-        {
-            virtio_block_device_interrupt();
-        }
-        else if (irq)
-        {
-            printk("unexpected interrupt irq=%d\n", irq);
-        }
-
-        // the PLIC allows each device to raise at most one
-        // interrupt at a time; tell the PLIC the device is
-        // now allowed to interrupt again.
-        if (irq) plic_complete(irq);
-
-        return 1;
+        handle_plic_device_interrupt();
+        return INTERRUPT_SOURCE_OTHER_DEVICE;
     }
-    else if (scause == 0x8000000000000001L)
+    else if (scause == SCAUSE_TIMER_DEVICE || scause == SCAUSE_TIMER_EVENT)
     {
-        // software interrupt from a machine-mode timer interrupt,
-        // forwarded by m_mode_trap_vector in s_mode_trap_vector.S.
-
+#ifdef __ENABLE_SBI__
+        // if the kernel runs in an SBI environment, the timer for the next
+        // interrupt needs to be set here from S-Mode. If the kernel runs
+        // bare-metal the M-Mode interrupt handler has already reset the timer
+        // before triggering the S-Mode interrupt we are currently in (see
+        // m_mode_trap_vector.S).
+        sbi_set_timer();
+#endif  // __ENABLE_SBI__
         if (smp_processor_id() == 0)
         {
-            clockintr();
+            update_kernel_ticks();
         }
 
         // acknowledge the software interrupt by clearing
         // the SSIP bit in sip.
-        w_sip(r_sip() & ~2);
+        rv_write_csr_sip(rv_read_csr_sip() & ~2);
 
-        return 2;
+        return INTERRUPT_SOURCE_TIMER;
     }
-    else
-    {
-        return 0;
-    }
+
+    return INTERRUPT_SOURCE_NOT_RECOGNIZED;
 }

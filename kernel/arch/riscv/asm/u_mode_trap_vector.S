@@ -19,134 +19,149 @@
 trampoline:
 .align 4
 .globl u_mode_trap_vector
+
+#if (__riscv_xlen == 32)
+#define SIZE_OF_REG 4
+#define SAVE_REG_TO_TRAP_FRAME(REGISTER, OFFSET) sw REGISTER, (OFFSET*SIZE_OF_REG)(a0)
+#define LOAD_REG_FROM_TRAP_FRAME(REGISTER, OFFSET) lw REGISTER, (OFFSET*SIZE_OF_REG)(a0)
+#else 
+# 64 bit
+#define SIZE_OF_REG 8
+#define SAVE_REG_TO_TRAP_FRAME(REGISTER, OFFSET) sd REGISTER, (OFFSET*SIZE_OF_REG)(a0)
+#define LOAD_REG_FROM_TRAP_FRAME(REGISTER, OFFSET) ld REGISTER, (OFFSET*SIZE_OF_REG)(a0)
+#endif
+
 u_mode_trap_vector:    
-	#
-        # trap.c sets stvec to point here, so
-        # traps from user space start here,
-        # in supervisor mode, but with a
-        # user page table.
-        #
+    #
+    # trap.c sets stvec to point here, so
+    # traps from user space start here,
+    # in supervisor mode, but with a
+    # user page table.
+    #
 
-        # save user a0 in sscratch so
-        # a0 can be used to get at TRAPFRAME.
-        csrw sscratch, a0
+    # save user a0 in sscratch so
+    # a0 can be used to get at TRAPFRAME.
+    csrw sscratch, a0
 
-        # each process has a separate p->trapframe memory area,
-        # but it's mapped to the same virtual address
-        # (TRAPFRAME) in every process's user page table.
-        li a0, TRAPFRAME
-        
-        # save the user registers in TRAPFRAME
-        sd ra, 40(a0)
-        sd sp, 48(a0)
-        sd gp, 56(a0)
-        sd tp, 64(a0)
-        sd t0, 72(a0)
-        sd t1, 80(a0)
-        sd t2, 88(a0)
-        sd s0, 96(a0)
-        sd s1, 104(a0)
-        sd a1, 120(a0)
-        sd a2, 128(a0)
-        sd a3, 136(a0)
-        sd a4, 144(a0)
-        sd a5, 152(a0)
-        sd a6, 160(a0)
-        sd a7, 168(a0)
-        sd s2, 176(a0)
-        sd s3, 184(a0)
-        sd s4, 192(a0)
-        sd s5, 200(a0)
-        sd s6, 208(a0)
-        sd s7, 216(a0)
-        sd s8, 224(a0)
-        sd s9, 232(a0)
-        sd s10, 240(a0)
-        sd s11, 248(a0)
-        sd t3, 256(a0)
-        sd t4, 264(a0)
-        sd t5, 272(a0)
-        sd t6, 280(a0)
+    # each process has a separate p->trapframe memory area,
+    # but it's mapped to the same virtual address
+    # (TRAPFRAME) in every process's user page table.
+    li a0, TRAPFRAME
+    
+    # save the user registers in TRAPFRAME
+    SAVE_REG_TO_TRAP_FRAME(ra,  5)
+    SAVE_REG_TO_TRAP_FRAME(sp,  6)
+    SAVE_REG_TO_TRAP_FRAME(gp,  7)
+    SAVE_REG_TO_TRAP_FRAME(tp,  8)
+    SAVE_REG_TO_TRAP_FRAME(t0,  9)
+    SAVE_REG_TO_TRAP_FRAME(t1, 10)
+    SAVE_REG_TO_TRAP_FRAME(t2, 11)
+    SAVE_REG_TO_TRAP_FRAME(s0, 12)
+    SAVE_REG_TO_TRAP_FRAME(s1, 13)
 
-	# save the user a0 in p->trapframe->a0
-        csrr t0, sscratch
-        sd t0, 112(a0)
+    # a0 (index 14) is used to index trapframe, the users
+    # value is in sscratch. Luckily t0 is already saved.
+    csrr t0, sscratch
+    SAVE_REG_TO_TRAP_FRAME(t0, 14)
 
-        # initialize kernel stack pointer, from p->trapframe->kernel_sp
-        ld sp, 8(a0)
+    SAVE_REG_TO_TRAP_FRAME(a1, 15)
+    SAVE_REG_TO_TRAP_FRAME(a2, 16)
+    SAVE_REG_TO_TRAP_FRAME(a3, 17)
+    SAVE_REG_TO_TRAP_FRAME(a4, 18)
+    SAVE_REG_TO_TRAP_FRAME(a5, 19)
+    SAVE_REG_TO_TRAP_FRAME(a6, 20)
+    SAVE_REG_TO_TRAP_FRAME(a7, 21)
+    SAVE_REG_TO_TRAP_FRAME(s2, 22)
+    SAVE_REG_TO_TRAP_FRAME(s3, 23)
+    SAVE_REG_TO_TRAP_FRAME(s4, 24)
+    SAVE_REG_TO_TRAP_FRAME(s5, 25)
+    SAVE_REG_TO_TRAP_FRAME(s6, 26)
+    SAVE_REG_TO_TRAP_FRAME(s7, 27)
+    SAVE_REG_TO_TRAP_FRAME(s8, 28)
+    SAVE_REG_TO_TRAP_FRAME(s9, 29)
+    SAVE_REG_TO_TRAP_FRAME(s10,30)
+    SAVE_REG_TO_TRAP_FRAME(s11,31)
+    SAVE_REG_TO_TRAP_FRAME(t3, 32)
+    SAVE_REG_TO_TRAP_FRAME(t4, 33)
+    SAVE_REG_TO_TRAP_FRAME(t5, 34)
+    SAVE_REG_TO_TRAP_FRAME(t6, 35)
 
-        # make tp hold the current hartid, from p->trapframe->kernel_hartid
-        ld tp, 32(a0)
+    # initialize kernel stack pointer, from p->trapframe->kernel_sp
+    LOAD_REG_FROM_TRAP_FRAME(sp, 1)
 
-        # load the address of user_mode_interrupt_handler(), from p->trapframe->kernel_trap
-        ld t0, 16(a0)
+    # make tp hold the current hartid, from p->trapframe->kernel_hartid
+    LOAD_REG_FROM_TRAP_FRAME(tp, 4)
 
+    # load the address of user_mode_interrupt_handler(), from p->trapframe->kernel_trap
+    LOAD_REG_FROM_TRAP_FRAME(t0, 2)
 
-        # fetch the kernel page table address, from p->trapframe->kernel_page_table.
-        ld t1, 0(a0)
+    # fetch the kernel page table address, from p->trapframe->kernel_page_table.
+    LOAD_REG_FROM_TRAP_FRAME(t1, 0)
 
-        # wait for any previous memory operations to complete, so that
-        # they use the user page table.
-        sfence.vma zero, zero
+    # wait for any previous memory operations to complete, so that
+    # they use the user page table.
+    sfence.vma zero, zero
 
-        # install the kernel page table.
-        csrw satp, t1
+    # install the kernel page table.
+    csrw satp, t1
 
-        # flush now-stale user entries from the TLB.
-        sfence.vma zero, zero
+    # flush now-stale user entries from the TLB.
+    sfence.vma zero, zero
 
-        # jump to user_mode_interrupt_handler(), which does not return
-        jr t0
+    # jump to user_mode_interrupt_handler(), which does not return
+    jr t0
 
 .globl return_to_user_mode_asm
 return_to_user_mode_asm:
-        # return_to_user_mode_asm(pagetable)
-        # called by return_to_user_mode() in trap.c to
-        # switch from kernel to user.
-        # a0: user page table, for satp.
+    # return_to_user_mode_asm(pagetable)
+    # called by return_to_user_mode() in trap.c to
+    # switch from kernel to user.
+    # a0: user page table, for satp.
 
-        # switch to the user page table.
-        sfence.vma zero, zero
-        csrw satp, a0
-        sfence.vma zero, zero
+    # switch to the user page table.
+    sfence.vma zero, zero
+    csrw satp, a0
+    sfence.vma zero, zero
 
-        li a0, TRAPFRAME
+    li a0, TRAPFRAME
 
-        # restore all but a0 from TRAPFRAME
-        ld ra, 40(a0)
-        ld sp, 48(a0)
-        ld gp, 56(a0)
-        ld tp, 64(a0)
-        ld t0, 72(a0)
-        ld t1, 80(a0)
-        ld t2, 88(a0)
-        ld s0, 96(a0)
-        ld s1, 104(a0)
-        ld a1, 120(a0)
-        ld a2, 128(a0)
-        ld a3, 136(a0)
-        ld a4, 144(a0)
-        ld a5, 152(a0)
-        ld a6, 160(a0)
-        ld a7, 168(a0)
-        ld s2, 176(a0)
-        ld s3, 184(a0)
-        ld s4, 192(a0)
-        ld s5, 200(a0)
-        ld s6, 208(a0)
-        ld s7, 216(a0)
-        ld s8, 224(a0)
-        ld s9, 232(a0)
-        ld s10, 240(a0)
-        ld s11, 248(a0)
-        ld t3, 256(a0)
-        ld t4, 264(a0)
-        ld t5, 272(a0)
-        ld t6, 280(a0)
+    # restore all but a0 from TRAPFRAME
+    
+    LOAD_REG_FROM_TRAP_FRAME(ra,  5)
+    LOAD_REG_FROM_TRAP_FRAME(sp,  6)
+    LOAD_REG_FROM_TRAP_FRAME(gp,  7)
+    LOAD_REG_FROM_TRAP_FRAME(tp,  8)
+    LOAD_REG_FROM_TRAP_FRAME(t0,  9)
+    LOAD_REG_FROM_TRAP_FRAME(t1, 10)
+    LOAD_REG_FROM_TRAP_FRAME(t2, 11)
+    LOAD_REG_FROM_TRAP_FRAME(s0, 12)
+    LOAD_REG_FROM_TRAP_FRAME(s1, 13)
+    # a0 (index 14) is loaded later (used to index trapframe)
+    LOAD_REG_FROM_TRAP_FRAME(a1, 15)
+    LOAD_REG_FROM_TRAP_FRAME(a2, 16)
+    LOAD_REG_FROM_TRAP_FRAME(a3, 17)
+    LOAD_REG_FROM_TRAP_FRAME(a4, 18)
+    LOAD_REG_FROM_TRAP_FRAME(a5, 19)
+    LOAD_REG_FROM_TRAP_FRAME(a6, 20)
+    LOAD_REG_FROM_TRAP_FRAME(a7, 21)
+    LOAD_REG_FROM_TRAP_FRAME(s2, 22)
+    LOAD_REG_FROM_TRAP_FRAME(s3, 23)
+    LOAD_REG_FROM_TRAP_FRAME(s4, 24)
+    LOAD_REG_FROM_TRAP_FRAME(s5, 25)
+    LOAD_REG_FROM_TRAP_FRAME(s6, 26)
+    LOAD_REG_FROM_TRAP_FRAME(s7, 27)
+    LOAD_REG_FROM_TRAP_FRAME(s8, 28)
+    LOAD_REG_FROM_TRAP_FRAME(s9, 29)
+    LOAD_REG_FROM_TRAP_FRAME(s10,30)
+    LOAD_REG_FROM_TRAP_FRAME(s11,31)
+    LOAD_REG_FROM_TRAP_FRAME(t3, 32)
+    LOAD_REG_FROM_TRAP_FRAME(t4, 33)
+    LOAD_REG_FROM_TRAP_FRAME(t5, 34)
+    LOAD_REG_FROM_TRAP_FRAME(t6, 35)
 
-	# restore user a0
-        ld a0, 112(a0)
-        
-        # return to user mode and user pc.
-        # return_to_user_mode() set up sstatus and sepc.
-        sret
+    # restore user a0
+    LOAD_REG_FROM_TRAP_FRAME(a0, 14)
+    
+    # return to user mode and user pc.
+    # return_to_user_mode() set up sstatus and sepc.
+    sret

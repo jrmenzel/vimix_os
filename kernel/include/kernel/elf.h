@@ -31,12 +31,17 @@ struct elfhdr
 struct proghdr
 {
     uint32_t type;
+#if defined(_arch_is_64bit)
     uint32_t flags;
+#endif
     size_t off;
     size_t vaddr;
     size_t paddr;
     size_t filesz;
     size_t memsz;
+#if defined(_arch_is_32bit)
+    uint32_t flags;
+#endif
     size_t align;
 };
 

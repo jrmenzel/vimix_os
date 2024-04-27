@@ -3,7 +3,7 @@
 #include "plic.h"
 
 #include <kernel/kernel.h>
-#include <kernel/proc.h>
+#include <kernel/smp.h>
 #include <mm/memlayout.h>
 
 //

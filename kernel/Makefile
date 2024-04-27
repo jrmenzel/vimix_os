@@ -13,10 +13,13 @@ OBJS = $(ARCH)/asm/entry.o \
 	$(ARCH)/asm/m_mode_trap_vector.o \
 	$(ARCH)/asm/u_mode_trap_vector.o \
 	$(ARCH)/asm/context_switch.o \
+	$(ARCH)/mm/vm.o \
 	$(ARCH)/start.o \
 	$(ARCH)/clint.o \
 	$(ARCH)/plic.o \
+	$(ARCH)/context.o \
 	$(ARCH)/trap.o \
+	$(ARCH)/sbi.o \
 	drivers/uart16550.o \
 	drivers/virtio_disk.o \
 	fs/fs.o \
@@ -65,6 +68,11 @@ KERNEL_SPACE_INC = ./arch/riscv # selected architecture
 KERNEL_SPACE_INC += ./include   # public kernel API
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I$d)
 
+ifeq ($(SBI_SUPPORT), yes)
+CFLAGS += -D__ENABLE_SBI__
+endif
+
+
 .PHONY: all directories clean
 all: directories $(ARCH)/asm/initcode.h $(KERNEL_FILE) 
 
@@ -88,6 +96,12 @@ $(ARCH)/asm/initcode.h: $(ARCH)/asm/initcode.S directories
 	$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode.o
 	$(OBJCOPY) -S -O binary $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode
 	xxd -i $(INIT_BUILD_DIR)/initcode > $(ARCH)/asm/initcode.h
+
+
+
+ifeq ($(SBI_SUPPORT), yes)
+LD_DEFINES=--defsym=openbsi=1
+endif
 
 # the kernel itself
 KERNEL_PATH=../$(KERNEL_FILE)

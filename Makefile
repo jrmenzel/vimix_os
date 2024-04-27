@@ -40,9 +40,18 @@ $(BUILD_DIR)/filesystem.img: tools README.md userspace
 
 ###
 # qemu
+ifeq ($(BITWIDTH), 64)
 QEMU = qemu-system-riscv64
+else
+QEMU = qemu-system-riscv32
+endif
 GDB_PORT = 26002
+
+ifeq ($(SBI_SUPPORT), yes)
+QEMU_BIOS=default
+else
 QEMU_BIOS=none
+endif
 
 CPUS := 4
 QEMU_OPTS = -machine virt -bios $(QEMU_BIOS) -kernel $(KERNEL_FILE) -m 128M -smp $(CPUS) -nographic
@@ -64,7 +73,11 @@ qemu: kernel $(BUILD_DIR)/filesystem.img
 	@echo
 	$(QEMU) $(QEMU_OPTS)
 
+ifeq ($(BITWIDTH), 32)
+GDB_ARCHITECTURE = riscv:rv32
+else
 GDB_ARCHITECTURE = riscv:rv64
+endif
 
 .gdbinit: tools/gdbinit Makefile MakefileCommon.mk
 	cp tools/gdbinit .gdbinit

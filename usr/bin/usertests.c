@@ -22,6 +22,16 @@
 
 char buf[BUFSZ];
 
+#ifdef _ARCH_32BIT
+// 32 bit
+const size_t TEST_POINTER_ADDR_1 = 0x80000000LL;
+const size_t TEST_POINTER_ADDR_2 = 0xffffffff;
+#else
+// 64 bit
+const size_t TEST_POINTER_ADDR_1 = 0x80000000LL;
+const size_t TEST_POINTER_ADDR_2 = 0xffffffffffffffff;
+#endif
+
 //
 // Section with tests that run fairly quickly.  Use -q if you want to
 // run just those.  With -q usertests also runs the ones that take a
@@ -32,7 +42,7 @@ char buf[BUFSZ];
 // that read user memory with uvm_copy_in?
 void copyin(char *s)
 {
-    size_t addrs[] = {0x80000000LL, 0xffffffffffffffff};
+    size_t addrs[] = {TEST_POINTER_ADDR_1, TEST_POINTER_ADDR_2};
 
     for (size_t ai = 0; ai < 2; ai++)
     {
@@ -81,7 +91,7 @@ void copyin(char *s)
 // that write user memory with uvm_copy_out?
 void copyout(char *s)
 {
-    size_t addrs[] = {0x80000000LL, 0xffffffffffffffff};
+    size_t addrs[] = {TEST_POINTER_ADDR_1, TEST_POINTER_ADDR_2};
 
     for (size_t ai = 0; ai < 2; ai++)
     {
@@ -127,7 +137,7 @@ void copyout(char *s)
 // what if you pass ridiculous string pointers to system calls?
 void copyinstr1(char *s)
 {
-    size_t addrs[] = {0x80000000LL, 0xffffffffffffffff};
+    size_t addrs[] = {TEST_POINTER_ADDR_1, TEST_POINTER_ADDR_2};
 
     for (size_t ai = 0; ai < 2; ai++)
     {
@@ -214,7 +224,7 @@ void copyinstr2(char *s)
 // what if a string argument crosses over the end of last user page?
 void copyinstr3(char *s)
 {
-    sbrk(8192);
+    sbrk(2 * PAGE_SIZE);
     size_t top = (size_t)sbrk(0);
     if ((top % PAGE_SIZE) != 0)
     {
@@ -268,13 +278,13 @@ void rwsbrk()
 
     size_t a = (size_t)sbrk(8192);
 
-    if (a == 0xffffffffffffffffLL)
+    if (a == TEST_POINTER_ADDR_2)
     {
         printf("sbrk(rwsbrk) failed\n");
         exit(1);
     }
 
-    if ((size_t)sbrk(-8192) == 0xffffffffffffffffLL)
+    if ((size_t)sbrk(-8192) == TEST_POINTER_ADDR_2)
     {
         printf("sbrk(rwsbrk) shrink failed\n");
         exit(1);
@@ -286,10 +296,11 @@ void rwsbrk()
         printf("open(rwsbrk) failed\n");
         exit(1);
     }
-    ssize_t n = write(fd, (void *)(a + 4096), 1024);
+
+    ssize_t n = write(fd, (void *)(a + PAGE_SIZE), 1024);
     if (n >= 0)
     {
-        printf("write(fd, %p, 1024) returned %d, not -1\n", a + 4096, n);
+        printf("write(fd, %p, 1024) returned %d, not -1\n", a + PAGE_SIZE, n);
         exit(1);
     }
     close(fd);
@@ -301,10 +312,10 @@ void rwsbrk()
         printf("open(rwsbrk) failed\n");
         exit(1);
     }
-    n = read(fd, (void *)(a + 4096), 10);
+    n = read(fd, (void *)(a + PAGE_SIZE), 10);
     if (n >= 0)
     {
-        printf("read(fd, %p, 10) returned %d, not -1\n", a + 4096, n);
+        printf("read(fd, %p, 10) returned %d, not -1\n", a + PAGE_SIZE, n);
         exit(1);
     }
     close(fd);
@@ -2317,7 +2328,7 @@ void sbrkbasic(char *s)
     if (pid == 0)
     {
         a = sbrk(TOOMUCH);
-        if (a == (char *)0xffffffffffffffffL)
+        if (a == (char *)TEST_POINTER_ADDR_2)
         {
             // it's OK if this fails.
             exit(0);
@@ -2394,15 +2405,20 @@ void sbrkmuch(char *s)
 
     // touch each page to make sure it exists.
     char *eee = sbrk(0);
-    for (char *pp = a; pp < eee; pp += 4096) *pp = 1;
+    for (char *pp = a; pp < eee; pp += PAGE_SIZE)
+    {
+        *pp = 1;
+    }
 
+    // 32bit code in release mode had gcc trigger a stringop-overflow error
+    // "volatile" silences this, "-Wno-error=stringop-overflow" would work too.
     volatile char *lastaddr = (char *)(BIG - 1);
     *lastaddr = 99;
 
     // can one de-allocate?
     a = sbrk(0);
     char *c = sbrk(-PAGE_SIZE);
-    if (c == (char *)0xffffffffffffffffL)
+    if (c == (char *)TEST_POINTER_ADDR_2)
     {
         printf("%s: sbrk could not deallocate\n", s);
         exit(1);
@@ -2466,8 +2482,12 @@ void kernmem(char *s)
 }
 
 // user code should not be able to write to addresses above MAXVA.
+// only on 64 bit where addresses above MAXVA are possible
 void MAXVAplus(char *s)
 {
+#ifdef _ARCH_32BIT
+    return;
+#else
     volatile size_t a = MAXVA;
     for (; a != 0; a <<= 1)
     {
@@ -2490,6 +2510,7 @@ void MAXVAplus(char *s)
             exit(1);
         }
     }
+#endif
 }
 
 // if we run the system out of memory, does it clean up the last
@@ -2535,7 +2556,7 @@ void sbrkfail(char *s)
         kill(pids[i]);
         wait(NULL);
     }
-    if (c == (char *)0xffffffffffffffffL)
+    if (c == (char *)TEST_POINTER_ADDR_2)
     {
         printf("%s: failed sbrk leaked memory\n", s);
         exit(1);
@@ -2746,6 +2767,13 @@ void argptest(char *s)
     close(fd);
 }
 
+static inline size_t read_stack_pointer()
+{
+    size_t x;
+    asm volatile("mv %0, sp" : "=r"(x));
+    return x;
+}
+
 // check that there's an invalid page beneath
 // the user stack, to catch stack overflow.
 void stacktest(char *s)
@@ -2753,7 +2781,7 @@ void stacktest(char *s)
     pid_t pid = fork();
     if (pid == 0)
     {
-        char *sp = (char *)r_sp();
+        char *sp = (char *)read_stack_pointer();
         sp -= PAGE_SIZE;
         // the *sp should cause a trap.
         printf("%s: stacktest: read below stack %p\n", s, *sp);
@@ -3178,13 +3206,19 @@ void execout(char *s)
             while (true)
             {
                 intptr_t a = (intptr_t)sbrk(PAGE_SIZE);
-                if (a == 0xffffffffffffffffLL) break;
+                if (a == TEST_POINTER_ADDR_2)
+                {
+                    break;
+                }
                 *(char *)(a + PAGE_SIZE - 1) = 1;
             }
 
             // free a few pages, in order to let execv() make some
             // progress.
-            for (size_t i = 0; i < avail; i++) sbrk(-PAGE_SIZE);
+            for (size_t i = 0; i < avail; i++)
+            {
+                sbrk(-PAGE_SIZE);
+            }
 
             close(1);
             char *args[] = {"echo", "x", 0};

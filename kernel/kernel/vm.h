@@ -1,18 +1,20 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#include <arch/riscv/riscv.h>
 #include <kernel/kernel.h>
+#include <mm/vm.h>
 
 /// kalloc returns one page of 4KB, so a page used as a pagetable_t
-/// will have 4KB/sizeof(size_t) = 512 entries
+/// will have 4KB/sizeof(size_t) = 512 entries in 64bit / 1024 entries in 32bit
 typedef size_t pte_t;
 
-/// @brief in the end a pagetable_t is a "size_t tagetable[512]"
+/// @brief in the end a pagetable_t is a "size_t tagetable[512]" (64 bit)
+/// / "size_t tagetable[1024]" (32 bit)
 typedef pte_t *pagetable_t;
+static const pagetable_t INVALID_PAGETABLE_T = NULL;
 
 /// Initialize the one g_kernel_pagetable
-void kvm_init();
+void kvm_init(char *end_of_memory);
 
 /// Switch h/w page table register to the kernel's page table
 /// and enable paging.
@@ -31,7 +33,7 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
 
 /// @brief Create PTEs for virtual addresses starting at va that refer to
 /// physical addresses starting at pa. va and size might not
-/// be page-aligned. Returns 0 on success, -1 if walk() couldn't
+/// be page-aligned. Returns 0 on success, -1 if vm_walk() couldn't
 /// allocate a needed page-table page.
 /// @param pagetable page table to modify
 /// @param va virtual address

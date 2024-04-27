@@ -26,8 +26,22 @@ exit:
 init:
   .string "/init\0"
 
+#if (__riscv_xlen == 64)
+
 # char *argv[] = { init, 0 };
 .p2align 2
 argv:
     .quad init
     .quad 0
+
+#else
+// 32 bit
+
+.string "\0"
+# char *argv[] = { init, 0 };
+.p2align 4
+argv:
+    .long init
+    .long 0
+
+#endif

@@ -5,8 +5,13 @@
 #####
 # target architecture subpath in kernel/
 ARCH=arch/riscv
+#BITWIDTH=32
+BITWIDTH=64
 BUILD_TYPE=debug
 #BUILD_TYPE=release
+
+SBI_SUPPORT=yes
+#SBI_SUPPORT=no
 
 KERNEL_NAME=kernel-vimix
 KERNEL_FILE=$(BUILD_DIR)/$(KERNEL_NAME)
@@ -18,6 +23,7 @@ KERNEL_FILE=$(BUILD_DIR)/$(KERNEL_NAME)
 
 # Try to infer the correct TOOLPREFIX if not set
 ifndef TOOLPREFIX
+ifeq ($(BITWIDTH), 64)
 TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf64-big' >/dev/null 2>&1; \
 	then echo 'riscv64-unknown-elf-'; \
 	elif riscv64-linux-gnu-objdump -i 2>&1 | grep 'elf64-big' >/dev/null 2>&1; \
@@ -30,6 +36,20 @@ TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf64-big' 
 	echo "*** Error: Couldn't find a riscv64 version of GCC/binutils." 1>&2; \
 	echo "*** To turn off this error, set TOOLPREFIX in MakefileCommon.mk." 1>&2; \
 	echo "***" 1>&2; exit 1; fi)
+else
+	TOOLPREFIX := $(shell if riscv32-unknown-elf-objdump -i 2>&1 | grep 'elf32-big' >/dev/null 2>&1; \
+	then echo 'riscv32-unknown-elf-'; \
+	elif riscv32-linux-gnu-objdump -i 2>&1 | grep 'elf32-big' >/dev/null 2>&1; \
+	then echo 'riscv32-linux-gnu-'; \
+	elif riscv32-unknown-linux-gnu-objdump -i 2>&1 | grep 'elf32-big' >/dev/null 2>&1; \
+	then echo 'riscv32-unknown-linux-gnu-'; \
+	elif riscv32-elf-objdump -i 2>&1 | grep 'elf32-big' >/dev/null 2>&1; \
+	then echo 'riscv32-elf-'; \
+	else echo "***" 1>&2; \
+	echo "*** Error: Couldn't find a riscv32 version of GCC/binutils." 1>&2; \
+	echo "*** To turn off this error, set TOOLPREFIX in MakefileCommon.mk." 1>&2; \
+	echo "***" 1>&2; exit 1; fi)
+endif # bitwidth
 endif
 
 # "build" is used as the foldername outside of the Makefiles as well.
@@ -50,7 +70,12 @@ OBJDUMP = $(TOOLPREFIX)objdump
 #####
 # C compile flags
 
-CFLAGS += -march=rv64gc
+ifeq ($(BITWIDTH), 64)
+CFLAGS += -march=rv64gc -D_ARCH_64BIT
+else
+CFLAGS += -march=rv32gc -D_ARCH_32BIT
+endif
+
 CFLAGS += -fno-omit-frame-pointer
 CFLAGS += -Wall -Werror
 

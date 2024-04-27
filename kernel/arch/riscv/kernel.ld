@@ -5,9 +5,12 @@ SECTIONS
 {
   /*
    * ensure that entry.S / _entry is at 0x80000000,
-   * where qemu's -kernel jumps.
+   * where qemu's -kernel jumps with -bios none
+   * or at 0x80200000 for OpenSBI systems
    */
-  . = 0x80000000;
+  .text.start (DEFINED(openbsi) ? 0x80200000 : 0x80000000) : {
+    ../build/kernel/arch/riscv/asm/entry.o( .text )
+  }
 
   .text : {
     *(.text .text.*)

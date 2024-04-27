@@ -1,90 +1,103 @@
 # SPDX-License-Identifier: MIT
 
+# Interrupts and exceptions while in supervisor
+# mode (used for kernel mode) come here.
 #
-# interrupts and exceptions while in supervisor
-# mode come here.
-#
-# the current stack is a kernel stack.
-# push all registers, call kernel_mode_interrupt_handler().
-# when kernel_mode_interrupt_handler() returns, restore registers, return.
-#
+# The current stack is a kernel stack.
+# Push all registers, call kernel_mode_interrupt_handler().
+# When kernel_mode_interrupt_handler() returns, restore registers, return.
+
+# C interrupt vector
 .globl kernel_mode_interrupt_handler
+
+#if (__riscv_xlen == 32)
+#define SIZE_OF_REG 4
+#define SAVE_REG_TO_STACK(REGISTER, OFFSET) sw REGISTER, (OFFSET*SIZE_OF_REG)(sp)
+#define LOAD_REG_FROM_STACK(REGISTER, OFFSET) lw REGISTER, (OFFSET*SIZE_OF_REG)(sp)
+#else 
+# 64 bit
+#define SIZE_OF_REG 8
+#define SAVE_REG_TO_STACK(REGISTER, OFFSET) sd REGISTER, (OFFSET*SIZE_OF_REG)(sp)
+#define LOAD_REG_FROM_STACK(REGISTER, OFFSET) ld REGISTER, (OFFSET*SIZE_OF_REG)(sp)
+#endif
+
 .globl s_mode_trap_vector
 .align 4
 s_mode_trap_vector:
-        # make room to save registers.
-        addi sp, sp, -256
+    # make room to save registers.
+    addi sp, sp, -32*SIZE_OF_REG
 
-        # save the registers.
-        sd ra, 0(sp)
-        sd sp, 8(sp)
-        sd gp, 16(sp)
-        sd tp, 24(sp)
-        sd t0, 32(sp)
-        sd t1, 40(sp)
-        sd t2, 48(sp)
-        sd s0, 56(sp)
-        sd s1, 64(sp)
-        sd a0, 72(sp)
-        sd a1, 80(sp)
-        sd a2, 88(sp)
-        sd a3, 96(sp)
-        sd a4, 104(sp)
-        sd a5, 112(sp)
-        sd a6, 120(sp)
-        sd a7, 128(sp)
-        sd s2, 136(sp)
-        sd s3, 144(sp)
-        sd s4, 152(sp)
-        sd s5, 160(sp)
-        sd s6, 168(sp)
-        sd s7, 176(sp)
-        sd s8, 184(sp)
-        sd s9, 192(sp)
-        sd s10, 200(sp)
-        sd s11, 208(sp)
-        sd t3, 216(sp)
-        sd t4, 224(sp)
-        sd t5, 232(sp)
-        sd t6, 240(sp)
+    # save the registers.
+    SAVE_REG_TO_STACK(ra,   0)
+    SAVE_REG_TO_STACK(sp,   1)
+    SAVE_REG_TO_STACK(gp,   2)
+    SAVE_REG_TO_STACK(tp,   3)
+    SAVE_REG_TO_STACK(t0,   4)
+    SAVE_REG_TO_STACK(t1,   5)
+    SAVE_REG_TO_STACK(t2,   6)
+    SAVE_REG_TO_STACK(s0,   7)
+    SAVE_REG_TO_STACK(s1,   8)
+    SAVE_REG_TO_STACK(a0,   9)
+    SAVE_REG_TO_STACK(a1,  10)
+    SAVE_REG_TO_STACK(a2,  11)
+    SAVE_REG_TO_STACK(a3,  12)
+    SAVE_REG_TO_STACK(a4,  13)
+    SAVE_REG_TO_STACK(a5,  14)
+    SAVE_REG_TO_STACK(a6,  15)
+    SAVE_REG_TO_STACK(a7,  16)
+    SAVE_REG_TO_STACK(s2,  17)
+    SAVE_REG_TO_STACK(s3,  18)
+    SAVE_REG_TO_STACK(s4,  19)
+    SAVE_REG_TO_STACK(s5,  20)
+    SAVE_REG_TO_STACK(s6,  21)
+    SAVE_REG_TO_STACK(s7,  22)
+    SAVE_REG_TO_STACK(s8,  23)
+    SAVE_REG_TO_STACK(s9,  24)
+    SAVE_REG_TO_STACK(s10, 25)
+    SAVE_REG_TO_STACK(s11, 26)
+    SAVE_REG_TO_STACK(t3,  27)
+    SAVE_REG_TO_STACK(t4,  28)
+    SAVE_REG_TO_STACK(t5,  29)
+    SAVE_REG_TO_STACK(t6,  30)
 
-        # call the C trap handler in trap.c
-        call kernel_mode_interrupt_handler
+    # call the C interrupt handler in trap.c
+    call kernel_mode_interrupt_handler
 
-        # restore registers.
-        ld ra, 0(sp)
-        ld sp, 8(sp)
-        ld gp, 16(sp)
-        # not tp (contains hartid), in case we moved CPUs
-        ld t0, 32(sp)
-        ld t1, 40(sp)
-        ld t2, 48(sp)
-        ld s0, 56(sp)
-        ld s1, 64(sp)
-        ld a0, 72(sp)
-        ld a1, 80(sp)
-        ld a2, 88(sp)
-        ld a3, 96(sp)
-        ld a4, 104(sp)
-        ld a5, 112(sp)
-        ld a6, 120(sp)
-        ld a7, 128(sp)
-        ld s2, 136(sp)
-        ld s3, 144(sp)
-        ld s4, 152(sp)
-        ld s5, 160(sp)
-        ld s6, 168(sp)
-        ld s7, 176(sp)
-        ld s8, 184(sp)
-        ld s9, 192(sp)
-        ld s10, 200(sp)
-        ld s11, 208(sp)
-        ld t3, 216(sp)
-        ld t4, 224(sp)
-        ld t5, 232(sp)
-        ld t6, 240(sp)
+    # restore registers.
+    LOAD_REG_FROM_STACK(ra,   0)
+    LOAD_REG_FROM_STACK(sp,   1)
+    LOAD_REG_FROM_STACK(gp,   2)
+    # not tp (contains hartid), in case we moved CPUs
+    LOAD_REG_FROM_STACK(t0,   4)
+    LOAD_REG_FROM_STACK(t1,   5)
+    LOAD_REG_FROM_STACK(t2,   6)
+    LOAD_REG_FROM_STACK(s0,   7)
+    LOAD_REG_FROM_STACK(s1,   8)
+    LOAD_REG_FROM_STACK(a0,   9)
+    LOAD_REG_FROM_STACK(a1,  10)
+    LOAD_REG_FROM_STACK(a2,  11)
+    LOAD_REG_FROM_STACK(a3,  12)
+    LOAD_REG_FROM_STACK(a4,  13)
+    LOAD_REG_FROM_STACK(a5,  14)
+    LOAD_REG_FROM_STACK(a6,  15)
+    LOAD_REG_FROM_STACK(a7,  16)
+    LOAD_REG_FROM_STACK(s2,  17)
+    LOAD_REG_FROM_STACK(s3,  18)
+    LOAD_REG_FROM_STACK(s4,  19)
+    LOAD_REG_FROM_STACK(s5,  20)
+    LOAD_REG_FROM_STACK(s6,  21)
+    LOAD_REG_FROM_STACK(s7,  22)
+    LOAD_REG_FROM_STACK(s8,  23)
+    LOAD_REG_FROM_STACK(s9,  24)
+    LOAD_REG_FROM_STACK(s10, 25)
+    LOAD_REG_FROM_STACK(s11, 26)
+    LOAD_REG_FROM_STACK(t3,  27)
+    LOAD_REG_FROM_STACK(t4,  28)
+    LOAD_REG_FROM_STACK(t5,  29)
+    LOAD_REG_FROM_STACK(t6,  30)
 
-        addi sp, sp, 256
+    addi sp, sp, 32*SIZE_OF_REG
 
-        # return to whatever we were doing in the kernel.
-        sret
+    # return to whatever we were doing in the kernel.
+    sret
+

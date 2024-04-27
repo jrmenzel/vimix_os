@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/fence.h>
 #include <fs/xv6fs/log.h>
 #include <kernel/elf.h>
 #include <kernel/kernel.h>
@@ -73,6 +74,12 @@ int execv(char *path, char **argv)
     inode_unlock_put(ip);
     log_end_fs_transaction();
     ip = NULL;
+
+    // Depending on the cpu implementation a memory barrier might
+    // not affect the instruction caches, so after loading executable
+    // code an instruction memory barrier is needed.
+    // Todo: this should happen on all cores that want to run this process.
+    instruction_memory_barrier();
 
     proc = get_current();
     size_t oldsz = proc->sz;

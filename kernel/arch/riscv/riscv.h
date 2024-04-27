@@ -1,8 +1,5 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
-
-#ifndef __ASSEMBLER__
-
 #include <kernel/types.h>
 
 //
@@ -10,254 +7,207 @@
 // xlen_t is used where data is load/stored to registers
 // it has the same size as size_t
 //
-typedef size_t xlen_t;
-
-/// which hart (core) is this?
-static inline xlen_t r_mhartid()
-{
-    xlen_t x;
-    asm volatile("csrr %0, mhartid" : "=r"(x));
-    return x;
-}
-
-// Machine Status Register, mstatus
-
-#define MSTATUS_MPP_MASK (3L << 11)  // previous mode.
-#define MSTATUS_MPP_M (3L << 11)
-#define MSTATUS_MPP_S (1L << 11)
-#define MSTATUS_MPP_U (0L << 11)
-#define MSTATUS_MIE (1L << 3)  // machine-mode interrupt enable.
-
-static inline xlen_t r_mstatus()
-{
-    xlen_t x;
-    asm volatile("csrr %0, mstatus" : "=r"(x));
-    return x;
-}
-
-static inline void w_mstatus(xlen_t x)
-{
-    asm volatile("csrw mstatus, %0" : : "r"(x));
-}
-
-/// machine exception program counter, holds the
-/// instruction address to which a return from
-/// exception will go.
-static inline void w_mepc(xlen_t x)
-{
-    asm volatile("csrw mepc, %0" : : "r"(x));
-}
+#if defined(_arch_is_32bit)
+typedef uint32_t xlen_t;
+#else
+typedef uint64_t xlen_t;
+#endif
 
 // Supervisor Status Register, sstatus
-
 #define SSTATUS_SPP (1L << 8)   // Previous mode, 1=Supervisor, 0=User
 #define SSTATUS_SPIE (1L << 5)  // Supervisor Previous Interrupt Enable
 #define SSTATUS_UPIE (1L << 4)  // User Previous Interrupt Enable
 #define SSTATUS_SIE (1L << 1)   // Supervisor Interrupt Enable
 #define SSTATUS_UIE (1L << 0)   // User Interrupt Enable
 
-static inline xlen_t r_sstatus()
-{
-    xlen_t x;
-    asm volatile("csrr %0, sstatus" : "=r"(x));
-    return x;
-}
-
-static inline void w_sstatus(xlen_t x)
-{
-    asm volatile("csrw sstatus, %0" : : "r"(x));
-}
-
-/// Supervisor Interrupt Pending
-static inline xlen_t r_sip()
-{
-    xlen_t x;
-    asm volatile("csrr %0, sip" : "=r"(x));
-    return x;
-}
-
-static inline void w_sip(xlen_t x) { asm volatile("csrw sip, %0" : : "r"(x)); }
-
 // Supervisor Interrupt Enable
 #define SIE_SEIE (1L << 9)  // external
 #define SIE_STIE (1L << 5)  // timer
 #define SIE_SSIE (1L << 1)  // software
-static inline xlen_t r_sie()
-{
-    xlen_t x;
-    asm volatile("csrr %0, sie" : "=r"(x));
-    return x;
-}
 
-static inline void w_sie(xlen_t x) { asm volatile("csrw sie, %0" : : "r"(x)); }
+#ifndef __ENABLE_SBI__
+// (When running in an SBI environment the kernel has no
+// direct access to M-Mode. Hide all M-Mode defines to prevent accidental
+// usage as it will result in runtime issues.)
+
+// Machine Status Register, mstatus
+#define MSTATUS_MPP_MASK (3L << 11)  // previous mode mask.
+#define MSTATUS_MPP_M (3L << 11)     // mret will go to Machine Mode
+#define MSTATUS_MPP_S (1L << 11)     // mret will go to Supervisor Mode
+#define MSTATUS_MPP_U (0L << 11)     // mret will go to User Mode
+#define MSTATUS_MIE (1L << 3)        // machine-mode interrupt enable.
 
 // Machine-mode Interrupt Enable
 #define MIE_MEIE (1L << 11)  // external
 #define MIE_MTIE (1L << 7)   // timer
 #define MIE_MSIE (1L << 3)   // software
-static inline xlen_t r_mie()
-{
-    xlen_t x;
-    asm volatile("csrr %0, mie" : "=r"(x));
-    return x;
-}
+#endif                       // __ENABLE_SBI__
 
-static inline void w_mie(xlen_t x) { asm volatile("csrw mie, %0" : : "r"(x)); }
-
-/// supervisor exception program counter, holds the
-/// instruction address to which a return from
-/// exception will go.
-static inline void w_sepc(xlen_t x)
-{
-    asm volatile("csrw sepc, %0" : : "r"(x));
-}
-
-static inline xlen_t r_sepc()
-{
-    xlen_t x;
-    asm volatile("csrr %0, sepc" : "=r"(x));
-    return x;
-}
-
-/// Machine Exception Delegation
-static inline xlen_t r_medeleg()
-{
-    xlen_t x;
-    asm volatile("csrr %0, medeleg" : "=r"(x));
-    return x;
-}
-
-static inline void w_medeleg(xlen_t x)
-{
-    asm volatile("csrw medeleg, %0" : : "r"(x));
-}
-
-/// Machine Interrupt Delegation
-static inline xlen_t r_mideleg()
-{
-    xlen_t x;
-    asm volatile("csrr %0, mideleg" : "=r"(x));
-    return x;
-}
-
-static inline void w_mideleg(xlen_t x)
-{
-    asm volatile("csrw mideleg, %0" : : "r"(x));
-}
-
-/// Supervisor Trap-Vector Base Address
-/// low two bits are mode.
-static inline void w_stvec(xlen_t x)
-{
-    asm volatile("csrw stvec, %0" : : "r"(x));
-}
-
-static inline xlen_t r_stvec()
-{
-    xlen_t x;
-    asm volatile("csrr %0, stvec" : "=r"(x));
-    return x;
-}
-
-/// Machine-mode interrupt vector
-static inline void w_mtvec(xlen_t x)
-{
-    asm volatile("csrw mtvec, %0" : : "r"(x));
-}
-
-/// Physical Memory Protection
-static inline void w_pmpcfg0(xlen_t x)
-{
-    asm volatile("csrw pmpcfg0, %0" : : "r"(x));
-}
-
-static inline void w_pmpaddr0(xlen_t x)
-{
-    asm volatile("csrw pmpaddr0, %0" : : "r"(x));
-}
-
-/// use riscv's sv39 page table scheme.
+#if defined(_arch_is_32bit)
+// use riscv's sv32 page table scheme.
+#define SATP_SV32 (1L << 31)
+#define MAKE_SATP(pagetable) (SATP_SV32 | (((uint32_t)pagetable) >> 12))
+#else
+// use riscv's sv39 page table scheme.
 #define SATP_SV39 (8L << 60)
-
 #define MAKE_SATP(pagetable) (SATP_SV39 | (((uint64_t)pagetable) >> 12))
+#endif  // _arch_is_32bit
 
-/// supervisor address translation and protection;
-/// holds the address of the page table.
-static inline void cpu_set_page_table(xlen_t addr)
-{
-    asm volatile("csrw satp, %0" : : "r"(addr));
-}
+/// physical memory protection CSR read access
+#define PMP_R (1L << 0)
+/// physical memory protection CSR write access
+#define PMP_W (1L << 1)
+/// physical memory protection CSR execute access
+#define PMP_X (1L << 2)
+/// physical memory protection CSR naturally aligned power of two
+#define PMP_MATCH_NAPOT (3L << 3)
 
-static inline xlen_t r_satp()
-{
-    xlen_t x;
-    asm volatile("csrr %0, satp" : "=r"(x));
-    return x;
-}
+// CSR read macro:
+#define rv_read_csr_(name)                         \
+    static inline xlen_t rv_read_csr_##name()      \
+    {                                              \
+        xlen_t x;                                  \
+        asm volatile("csrr %0, " #name : "=r"(x)); \
+        return x;                                  \
+    }
 
-static inline void w_mscratch(uint64_t x)
-{
-    asm volatile("csrw mscratch, %0" : : "r"(x));
-}
+// CSR write macro:
+#define rv_write_csr_(name)                            \
+    static inline void rv_write_csr_##name(xlen_t x)   \
+    {                                                  \
+        asm volatile("csrw " #name ", %0" : : "r"(x)); \
+    }
 
-/// Supervisor Trap Cause
-static inline xlen_t r_scause()
-{
-    xlen_t x;
-    asm volatile("csrr %0, scause" : "=r"(x));
-    return x;
-}
+#ifndef __ENABLE_SBI__
+// machine mode CSR read / write functions
 
-/// Supervisor Trap Value
-static inline xlen_t r_stval()
-{
-    xlen_t x;
-    asm volatile("csrr %0, stval" : "=r"(x));
-    return x;
-}
+rv_read_csr_(mhartid);  // hard-id
 
-/// Machine-mode Counter-Enable
-static inline void w_mcounteren(xlen_t x)
-{
-    asm volatile("csrw mcounteren, %0" : : "r"(x));
-}
+rv_read_csr_(pmpcfg0);  // Physical Memory Protection
+rv_write_csr_(pmpcfg0);
 
-static inline xlen_t r_mcounteren()
-{
-    xlen_t x;
-    asm volatile("csrr %0, mcounteren" : "=r"(x));
-    return x;
-}
+rv_read_csr_(mstatus);
+rv_write_csr_(mstatus);
 
-/// machine-mode cycle counter
-static inline xlen_t r_time()
-{
-    xlen_t x;
-    asm volatile("csrr %0, time" : "=r"(x));
-    return x;
-}
+// machine exception program counter, holds the
+// instruction address to which a return from
+// exception will go.
+rv_write_csr_(mepc);
 
-static inline xlen_t r_sp()
+rv_read_csr_(mie);  // machine-mode Interrupt Enable
+rv_write_csr_(mie);
+
+// Machine Exception Delegation
+rv_read_csr_(medeleg);
+rv_write_csr_(medeleg);
+
+// Machine Interrupt Delegation
+rv_read_csr_(mideleg);
+rv_write_csr_(mideleg);
+
+rv_read_csr_(mscratch);
+rv_write_csr_(mscratch);
+
+// Machine mode trap vectors
+rv_read_csr_(mtvec);
+rv_write_csr_(mtvec);
+
+// Machine-mode Counter-Enable
+rv_read_csr_(mcounteren);
+rv_write_csr_(mcounteren);
+
+// physical memory protection register 0
+rv_write_csr_(pmpaddr0);
+
+#endif  // __ENABLE_SBI__
+
+//
+// supervisor mode (OS mode)
+rv_read_csr_(sstatus);
+rv_write_csr_(sstatus);
+
+rv_read_csr_(sip);  // Supervisor Interrupt Pending
+rv_write_csr_(sip);
+
+rv_read_csr_(sie);  // Supervisor Interrupt Enable
+rv_write_csr_(sie);
+
+// supervisor exception program counter, holds the
+// instruction address to which a return from
+// exception will go.
+rv_read_csr_(sepc);
+rv_write_csr_(sepc);
+
+// Supervisor Trap-Vector Base Address
+// low two bits are mode.
+rv_read_csr_(stvec);
+rv_write_csr_(stvec);
+
+// supervisor address translation and protection;
+// holds the address of the page table.
+rv_read_csr_(satp);
+rv_write_csr_(satp);
+
+// Supervisor Trap Cause
+rv_read_csr_(scause);
+
+// Supervisor Trap Value
+rv_read_csr_(stval);
+
+// Time CSRs: it's a 64bit value so 32bit mode needs two CSRs to get the full
+// value
+rv_read_csr_(time);
+#if (__riscv_xlen == 32)
+rv_read_csr_(timeh);
+#endif
+
+// read cycle counter
+rv_read_csr_(cycle);
+#if (__riscv_xlen == 32)
+rv_read_csr_(cycleh);
+#endif
+
+#if (__riscv_xlen == 32)
+/// @brief get current cycle count as 64 bit value
+static inline uint64_t rv_get_cycles()
 {
-    xlen_t x;
-    asm volatile("mv %0, sp" : "=r"(x));
-    return x;
+    uint32_t cycle_low = rv_read_csr_cycle();
+    uint32_t cycle_high = rv_read_csr_cycleh();
+    return ((uint64_t)cycle_high << 32) + (uint64_t)cycle_low;
 }
+#else
+/// @brief get current cycle count as 64 bit value
+static inline uint64_t rv_get_cycles() { return rv_read_csr_cycle(); }
+#endif
+
+// read instruction retired counter
+rv_read_csr_(instret);
+#if (__riscv_xlen == 32)
+rv_read_csr_(instreth);
+#endif
+
+#if (__riscv_xlen == 32)
+/// @brief get instruction retired counter
+static inline uint64_t rv_get_instret()
+{
+    uint32_t instret_low = rv_read_csr_instret();
+    uint32_t instret_high = rv_read_csr_instreth();
+    return ((uint64_t)instret_high << 32) + (uint64_t)instret_low;
+}
+#else
+/// @brief get instruction retired counter
+static inline uint64_t rv_get_instret() { return rv_read_csr_instret(); }
+#endif
+
+static inline void cpu_set_page_table(xlen_t addr) { rv_write_csr_satp(addr); }
+
+static inline xlen_t cpu_get_page_table() { return rv_read_csr_satp(); }
 
 static inline void w_tp(xlen_t x) { asm volatile("mv tp, %0" : : "r"(x)); }
 
-static inline xlen_t r_ra()
-{
-    xlen_t x;
-    asm volatile("mv %0, ra" : "=r"(x));
-    return x;
-}
-
-/// flush the TLB.
+// flush the TLB.
 static inline void rv_sfence_vma()
 {
     // the zero, zero means flush all TLB entries.
     asm volatile("sfence.vma zero, zero");
 }
-
-#endif  // __ASSEMBLER__

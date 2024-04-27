@@ -1,12 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
-//
 // driver for qemu's virtio disk device.
 // uses qemu's mmio interface to virtio.
 //
 // qemu ... -drive file=fs.img,if=none,format=raw,id=x0 -device
 // virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
-//
 
 #include <drivers/virtio_disk.h>
 #include <kernel/buf.h>
@@ -73,33 +71,50 @@ void virtio_disk_init()
     *R(VIRTIO_MMIO_QUEUE_SEL) = 0;
 
     // ensure queue 0 is not in use.
-    if (*R(VIRTIO_MMIO_QUEUE_READY)) panic("virtio disk should not be ready");
+    if (*R(VIRTIO_MMIO_QUEUE_READY))
+    {
+        panic("virtio disk should not be ready");
+    }
 
     // check maximum queue size.
-    uint32_t max = *R(VIRTIO_MMIO_QUEUE_VIRTIO_DESCRIPTORS_MAX);
-    if (max == 0) panic("virtio disk has no queue 0");
-    if (max < VIRTIO_DESCRIPTORS) panic("virtio disk max queue too short");
+    uint32_t max = *R(VIRTIO_MMIO_QUEUE_NUM_MAX);
+    if (max == 0)
+    {
+        panic("virtio disk has no queue 0");
+    }
+    if (max < VIRTIO_DESCRIPTORS)
+    {
+        panic("virtio disk max queue too short");
+    }
 
     // allocate and zero queue memory.
     g_virtio_disk.desc = kalloc();
     g_virtio_disk.avail = kalloc();
     g_virtio_disk.used = kalloc();
     if (!g_virtio_disk.desc || !g_virtio_disk.avail || !g_virtio_disk.used)
+    {
         panic("virtio disk kalloc");
+    }
     memset(g_virtio_disk.desc, 0, PAGE_SIZE);
     memset(g_virtio_disk.avail, 0, PAGE_SIZE);
     memset(g_virtio_disk.used, 0, PAGE_SIZE);
 
     // set queue size.
-    *R(VIRTIO_MMIO_QUEUE_VIRTIO_DESCRIPTORS) = VIRTIO_DESCRIPTORS;
+    *R(VIRTIO_MMIO_QUEUE_NUM) = VIRTIO_DESCRIPTORS;
 
     // write physical addresses.
+#if defined(_arch_is_32bit)
+    *R(VIRTIO_MMIO_QUEUE_DESC_LOW) = (size_t)g_virtio_disk.desc;
+    *R(VIRTIO_MMIO_DRIVER_DESC_LOW) = (size_t)g_virtio_disk.avail;
+    *R(VIRTIO_MMIO_DEVICE_DESC_LOW) = (size_t)g_virtio_disk.used;
+#else
     *R(VIRTIO_MMIO_QUEUE_DESC_LOW) = (size_t)g_virtio_disk.desc;
     *R(VIRTIO_MMIO_QUEUE_DESC_HIGH) = (size_t)g_virtio_disk.desc >> 32;
     *R(VIRTIO_MMIO_DRIVER_DESC_LOW) = (size_t)g_virtio_disk.avail;
     *R(VIRTIO_MMIO_DRIVER_DESC_HIGH) = (size_t)g_virtio_disk.avail >> 32;
     *R(VIRTIO_MMIO_DEVICE_DESC_LOW) = (size_t)g_virtio_disk.used;
     *R(VIRTIO_MMIO_DEVICE_DESC_HIGH) = (size_t)g_virtio_disk.used >> 32;
+#endif
 
     // queue is ready.
     *R(VIRTIO_MMIO_QUEUE_READY) = 0x1;
@@ -281,6 +296,7 @@ void virtio_disk_rw(struct buf *b, bool write)
     spin_unlock(&g_virtio_disk.vdisk_lock);
 }
 
+/// @brief The interrupt handler
 void virtio_block_device_interrupt()
 {
     spin_lock(&g_virtio_disk.vdisk_lock);
@@ -306,7 +322,9 @@ void virtio_block_device_interrupt()
                      .id;
 
         if (g_virtio_disk.info[id].status != 0)
+        {
             panic("virtio_block_device_interrupt status");
+        }
 
         struct buf *b = g_virtio_disk.info[id].b;
         b->disk = 0;  // disk is done with buf

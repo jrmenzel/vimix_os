@@ -5,7 +5,6 @@
 #include <kernel/buf.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
-#include <kernel/printk.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>

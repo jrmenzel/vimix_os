@@ -1,19 +1,18 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/fence.h>
 #include <kernel/elf.h>
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
-#include <kernel/param.h>
-#include <kernel/printk.h>
+#include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
-#include <kernel/types.h>
 #include <kernel/vm.h>
 #include <mm/memlayout.h>
 
 //
 // The kernel's page table: all memory is mapped to its real location.
-pagetable_t kernel_pagetable;
+pagetable_t g_kernel_pagetable;
 
 extern char end_of_text[];  // kernel.ld sets this to end of kernel code.
 
@@ -22,7 +21,7 @@ extern char trampoline[];  // u_mode_trap_vector.S
 /// Make a direct-map page table for the kernel.
 /// Here the "memory mapped devices" are mapped into kernel memory space
 /// (once the created pagetable is used).
-pagetable_t kvm_make_kernel_pagetable()
+pagetable_t kvm_make_kernel_pagetable(char *end_of_memory)
 {
     pagetable_t kpage_table = (pagetable_t)kalloc();
     memset(kpage_table, 0, PAGE_SIZE);
@@ -33,6 +32,9 @@ pagetable_t kvm_make_kernel_pagetable()
     // virtio mmio disk interface
     kvm_map_or_panic(kpage_table, VIRTIO0, VIRTIO0, PAGE_SIZE, PTE_R | PTE_W);
 
+    // CLINT
+    kvm_map_or_panic(kpage_table, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
+
     // PLIC
     kvm_map_or_panic(kpage_table, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
 
@@ -42,7 +44,8 @@ pagetable_t kvm_make_kernel_pagetable()
 
     // map kernel data and the physical RAM we'll make use of.
     kvm_map_or_panic(kpage_table, (size_t)end_of_text, (size_t)end_of_text,
-                     PHYSTOP - (size_t)end_of_text, PTE_R | PTE_W);
+                     (size_t)end_of_memory - (size_t)end_of_text,
+                     PTE_R | PTE_W);
 
     // map the trampoline for trap entry/exit to
     // the highest virtual address in the kernel.
@@ -55,24 +58,48 @@ pagetable_t kvm_make_kernel_pagetable()
     return kpage_table;
 }
 
-void kvm_init() { kernel_pagetable = kvm_make_kernel_pagetable(); }
-
-void kvm_init_per_cpu()
+void kvm_init(char *end_of_memory)
 {
-    // wait for any previous writes to the page table memory to finish.
-    rv_sfence_vma();
-
-    cpu_set_page_table(MAKE_SATP(kernel_pagetable));
-
-    // flush stale entries from the TLB.
-    rv_sfence_vma();
+    g_kernel_pagetable = kvm_make_kernel_pagetable(end_of_memory);
 }
 
+#if defined(_arch_is_32bit)
+const size_t MAX_LEVELS_IN_PAGE_TABLE = 2;
+const size_t MAX_PTES_PER_PAGE_TABLE = 1024;
+#else
+const size_t MAX_LEVELS_IN_PAGE_TABLE = 3;
+const size_t MAX_PTES_PER_PAGE_TABLE = 512;
+#endif
+
+/// Return the address of the PTE in page table pagetable
+/// that corresponds to virtual address va.  If alloc!=0,
+/// create any required page-table pages.
+///
+/// The risc-v Sv39 scheme (64bit) has three levels of page-table
+/// pages. A page-table page contains 512 64-bit PTEs.
+/// A 64-bit virtual address is split into five fields:
+///   39..63 -- must be zero.
+///   30..38 -- 9 bits of level-2 index.
+///   21..29 -- 9 bits of level-1 index.
+///   12..20 -- 9 bits of level-0 index.
+///    0..11 -- 12 bits of byte offset within the page.
+///
+/// The risc-v Sv32 scheme (32bit) has two levels of page-table
+/// pages. A page-table page contains 1024 32-bit PTEs.
+/// A 32-bit virtual address is split into three fields:
+///   22..31 -- 10 bits of level-1 index.
+///   12..21 -- 10 bits of level-0 index.
+///    0..11 -- 12 bits of byte offset within the page.
 pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc)
 {
-    if (va >= MAXVA) panic("vm_walk");
+#if defined(_arch_is_64bit)
+    if (va >= MAXVA)
+    {
+        panic("vm_walk: virtual address is larger than supported");
+    }
+#endif
 
-    for (size_t level = 2; level > 0; level--)
+    for (size_t level = (MAX_LEVELS_IN_PAGE_TABLE - 1); level > 0; level--)
     {
         pte_t *pte = &pagetable[PAGE_TABLE_INDEX(level, va)];
         if (*pte & PTE_V)
@@ -97,15 +124,18 @@ pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc)
 /// Can only be used to look up user pages.
 size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va)
 {
+#if defined(_arch_is_64bit)
     if (va >= MAXVA)
     {
         return 0;
     }
+#endif
 
-    pte_t *pte = vm_walk(pagetable, va, 0);
+    pte_t *pte = vm_walk(pagetable, va, false);
     if (pte == NULL) return 0;
     if ((*pte & PTE_V) == 0) return 0;
     if ((*pte & PTE_U) == 0) return 0;
+
     size_t pa = PTE2PA(*pte);
     return pa;
 }
@@ -151,7 +181,7 @@ void uvm_unmap(pagetable_t pagetable, size_t va, size_t npages, bool do_free)
 
     for (size_t a = va; a < va + npages * PAGE_SIZE; a += PAGE_SIZE)
     {
-        if ((pte = vm_walk(pagetable, a, 0)) == NULL)
+        if ((pte = vm_walk(pagetable, a, false)) == NULL)
             panic("uvm_unmap: vm_walk");
         if ((*pte & PTE_V) == 0) panic("uvm_unmap: not mapped");
         if (PTE_FLAGS(*pte) == PTE_V) panic("uvm_unmap: not a leaf");
@@ -224,8 +254,9 @@ size_t uvm_dealloc(pagetable_t pagetable, size_t oldsz, size_t newsz)
 /// All leaf mappings must already have been removed.
 void freewalk(pagetable_t pagetable)
 {
-    // there are 2^9 = 512 PTEs in a page table.
-    for (size_t i = 0; i < 512; i++)
+    // there are 2^9 => 512 PTEs in a page table on 64 bit
+    // there are 2^10 => 1024 PTEs in a page table on 32 bit
+    for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
     {
         pte_t pte = pagetable[i];
         if ((pte & PTE_V) && (pte & (PTE_R | PTE_W | PTE_X)) == 0)
@@ -257,7 +288,7 @@ int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
 
     for (i = 0; i < sz; i += PAGE_SIZE)
     {
-        if ((pte = vm_walk(old, i, 0)) == NULL)
+        if ((pte = vm_walk(old, i, false)) == NULL)
             panic("uvm_copy: pte should exist");
         if ((*pte & PTE_V) == 0) panic("uvm_copy: page not present");
         pa = PTE2PA(*pte);
@@ -270,6 +301,11 @@ int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
             goto err;
         }
     }
+
+    // might have copied paged with executable code, in that case flush the
+    // instruction caches
+    instruction_memory_barrier();
+
     return 0;
 
 err:

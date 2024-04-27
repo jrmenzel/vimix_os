@@ -1,6 +1,6 @@
 # How to run on qemu
 
-Install qemu for RISC V 64-bit. Build VIMIX (see [build_instructions](build_instructions.md)).
+Install qemu for RISC V 64-bit or 32-bit. Build VIMIX (see [build_instructions](build_instructions.md)).
 
 Run 
 > make qemu
@@ -19,4 +19,4 @@ Attach debugger from VSCode (select matching run target for the kernel or a user
 ---
 [README](../README.md)
 
-[build_instructions](build_instructions.md) | [run_on_qemu](run_on_qemu.md)
+[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md)

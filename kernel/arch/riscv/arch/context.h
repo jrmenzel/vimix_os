@@ -85,3 +85,36 @@ struct trapframe
     size_t t5;
     size_t t6;
 };
+
+static inline void trapframe_set_program_counter(struct trapframe *frame,
+                                                 size_t pc)
+{
+    frame->epc = pc;
+}
+
+static inline size_t trapframe_get_program_counter(struct trapframe *frame)
+{
+    return frame->epc;
+}
+
+static inline void trapframe_set_stack_pointer(struct trapframe *frame,
+                                               size_t sp)
+{
+    frame->sp = sp;
+}
+
+static inline void trapframe_set_return_register(struct trapframe *frame,
+                                                 size_t value)
+{
+    frame->a0 = value;
+}
+
+static inline size_t trapframe_get_sys_call_number(struct trapframe *frame)
+{
+    // by ABI definition is the syscall number in a7 - just like on Linux :-)
+    return frame->a7;
+}
+
+// register_index 0 = register a0 etc
+size_t trapframe_get_argument_register(struct trapframe *frame,
+                                       size_t register_index);
