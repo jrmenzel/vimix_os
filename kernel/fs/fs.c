@@ -255,6 +255,8 @@ static struct inode *iget(dev_t dev, uint32_t inum)
     struct inode *ip = NULL;
     for (ip = &itable.inode[0]; ip < &itable.inode[MAX_ACTIVE_INODES]; ip++)
     {
+        DEBUG_EXTRA_ASSERT(ip != NULL, "invalid inode");
+
         if (ip->ref > 0 && ip->dev == dev && ip->inum == inum)
         {
             ip->ref++;
@@ -268,7 +270,7 @@ static struct inode *iget(dev_t dev, uint32_t inum)
     // Recycle an inode entry.
     if (empty == NULL)
     {
-        panic("iget: no inodes");
+        panic("inode_get: no inodes left. See MAX_ACTIVE_INODES.");
     }
 
     ip = empty;
@@ -294,7 +296,14 @@ void inode_lock(struct inode *ip)
     struct buf *bp;
     struct xv6fs_dinode *dip;
 
-    if (ip == 0 || ip->ref < 1) panic("inode_lock");
+    if (ip == NULL)
+    {
+        panic("inode_lock: inode is NULL");
+    }
+    if (ip->ref < 1)
+    {
+        panic("inode_lock: inode has an invalid reference count");
+    }
 
     sleep_lock(&ip->lock);
 
@@ -310,14 +319,31 @@ void inode_lock(struct inode *ip)
         memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
         bio_release(bp);
         ip->valid = 1;
-        if (ip->type == 0) panic("inode_lock: no type");
+        if (ip->type == 0)
+        {
+            panic("inode_lock: inode has no type");
+        }
     }
 }
 
 void inode_unlock(struct inode *ip)
 {
-    if (ip == NULL || !sleep_lock_is_held_by_this_cpu(&ip->lock) || ip->ref < 1)
-        panic("inode_unlock");
+#ifdef CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
+    if (ip == NULL)
+    {
+        panic("inode_unlock failed: inode is NULL");
+    }
+    if (ip->ref < 1)
+    {
+        panic("inode_unlock failed: reference count invalid");
+    }
+#endif  // CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
+#ifdef CONFIG_DEBUG_SLEEPLOCK
+    if (!sleep_lock_is_held_by_this_cpu(&ip->lock))
+    {
+        panic("inode_unlock failed: sleeplock not held by this CPU");
+    }
+#endif  // CONFIG_DEBUG_SLEEPLOCK
 
     sleep_unlock(&ip->lock);
 }

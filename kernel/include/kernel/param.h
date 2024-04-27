@@ -14,3 +14,30 @@
 #define NUM_BUFFERS_IN_CACHE (MAX_OP_BLOCKS * 3)  ///< size of disk block cache
 #define FSSIZE 2000   ///< size of file system in blocks
 #define PATH_MAX 128  ///< maximum file path name
+
+/// adds extra runtime tests to check correct spinlock
+/// usage and stores an optional name per lock for debugging.
+#define CONFIG_DEBUG_SPINLOCK
+
+/// adds extra runtime tests to check correct sleeplock
+/// usage and stores an optional name per lock for debugging.
+#define CONFIG_DEBUG_SLEEPLOCK
+
+/// debugs kalloc()
+#define CONFIG_DEBUG_KALLOC
+
+/// some extra API usage tests
+#define CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
+
+#if defined(CONFIG_DEBUG_EXTRA_RUNTIME_TESTS)
+#define DEBUG_EXTRA_ASSERT(test, msg) \
+    if (!(test))                      \
+    {                                 \
+        printk("ERROR: %s\n", msg);   \
+    }
+#else
+#define DEBUG_EXTRA_ASSERT(test, msg)
+#endif
+
+/// stores the filename / last element of path in an inode for easier debugging
+#define CONFIG_DEBUG_INODE_PATH_NAME

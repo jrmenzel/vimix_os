@@ -92,6 +92,12 @@ int smp_processor_id()
 /// invalidates the cpu if the kernel process switched cores)
 struct cpu *get_cpu()
 {
+#if defined(CONFIG_DEBUG_EXTRA_RUNTIME_TESTS)
+    if (cpu_is_device_interrupts_enabled())
+    {
+        panic("interrupts must be disabled when calling get_cpu");
+    }
+#endif  // CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
     size_t id = smp_processor_id();
     struct cpu *c = &g_cpus[id];
     return c;

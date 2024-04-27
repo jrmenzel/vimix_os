@@ -93,13 +93,24 @@ struct buf *bio_read(uint32_t dev, uint32_t blockno)
 
 void bio_write(struct buf *b)
 {
-    if (!sleep_lock_is_held_by_this_cpu(&b->lock)) panic("bio_write");
+#ifdef CONFIG_DEBUG_SLEEPLOCK
+    if (!sleep_lock_is_held_by_this_cpu(&b->lock))
+    {
+        panic("bio_write: not holding the sleeplock");
+    }
+#endif  // CONFIG_DEBUG_SLEEPLOCK
+
     virtio_disk_rw(b, 1);
 }
 
 void bio_release(struct buf *b)
 {
-    if (!sleep_lock_is_held_by_this_cpu(&b->lock)) panic("bio_release");
+#ifdef CONFIG_DEBUG_SLEEPLOCK
+    if (!sleep_lock_is_held_by_this_cpu(&b->lock))
+    {
+        panic("bio_release: not holding the sleeplock");
+    }
+#endif  // CONFIG_DEBUG_SLEEPLOCK
 
     sleep_unlock(&b->lock);
 

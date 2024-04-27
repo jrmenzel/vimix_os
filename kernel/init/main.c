@@ -69,6 +69,10 @@ void main(void *device_tree, size_t is_first_thread)
 
         printk("hart %d starting after init...\n", smp_processor_id());
 
+#ifdef CONFIG_DEBUG_KALLOC
+        printk("Memory used: %dkb\n", kalloc_debug_get_allocation_count() * 4);
+#endif  // CONFIG_DEBUG_KALLOC
+
         // full memory barrier (gcc buildin):
         __sync_synchronize();
         g_global_init_done = GLOBAL_INIT_DONE;

@@ -3,18 +3,19 @@
 // Sleeping locks
 
 #include <kernel/kernel.h>
-#include <kernel/printk.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
-#include <mm/memlayout.h>
 
-void sleep_lock_init(struct sleeplock *lk, char *name)
+void sleep_lock_init(struct sleeplock *lk, char *name_for_debug)
 {
     spin_lock_init(&lk->lk, "sleep lock");
-    lk->name_for_debug = name;
-    lk->locked = 0;
+    lk->locked = false;
+
+#ifdef CONFIG_DEBUG_SLEEPLOCK
     lk->pid = 0;
+    lk->name = name_for_debug;
+#endif  // CONFIG_DEBUG_SLEEPLOCK
 }
 
 void sleep_lock(struct sleeplock *lk)
@@ -24,26 +25,30 @@ void sleep_lock(struct sleeplock *lk)
     {
         sleep(lk, &lk->lk);
     }
-    lk->locked = 1;
+    lk->locked = true;
+#ifdef CONFIG_DEBUG_SLEEPLOCK
     lk->pid = get_current()->pid;
+#endif  // CONFIG_DEBUG_SLEEPLOCK
     spin_unlock(&lk->lk);
 }
 
 void sleep_unlock(struct sleeplock *lk)
 {
     spin_lock(&lk->lk);
-    lk->locked = 0;
+    lk->locked = false;
+#ifdef CONFIG_DEBUG_SLEEPLOCK
     lk->pid = 0;
+#endif  // CONFIG_DEBUG_SLEEPLOCK
     wakeup(lk);
     spin_unlock(&lk->lk);
 }
 
-int sleep_lock_is_held_by_this_cpu(struct sleeplock *lk)
+#ifdef CONFIG_DEBUG_SLEEPLOCK
+bool sleep_lock_is_held_by_this_cpu(struct sleeplock *lk)
 {
-    int r;
-
     spin_lock(&lk->lk);
-    r = lk->locked && (lk->pid == get_current()->pid);
+    bool rel = lk->locked && (lk->pid == get_current()->pid);
     spin_unlock(&lk->lk);
-    return r;
+    return rel;
 }
+#endif  // CONFIG_DEBUG_SLEEPLOCK

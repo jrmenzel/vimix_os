@@ -42,6 +42,74 @@ void set_s_mode_trap_vector()
     cpu_set_s_mode_trap_vector(s_mode_trap_vector);
 }
 
+#define SCAUSE_INSTRUCTION_ADDR_MISALIGN 0
+#define SCAUSE_INSTRUCTION_ACCESS_FAULT 1
+#define SCAUSE_ILLEGAL_INSTRUCTION 2
+#define SCAUSE_BREAKPOINT 3
+#define SCAUSE_LOAD_ADDR_MISALIGNED 4
+#define SCAUSE_LOAD_ACCESS_FAULT 5
+#define SCAUSE_STORE_AMO_ADDR_MISALIGN 6
+#define SCAUSE_STORE_AMO_ACCESS_FAULT 7
+#define SCAUSE_ECALL_FROM_U_MODE 8
+#define SCAUSE_ECALL_FROM_S_MODE 9
+#define SCAUSE_INSTRUCTION_PAGE_FAULT 12
+#define SCAUSE_LOAD_PAGE_FAULT 13
+#define SCAUSE_STORE_AMO_PAGE_FAULT 15
+
+const char *scause_exception_code_to_string(xlen_t scause)
+{
+    switch (scause)
+    {
+        case SCAUSE_INSTRUCTION_ADDR_MISALIGN:
+            return "instuction address misaligned";
+        case SCAUSE_INSTRUCTION_ACCESS_FAULT: return "instruction access fault";
+        case SCAUSE_ILLEGAL_INSTRUCTION: return "illegal instruction";
+        case SCAUSE_BREAKPOINT: return "breakpoint";
+        case SCAUSE_LOAD_ADDR_MISALIGNED: return "load address misaligned";
+        case SCAUSE_LOAD_ACCESS_FAULT: return "load access fault";
+        case SCAUSE_STORE_AMO_ADDR_MISALIGN:
+            return "store/AMO address misaligned";
+        case SCAUSE_STORE_AMO_ACCESS_FAULT: return "store/AMO access fault";
+        case SCAUSE_ECALL_FROM_U_MODE: return "environment call from U-mode";
+        case SCAUSE_ECALL_FROM_S_MODE: return "environment call from S-mode";
+        case 10: return "reserved";
+        case 11: return "reserved";
+        case SCAUSE_INSTRUCTION_PAGE_FAULT: return "instruction page fault";
+        case SCAUSE_LOAD_PAGE_FAULT: return "load page fault";
+        case 14: return "reserved";
+        case SCAUSE_STORE_AMO_PAGE_FAULT: return "store/AMO page fault";
+        default: return "unknown scause";
+    };
+}
+
+void dump_scause()
+{
+    xlen_t scause = rv_read_csr_scause();
+    xlen_t stval = rv_read_csr_stval();
+
+    printk("scause (0x%p): %s\n", scause,
+           scause_exception_code_to_string(scause));
+    printk("sepc=0x%p stval=0x%p\n", rv_read_csr_sepc(), stval);
+
+    if (scause == SCAUSE_INSTRUCTION_PAGE_FAULT ||
+        scause == SCAUSE_LOAD_PAGE_FAULT ||
+        scause == SCAUSE_STORE_AMO_PAGE_FAULT)
+    {
+        // stval is set to the offending memory address
+        if (stval == 0)
+        {
+            printk("Dereferenced NULL pointer\n");
+        }
+        else
+        {
+            size_t offset = stval % PAGE_SIZE;
+            size_t page_start = stval - offset;
+            printk("Tried to access address 0x%p (offset 0x%p in page 0x%p)\n",
+                   stval, offset, page_start);
+        }
+    }
+}
+
 /// Handle an interrupt, exception, or system call from user space.
 /// called from u_mode_trap_vector.S, first C function after storing the
 /// CPU state / registers in assembly.
@@ -86,6 +154,7 @@ void user_mode_interrupt_handler()
     {
         printk("user_mode_interrupt_handler(): unexpected scause for pid=%d\n",
                proc->pid);
+        dump_scause();
         proc_set_killed(proc);
     }
 
@@ -176,6 +245,7 @@ void kernel_mode_interrupt_handler()
         printk(
             "\nFatal: unhandled interrupt in "
             "kernel_mode_interrupt_handler()\n");
+        dump_scause();
         panic("kernel_mode_interrupt_handler");
     }
 
@@ -208,6 +278,8 @@ void update_kernel_ticks()
 
 void handle_plic_device_interrupt()
 {
+    // this is a supervisor external interrupt, via PLIC.
+
     // irq indicates which device interrupted.
     int irq = plic_claim();
 

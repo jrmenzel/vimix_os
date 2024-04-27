@@ -6,7 +6,6 @@
 
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
-#include <kernel/printk.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <mm/memlayout.h>
@@ -27,26 +26,33 @@ struct
 {
     struct spinlock lock;
     struct free_page *free_list;
+#ifdef CONFIG_DEBUG_KALLOC
+    size_t pages_allocated;
+#endif  // CONFIG_DEBUG_KALLOC
 } g_kernel_memory;
 
-void kalloc_init()
-{
-    spin_lock_init(&g_kernel_memory.lock, "kmem");
-    kfree_range(end_of_kernel, (void *)PHYSTOP);
-}
-
-/// @brief helper for init_physical_page_allocator. Frees all pages in
+/// @brief helper for kalloc_init. Frees all pages in
 /// a given range for the kernel to use.
 /// @param pa_start physical address of the start
 /// @param pa_end physical address of the end
 void kfree_range(void *pa_start, void *pa_end)
 {
-    char *p;
-    p = (char *)PAGE_ROUND_UP((size_t)pa_start);
+    char *p = (char *)PAGE_ROUND_UP((size_t)pa_start);
     for (; p + PAGE_SIZE <= (char *)pa_end; p += PAGE_SIZE)
     {
         kfree(p);
     }
+}
+
+void kalloc_init()
+{
+    spin_lock_init(&g_kernel_memory.lock, "kmem");
+    kfree_range(end_of_kernel, (void *)PHYSTOP);
+
+#ifdef CONFIG_DEBUG_KALLOC
+    // reset *after* kfree_range (as kfree decrements the counter)
+    g_kernel_memory.pages_allocated = 0;
+#endif  // CONFIG_DEBUG_KALLOC
 }
 
 void kfree(void *pa)
@@ -65,18 +71,38 @@ void kfree(void *pa)
     spin_lock(&g_kernel_memory.lock);
     r->next = g_kernel_memory.free_list;
     g_kernel_memory.free_list = r;
+#ifdef CONFIG_DEBUG_KALLOC
+    g_kernel_memory.pages_allocated--;
+#endif  // CONFIG_DEBUG_KALLOC
     spin_unlock(&g_kernel_memory.lock);
 }
 
 void *kalloc()
 {
-    struct free_page *r;
-
     spin_lock(&g_kernel_memory.lock);
-    r = g_kernel_memory.free_list;
-    if (r) g_kernel_memory.free_list = r->next;
+    struct free_page *r = g_kernel_memory.free_list;
+    if (r)
+    {
+        g_kernel_memory.free_list = r->next;
+#ifdef CONFIG_DEBUG_KALLOC
+        g_kernel_memory.pages_allocated++;
+#endif  // CONFIG_DEBUG_KALLOC
+    }
     spin_unlock(&g_kernel_memory.lock);
 
-    if (r) memset((char *)r, 5, PAGE_SIZE);  // fill with junk
+    if (r)
+    {
+        memset((char *)r, 5, PAGE_SIZE);  // fill with junk
+    }
     return (void *)r;
 }
+
+#ifdef CONFIG_DEBUG_KALLOC
+size_t kalloc_debug_get_allocation_count()
+{
+    spin_lock(&g_kernel_memory.lock);
+    size_t count = g_kernel_memory.pages_allocated;
+    spin_unlock(&g_kernel_memory.lock);
+    return count;
+}
+#endif  // CONFIG_DEBUG_KALLOC
