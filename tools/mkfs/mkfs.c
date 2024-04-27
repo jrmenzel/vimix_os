@@ -8,9 +8,10 @@
 #include <unistd.h>
 
 #define stat xv6_stat  // avoid clash with host struct stat
-#include <kernel/fs.h>
-#include <kernel/kernel.h>
-#include <kernel/stat.h>
+#include "kernel/fs.h"
+#include "kernel/param.h"
+#include "kernel/stat.h"
+#include "kernel/types.h"
 
 #ifndef static_assert
 #define static_assert(a, b) \

@@ -1,130 +1,48 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <kernel/stat.h>
-#include <kernel/types.h>
-#include <user.h>
-
 #include <stdarg.h>
+#include <unistd.h>
 
-static char digits[] = "0123456789ABCDEF";
+// avoid dublicated code, re-use kernels libs.
+#include "../../../kernel/lib/print_impl.c"
 
-static void putc(int fd, char c) { write(fd, &c, 1); }
-
-static void printint(int fd, int xx, int base, int sgn)
+static void put_char_in_file(const int32_t c, size_t payload)
 {
-    char buf[16];
-    int i, neg;
-    uint32_t x;
-
-    neg = 0;
-    if (sgn && xx < 0)
-    {
-        neg = 1;
-        x = -xx;
-    }
-    else
-    {
-        x = xx;
-    }
-
-    i = 0;
-    do {
-        buf[i++] = digits[x % base];
-    } while ((x /= base) != 0);
-    if (neg) buf[i++] = '-';
-
-    while (--i >= 0) putc(fd, buf[i]);
+    char char_to_write = (char)c;
+    write((FILE_DESCRIPTOR)payload, &char_to_write, 1);
 }
 
-static void printptr(int fd, uint64_t x)
+// c is cast to uchar and written to fd, returns written char
+// or EOF on error
+/*
+static int32_t
+putc(int32_t c, FILE *stream)
 {
-    int i;
-    putc(fd, '0');
-    putc(fd, 'x');
-    for (i = 0; i < (sizeof(uint64_t) * 2); i++, x <<= 4)
-        putc(fd, digits[x >> (sizeof(uint64_t) * 8 - 4)]);
-}
+    if (!stream) return -1;
 
-/// Print to the given fd. Only understands %d, %x, %p, %s.
-void vprintf(int fd, const char *fmt, va_list ap)
-{
-    char *s;
-    int c, i, state;
+    char char_to_write = (char)c;
+    ssize_t written = write(stream->fd, &char_to_write, 1);
+    return (written > 0)?char_to_write:-1;
+}*/
 
-    state = 0;
-    for (i = 0; fmt[i]; i++)
-    {
-        c = fmt[i] & 0xff;
-        if (state == 0)
-        {
-            if (c == '%')
-            {
-                state = '%';
-            }
-            else
-            {
-                putc(fd, c);
-            }
-        }
-        else if (state == '%')
-        {
-            if (c == 'd')
-            {
-                printint(fd, va_arg(ap, int), 10, 1);
-            }
-            else if (c == 'l')
-            {
-                printint(fd, va_arg(ap, uint64_t), 10, 0);
-            }
-            else if (c == 'x')
-            {
-                printint(fd, va_arg(ap, int), 16, 0);
-            }
-            else if (c == 'p')
-            {
-                printptr(fd, va_arg(ap, uint64_t));
-            }
-            else if (c == 's')
-            {
-                s = va_arg(ap, char *);
-                if (s == 0) s = "(null)";
-                while (*s != 0)
-                {
-                    putc(fd, *s);
-                    s++;
-                }
-            }
-            else if (c == 'c')
-            {
-                putc(fd, va_arg(ap, uint32_t));
-            }
-            else if (c == '%')
-            {
-                putc(fd, c);
-            }
-            else
-            {
-                // Unknown % sequence.  Print it to draw attention.
-                putc(fd, '%');
-                putc(fd, c);
-            }
-            state = 0;
-        }
-    }
-}
-
-void fprintf(int fd, const char *fmt, ...)
+int32_t fprintf(FILE *stream, const char *fmt, ...)
 {
     va_list ap;
 
     va_start(ap, fmt);
-    vprintf(fd, fmt, ap);
+    int32_t ret = print_impl(put_char_in_file, (size_t)stream->fd, fmt, ap);
+    va_end(ap);
+
+    return ret;
 }
 
-void printf(const char *fmt, ...)
+int32_t printf(const char *fmt, ...)
 {
     va_list ap;
 
     va_start(ap, fmt);
-    vprintf(1, fmt, ap);
+    int32_t ret = print_impl(put_char_in_file, (size_t)stdout->fd, fmt, ap);
+    va_end(ap);
+
+    return ret;
 }

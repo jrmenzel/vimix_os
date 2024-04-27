@@ -4,16 +4,14 @@
 // run random system calls in parallel forever.
 //
 
-#include <arch/riscv/riscv.h>
-#include <kernel/fcntl.h>
-#include <kernel/fs.h>
-#include <kernel/kernel.h>
-#include <kernel/stat.h>
-#include <kernel/unistd.h>
-#include <mm/memlayout.h>
-#include <user.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/signal.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-/// from FreeBSD.
+// from FreeBSD.
 int do_rand(unsigned long *ctx)
 {
     /*
@@ -291,12 +289,12 @@ void go(int which_child)
             int aa[2], bb[2];
             if (pipe(aa) < 0)
             {
-                fprintf(2, "grind: pipe failed\n");
+                fprintf(stderr, "grind: pipe failed\n");
                 exit(1);
             }
             if (pipe(bb) < 0)
             {
-                fprintf(2, "grind: pipe failed\n");
+                fprintf(stderr, "grind: pipe failed\n");
                 exit(1);
             }
             pid_t pid1 = fork();
@@ -308,18 +306,18 @@ void go(int which_child)
                 close(1);
                 if (dup(aa[1]) != 1)
                 {
-                    fprintf(2, "grind: dup failed\n");
+                    fprintf(stderr, "grind: dup failed\n");
                     exit(1);
                 }
                 close(aa[1]);
                 char *args[3] = {"echo", "hi", 0};
                 execv("grindir/../echo", args);
-                fprintf(2, "grind: echo: not found\n");
+                fprintf(stderr, "grind: echo: not found\n");
                 exit(2);
             }
             else if (pid1 < 0)
             {
-                fprintf(2, "grind: fork failed\n");
+                fprintf(stderr, "grind: fork failed\n");
                 exit(3);
             }
             pid_t pid2 = fork();
@@ -330,25 +328,25 @@ void go(int which_child)
                 close(0);
                 if (dup(aa[0]) != 0)
                 {
-                    fprintf(2, "grind: dup failed\n");
+                    fprintf(stderr, "grind: dup failed\n");
                     exit(4);
                 }
                 close(aa[0]);
                 close(1);
                 if (dup(bb[1]) != 1)
                 {
-                    fprintf(2, "grind: dup failed\n");
+                    fprintf(stderr, "grind: dup failed\n");
                     exit(5);
                 }
                 close(bb[1]);
                 char *args[2] = {"cat", 0};
                 execv("/cat", args);
-                fprintf(2, "grind: cat: not found\n");
+                fprintf(stderr, "grind: cat: not found\n");
                 exit(6);
             }
             else if (pid2 < 0)
             {
-                fprintf(2, "grind: fork failed\n");
+                fprintf(stderr, "grind: fork failed\n");
                 exit(7);
             }
             close(aa[0]);

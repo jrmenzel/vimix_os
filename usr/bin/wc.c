@@ -1,8 +1,11 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <kernel/kernel.h>
-#include <kernel/stat.h>
-#include <user.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 char buf[512];
 
@@ -38,23 +41,23 @@ void wc(int fd, char *name)
 
 int main(int argc, char *argv[])
 {
-    int fd;
-
     if (argc <= 1)
     {
-        wc(0, "");
-        exit(0);
+        wc(STDIN_FILENO, "");
+        return 0;
     }
 
     for (size_t i = 1; i < argc; i++)
     {
-        if ((fd = open(argv[i], 0)) < 0)
+        int fd = open(argv[i], 0);
+
+        if (fd < 0)
         {
             printf("wc: cannot open %s\n", argv[i]);
-            exit(1);
+            return 1;
         }
         wc(fd, argv[i]);
         close(fd);
     }
-    exit(0);
+    return 0;
 }

@@ -8,7 +8,7 @@ include MakefileCommon.mk
 
 .PHONY: all kernel tools userspace clean
 
-all: directories kernel tools userspace_lib userspace
+all: directories kernel tools userspace_lib userspace userspace_host
 
 directories:
 	mkdir -p $(BUILD_DIR);
@@ -33,6 +33,11 @@ userspace: userspace_lib
 	$(MAKE) all; \
 	popd;
 
+userspace_host: 
+	pushd usr/bin; \
+	$(MAKE) directories; \
+	$(MAKE) host; \
+	popd;
 
 # filesystem in a file containing userspace to run with qemu (kernel is set manually)
 $(BUILD_DIR)/filesystem.img: tools README.md userspace

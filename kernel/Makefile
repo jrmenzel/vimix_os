@@ -43,6 +43,7 @@ OBJS = $(ARCH)/asm/entry.o \
 	lib/string.o \
 	lib/sleeplock.o \
 	lib/spinlock.o \
+	lib/print_impl.o \
 	lib/printk.o
 
 SUB_DIRS = \

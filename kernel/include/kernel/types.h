@@ -20,6 +20,11 @@
 /// MAJOR vs MINOR number or the size of a full dev_t. Use the MKDEV macro.
 typedef int32_t dev_t;
 
+/// @brief UNIX file descriptor, must be int as this is dictated by the public
+/// UNIX/C API (stdio.h et al) Exposed to user space (e.g. open()). Internally
+/// an index into the per-process file list in struct task_struct->files.
+typedef int FILE_DESCRIPTOR;
+
 #endif  // __USE_REAL_STDC__
 
 typedef unsigned char uchar;

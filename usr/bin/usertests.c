@@ -1,13 +1,18 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <arch/riscv/riscv.h>
-#include <kernel/fcntl.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/signal.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+// usertests has access to the internal kernel API:
 #include <kernel/fs.h>
-#include <kernel/kernel.h>
-#include <kernel/stat.h>
-#include <kernel/unistd.h>
 #include <mm/memlayout.h>
-#include <user.h>
+#include <riscv.h>
 
 //
 // Tests VIMIX system calls.  usertests without arguments runs them all
@@ -3552,12 +3557,13 @@ int main(int argc, char *argv[])
     else if (argc > 1)
     {
         printf("Usage: usertests [-c] [-C] [-q] [testname]\n");
-        exit(1);
+        return 1;
     }
     if (drivetests(quick, continuous, justone))
     {
-        exit(1);
+        return 1;
     }
     printf("ALL TESTS PASSED\n");
-    exit(0);
+
+    return 0;
 }

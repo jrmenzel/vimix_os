@@ -31,6 +31,21 @@ void *memset(void *dst, int32_t constant, size_t n);
 /// @return Pointer to src.
 char *safestrcpy(char *dst, const char *str, size_t n);
 
+/// @brief locate character in string
+/// @param str String
+/// @param c char to search
+/// @return pointer to first occurance or NULL if not found.
+char *strchr(const char *str, char c);
+
+/// @brief compare two strings
+/// @return 0 if the strings are equal
+int strcmp(const char *s1, const char *s2);
+
+/// @brief copy a string including the trailing \0
+/// @param dst Destinaton pointer.
+/// @param src Source string.
+char *strcpy(char *dst, const char *src);
+
 /// @brief Calculate the length of a string
 /// @param str (Hopefully) NULL-terminated string.
 /// @return Length of the string in bytes (EXCLUDING NULL-terminate).

@@ -1,9 +1,14 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <kernel/fs.h>
-#include <kernel/kernel.h>
-#include <kernel/stat.h>
-#include <user.h>
+
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 char *fmtname(char *path)
 {
@@ -31,13 +36,13 @@ void ls(char *path)
 
     if ((fd = open(path, 0)) < 0)
     {
-        fprintf(2, "ls: cannot open %s\n", path);
+        fprintf(stderr, "ls: cannot open %s\n", path);
         return;
     }
 
     if (fstat(fd, &st) < 0)
     {
-        fprintf(2, "ls: cannot stat %s\n", path);
+        fprintf(stderr, "ls: cannot stat %s\n", path);
         close(fd);
         return;
     }
@@ -82,11 +87,11 @@ int main(int argc, char *argv[])
     if (argc < 2)
     {
         ls(".");
-        exit(0);
+        return 0;
     }
     for (size_t i = 1; i < argc; i++)
     {
         ls(argv[i]);
     }
-    exit(0);
+    return 0;
 }

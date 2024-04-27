@@ -5,6 +5,7 @@ include ../../MakefileCommon.mk
 BUILD_DIR_ROOT=../../$(BUILD_DIR)
 B_BUILD_DIR=$(BUILD_DIR_ROOT)/usr/bin
 B_DEPLOY_DIR=$(BUILD_DIR_ROOT)/root
+B_DEPLOY_DIR_HOST=$(BUILD_DIR_ROOT)/root_host
 
 LIB_PATH=$(BUILD_DIR_ROOT)/usr/lib
 
@@ -20,14 +21,24 @@ UPROGS_NAME=\
 	mkdir\
 	rm\
 	sh\
-	stressfs\
 	usertests\
 	grind\
 	wc\
 	zombie\
 	ls
 
+# Some user space apps can be compiled on the host as well,
+# e.g. as native Linux apps. This can be helpful for app
+# development.
+#
+UPROGS_NAME_HOST=\
+	cat\
+	echo\
+	wc\
+	zombie
+
 UPROGS=$(foreach a, $(UPROGS_NAME), $(B_DEPLOY_DIR)/$a)
+PROGS_HOST=$(foreach a, $(UPROGS_NAME_HOST), $(B_DEPLOY_DIR_HOST)/$a)
 
 .PHONY: all directories clean
 
@@ -39,6 +50,11 @@ $(B_BUILD_DIR)/%.o: %.c
 $(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a
 	$(LD) $(LDFLAGS) -T user.ld $(LIB_PATH)/stdlib.a -o $@ $^
 	$(OBJDUMP) -S $@ > $(B_BUILD_DIR)/$*.S
+
+$(LIB_PATH)/stdlib.a: 
+	pushd ../lib; \
+	$(MAKE) all; \
+	popd;
 
 # special case:
 # usertest includes internal kernel API and needs more include search paths
@@ -55,7 +71,7 @@ KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I../../kernel/$d)
 $(B_BUILD_DIR)/usertests.o: usertests.c 
 	$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
-$(B_BUILD_DIR)/grind.o: grind.c 
+$(B_BUILD_DIR)/init.o: init.c 
 	$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 $(B_BUILD_DIR)/mkfs.o: ../../tools/mkfs/mkfs.c
@@ -64,8 +80,15 @@ $(B_BUILD_DIR)/mkfs.o: ../../tools/mkfs/mkfs.c
 directories:
 	mkdir -p $(B_BUILD_DIR)
 	mkdir -p $(B_DEPLOY_DIR)
+	mkdir -p $(B_DEPLOY_DIR_HOST)
 
 clean:
 	-@rm -rf $(B_BUILD_DIR)
 	mkdir -p $(B_BUILD_DIR)
 
+# build supported apps for the host OS / architecture:
+# binaries will end up in build/root_host/PATH_IN_VIMIX
+host: $(PROGS_HOST)
+
+$(B_DEPLOY_DIR_HOST)/%: %.c
+	$(CC_HOST) $(CFLAGS_HOST) -I/usr/include $< -o $@

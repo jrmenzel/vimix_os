@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 
 // Shell.
-
-#include <kernel/kernel.h>
-#include <user.h>
-#include "kernel/fcntl.h"
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 // Parsed command representation
 #define EXEC 1
@@ -82,15 +84,19 @@ void runcmd(struct cmd *cmd)
             ecmd = (struct execcmd *)cmd;
             if (ecmd->argv[0] == 0) exit(1);
             execv(ecmd->argv[0], ecmd->argv);
-            fprintf(2, "execv %s failed\n", ecmd->argv[0]);
+            fprintf(stderr, "exec %s failed\n", ecmd->argv[0]);
             break;
 
         case REDIR:
             rcmd = (struct redircmd *)cmd;
+            // If one of the standard files (0,1,2) are closed,
+            // the next opend file is guaranteed to get its fd (as it's
+            // simply the smallest unused).
+            // This will not work on e.g. Linux, use dup2() there.
             close(rcmd->fd);
             if (open(rcmd->file, rcmd->mode) < 0)
             {
-                fprintf(2, "open %s failed\n", rcmd->file);
+                fprintf(stderr, "open %s failed\n", rcmd->file);
                 exit(1);
             }
             runcmd(rcmd->cmd);
@@ -140,7 +146,7 @@ int getcmd(char *buf, int nbuf)
 {
     write(2, "$ ", 2);
     memset(buf, 0, nbuf);
-    gets(buf, nbuf);
+    fgets(buf, nbuf, stdin);
     if (buf[0] == 0)  // EOF
         return -1;
     return 0;
@@ -168,18 +174,18 @@ int main()
         {
             // Chdir must be called by the parent, not the child.
             buf[strlen(buf) - 1] = 0;  // chop \n
-            if (chdir(buf + 3) < 0) fprintf(2, "cannot cd %s\n", buf + 3);
+            if (chdir(buf + 3) < 0) fprintf(stderr, "cannot cd %s\n", buf + 3);
             continue;
         }
         if (fork1() == 0) runcmd(parsecmd(buf));
         wait(0);
     }
-    exit(0);
+    return 0;
 }
 
 void panic(char *s)
 {
-    fprintf(2, "%s\n", s);
+    fprintf(stderr, "%s\n", s);
     exit(1);
 }
 
@@ -318,7 +324,7 @@ struct cmd *parsecmd(char *s)
     peek(&s, es, "");
     if (s != es)
     {
-        fprintf(2, "leftovers: %s\n", s);
+        fprintf(stderr, "leftovers: %s\n", s);
         panic("syntax");
     }
     nulterminate(cmd);

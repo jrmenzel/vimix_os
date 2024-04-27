@@ -16,3 +16,6 @@
 
 /// if the file exists and is writeable, reset it to size 0
 #define O_TRUNC 0x400
+
+/// WARNING: not supported yet
+#define O_APPEND 0x800

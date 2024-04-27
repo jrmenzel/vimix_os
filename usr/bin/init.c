@@ -2,19 +2,26 @@
 
 // init: The initial user-level program
 
-#include <kernel/fs.h>
-#include <kernel/kernel.h>
-#include <kernel/stat.h>
-#include <user.h>
-#include "../kernel/file.h"
-#include "kernel/fcntl.h"
-#include "kernel/sleeplock.h"
-#include "kernel/spinlock.h"
+#include <kernel/file.h>
+
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 char *argv[] = {"sh", 0};
 
 int main()
 {
+    // init is called from the kernels initcode and has no open files.
+    // The first three files are defined to be stdin, stdout and stderr.
+    // This opens the console to be these standart files.
+    // Note that fork() and execv() below wont change the open files,
+    // this way all programs that don't change these open files will
+    // direct all stdin/stdout/stderr IO to console.
+
     if (open("console", O_RDWR) < 0)
     {
         mknod("console", CONSOLE, 0);
@@ -49,6 +56,7 @@ int main()
             if (wpid == pid)
             {
                 // the shell exited; restart it.
+                printf("shell exited with status %d\n", status);
                 break;
             }
             else if (wpid < 0)

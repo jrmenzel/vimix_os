@@ -1,55 +1,50 @@
 /* SPDX-License-Identifier: MIT */
 
-// Test that fork fails gracefully.
-// Tiny executable so that the limit can be filling the proc table.
+/// Test that fork fails gracefully.
+/// Tiny executable so that the limit can be filling the g_process_list table.
 
-#include <kernel/kernel.h>
-#include <kernel/stat.h>
-#include <user.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-#define N 1000
-
-void print(const char *s) { write(1, s, strlen(s)); }
-
-void forktest()
+int main()
 {
-    int n;
+    const int32_t N = 1000;
+    pid_t n;
 
-    print("fork test\n");
+    printf("fork test\n");
 
     for (n = 0; n < N; n++)
     {
         pid_t pid = fork();
         if (pid < 0) break;
-        if (pid == 0) exit(0);
+        if (pid == 0) return 0;
     }
 
     if (n == N)
     {
-        print("fork claimed to work N times!\n");
-        exit(1);
+        printf("fork claimed to work N times!\n");
+        return 1;
     }
 
     for (; n > 0; n--)
     {
         if (wait(NULL) < 0)
         {
-            print("wait stopped early\n");
-            exit(1);
+            printf("wait stopped early\n");
+            return 1;
         }
     }
 
     if (wait(NULL) != -1)
     {
-        print("wait got too many\n");
-        exit(1);
+        printf("wait got too many\n");
+        return 1;
     }
 
-    print("fork test OK\n");
-}
-
-int main()
-{
-    forktest();
-    exit(0);
+    printf("fork test OK\n");
+    return 0;
 }

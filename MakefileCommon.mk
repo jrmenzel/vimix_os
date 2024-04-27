@@ -67,41 +67,49 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
+# for compiling userspace apps on the host platform
+CC_HOST = gcc
+
+git-hash=$(shell git log --pretty=format:'%h' -n 1)
+CFLAGS_COMMON = -DGIT_HASH=$(git-hash)
+
 #####
 # C compile flags
-
-ifeq ($(BITWIDTH), 64)
-CFLAGS += -march=rv64gc -D_ARCH_64BIT
-else
-CFLAGS += -march=rv32gc -D_ARCH_32BIT
-endif
-
-CFLAGS += -fno-omit-frame-pointer
-CFLAGS += -Wall -Werror
+CFLAGS_COMMON += -fno-omit-frame-pointer
+CFLAGS_COMMON += -Wall -Werror
+CFLAGS_COMMON += -I.
 
 ifeq ($(BUILD_TYPE), debug)
-CFLAGS += -O0 
-CFLAGS += -ggdb -gdwarf-2 -DDEBUG # debug info
-CFLAGS += -g # native format for debug info
-CFLAGS += -MD
+CFLAGS_COMMON += -O0 
+CFLAGS_COMMON += -ggdb -gdwarf-2 -DDEBUG # debug info
+CFLAGS_COMMON += -g # native format for debug info
+CFLAGS_COMMON += -MD
 else
-CFLAGS += -O2
+CFLAGS_COMMON += -O2
 endif
-
-CFLAGS += -mcmodel=medany
-CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
-CFLAGS += -nostdinc
-CFLAGS += -I.
-CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
-CFLAGS += $(EXTRA_DEBUG_FLAGS)
 
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
-CFLAGS += -fno-pie -no-pie
+CFLAGS_COMMON += -fno-pie -no-pie
 endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
-CFLAGS += -fno-pie -nopie
+CFLAGS_COMMON += -fno-pie -nopie
 endif
+
+ifeq ($(BITWIDTH), 64)
+CFLAGS_TARGET_ONLY = -march=rv64gc -D_ARCH_64BIT
+else
+CFLAGS_TARGET_ONLY = -march=rv32gc -D_ARCH_32BIT
+endif
+CFLAGS_TARGET_ONLY += -mcmodel=medany
+CFLAGS_TARGET_ONLY += -ffreestanding -fno-common -nostdlib -mno-relax
+CFLAGS_TARGET_ONLY += -nostdinc
+CFLAGS_TARGET_ONLY += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+
+# c flags for the kernel and user space apps on the target OS:
+CFLAGS = $(CFLAGS_TARGET_ONLY) $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS)
+# c flags for the user space apps on the host OS (with host stdlib):
+CFLAGS_HOST = $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS)
 
 #####
 # linker flags
