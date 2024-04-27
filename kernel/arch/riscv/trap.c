@@ -194,7 +194,7 @@ int interrupt_handler()
         }
         else if (irq == VIRTIO0_IRQ)
         {
-            virtio_disk_intr();
+            virtio_block_device_interrupt();
         }
         else if (irq)
         {

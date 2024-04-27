@@ -11,35 +11,35 @@
 #include <kernel/string.h>
 #include <mm/memlayout.h>
 
-void freerange(void *pa_start, void *pa_end);
+void kfree_range(void *pa_start, void *pa_end);
 
 extern char end_of_kernel[];  /// first address after kernel.
                               /// defined by kernel.ld.
 
 /// each free 4KB page will contain this struct to form a linked list
-struct run
+struct free_page
 {
-    struct run *next;
+    struct free_page *next;
 };
 
 /// a linked list of all free 4KB pages for the kernel to allocate
 struct
 {
     struct spinlock lock;
-    struct run *freelist;
-} kmem;
+    struct free_page *free_list;
+} g_kernel_memory;
 
 void kalloc_init()
 {
-    spin_lock_init(&kmem.lock, "kmem");
-    freerange(end_of_kernel, (void *)PHYSTOP);
+    spin_lock_init(&g_kernel_memory.lock, "kmem");
+    kfree_range(end_of_kernel, (void *)PHYSTOP);
 }
 
 /// @brief helper for init_physical_page_allocator. Frees all pages in
 /// a given range for the kernel to use.
 /// @param pa_start physical address of the start
 /// @param pa_end physical address of the end
-void freerange(void *pa_start, void *pa_end)
+void kfree_range(void *pa_start, void *pa_end)
 {
     char *p;
     p = (char *)PAGE_ROUND_UP((size_t)pa_start);
@@ -51,7 +51,7 @@ void freerange(void *pa_start, void *pa_end)
 
 void kfree(void *pa)
 {
-    struct run *r;
+    struct free_page *r;
 
     if (((size_t)pa % PAGE_SIZE) != 0 || (char *)pa < end_of_kernel ||
         (size_t)pa >= PHYSTOP)
@@ -60,22 +60,22 @@ void kfree(void *pa)
     // Fill with junk to catch dangling refs.
     memset(pa, 1, PAGE_SIZE);
 
-    r = (struct run *)pa;
+    r = (struct free_page *)pa;
 
-    spin_lock(&kmem.lock);
-    r->next = kmem.freelist;
-    kmem.freelist = r;
-    spin_unlock(&kmem.lock);
+    spin_lock(&g_kernel_memory.lock);
+    r->next = g_kernel_memory.free_list;
+    g_kernel_memory.free_list = r;
+    spin_unlock(&g_kernel_memory.lock);
 }
 
 void *kalloc()
 {
-    struct run *r;
+    struct free_page *r;
 
-    spin_lock(&kmem.lock);
-    r = kmem.freelist;
-    if (r) kmem.freelist = r->next;
-    spin_unlock(&kmem.lock);
+    spin_lock(&g_kernel_memory.lock);
+    r = g_kernel_memory.free_list;
+    if (r) g_kernel_memory.free_list = r->next;
+    spin_unlock(&g_kernel_memory.lock);
 
     if (r) memset((char *)r, 5, PAGE_SIZE);  // fill with junk
     return (void *)r;

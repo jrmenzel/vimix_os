@@ -24,7 +24,7 @@ static struct
 {
     struct spinlock lock;
     bool locking;
-} pr;
+} g_printk;
 
 static char digits[] = "0123456789abcdef";
 
@@ -65,8 +65,8 @@ void printk(char *fmt, ...)
     int i, c, locking;
     char *s;
 
-    locking = pr.locking;
-    if (locking) spin_lock(&pr.lock);
+    locking = g_printk.locking;
+    if (locking) spin_lock(&g_printk.lock);
 
     if (fmt == 0) panic("null fmt");
 
@@ -99,12 +99,12 @@ void printk(char *fmt, ...)
     }
     va_end(ap);
 
-    if (locking) spin_unlock(&pr.lock);
+    if (locking) spin_unlock(&g_printk.lock);
 }
 
 void panic(char *s)
 {
-    pr.locking = false;
+    g_printk.locking = false;
     printk("panic: ");
     printk(s);
     printk("\n");
@@ -116,6 +116,6 @@ void panic(char *s)
 
 void printk_init()
 {
-    spin_lock_init(&pr.lock, "pr");
-    pr.locking = 1;
+    spin_lock_init(&g_printk.lock, "pr");
+    g_printk.locking = 1;
 }

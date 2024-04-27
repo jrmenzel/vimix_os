@@ -51,7 +51,7 @@ struct
     uint32_t r;  ///< Read index
     uint32_t w;  ///< Write index
     uint32_t e;  ///< Edit index
-} cons;
+} g_console;
 
 /// user write()s to the console go here.
 ssize_t console_write(bool addr_is_userspace, size_t src, size_t n)
@@ -79,22 +79,22 @@ ssize_t console_read(bool addr_is_userspace, size_t dst, size_t n)
     char cbuf;
 
     target = n;
-    spin_lock(&cons.lock);
+    spin_lock(&g_console.lock);
     while (n > 0)
     {
         // wait until interrupt handler has put some
-        // input into cons.buffer.
-        while (cons.r == cons.w)
+        // input into g_console.buffer.
+        while (g_console.r == g_console.w)
         {
             if (proc_is_killed(get_current()))
             {
-                spin_unlock(&cons.lock);
+                spin_unlock(&g_console.lock);
                 return -1;
             }
-            sleep(&cons.r, &cons.lock);
+            sleep(&g_console.r, &g_console.lock);
         }
 
-        c = cons.buf[cons.r++ % INPUT_BUF_SIZE];
+        c = g_console.buf[g_console.r++ % INPUT_BUF_SIZE];
 
         if (c == CONTROL_KEY('D'))
         {  // end-of-file
@@ -102,7 +102,7 @@ ssize_t console_read(bool addr_is_userspace, size_t dst, size_t n)
             {
                 // Save ^D for next time, to make sure
                 // caller gets a 0-byte result.
-                cons.r--;
+                g_console.r--;
             }
             break;
         }
@@ -121,18 +121,18 @@ ssize_t console_read(bool addr_is_userspace, size_t dst, size_t n)
             break;
         }
     }
-    spin_unlock(&cons.lock);
+    spin_unlock(&g_console.lock);
 
     return target - n;
 }
 
 /// the console input interrupt handler.
 /// uart_interrupt_handler() calls this for input character.
-/// do erase/kill processing, append to cons.buf,
+/// do erase/kill processing, append to g_console.buf,
 /// wake up console_read() if a whole line has arrived.
 void console_interrupt_handler(int c)
 {
-    spin_lock(&cons.lock);
+    spin_lock(&g_console.lock);
 
     switch (c)
     {
@@ -140,23 +140,23 @@ void console_interrupt_handler(int c)
             debug_print_process_list();
             break;
         case CONTROL_KEY('U'):  // Kill line.
-            while (cons.e != cons.w &&
-                   cons.buf[(cons.e - 1) % INPUT_BUF_SIZE] != '\n')
+            while (g_console.e != g_console.w &&
+                   g_console.buf[(g_console.e - 1) % INPUT_BUF_SIZE] != '\n')
             {
-                cons.e--;
+                g_console.e--;
                 console_putc(BACKSPACE);
             }
             break;
         case CONTROL_KEY('H'):  // Backspace
         case '\x7f':            // Delete key
-            if (cons.e != cons.w)
+            if (g_console.e != g_console.w)
             {
-                cons.e--;
+                g_console.e--;
                 console_putc(BACKSPACE);
             }
             break;
         default:
-            if (c != 0 && cons.e - cons.r < INPUT_BUF_SIZE)
+            if (c != 0 && g_console.e - g_console.r < INPUT_BUF_SIZE)
             {
                 c = (c == '\r') ? '\n' : c;
 
@@ -164,26 +164,26 @@ void console_interrupt_handler(int c)
                 console_putc(c);
 
                 // store for consumption by console_read().
-                cons.buf[cons.e++ % INPUT_BUF_SIZE] = c;
+                g_console.buf[g_console.e++ % INPUT_BUF_SIZE] = c;
 
                 if (c == '\n' || c == CONTROL_KEY('D') ||
-                    cons.e - cons.r == INPUT_BUF_SIZE)
+                    g_console.e - g_console.r == INPUT_BUF_SIZE)
                 {
                     // wake up console_read() if a whole line (or end-of-file)
                     // has arrived.
-                    cons.w = cons.e;
-                    wakeup(&cons.r);
+                    g_console.w = g_console.e;
+                    wakeup(&g_console.r);
                 }
             }
             break;
     }
 
-    spin_unlock(&cons.lock);
+    spin_unlock(&g_console.lock);
 }
 
 void console_init()
 {
-    spin_lock_init(&cons.lock, "cons");
+    spin_lock_init(&g_console.lock, "cons");
 
     uart_init();
 

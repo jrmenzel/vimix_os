@@ -11,7 +11,7 @@
 struct
 {
     struct spinlock lock;
-    struct buf buf[NBUF];
+    struct buf buf[NUM_BUFFERS_IN_CACHE];
 
     // Linked list of all buffers, through prev/next.
     // Sorted by how recently the buffer was used.
@@ -28,7 +28,7 @@ void bio_init()
     // Create linked list of buffers
     g_buf_cache.head.prev = &g_buf_cache.head;
     g_buf_cache.head.next = &g_buf_cache.head;
-    for (b = g_buf_cache.buf; b < g_buf_cache.buf + NBUF; b++)
+    for (b = g_buf_cache.buf; b < g_buf_cache.buf + NUM_BUFFERS_IN_CACHE; b++)
     {
         b->next = g_buf_cache.head.next;
         b->prev = &g_buf_cache.head;

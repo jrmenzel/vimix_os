@@ -116,7 +116,7 @@ void log_begin_fs_transaction()
         {
             sleep(&g_log, &g_log.lock);
         }
-        else if (g_log.lh.n + (g_log.outstanding + 1) * MAXOPBLOCKS > LOGSIZE)
+        else if (g_log.lh.n + (g_log.outstanding + 1) * MAX_OP_BLOCKS > LOGSIZE)
         {
             // this op might exhaust g_log space; wait for commit.
             sleep(&g_log, &g_log.lock);

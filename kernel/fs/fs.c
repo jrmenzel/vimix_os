@@ -181,13 +181,13 @@ struct
     /// an entry holds, one must hold itable.lock while using any
     /// of those fields.
     struct spinlock lock;
-    struct inode inode[NINODE];
+    struct inode inode[MAX_ACTIVE_INODES];
 } itable;
 
 void inode_init()
 {
     spin_lock_init(&itable.lock, "itable");
-    for (size_t i = 0; i < NINODE; i++)
+    for (size_t i = 0; i < MAX_ACTIVE_INODES; i++)
     {
         sleep_lock_init(&itable.inode[i].lock, "inode");
     }
@@ -203,12 +203,12 @@ struct inode *inode_alloc(dev_t dev, short type)
 {
     int inum;
     struct buf *bp;
-    struct vx6fs_dinode *dip;
+    struct xv6fs_dinode *dip;
 
     for (inum = 1; inum < sb.ninodes; inum++)
     {
         bp = bio_read(dev, IBLOCK(inum, sb));
-        dip = (struct vx6fs_dinode *)bp->data + inum % IPB;
+        dip = (struct xv6fs_dinode *)bp->data + inum % IPB;
         if (dip->type == 0)
         {  // a free inode
             memset(dip, 0, sizeof(*dip));
@@ -230,10 +230,10 @@ struct inode *inode_alloc(dev_t dev, short type)
 void inode_update(struct inode *ip)
 {
     struct buf *bp;
-    struct vx6fs_dinode *dip;
+    struct xv6fs_dinode *dip;
 
     bp = bio_read(ip->dev, IBLOCK(ip->inum, sb));
-    dip = (struct vx6fs_dinode *)bp->data + ip->inum % IPB;
+    dip = (struct xv6fs_dinode *)bp->data + ip->inum % IPB;
     dip->type = ip->type;
     dip->major = ip->major;
     dip->minor = ip->minor;
@@ -254,7 +254,7 @@ static struct inode *iget(dev_t dev, uint32_t inum)
     // Is the inode already in the table?
     struct inode *empty = NULL;
     struct inode *ip = NULL;
-    for (ip = &itable.inode[0]; ip < &itable.inode[NINODE]; ip++)
+    for (ip = &itable.inode[0]; ip < &itable.inode[MAX_ACTIVE_INODES]; ip++)
     {
         if (ip->ref > 0 && ip->dev == dev && ip->inum == inum)
         {
@@ -293,7 +293,7 @@ struct inode *inode_dup(struct inode *ip)
 void inode_lock(struct inode *ip)
 {
     struct buf *bp;
-    struct vx6fs_dinode *dip;
+    struct xv6fs_dinode *dip;
 
     if (ip == 0 || ip->ref < 1) panic("inode_lock");
 
@@ -302,7 +302,7 @@ void inode_lock(struct inode *ip)
     if (ip->valid == 0)
     {
         bp = bio_read(ip->dev, IBLOCK(ip->inum, sb));
-        dip = (struct vx6fs_dinode *)bp->data + ip->inum % IPB;
+        dip = (struct xv6fs_dinode *)bp->data + ip->inum % IPB;
         ip->type = dip->type;
         ip->major = dip->major;
         ip->minor = dip->minor;

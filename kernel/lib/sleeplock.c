@@ -12,7 +12,7 @@
 void sleep_lock_init(struct sleeplock *lk, char *name)
 {
     spin_lock_init(&lk->lk, "sleep lock");
-    lk->name = name;
+    lk->name_for_debug = name;
     lk->locked = 0;
     lk->pid = 0;
 }

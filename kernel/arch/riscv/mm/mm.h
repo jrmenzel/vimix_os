@@ -31,7 +31,8 @@
 /// Extract one of the three 9-bit page table indices (one per level) from a
 /// virtual address. va is [[0][9 bit idx level 2][9 bit idx level 1][9 bit idx
 /// level 0][12 bits address in page]]
-#define PX(level, va) ((((size_t)(va)) >> PXSHIFT(level)) & PXMASK)
+#define PAGE_TABLE_INDEX(level, va) \
+    ((((size_t)(va)) >> PXSHIFT(level)) & PXMASK)
 
 /// one beyond the highest possible virtual address.
 /// MAXVA is actually one bit less than the max allowed by

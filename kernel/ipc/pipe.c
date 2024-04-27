@@ -17,8 +17,8 @@ int32_t pipe_alloc(struct file **f0, struct file **f1)
     *f0 = *f1 = 0;
     if ((*f0 = file_alloc()) == 0 || (*f1 = file_alloc()) == 0) goto bad;
     if ((pi = (struct pipe *)kalloc()) == 0) goto bad;
-    pi->readopen = 1;
-    pi->writeopen = 1;
+    pi->read_open = 1;
+    pi->write_open = 1;
     pi->nwrite = 0;
     pi->nread = 0;
     spin_lock_init(&pi->lock, "pipe");
@@ -44,15 +44,15 @@ void pipe_close(struct pipe *pipe, bool close_writing_end)
     spin_lock(&pipe->lock);
     if (close_writing_end)
     {
-        pipe->writeopen = false;
+        pipe->write_open = false;
         wakeup(&pipe->nread);
     }
     else
     {
-        pipe->readopen = false;
+        pipe->read_open = false;
         wakeup(&pipe->nwrite);
     }
-    if (pipe->readopen == false && pipe->writeopen == false)
+    if (pipe->read_open == false && pipe->write_open == false)
     {
         spin_unlock(&pipe->lock);
         kfree((char *)pipe);
@@ -69,12 +69,12 @@ ssize_t pipe_write(struct pipe *pipe, size_t src_user_addr, size_t n)
     spin_lock(&pipe->lock);
     while (i < n)
     {
-        if (pipe->readopen == false || proc_is_killed(proc))
+        if (pipe->read_open == false || proc_is_killed(proc))
         {
             spin_unlock(&pipe->lock);
             return -1;
         }
-        if (pipe->nwrite == pipe->nread + PIPESIZE)
+        if (pipe->nwrite == pipe->nread + PIPE_SIZE)
         {
             wakeup(&pipe->nread);
             // wait till another process read from the pipe
@@ -85,7 +85,7 @@ ssize_t pipe_write(struct pipe *pipe, size_t src_user_addr, size_t n)
             char ch;
             if (uvm_copy_in(proc->pagetable, &ch, src_user_addr + i, 1) == -1)
                 break;
-            pipe->data[pipe->nwrite++ % PIPESIZE] = ch;
+            pipe->data[pipe->nwrite++ % PIPE_SIZE] = ch;
             i++;
         }
     }
@@ -102,7 +102,7 @@ ssize_t pipe_read(struct pipe *pipe, size_t src_kernel_addr, size_t n)
     char ch;
 
     spin_lock(&pipe->lock);
-    while (pipe->nread == pipe->nwrite && pipe->writeopen)
+    while (pipe->nread == pipe->nwrite && pipe->write_open)
     {
         if (proc_is_killed(proc))
         {
@@ -114,7 +114,7 @@ ssize_t pipe_read(struct pipe *pipe, size_t src_kernel_addr, size_t n)
     for (i = 0; i < n; i++)
     {
         if (pipe->nread == pipe->nwrite) break;
-        ch = pipe->data[pipe->nread++ % PIPESIZE];
+        ch = pipe->data[pipe->nread++ % PIPE_SIZE];
         if (uvm_copy_out(proc->pagetable, src_kernel_addr + i, &ch, 1) == -1)
             break;
     }

@@ -26,9 +26,9 @@ size_t sys_fork() { return fork(); }
 
 size_t sys_wait()
 {
-    size_t p;
-    argaddr(0, &p);
-    return wait((int32_t *)p);
+    size_t wstatus;
+    argaddr(0, &wstatus);
+    return wait((int32_t *)wstatus);
 }
 
 size_t sys_sbrk()

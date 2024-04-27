@@ -6,16 +6,16 @@
 #include <kernel/spinlock.h>
 #include <mm/mm.h>
 
-#define PIPESIZE 512
+#define PIPE_SIZE 512
 
 struct pipe
 {
     struct spinlock lock;
-    char data[PIPESIZE];
-    size_t nread;    ///< number of bytes read
-    size_t nwrite;   ///< number of bytes written
-    bool readopen;   ///< read fd is still open
-    bool writeopen;  ///< write fd is still open
+    char data[PIPE_SIZE];
+    size_t nread;     ///< number of bytes read
+    size_t nwrite;    ///< number of bytes written
+    bool read_open;   ///< read fd is still open
+    bool write_open;  ///< write fd is still open
 };
 _Static_assert(sizeof(struct pipe) <= PAGE_SIZE, "struct pipe too big");
 

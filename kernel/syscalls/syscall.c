@@ -31,7 +31,7 @@ int32_t fetchstr(size_t addr, char *buf, int32_t max)
     return strlen(buf);
 }
 
-static size_t argraw(int n)
+static size_t get_system_call_argument(int n)
 {
     struct process *proc = get_current();
     switch (n)
@@ -43,13 +43,13 @@ static size_t argraw(int n)
         case 4: return proc->trapframe->a4;
         case 5: return proc->trapframe->a5;
     }
-    panic("argraw");
+    panic("get_system_call_argument");
     return -1;
 }
 
-void argint(int n, int *ip) { *ip = argraw(n); }
+void argint(int n, int *ip) { *ip = get_system_call_argument(n); }
 
-void argaddr(int n, size_t *ip) { *ip = argraw(n); }
+void argaddr(int n, size_t *ip) { *ip = get_system_call_argument(n); }
 
 int32_t argstr(int32_t n, char *buf, int32_t max)
 {

@@ -32,11 +32,11 @@ struct process g_process_list[MAX_PROCS];
 /// Created in userspace_init(), the only process not created by fork()
 struct process *g_initial_user_process;
 
-pid_t nextpid = 1;
-struct spinlock pid_lock;
+pid_t g_next_pid = 1;
+struct spinlock g_pid_lock;
 
 extern void forkret();
-static void freeproc(struct process *proc);
+static void free_process(struct process *proc);
 
 extern char trampoline[];  // u_mode_trap_vector.S
 
@@ -44,7 +44,7 @@ extern char trampoline[];  // u_mode_trap_vector.S
 /// parents are not lost. helps obey the
 /// memory model when using p->parent.
 /// must be acquired before any p->lock.
-struct spinlock wait_lock;
+struct spinlock g_wait_lock;
 
 /// Allocate a page for each process's kernel stack.
 /// Map it high in memory, followed by an invalid
@@ -67,8 +67,8 @@ void proc_init()
 {
     struct process *proc;
 
-    spin_lock_init(&pid_lock, "nextpid");
-    spin_lock_init(&wait_lock, "wait_lock");
+    spin_lock_init(&g_pid_lock, "nextpid");
+    spin_lock_init(&g_wait_lock, "wait_lock");
     for (proc = g_process_list; proc < &g_process_list[MAX_PROCS]; proc++)
     {
         spin_lock_init(&proc->lock, "proc");
@@ -108,12 +108,12 @@ struct process *get_current()
 }
 
 /// Get a new unique process ID
-pid_t allocpid()
+pid_t alloc_pid()
 {
-    spin_lock(&pid_lock);
-    pid_t pid = nextpid;
-    nextpid = nextpid + 1;
-    spin_unlock(&pid_lock);
+    spin_lock(&g_pid_lock);
+    pid_t pid = g_next_pid;
+    g_next_pid = g_next_pid + 1;
+    spin_unlock(&g_pid_lock);
 
     return pid;
 }
@@ -122,7 +122,7 @@ pid_t allocpid()
 /// If found, initialize state required to run in the kernel,
 /// and return with p->lock held.
 /// If there are no free procs, or a memory allocation fails, return 0.
-static struct process *allocproc()
+static struct process *alloc_process()
 {
     struct process *proc;
 
@@ -141,13 +141,13 @@ static struct process *allocproc()
     return 0;
 
 found:
-    proc->pid = allocpid();
+    proc->pid = alloc_pid();
     proc->state = USED;
 
     // Allocate a trapframe page.
     if ((proc->trapframe = (struct trapframe *)kalloc()) == 0)
     {
-        freeproc(proc);
+        free_process(proc);
         spin_unlock(&proc->lock);
         return 0;
     }
@@ -156,7 +156,7 @@ found:
     proc->pagetable = proc_pagetable(proc);
     if (proc->pagetable == 0)
     {
-        freeproc(proc);
+        free_process(proc);
         spin_unlock(&proc->lock);
         return 0;
     }
@@ -173,7 +173,7 @@ found:
 /// free a proc structure and the data hanging from it,
 /// including user pages.
 /// p->lock must be held.
-static void freeproc(struct process *proc)
+static void free_process(struct process *proc)
 {
     if (proc->trapframe) kfree((void *)proc->trapframe);
     proc->trapframe = 0;
@@ -236,7 +236,7 @@ void proc_free_pagetable(pagetable_t pagetable, size_t sz)
 /// This creates the only process not created by fork()
 void userspace_init()
 {
-    struct process *proc = allocproc();
+    struct process *proc = alloc_process();
     g_initial_user_process = proc;
 
     // Allocate one user page and load the user initcode into
@@ -290,7 +290,7 @@ int32_t fork()
     struct process *proc = get_current();
 
     // Allocate process.
-    if ((np = allocproc()) == NULL)
+    if ((np = alloc_process()) == NULL)
     {
         return -1;
     }
@@ -298,7 +298,7 @@ int32_t fork()
     // Copy user memory from parent to child.
     if (uvm_copy(proc->pagetable, np->pagetable, proc->sz) < 0)
     {
-        freeproc(np);
+        free_process(np);
         spin_unlock(&np->lock);
         return -1;
     }
@@ -311,7 +311,7 @@ int32_t fork()
     np->trapframe->a0 = 0;
 
     // increment reference counts on open file descriptors.
-    for (i = 0; i < NOFILE; i++)
+    for (i = 0; i < MAX_FILES_PER_PROCESS; i++)
         if (proc->files[i]) np->files[i] = file_dup(proc->files[i]);
     np->cwd = inode_dup(proc->cwd);
 
@@ -321,9 +321,9 @@ int32_t fork()
 
     spin_unlock(&np->lock);
 
-    spin_lock(&wait_lock);
+    spin_lock(&g_wait_lock);
     np->parent = proc;
-    spin_unlock(&wait_lock);
+    spin_unlock(&g_wait_lock);
 
     spin_lock(&np->lock);
     np->state = RUNNABLE;
@@ -333,7 +333,7 @@ int32_t fork()
 }
 
 /// Pass p's abandoned children to init.
-/// Caller must hold wait_lock.
+/// Caller must hold g_wait_lock.
 void reparent(struct process *proc)
 {
     struct process *pp;
@@ -369,7 +369,7 @@ void exit(int32_t status)
     }
 
     // Close all open files.
-    for (int fd = 0; fd < NOFILE; fd++)
+    for (int fd = 0; fd < MAX_FILES_PER_PROCESS; fd++)
     {
         if (proc->files[fd])
         {
@@ -384,7 +384,7 @@ void exit(int32_t status)
     log_end_fs_transaction();
     proc->cwd = 0;
 
-    spin_lock(&wait_lock);
+    spin_lock(&g_wait_lock);
 
     // Give any children to init.
     reparent(proc);
@@ -397,7 +397,7 @@ void exit(int32_t status)
     proc->xstate = status;
     proc->state = ZOMBIE;
 
-    spin_unlock(&wait_lock);
+    spin_unlock(&g_wait_lock);
 
     // Jump into the scheduler, never to return.
     sched();
@@ -412,7 +412,7 @@ int wait(int32_t *wstatus)
     int havekids, pid;
     struct process *proc = get_current();
 
-    spin_lock(&wait_lock);
+    spin_lock(&g_wait_lock);
 
     for (;;)
     {
@@ -437,12 +437,12 @@ int wait(int32_t *wstatus)
                                      sizeof(pp->xstate)) < 0)
                     {
                         spin_unlock(&pp->lock);
-                        spin_unlock(&wait_lock);
+                        spin_unlock(&g_wait_lock);
                         return -1;
                     }
-                    freeproc(pp);
+                    free_process(pp);
                     spin_unlock(&pp->lock);
-                    spin_unlock(&wait_lock);
+                    spin_unlock(&g_wait_lock);
                     return pid;
                 }
                 spin_unlock(&pp->lock);
@@ -452,12 +452,12 @@ int wait(int32_t *wstatus)
         // No point waiting if we don't have any children.
         if (!havekids || proc_is_killed(proc))
         {
-            spin_unlock(&wait_lock);
+            spin_unlock(&g_wait_lock);
             return -1;
         }
 
         // Wait for a child to exit.
-        sleep(proc, &wait_lock);
+        sleep(proc, &g_wait_lock);
     }
 }
 
@@ -662,7 +662,7 @@ int fd_alloc(struct file *f)
     int fd;
     struct process *proc = get_current();
 
-    for (fd = 0; fd < NOFILE; fd++)
+    for (fd = 0; fd < MAX_FILES_PER_PROCESS; fd++)
     {
         if (proc->files[fd] == 0)
         {

@@ -32,7 +32,8 @@ static int argfd(int n, int *pfd, struct file **pf)
     struct file *f;
 
     argint(n, &fd);
-    if (fd < 0 || fd >= NOFILE || (f = get_current()->files[fd]) == NULL)
+    if (fd < 0 || fd >= MAX_FILES_PER_PROCESS ||
+        (f = get_current()->files[fd]) == NULL)
         return -1;
     if (pfd) *pfd = fd;
     if (pf) *pf = f;
@@ -99,10 +100,10 @@ size_t sys_fstat()
 
 size_t sys_link()
 {
-    char name[XV6_NAME_MAX], path_to[MAXPATH], path_from[MAXPATH];
+    char name[XV6_NAME_MAX], path_to[PATH_MAX], path_from[PATH_MAX];
     struct inode *dir, *ip;
 
-    if (argstr(0, path_from, MAXPATH) < 0 || argstr(1, path_to, MAXPATH) < 0)
+    if (argstr(0, path_from, PATH_MAX) < 0 || argstr(1, path_to, PATH_MAX) < 0)
         return -1;
 
     log_begin_fs_transaction();
@@ -165,10 +166,10 @@ size_t sys_unlink()
 {
     struct inode *ip, *dir;
     struct xv6fs_dirent de;
-    char name[XV6_NAME_MAX], path[MAXPATH];
+    char name[XV6_NAME_MAX], path[PATH_MAX];
     uint32_t off;
 
-    if (argstr(0, path, MAXPATH) < 0) return -1;
+    if (argstr(0, path, PATH_MAX) < 0) return -1;
 
     log_begin_fs_transaction();
     if ((dir = inode_of_parent_from_path(path, name)) == NULL)
@@ -281,18 +282,18 @@ fail:
 
 size_t sys_open()
 {
-    char path[MAXPATH];
-    int fd, flags;
+    char path[PATH_MAX];
+    int fd, omode;
     struct file *f;
     struct inode *ip;
     int n;
 
-    argint(1, &flags);
-    if ((n = argstr(0, path, MAXPATH)) < 0) return -1;
+    argint(1, &omode);
+    if ((n = argstr(0, path, PATH_MAX)) < 0) return -1;
 
     log_begin_fs_transaction();
 
-    if (flags & O_CREATE)
+    if (omode & O_CREATE)
     {
         ip = create(path, XV6_FT_FILE, 0, 0);
         if (ip == 0)
@@ -309,7 +310,7 @@ size_t sys_open()
             return -1;
         }
         inode_lock(ip);
-        if (ip->type == XV6_FT_DIR && flags != O_RDONLY)
+        if (ip->type == XV6_FT_DIR && omode != O_RDONLY)
         {
             inode_unlock_put(ip);
             log_end_fs_transaction();
@@ -317,7 +318,8 @@ size_t sys_open()
         }
     }
 
-    if (ip->type == XV6_FT_DEVICE && (ip->major < 0 || ip->major >= NDEV))
+    if (ip->type == XV6_FT_DEVICE &&
+        (ip->major < 0 || ip->major >= MAX_DEVICES))
     {
         inode_unlock_put(ip);
         log_end_fs_transaction();
@@ -343,10 +345,10 @@ size_t sys_open()
         f->off = 0;
     }
     f->ip = ip;
-    f->readable = !(flags & O_WRONLY);
-    f->writable = (flags & O_WRONLY) || (flags & O_RDWR);
+    f->readable = !(omode & O_WRONLY);
+    f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
 
-    if ((flags & O_TRUNC) && ip->type == XV6_FT_FILE)
+    if ((omode & O_TRUNC) && ip->type == XV6_FT_FILE)
     {
         inode_trunc(ip);
     }
@@ -359,11 +361,11 @@ size_t sys_open()
 
 size_t sys_mkdir()
 {
-    char path[MAXPATH];
+    char path[PATH_MAX];
     struct inode *ip;
 
     log_begin_fs_transaction();
-    if (argstr(0, path, MAXPATH) < 0 ||
+    if (argstr(0, path, PATH_MAX) < 0 ||
         (ip = create(path, XV6_FT_DIR, 0, 0)) == 0)
     {
         log_end_fs_transaction();
@@ -377,13 +379,13 @@ size_t sys_mkdir()
 size_t sys_mknod()
 {
     struct inode *ip;
-    char path[MAXPATH];
+    char path[PATH_MAX];
     int major, minor;
 
     log_begin_fs_transaction();
     argint(1, &major);
     argint(2, &minor);
-    if ((argstr(0, path, MAXPATH)) < 0 ||
+    if ((argstr(0, path, PATH_MAX)) < 0 ||
         (ip = create(path, XV6_FT_DEVICE, major, minor)) == 0)
     {
         log_end_fs_transaction();
@@ -396,12 +398,12 @@ size_t sys_mknod()
 
 size_t sys_chdir()
 {
-    char path[MAXPATH];
+    char path[PATH_MAX];
     struct inode *ip;
     struct process *proc = get_current();
 
     log_begin_fs_transaction();
-    if (argstr(0, path, MAXPATH) < 0 || (ip = inode_from_path(path)) == 0)
+    if (argstr(0, path, PATH_MAX) < 0 || (ip = inode_from_path(path)) == 0)
     {
         log_end_fs_transaction();
         return -1;
@@ -422,11 +424,11 @@ size_t sys_chdir()
 
 size_t sys_execv()
 {
-    char path[MAXPATH], *argv[MAX_EXEC_ARGS];
+    char path[PATH_MAX], *argv[MAX_EXEC_ARGS];
     size_t uargv, uarg;
 
     argaddr(1, &uargv);
-    if (argstr(0, path, MAXPATH) < 0)
+    if (argstr(0, path, PATH_MAX) < 0)
     {
         return -1;
     }

@@ -10,7 +10,7 @@
 #define BLOCK_SIZE 1024  // block size
 
 /// Inodes per block.
-#define IPB (BLOCK_SIZE / sizeof(struct vx6fs_dinode))
+#define IPB (BLOCK_SIZE / sizeof(struct xv6fs_dinode))
 
 /// Block containing inode i
 #define IBLOCK(i, sb) ((i) / IPB + sb.inodestart)
@@ -49,7 +49,7 @@ struct xv6fs_superblock
 #define MAXFILE (NDIRECT + NINDIRECT)
 
 // On-disk inode structure
-struct vx6fs_dinode
+struct xv6fs_dinode
 {
     short type;                   ///< File type
     short major;                  ///< Major device number (XV6_FT_DEVICE only)

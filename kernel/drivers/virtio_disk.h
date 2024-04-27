@@ -50,4 +50,4 @@ void virtio_disk_init();
 
 void virtio_disk_rw(struct buf *b, bool write);
 
-void virtio_disk_intr();
+void virtio_block_device_interrupt();

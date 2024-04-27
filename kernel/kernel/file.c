@@ -16,39 +16,40 @@
 #include <kernel/stat.h>
 #include <kernel/vm.h>
 
-struct devsw devsw[NDEV];
+struct devsw devsw[MAX_DEVICES];
 struct
 {
     struct spinlock lock;
-    struct file file[NFILE];
-} ftable;
+    struct file file[MAX_FILES_SUPPORTED];
+} g_file_table;
 
-void file_init() { spin_lock_init(&ftable.lock, "ftable"); }
+void file_init() { spin_lock_init(&g_file_table.lock, "ftable"); }
 
 struct file *file_alloc()
 {
     struct file *f;
 
-    spin_lock(&ftable.lock);
-    for (f = ftable.file; f < ftable.file + NFILE; f++)
+    spin_lock(&g_file_table.lock);
+    for (f = g_file_table.file; f < g_file_table.file + MAX_FILES_SUPPORTED;
+         f++)
     {
         if (f->ref == 0)
         {
             f->ref = 1;
-            spin_unlock(&ftable.lock);
+            spin_unlock(&g_file_table.lock);
             return f;
         }
     }
-    spin_unlock(&ftable.lock);
+    spin_unlock(&g_file_table.lock);
     return 0;
 }
 
 struct file *file_dup(struct file *f)
 {
-    spin_lock(&ftable.lock);
+    spin_lock(&g_file_table.lock);
     if (f->ref < 1) panic("file_dup");
     f->ref++;
-    spin_unlock(&ftable.lock);
+    spin_unlock(&g_file_table.lock);
     return f;
 }
 
@@ -56,17 +57,17 @@ void file_close(struct file *f)
 {
     struct file ff;
 
-    spin_lock(&ftable.lock);
+    spin_lock(&g_file_table.lock);
     if (f->ref < 1) panic("file_close");
     if (--f->ref > 0)
     {
-        spin_unlock(&ftable.lock);
+        spin_unlock(&g_file_table.lock);
         return;
     }
     ff = *f;
     f->ref = 0;
     f->type = FD_NONE;
-    spin_unlock(&ftable.lock);
+    spin_unlock(&g_file_table.lock);
 
     if (ff.type == FD_PIPE)
     {
@@ -109,7 +110,7 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
     }
     else if (f->type == FD_DEVICE)
     {
-        if (f->major < 0 || f->major >= NDEV || !devsw[f->major].read)
+        if (f->major < 0 || f->major >= MAX_DEVICES || !devsw[f->major].read)
             return -1;
         read_bytes = devsw[f->major].read(1, addr, n);
     }
@@ -140,7 +141,7 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
     }
     else if (f->type == FD_DEVICE)
     {
-        if (f->major < 0 || f->major >= NDEV || !devsw[f->major].write)
+        if (f->major < 0 || f->major >= MAX_DEVICES || !devsw[f->major].write)
             return -1;
         ret = devsw[f->major].write(1, addr, n);
     }
@@ -152,7 +153,7 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
         // and 2 blocks of slop for non-aligned writes.
         // this really belongs lower down, since inode_write()
         // might be writing a device like the console.
-        ssize_t max = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * BLOCK_SIZE;
+        ssize_t max = ((MAX_OP_BLOCKS - 1 - 1 - 2) / 2) * BLOCK_SIZE;
         ssize_t i = 0;
         while (i < n)
         {

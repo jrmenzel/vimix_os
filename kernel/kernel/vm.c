@@ -22,7 +22,7 @@ extern char trampoline[];  // u_mode_trap_vector.S
 /// Make a direct-map page table for the kernel.
 /// Here the "memory mapped devices" are mapped into kernel memory space
 /// (once the created pagetable is used).
-pagetable_t kvmmake()
+pagetable_t kvm_make_kernel_pagetable()
 {
     pagetable_t kpage_table = (pagetable_t)kalloc();
     memset(kpage_table, 0, PAGE_SIZE);
@@ -55,7 +55,7 @@ pagetable_t kvmmake()
     return kpage_table;
 }
 
-void kvm_init() { kernel_pagetable = kvmmake(); }
+void kvm_init() { kernel_pagetable = kvm_make_kernel_pagetable(); }
 
 void kvm_init_per_cpu()
 {
@@ -74,7 +74,7 @@ pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc)
 
     for (size_t level = 2; level > 0; level--)
     {
-        pte_t *pte = &pagetable[PX(level, va)];
+        pte_t *pte = &pagetable[PAGE_TABLE_INDEX(level, va)];
         if (*pte & PTE_V)
         {
             pagetable = (pagetable_t)PTE2PA(*pte);
@@ -89,7 +89,7 @@ pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc)
             *pte = PA2PTE(pagetable) | PTE_V;
         }
     }
-    return &pagetable[PX(0, va)];
+    return &pagetable[PAGE_TABLE_INDEX(0, va)];
 }
 
 /// Look up a virtual address, return the physical address,

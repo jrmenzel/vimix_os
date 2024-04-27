@@ -40,8 +40,8 @@ uint32_t freeblock;
 
 void balloc(int);
 void wsect(uint32_t, void *);
-void winode(uint32_t, struct vx6fs_dinode *);
-void rinode(uint32_t inum, struct vx6fs_dinode *ip);
+void winode(uint32_t, struct xv6fs_dinode *);
+void rinode(uint32_t inum, struct xv6fs_dinode *ip);
 void rsect(uint32_t sec, void *buf);
 uint32_t i_alloc(uint16_t type);
 void iappend(uint32_t inum, void *p, int n);
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     uint32_t rootino, inum, off;
     struct xv6fs_dirent de;
     char buf[BLOCK_SIZE];
-    struct vx6fs_dinode din;
+    struct xv6fs_dinode din;
 
     static_assert(sizeof(int) == 4, "Integers must be 4 bytes!");
 
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    assert((BLOCK_SIZE % sizeof(struct vx6fs_dinode)) == 0);
+    assert((BLOCK_SIZE % sizeof(struct xv6fs_dinode)) == 0);
     assert((BLOCK_SIZE % sizeof(struct xv6fs_dirent)) == 0);
 
     fsfd = open(argv[1], O_RDWR | O_CREAT | O_TRUNC, 0666);
@@ -178,28 +178,28 @@ void wsect(uint32_t sec, void *buf)
     if (write(fsfd, buf, BLOCK_SIZE) != BLOCK_SIZE) die("write");
 }
 
-void winode(uint32_t inum, struct vx6fs_dinode *ip)
+void winode(uint32_t inum, struct xv6fs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
     uint32_t bn;
-    struct vx6fs_dinode *dip;
+    struct xv6fs_dinode *dip;
 
     bn = IBLOCK(inum, sb);
     rsect(bn, buf);
-    dip = ((struct vx6fs_dinode *)buf) + (inum % IPB);
+    dip = ((struct xv6fs_dinode *)buf) + (inum % IPB);
     *dip = *ip;
     wsect(bn, buf);
 }
 
-void rinode(uint32_t inum, struct vx6fs_dinode *ip)
+void rinode(uint32_t inum, struct xv6fs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
     uint32_t bn;
-    struct vx6fs_dinode *dip;
+    struct xv6fs_dinode *dip;
 
     bn = IBLOCK(inum, sb);
     rsect(bn, buf);
-    dip = ((struct vx6fs_dinode *)buf) + (inum % IPB);
+    dip = ((struct xv6fs_dinode *)buf) + (inum % IPB);
     *ip = *dip;
 }
 
@@ -212,7 +212,7 @@ void rsect(uint32_t sec, void *buf)
 uint32_t i_alloc(uint16_t type)
 {
     uint32_t inum = freeinode++;
-    struct vx6fs_dinode din;
+    struct xv6fs_dinode din;
 
     bzero(&din, sizeof(din));
     din.type = xshort(type);
@@ -244,7 +244,7 @@ void iappend(uint32_t inum, void *xp, int n)
 {
     char *p = (char *)xp;
     uint32_t fbn, off, n1;
-    struct vx6fs_dinode din;
+    struct xv6fs_dinode din;
     char buf[BLOCK_SIZE];
     uint32_t indirect[NINDIRECT];
     uint32_t x;

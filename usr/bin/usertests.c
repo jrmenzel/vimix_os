@@ -18,7 +18,7 @@
 // test prints "OK".
 //
 
-#define BUFSZ ((MAXOPBLOCKS + 2) * BLOCK_SIZE)
+#define BUFSZ ((MAX_OP_BLOCKS + 2) * BLOCK_SIZE)
 
 char buf[BUFSZ];
 
@@ -147,10 +147,10 @@ void copyinstr1(char *s)
 // would fall just beyond the end of the kernel buffer?
 void copyinstr2(char *s)
 {
-    char b[MAXPATH + 1];
+    char b[PATH_MAX + 1];
 
-    for (size_t i = 0; i < MAXPATH; i++) b[i] = 'x';
-    b[MAXPATH] = '\0';
+    for (size_t i = 0; i < PATH_MAX; i++) b[i] = 'x';
+    b[PATH_MAX] = '\0';
 
     int ret = unlink(b);
     if (ret != -1)
@@ -1970,7 +1970,7 @@ void subdir(char *s)
 void bigwrite(char *s)
 {
     unlink("bigwrite");
-    for (size_t sz = 499; sz < (MAXOPBLOCKS + 2) * BLOCK_SIZE; sz += 471)
+    for (size_t sz = 499; sz < (MAX_OP_BLOCKS + 2) * BLOCK_SIZE; sz += 471)
     {
         int fd = open("bigwrite", O_CREATE | O_RDWR);
         if (fd < 0)
@@ -2224,7 +2224,7 @@ void iref(char *s)
 {
     int fd;
 
-    for (size_t i = 0; i < NINODE + 1; i++)
+    for (size_t i = 0; i < MAX_ACTIVE_INODES + 1; i++)
     {
         if (mkdir("irefd") != 0)
         {
@@ -2247,7 +2247,7 @@ void iref(char *s)
     }
 
     // clean up
-    for (size_t i = 0; i < NINODE + 1; i++)
+    for (size_t i = 0; i < MAX_ACTIVE_INODES + 1; i++)
     {
         chdir("..");
         unlink("irefd");

@@ -252,7 +252,7 @@ void virtio_disk_rw(struct buf *b, bool write)
         VRING_DESC_F_WRITE;  // device writes the status
     g_virtio_disk.desc[idx[2]].next = 0;
 
-    // record struct buf for virtio_disk_intr().
+    // record struct buf for virtio_block_device_interrupt().
     b->disk = 1;
     g_virtio_disk.info[idx[0]].b = b;
 
@@ -269,7 +269,7 @@ void virtio_disk_rw(struct buf *b, bool write)
 
     *R(VIRTIO_MMIO_QUEUE_NOTIFY) = 0;  // value is queue number
 
-    // Wait for virtio_disk_intr() to say request has finished.
+    // Wait for virtio_block_device_interrupt() to say request has finished.
     while (b->disk == 1)
     {
         sleep(b, &g_virtio_disk.vdisk_lock);
@@ -281,7 +281,7 @@ void virtio_disk_rw(struct buf *b, bool write)
     spin_unlock(&g_virtio_disk.vdisk_lock);
 }
 
-void virtio_disk_intr()
+void virtio_block_device_interrupt()
 {
     spin_lock(&g_virtio_disk.vdisk_lock);
 
@@ -306,7 +306,7 @@ void virtio_disk_intr()
                      .id;
 
         if (g_virtio_disk.info[id].status != 0)
-            panic("virtio_disk_intr status");
+            panic("virtio_block_device_interrupt status");
 
         struct buf *b = g_virtio_disk.info[id].b;
         b->disk = 0;  // disk is done with buf
