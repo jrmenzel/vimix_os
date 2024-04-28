@@ -14,15 +14,16 @@ int stat(const char *path, struct stat *buffer);
 
 /// @brief make a directory, special file, or regular file
 /// @param path File path of the new node
-/// @param dev_major Mayor device number
-/// @param dev_minor Minor device number
+/// @param mode File mode
+/// @param dev device number
 /// @return -1 on failure, 0 otherwise
-extern int mknod(const char *path, uint16_t dev_major, uint16_t dev_minor);
+extern int mknod(const char *path, mode_t mode, dev_t dev);
 
 /// @brief make directory
 /// @param path Directory name
+/// @param mode File mode
 /// @return -1 on failure, 0 otherwise
-extern int mkdir(const char *path);
+extern int mkdir(const char *path, mode_t mode);
 
 /// @brief get file status
 /// @param fd File descriptor of file to get stat from

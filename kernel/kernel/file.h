@@ -7,25 +7,14 @@
 /// of these. The "file descriptor" in C is simply the index into that array.
 struct file
 {
-    enum
-    {
-        FD_NONE,
-        FD_PIPE,
-        FD_INODE,
-        FD_DEVICE
-    } type;
-    int32_t ref;  ///< reference count
-    char readable;
-    char writable;
-    struct pipe *pipe;  ///< FD_PIPE
-    struct inode *ip;   ///< FD_INODE and FD_DEVICE
-    uint32_t off;       ///< FD_INODE
+    mode_t mode;        ///< file type and access rights
+    int32_t flags;      ///< file create flags
+    int32_t ref;        ///< reference count
+    struct pipe *pipe;  ///< used if the file belongs to a pipe
+    struct inode *ip;   ///< for files, dirs, char and block devices
+    uint32_t off;       ///< for files
     short major;        ///< FD_DEVICE
 };
-
-#define major(dev) ((dev) >> 16 & 0xFFFF)
-#define minor(dev) ((dev)&0xFFFF)
-#define mkdev(m, n) ((uint32_t)((m) << 16 | (n)))
 
 /// map major device number to device functions.
 struct devsw
@@ -38,8 +27,17 @@ extern struct devsw devsw[];
 
 #define CONSOLE 1
 
+/// @brief Common code to check file mode.
+/// E.g. if no type is provided, regular file will be the default for multiple
+/// syscalls.
+/// @param mode File mode chich might get modified
+/// @return True if the mode can be used, false on errors.
+bool check_and_adjust_mode(mode_t *mode, mode_t default_type);
+
 /// @brief Allocate a file structure. ONLY ref is initialized!
 struct file *file_alloc();
+
+FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode);
 
 /// @brief Close file f. (Decrement ref count, close when reaches 0.)
 void file_close(struct file *f);

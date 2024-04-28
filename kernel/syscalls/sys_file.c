@@ -11,6 +11,7 @@
 #include <kernel/file.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
+#include <kernel/stat.h>
 #include <kernel/string.h>
 #include <syscalls/syscall.h>
 
@@ -124,7 +125,7 @@ size_t sys_link()
     }
 
     inode_lock(ip);
-    if (ip->type == XV6_FT_DIR)
+    if (S_ISDIR(ip->i_mode))
     {
         inode_unlock_put(ip);
         log_end_fs_transaction();
@@ -203,7 +204,7 @@ size_t sys_unlink()
     inode_lock(ip);
 
     if (ip->nlink < 1) panic("unlink: nlink < 1");
-    if (ip->type == XV6_FT_DIR && !isdirempty(ip))
+    if (S_ISDIR(ip->i_mode) && !isdirempty(ip))
     {
         inode_unlock_put(ip);
         goto bad;
@@ -212,7 +213,7 @@ size_t sys_unlink()
     memset(&de, 0, sizeof(de));
     if (inode_write(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
         panic("unlink: inode_write");
-    if (ip->type == XV6_FT_DIR)
+    if (S_ISDIR(ip->i_mode))
     {
         dir->nlink--;
         inode_update(dir);
@@ -235,119 +236,69 @@ bad:
 
 size_t sys_open()
 {
-    char path[PATH_MAX];
-    FILE_DESCRIPTOR fd;
-    int omode;
-    struct file *f;
-    struct inode *ip;
-    int n;
-
-    argint(1, &omode);
-    if ((n = argstr(0, path, PATH_MAX)) < 0) return -1;
-
-    log_begin_fs_transaction();
-
-    if (omode & O_CREATE)
+    // parameter 0: const char *pathname
+    char pathname[PATH_MAX];
+    int32_t n = argstr(0, pathname, PATH_MAX);
+    if (n < 0)
     {
-        ip = inode_open_or_create(path, XV6_FT_FILE, 0, 0);
-        if (ip == 0)
-        {
-            log_end_fs_transaction();
-            return -1;
-        }
-    }
-    else
-    {
-        if ((ip = inode_from_path(path)) == NULL)
-        {
-            log_end_fs_transaction();
-            return -1;
-        }
-        inode_lock(ip);
-        if (ip->type == XV6_FT_DIR && omode != O_RDONLY)
-        {
-            inode_unlock_put(ip);
-            log_end_fs_transaction();
-            return -1;
-        }
-    }
-
-    if (ip->type == XV6_FT_DEVICE &&
-        (ip->major < 0 || ip->major >= MAX_DEVICES))
-    {
-        inode_unlock_put(ip);
-        log_end_fs_transaction();
         return -1;
     }
 
-    if ((f = file_alloc()) == 0 || (fd = fd_alloc(f)) < 0)
-    {
-        if (f) file_close(f);
-        inode_unlock_put(ip);
-        log_end_fs_transaction();
-        return -1;
-    }
+    // parameter 1: int32_t flags
+    int32_t flags;
+    argint(1, &flags);
 
-    if (ip->type == XV6_FT_DEVICE)
-    {
-        f->type = FD_DEVICE;
-        f->major = ip->major;
-    }
-    else
-    {
-        f->type = FD_INODE;
-        f->off = 0;
-    }
-    f->ip = ip;
-    f->readable = !(omode & O_WRONLY);
-    f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+    // optional parameter 2: mode_t mode - only used when creating a file:
+    mode_t mode;
+    arguint(2, &mode);
 
-    if ((omode & O_TRUNC) && ip->type == XV6_FT_FILE)
-    {
-        inode_trunc(ip);
-    }
-
-    inode_unlock(ip);
-    log_end_fs_transaction();
-
-    return fd;
+    return file_open_or_create(pathname, flags, mode);
 }
 
 size_t sys_mkdir()
 {
+    // parameter 0: const char *path
     char path[PATH_MAX];
-    struct inode *ip;
-
-    log_begin_fs_transaction();
-    if (argstr(0, path, PATH_MAX) < 0 ||
-        (ip = inode_open_or_create(path, XV6_FT_DIR, 0, 0)) == 0)
+    uint32_t could_fetch_path = argstr(0, path, PATH_MAX);
+    if (could_fetch_path < 0)
     {
-        log_end_fs_transaction();
         return -1;
     }
-    inode_unlock_put(ip);
-    log_end_fs_transaction();
-    return 0;
+
+    // parameter 1: mode_t mode
+    mode_t mode;
+    arguint(1, &mode);
+    if (!check_and_adjust_mode(&mode, S_IFDIR) || !S_ISDIR(mode))
+    {
+        return -1;
+    }
+
+    return (size_t)inode_open_or_create2(path, mode, ROOT_DEVICE_NUMBER);
 }
 
 size_t sys_mknod()
 {
-    struct inode *ip;
+    // parameter 0: const char *path
     char path[PATH_MAX];
-    int major, minor;
-
-    log_begin_fs_transaction();
-    argint(1, &major);
-    argint(2, &minor);
-    if ((argstr(0, path, PATH_MAX)) < 0 ||
-        (ip = inode_open_or_create(path, XV6_FT_DEVICE, major, minor)) == 0)
+    uint32_t could_fetch_path = argstr(0, path, PATH_MAX);
+    if (could_fetch_path < 0)
     {
-        log_end_fs_transaction();
         return -1;
     }
-    inode_unlock_put(ip);
-    log_end_fs_transaction();
-    return 0;
+
+    // parameter 1: mode_t mode
+    mode_t mode;
+    arguint(1, &mode);
+    if (!check_and_adjust_mode(&mode, S_IFREG))
+    {
+        return -1;
+    }
+
+    // parameter 2: dev_t device
+    dev_t device;
+    argint(2, &device);
+
+    return (size_t)inode_open_or_create2(path, mode, device);
 }
 
 size_t sys_chdir()
@@ -364,7 +315,7 @@ size_t sys_chdir()
         return -1;
     }
     inode_lock(ip);
-    if (ip->type != XV6_FT_DIR)
+    if (!S_ISDIR(ip->i_mode))
     {
         inode_unlock_put(ip);
         log_end_fs_transaction();

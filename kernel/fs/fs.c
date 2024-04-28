@@ -18,6 +18,7 @@
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
+#include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
@@ -134,34 +135,12 @@ void inode_init()
     }
 }
 
-static struct inode *iget(dev_t dev, uint32_t inum);
-
-struct inode *inode_alloc(dev_t dev, short type)
+struct inode *inode_alloc(dev_t dev, mode_t mode)
 {
-    int inum;
-    struct buf *bp;
-    struct xv6fs_dinode *dip;
-
-    for (inum = 1; inum < sb.ninodes; inum++)
-    {
-        bp = bio_read(dev, IBLOCK(inum, sb));
-        dip = (struct xv6fs_dinode *)bp->data + inum % IPB;
-        if (dip->type == 0)
-        {  // a free inode
-            memset(dip, 0, sizeof(*dip));
-            dip->type = type;
-            log_write(bp);  // mark it allocated on the disk
-            bio_release(bp);
-            return iget(dev, inum);
-        }
-        bio_release(bp);
-    }
-    printk("inode_alloc: no inodes\n");
-    return 0;
+    return xv6fs_iops_alloc(dev, mode);
 }
 
-struct inode *inode_open_or_create(char *path, short type, short major,
-                                   short minor)
+struct inode *inode_open_or_create(const char *path, mode_t mode, dev_t device)
 {
     char name[XV6_NAME_MAX];
 
@@ -173,20 +152,23 @@ struct inode *inode_open_or_create(char *path, short type, short major,
 
     inode_lock(dir);
 
+    // if the inode already exists, return it
     struct inode *ip = inode_dir_lookup(dir, name, 0);
     if (ip != NULL)
     {
         inode_unlock_put(dir);
         inode_lock(ip);
-        if (type == XV6_FT_FILE &&
-            (ip->type == XV6_FT_FILE || ip->type == XV6_FT_DEVICE))
+        if (S_ISREG(mode) &&
+            (S_ISREG(ip->i_mode) || S_ISCHR(ip->i_mode) || S_ISBLK(ip->i_mode)))
+        {
             return ip;
+        }
         inode_unlock_put(ip);
         return NULL;
     }
 
     // create new inode
-    ip = inode_alloc(dir->dev, type);
+    ip = inode_alloc(dir->dev, mode);
     if (ip == NULL)
     {
         inode_unlock_put(dir);
@@ -194,8 +176,7 @@ struct inode *inode_open_or_create(char *path, short type, short major,
     }
 
     inode_lock(ip);
-    ip->major = major;
-    ip->minor = minor;
+    ip->dev = device;
     ip->nlink = 1;
     inode_update(ip);
 
@@ -203,13 +184,15 @@ struct inode *inode_open_or_create(char *path, short type, short major,
     strncpy(ip->path, path, PATH_MAX);
 #endif
 
-    if (type == XV6_FT_DIR)
+    if (S_ISDIR(mode))
     {
         // Create . and .. entries.
         // No ip->nlink++ for ".": avoid cyclic ref count.
         if (inode_dir_link(ip, ".", ip->inum) < 0 ||
             inode_dir_link(ip, "..", dir->inum) < 0)
+        {
             goto fail;
+        }
     }
 
     if (inode_dir_link(dir, name, ip->inum) < 0)
@@ -217,7 +200,7 @@ struct inode *inode_open_or_create(char *path, short type, short major,
         goto fail;
     }
 
-    if (type == XV6_FT_DIR)
+    if (S_ISDIR(mode))
     {
         // now that success is guaranteed:
         dir->nlink++;  // for ".."
@@ -234,6 +217,21 @@ fail:
     inode_update(ip);
     inode_unlock_put(ip);
     inode_unlock_put(dir);
+    return NULL;
+}
+
+ssize_t inode_open_or_create2(const char *pathname, mode_t mode, dev_t device)
+{
+    log_begin_fs_transaction();
+    struct inode *ip = inode_open_or_create(pathname, mode, device);
+    if (ip == NULL)
+    {
+        log_end_fs_transaction();
+        return -1;
+    }
+
+    inode_unlock_put(ip);
+    log_end_fs_transaction();
     return 0;
 }
 
@@ -241,22 +239,7 @@ fail:
 /// Must be called after every change to an ip->xxx field
 /// that lives on disk.
 /// Caller must hold ip->lock.
-void inode_update(struct inode *ip)
-{
-    struct buf *bp;
-    struct xv6fs_dinode *dip;
-
-    bp = bio_read(ip->dev, IBLOCK(ip->inum, sb));
-    dip = (struct xv6fs_dinode *)bp->data + ip->inum % IPB;
-    dip->type = ip->type;
-    dip->major = ip->major;
-    dip->minor = ip->minor;
-    dip->nlink = ip->nlink;
-    dip->size = ip->size;
-    memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
-    log_write(bp);
-    bio_release(bp);
-}
+void inode_update(struct inode *ip) { xv6fs_iops_update(ip); }
 
 struct inode *iget(dev_t dev, uint32_t inum)
 {
@@ -269,7 +252,7 @@ struct inode *iget(dev_t dev, uint32_t inum)
     {
         DEBUG_EXTRA_ASSERT(ip != NULL, "invalid inode");
 
-        if (ip->ref > 0 && ip->dev == dev && ip->inum == inum)
+        if (ip->ref > 0 && ip->i_sb_dev == dev && ip->inum == inum)
         {
             ip->ref++;
             spin_unlock(&itable.lock);
@@ -289,7 +272,7 @@ struct inode *iget(dev_t dev, uint32_t inum)
     }
 
     ip = empty;
-    ip->dev = dev;
+    ip->i_sb_dev = dev;
     ip->inum = inum;
     ip->ref = 1;
     ip->valid = 0;
@@ -321,18 +304,9 @@ void inode_lock(struct inode *ip)
 
     if (ip->valid == 0)
     {
-        struct buf *bp = bio_read(ip->dev, IBLOCK(ip->inum, sb));
-        struct xv6fs_dinode *dip =
-            (struct xv6fs_dinode *)bp->data + ip->inum % IPB;
-        ip->type = dip->type;
-        ip->major = dip->major;
-        ip->minor = dip->minor;
-        ip->nlink = dip->nlink;
-        ip->size = dip->size;
-        memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
-        bio_release(bp);
+        xv6fs_iops_read_in(ip);
         ip->valid = 1;
-        if (ip->type == 0)
+        if (INODE_HAS_TYPE(ip->i_mode) == false)
         {
             panic("inode_lock: inode has no type");
         }
@@ -376,7 +350,7 @@ void inode_put(struct inode *ip)
         spin_unlock(&itable.lock);
 
         inode_trunc(ip);
-        ip->type = 0;
+        ip->i_mode = 0;
         inode_update(ip);
         ip->valid = 0;
 
@@ -406,31 +380,7 @@ void inode_unlock_put(struct inode *ip)
 /// Caller must hold ip->lock.
 void inode_trunc(struct inode *ip)
 {
-    int i, j;
-    struct buf *bp;
-    uint32_t *a;
-
-    for (i = 0; i < NDIRECT; i++)
-    {
-        if (ip->addrs[i])
-        {
-            bfree(ip->dev, ip->addrs[i]);
-            ip->addrs[i] = 0;
-        }
-    }
-
-    if (ip->addrs[NDIRECT])
-    {
-        bp = bio_read(ip->dev, ip->addrs[NDIRECT]);
-        a = (uint32_t *)bp->data;
-        for (j = 0; j < NINDIRECT; j++)
-        {
-            if (a[j]) bfree(ip->dev, a[j]);
-        }
-        bio_release(bp);
-        bfree(ip->dev, ip->addrs[NDIRECT]);
-        ip->addrs[NDIRECT] = 0;
-    }
+    xv6fs_iops_trunc(ip);
 
     ip->size = 0;
     inode_update(ip);
@@ -438,9 +388,10 @@ void inode_trunc(struct inode *ip)
 
 void inode_stat(struct inode *ip, struct stat *st)
 {
-    st->st_dev = ip->dev;
+    st->st_dev = ip->i_sb_dev;
+    st->st_rdev = ip->dev;
     st->st_ino = ip->inum;
-    st->type = ip->type;
+    st->st_mode = ip->i_mode;
     st->st_nlink = ip->nlink;
     st->st_size = ip->size;
 }
@@ -448,18 +399,27 @@ void inode_stat(struct inode *ip, struct stat *st)
 ssize_t inode_read(struct inode *ip, bool addr_is_userspace, size_t dst,
                    size_t off, size_t n)
 {
-    ssize_t tot, m;
-    struct buf *bp;
+    if (off > ip->size || off + n < off)
+    {
+        return 0;
+    }
+    if (off + n > ip->size)
+    {
+        n = ip->size - off;
+    }
 
-    if (off > ip->size || off + n < off) return 0;
-    if (off + n > ip->size) n = ip->size - off;
-
+    ssize_t m = 0;
+    ssize_t tot = 0;
     for (tot = 0; tot < n; tot += m, off += m, dst += m)
     {
-        uint32_t addr = bmap(ip, off / BLOCK_SIZE);
-        if (addr == 0) break;
-        bp = bio_read(ip->dev, addr);
+        size_t addr = bmap(ip, off / BLOCK_SIZE);
+        if (addr == 0)
+        {
+            break;
+        }
+        struct buf *bp = bio_read(ip->dev, addr);
         m = min(n - tot, BLOCK_SIZE - off % BLOCK_SIZE);
+
         if (either_copyout(addr_is_userspace, dst,
                            bp->data + (off % BLOCK_SIZE), m) == -1)
         {
@@ -475,12 +435,17 @@ ssize_t inode_read(struct inode *ip, bool addr_is_userspace, size_t dst,
 ssize_t inode_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
                     size_t off, size_t n)
 {
-    ssize_t tot, m;
-    struct buf *bp;
+    if (off > ip->size || off + n < off)
+    {
+        return -1;
+    }
+    if (off + n > MAXFILE * BLOCK_SIZE)
+    {
+        return -1;
+    }
 
-    if (off > ip->size || off + n < off) return -1;
-    if (off + n > MAXFILE * BLOCK_SIZE) return -1;
-
+    ssize_t m = 0;
+    ssize_t tot;
     for (tot = 0; tot < n; tot += m, off += m, src += m)
     {
         size_t addr = bmap(ip, off / BLOCK_SIZE);
@@ -488,8 +453,9 @@ ssize_t inode_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
         {
             break;
         }
-        bp = bio_read(ip->dev, addr);
+        struct buf *bp = bio_read(ip->dev, addr);
         m = min(n - tot, BLOCK_SIZE - off % BLOCK_SIZE);
+
         if (either_copyin(bp->data + (off % BLOCK_SIZE), src_addr_is_userspace,
                           src, m) == -1)
         {
@@ -500,7 +466,10 @@ ssize_t inode_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
         bio_release(bp);
     }
 
-    if (off > ip->size) ip->size = off;
+    if (off > ip->size)
+    {
+        ip->size = off;
+    }
 
     // write the i-node back to disk even if the size didn't change
     // because the loop above might have called bmap() and added a new
@@ -522,7 +491,7 @@ struct inode *inode_dir_lookup(struct inode *dir, const char *name,
 {
     struct xv6fs_dirent de;
 
-    if (dir->type != XV6_FT_DIR)
+    if (!S_ISDIR(dir->i_mode))
     {
         panic("inode_dir_lookup dir parameter is not a DIR!");
     }
@@ -546,7 +515,8 @@ struct inode *inode_dir_lookup(struct inode *dir, const char *name,
                 *poff = off;
             }
             uint32_t inum = de.inum;
-            return iget(dir->dev, inum);
+            dev_t dev = dir->i_sb_dev;
+            return iget(dev, inum);
         }
     }
 
@@ -659,7 +629,13 @@ static struct inode *namex(const char *path, bool get_parent, char *name)
     while ((path = skipelem(path, name)) != 0)
     {
         inode_lock(ip);
-        if (ip->type != XV6_FT_DIR)
+
+        if (INODE_HAS_TYPE(ip->i_mode) == false)
+        {
+            panic("inode_lock: inode has no type");
+        }
+
+        if (!S_ISDIR(ip->i_mode))
         {
             inode_unlock_put(ip);
             return NULL;

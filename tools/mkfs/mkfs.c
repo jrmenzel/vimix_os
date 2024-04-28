@@ -2,25 +2,13 @@
 
 #include <assert.h>
 #include <fcntl.h>
+#include <kernel/xv6fs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #define stat xv6_stat  // avoid clash with host struct stat
-#include "kernel/fs.h"
-#include "kernel/param.h"
-#include "kernel/stat.h"
-#include "kernel/types.h"
-
-#ifndef static_assert
-#define static_assert(a, b) \
-    do {                    \
-        switch (0)          \
-        case 0:             \
-        case (a):;          \
-    } while (0)
-#endif
 
 #define MAX_ACTIVE_INODESS 200
 
@@ -77,7 +65,7 @@ int main(int argc, char *argv[])
     char buf[BLOCK_SIZE];
     struct xv6fs_dinode din;
 
-    static_assert(sizeof(int) == 4, "Integers must be 4 bytes!");
+    _Static_assert(sizeof(int) == 4, "Integers must be 4 bytes!");
 
     if (argc < 2)
     {

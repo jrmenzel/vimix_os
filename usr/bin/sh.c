@@ -94,7 +94,7 @@ void runcmd(struct cmd *cmd)
             // simply the smallest unused).
             // This will not work on e.g. Linux, use dup2() there.
             close(rcmd->fd);
-            if (open(rcmd->file, rcmd->mode) < 0)
+            if (open(rcmd->file, rcmd->mode, 0755) < 0)
             {
                 fprintf(stderr, "open %s failed\n", rcmd->file);
                 exit(1);
@@ -376,10 +376,10 @@ struct cmd *parseredirs(struct cmd *cmd, char **ps, char *es)
         {
             case '<': cmd = redircmd(cmd, q, eq, O_RDONLY, 0); break;
             case '>':
-                cmd = redircmd(cmd, q, eq, O_WRONLY | O_CREATE | O_TRUNC, 1);
+                cmd = redircmd(cmd, q, eq, O_WRONLY | O_CREAT | O_TRUNC, 1);
                 break;
             case '+':  // >>
-                cmd = redircmd(cmd, q, eq, O_WRONLY | O_CREATE, 1);
+                cmd = redircmd(cmd, q, eq, O_WRONLY | O_CREAT, 1);
                 break;
         }
     }

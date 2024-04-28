@@ -9,18 +9,25 @@
 #include <kernel/stat.h>
 #include <kernel/xv6fs.h>
 
+#define DEFAULT_ACCESS_MODES (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)
+
 /// in-memory copy of an inode
 struct inode
 {
-    dev_t dev;              ///< Device number
+    dev_t i_sb_dev;
+
+    /// Device number (NOT where the file is stored: ->i_sb_dev)
+    /// e.g. mknod(..., dev) will result in dev being the dev
+    /// parameter from mknod() and i_sb_dev being the device ID of the
+    /// filesystem this file is located on.
+    /// Identical to i_sb_dev for regular files (for char/block r/w)
+    dev_t dev;
     uint32_t inum;          ///< Inode number
     int ref;                ///< Reference count
     struct sleeplock lock;  ///< protects everything below here
     int valid;              ///< inode has been read from disk?
 
-    short type;  ///< copy of disk inode
-    short major;
-    short minor;
+    mode_t i_mode;  ///< type and access rights, see stat.h
     int16_t nlink;
     uint32_t size;
 
@@ -58,16 +65,25 @@ struct inode *inode_dir_lookup(struct inode *dir, const char *name,
 /// @param mode Type and access rights of the new inode.
 /// @return An unlocked but allocated and referenced inode,
 /// or NULL if there is no free inode.
-struct inode *inode_alloc(dev_t dev, short mode);
+struct inode *inode_alloc(dev_t dev, mode_t mode);
 
-/// @brief Opens the inode belonging to pathname or creates one if none existed.
+/// @brief Find the inode with number inum on device dev.
+/// Does not lock the inode and does not read it from disk.
+/// Assumes valid input: you get an inode or a kernel panic.
+/// @return in-memory copy of inode
+struct inode *iget(dev_t dev, uint32_t inum);
+
+/// @brief Opens the inode belonging to path or creates one if none existed.
 /// Used for regular files and directories.
-/// @param pathname Path / file name
+/// @param path Path / file name
 /// @param mode File mode
 /// @param device Device the inode is located
 /// @return NULL on failure, requested inode otherwise.
-struct inode *inode_open_or_create(char *path, short type, short major,
-                                   short minor);
+struct inode *inode_open_or_create(const char *path, mode_t mode, dev_t device);
+
+/// @brief Like inode_open_or_create() but only returns success codes.
+/// @return -1 on failure, 0 otherwise.
+ssize_t inode_open_or_create2(const char *path, mode_t mode, dev_t device);
 
 /// @brief Increment reference count for ip.
 /// @return ip to enable ip = inode_dup(ip1) idiom.

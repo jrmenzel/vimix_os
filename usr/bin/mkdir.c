@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 
     for (size_t i = 1; i < argc; i++)
     {
-        if (mkdir(argv[i]) < 0)
+        if (mkdir(argv[i], 0755) < 0)
         {
             fprintf(stderr, "mkdir: %s failed to create\n", argv[i]);
             break;

@@ -2,7 +2,7 @@
 
 // init: The initial user-level program
 
-#include <kernel/file.h>
+#include <kernel/major.h>
 
 #include <fcntl.h>
 #include <stdint.h>
@@ -24,7 +24,8 @@ int main()
 
     if (open("console", O_RDWR) < 0)
     {
-        mknod("console", CONSOLE, 0);
+        mknod("console", S_IFCHR | 0666,
+              MKDEV(CONSOLE_DEVICE_MAJOR, CONSOLE_DEVICE_MINOR));
         open("console", O_RDWR);
     }
     dup(0);  // stdout

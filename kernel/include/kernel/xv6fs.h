@@ -30,6 +30,14 @@
 /// Max file name length (without the NULL-terminator)
 #define XV6_NAME_MAX 14
 
+// values of inode types:
+#define XV6_FT_UNUSED 0  ///< init value
+#define XV6_FT_DIR 1     ///< Directory
+#define XV6_FT_FILE 2    ///< File
+#define XV6_FT_DEVICE 3  ///< Device
+
+typedef int16_t xv6fs_file_type;
+
 /// Disk layout:
 /// [ boot block | super block | log | inode blocks |
 ///                                          free bit map | data blocks]

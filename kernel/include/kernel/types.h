@@ -25,6 +25,11 @@ typedef int32_t dev_t;
 /// an index into the per-process file list in struct process->files.
 typedef int FILE_DESCRIPTOR;
 
+/// @brief Inode mode (e.g. for mknod).
+/// Encodes type (file, device, etc) as well as
+/// access rights (rxwrxwrxw), see stat.h.
+typedef uint32_t mode_t;
+
 #endif  // __USE_REAL_STDC__
 
 typedef unsigned char uchar;

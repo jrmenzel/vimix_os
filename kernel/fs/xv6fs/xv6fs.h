@@ -24,3 +24,15 @@ void bfree(dev_t dev, uint32_t b);
 /// If there is no such block, bmap allocates one.
 /// returns 0 if out of disk space.
 size_t bmap(struct inode *ip, uint32_t bn);
+
+xv6fs_file_type imode_to_xv6_file_type(mode_t imode);
+
+mode_t xv6_file_type_to_imode(xv6fs_file_type type);
+
+struct inode *xv6fs_iops_alloc(dev_t dev, mode_t mode);
+
+int xv6fs_iops_update(struct inode *ip);
+
+int xv6fs_iops_read_in(struct inode *ip);
+
+int xv6fs_iops_trunc(struct inode *ip);

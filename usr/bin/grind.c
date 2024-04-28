@@ -5,6 +5,9 @@
 //
 
 #include <fcntl.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/signal.h>
 #include <sys/stat.h>
@@ -46,7 +49,7 @@ void go(int which_child)
     static char buf[999];
     char *break0 = sbrk(0);
 
-    mkdir("grindir");
+    mkdir("grindir", 0755);
     if (chdir("grindir") != 0)
     {
         printf("grind: chdir grindir failed\n");
@@ -62,11 +65,11 @@ void go(int which_child)
         int what = rand() % 23;
         if (what == 1)
         {
-            close(open("grindir/../a", O_CREATE | O_RDWR));
+            close(open("grindir/../a", O_CREAT | O_RDWR, 0755));
         }
         else if (what == 2)
         {
-            close(open("grindir/../grindir/../b", O_CREATE | O_RDWR));
+            close(open("grindir/../grindir/../b", O_CREAT | O_RDWR, 0755));
         }
         else if (what == 3)
         {
@@ -85,12 +88,12 @@ void go(int which_child)
         else if (what == 5)
         {
             close(fd);
-            fd = open("/grindir/../a", O_CREATE | O_RDWR);
+            fd = open("/grindir/../a", O_CREAT | O_RDWR, 0755);
         }
         else if (what == 6)
         {
             close(fd);
-            fd = open("/./grindir/./../b", O_CREATE | O_RDWR);
+            fd = open("/./grindir/./../b", O_CREAT | O_RDWR, 0755);
         }
         else if (what == 7)
         {
@@ -102,14 +105,14 @@ void go(int which_child)
         }
         else if (what == 9)
         {
-            mkdir("grindir/../a");
-            close(open("a/../a/./a", O_CREATE | O_RDWR));
+            mkdir("grindir/../a", 0755);
+            close(open("a/../a/./a", O_CREAT | O_RDWR, 0755));
             unlink("a/a");
         }
         else if (what == 10)
         {
-            mkdir("/../b");
-            close(open("grindir/../b/b", O_CREATE | O_RDWR));
+            mkdir("/../b", 0755);
+            close(open("grindir/../b/b", O_CREAT | O_RDWR, 0755));
             unlink("b/b");
         }
         else if (what == 11)
@@ -168,7 +171,7 @@ void go(int which_child)
             pid_t pid = fork();
             if (pid == 0)
             {
-                close(open("a", O_CREATE | O_RDWR));
+                close(open("a", O_CREAT | O_RDWR, 0755));
                 exit(0);
             }
             else if (pid < 0)
@@ -234,10 +237,10 @@ void go(int which_child)
             if (pid == 0)
             {
                 unlink("a");
-                mkdir("a");
+                mkdir("a", 0755);
                 chdir("a");
                 unlink("../a");
-                fd = open("x", O_CREATE | O_RDWR);
+                fd = open("x", O_CREAT | O_RDWR, 0755);
                 unlink("x");
                 exit(0);
             }
@@ -253,7 +256,7 @@ void go(int which_child)
             unlink("c");
             // should always succeed. check that there are free i-nodes,
             // file descriptors, blocks.
-            int fd1 = open("c", O_CREATE | O_RDWR);
+            int fd1 = open("c", O_CREAT | O_RDWR, 0755);
             if (fd1 < 0)
             {
                 printf("grind: create c failed\n");
@@ -277,7 +280,8 @@ void go(int which_child)
             }
             if (st.st_ino > 200)
             {
-                printf("grind: fstat reports crazy i-number %d\n", st.st_ino);
+                printf("grind: fstat reports crazy i-number %d\n",
+                       (int)st.st_ino);
                 exit(1);
             }
             close(fd1);

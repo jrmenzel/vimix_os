@@ -53,8 +53,8 @@ size_t sys_getpid();
 /// @brief Syscall "int32_t mkdir(const char *path, mode_t mode)" from stat.h.
 size_t sys_mkdir();
 
-/// @brief Syscall "int32_t mknod(const char *path, uint16_t dev_major, uint16_t
-/// dev_minor)" from stat.h.
+/// @brief Syscall "int32_t mknod(const char *path, mode_t mode, dev_t dev)"
+/// from stat.h.
 size_t sys_mknod();
 
 /// @brief Syscall "int open(const char *pathname, int32_t flags, ...)" from

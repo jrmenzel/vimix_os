@@ -25,7 +25,8 @@ UPROGS_NAME=\
 	grind\
 	wc\
 	zombie\
-	ls
+	ls\
+	stat
 
 # Some user space apps can be compiled on the host as well,
 # e.g. as native Linux apps. This can be helpful for app
@@ -34,8 +35,16 @@ UPROGS_NAME=\
 UPROGS_NAME_HOST=\
 	cat\
 	echo\
+	forktest\
+	grep\
+	kill\
+	ln\
+	mkdir\
+	rm\
+	sh\
 	wc\
-	zombie
+	zombie\
+	stat
 
 UPROGS=$(foreach a, $(UPROGS_NAME), $(B_DEPLOY_DIR)/$a)
 PROGS_HOST=$(foreach a, $(UPROGS_NAME_HOST), $(B_DEPLOY_DIR_HOST)/$a)
@@ -69,9 +78,6 @@ KERNEL_SPACE_INC += ./
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I../../kernel/$d)
 #
 $(B_BUILD_DIR)/usertests.o: usertests.c 
-	$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
-
-$(B_BUILD_DIR)/init.o: init.c 
 	$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 $(B_BUILD_DIR)/mkfs.o: ../../tools/mkfs/mkfs.c

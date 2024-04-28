@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <ipc/pipe.h>
+#include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
@@ -50,15 +51,13 @@ int32_t pipe_alloc(struct file **f0, struct file **f1)
     spin_lock_init(&new_pipe->lock, "pipe");
 
     // read end
-    (*f0)->type = FD_PIPE;
-    (*f0)->readable = 1;
-    (*f0)->writable = 0;
+    (*f0)->mode = S_IFIFO | S_IRUSR;
+    (*f0)->flags = O_RDONLY;
     (*f0)->pipe = new_pipe;
 
     // write end
-    (*f1)->type = FD_PIPE;
-    (*f1)->readable = 0;
-    (*f1)->writable = 1;
+    (*f1)->mode = S_IFIFO | S_IWUSR;
+    (*f1)->flags = O_WRONLY;
     (*f1)->pipe = new_pipe;
 
     return 0;

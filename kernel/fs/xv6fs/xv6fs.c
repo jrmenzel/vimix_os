@@ -5,11 +5,137 @@
 #include <fs/xv6fs/log.h>
 #include <kernel/bio.h>
 #include <kernel/buf.h>
+#include <kernel/major.h>
 #include <kernel/string.h>
 
 /// there should be one xv6fs_superblock per disk device, but we run with
 /// only one device
 struct xv6fs_superblock sb;
+
+xv6fs_file_type imode_to_xv6_file_type(mode_t imode)
+{
+    if (S_ISREG(imode)) return XV6_FT_FILE;
+    if (S_ISDIR(imode)) return XV6_FT_DIR;
+    if (S_ISCHR(imode)) return XV6_FT_DEVICE;
+    if (S_ISBLK(imode)) return XV6_FT_DEVICE;
+
+    return XV6_FT_UNUSED;
+}
+
+mode_t xv6_file_type_to_imode(xv6fs_file_type type)
+{
+    if (type == XV6_FT_FILE) return S_IFREG | DEFAULT_ACCESS_MODES;
+    if (type == XV6_FT_DIR) return S_IFDIR | DEFAULT_ACCESS_MODES;
+    if (type == XV6_FT_DEVICE) return S_IFCHR | DEFAULT_ACCESS_MODES;
+
+    return 0;
+}
+
+struct inode *xv6fs_iops_alloc(dev_t dev, mode_t mode)
+{
+    for (size_t inum = 1; inum < sb.ninodes; inum++)
+    {
+        struct buf *bp = bio_read(dev, IBLOCK(inum, sb));
+        struct xv6fs_dinode *dip = (struct xv6fs_dinode *)bp->data + inum % IPB;
+
+        if (dip->type == XV6_FT_UNUSED)
+        {
+            // a free inode
+            memset(dip, 0, sizeof(*dip));
+            dip->type = imode_to_xv6_file_type(mode);
+            dip->major = 0;
+            dip->minor = 0;
+            log_write(bp);  // mark it allocated on the disk
+            bio_release(bp);
+            return iget(dev, inum);
+        }
+        bio_release(bp);
+    }
+
+    printk("xv6fs_iops_alloc: no inodes\n");
+    return NULL;
+}
+
+int xv6fs_iops_update(struct inode *ip)
+{
+    struct buf *bp = bio_read(ip->i_sb_dev, IBLOCK(ip->inum, sb));
+    struct xv6fs_dinode *dip = (struct xv6fs_dinode *)bp->data + ip->inum % IPB;
+    dip->type = imode_to_xv6_file_type(ip->i_mode);
+
+    if (ip->dev == ip->i_sb_dev)
+    {
+        // map whatever device the filesystem is on to 0
+        dip->major = 0;
+        dip->minor = 0;
+    }
+    else
+    {
+        dip->major = MAJOR(ip->dev);
+        dip->minor = MINOR(ip->dev);
+    }
+
+    dip->nlink = ip->nlink;
+    dip->size = ip->size;
+    memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+    log_write(bp);
+    bio_release(bp);
+
+    return 0;
+}
+
+int xv6fs_iops_read_in(struct inode *ip)
+{
+    struct buf *bp = bio_read(ip->i_sb_dev, IBLOCK(ip->inum, sb));
+    struct xv6fs_dinode *dip = (struct xv6fs_dinode *)bp->data + ip->inum % IPB;
+    ip->i_mode = xv6_file_type_to_imode(dip->type);
+
+    if (dip->major == 0 && dip->minor == 0)
+    {
+        ip->dev = ip->i_sb_dev;  // unmap device 0 to whatever device the
+                                 // filesystem is on
+    }
+    else
+    {
+        ip->dev = MKDEV(dip->major, dip->minor);
+    }
+
+    ip->nlink = dip->nlink;
+    ip->size = dip->size;
+    memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
+    bio_release(bp);
+
+    return 0;
+}
+
+int xv6fs_iops_trunc(struct inode *ip)
+{
+    for (size_t i = 0; i < NDIRECT; i++)
+    {
+        if (ip->addrs[i])
+        {
+            bfree(ip->dev, ip->addrs[i]);
+            ip->addrs[i] = 0;
+        }
+    }
+
+    if (ip->addrs[NDIRECT])
+    {
+        struct buf *bp = bio_read(ip->dev, ip->addrs[NDIRECT]);
+        uint32_t *a = (uint32_t *)bp->data;
+        for (size_t j = 0; j < NINDIRECT; j++)
+        {
+            if (a[j])
+            {
+                bfree(ip->dev, a[j]);
+            }
+        }
+        bio_release(bp);
+        bfree(ip->dev, ip->addrs[NDIRECT]);
+        ip->addrs[NDIRECT] = 0;
+    }
+
+    return 0;
+}
 
 /// Zero a block.
 static void block_zero(dev_t dev, uint32_t blockno)
