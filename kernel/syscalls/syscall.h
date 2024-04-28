@@ -29,10 +29,11 @@ size_t sys_exit();
 /// @brief Syscall "int32_t kill(pid_t pid, int sig)" from signal.h
 size_t sys_kill();
 
-/// @brief Syscall "int32_t sleep(int32_t seconds)" from uinstd.h.
-size_t sys_sleep();
+/// @brief Syscall "int32_t ms_sleep(int32_t mseconds)" from uinstd.h.
+/// Also int32_t sleep(seconds)
+size_t sys_ms_sleep();
 
-/// @brief Syscall "pid_t wait(int32_t *wstatus)" from wait.h
+/// @brief Syscall "pid_t wait(int *wstatus)" from wait.h
 size_t sys_wait();
 
 /// @brief Syscall "int32_t chdir(const char *path)" from uinstd.h.

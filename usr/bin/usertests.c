@@ -23,6 +23,10 @@
 // test prints "OK".
 //
 
+#define FORK_FORK_FORK_DURATION_MS 2000
+#define FORK_FORK_FORK_SLEEP_MS 1000
+#define SHORT_SLEEP_MS 100
+
 #define BUFSZ ((MAX_OP_BLOCKS + 2) * BLOCK_SIZE)
 
 char buf[BUFSZ];
@@ -916,8 +920,8 @@ void killstatus(char *s)
             }
             exit(0);
         }
-        sleep(1);
-        kill(pid1);
+        usleep(SHORT_SLEEP_MS * 1000);
+        kill(pid1, SIGKILL);
 
         int32_t xstatus;
         wait(&xstatus);
@@ -987,9 +991,10 @@ void preempt(char *s)
     close(pfds[0]);
 
     printf("kill... ");
-    kill(pid1);
-    kill(pid2);
-    kill(pid3);
+    kill(pid1, SIGKILL);
+    kill(pid2, SIGKILL);
+    kill(pid3, SIGKILL);
+
     printf("wait... ");
     wait(NULL);
     wait(NULL);
@@ -1055,7 +1060,7 @@ void reparent(char *s)
             pid_t pid2 = fork();
             if (pid2 < 0)
             {
-                kill(master_pid);
+                kill(master_pid, SIGKILL);
                 exit(1);
             }
             exit(0);
@@ -1175,10 +1180,10 @@ void forkforkfork(char *s)
         exit(0);
     }
 
-    sleep(20);  // two seconds
+    usleep(FORK_FORK_FORK_DURATION_MS * 1000);
     close(open("stopforking", O_CREATE | O_RDWR));
     wait(NULL);
-    sleep(10);  // one second
+    usleep(FORK_FORK_FORK_SLEEP_MS * 1000);
 }
 
 // regression test. does reparent() violate the parent-then-child
@@ -1231,7 +1236,7 @@ void mem(char *s)
         m1 = malloc(1024 * 20);
         if (m1 == NULL)
         {
-            printf("couldn't allocate mem?!!\n", s);
+            printf("%s: couldn't allocate mem?!!\n", s);
             exit(1);
         }
         free(m1);
@@ -1351,7 +1356,7 @@ void fourfiles(char *s)
             int fd = open(fname, O_CREATE | O_RDWR);
             if (fd < 0)
             {
-                printf("create failed\n", s);
+                printf("%s: create failed\n", s);
                 exit(1);
             }
 
@@ -1417,7 +1422,7 @@ void createdelete(char *s)
         pid_t pid = fork();
         if (pid < 0)
         {
-            printf("fork failed\n", s);
+            printf("%s: fork failed\n", s);
             exit(1);
         }
 
@@ -1795,7 +1800,7 @@ void subdir(char *s)
 
     if (mkdir("/dd/dd") != 0)
     {
-        printf("subdir mkdir dd/dd failed\n", s);
+        printf("%s: subdir mkdir dd/dd failed\n", s);
         exit(1);
     }
 
@@ -1851,7 +1856,7 @@ void subdir(char *s)
     }
     if (chdir("dd/../../../dd") != 0)
     {
-        printf("chdir dd/../../../dd failed\n", s);
+        printf("%s: chdir dd/../../../dd failed\n", s);
         exit(1);
     }
     if (chdir("./..") != 0)
@@ -2075,7 +2080,7 @@ void bigfile(char *s)
 
 void fourteen(char *s)
 {
-    int fd;
+    FILE_DESCRIPTOR fd;
 
     // XV6_NAME_MAX is 14.
 
@@ -2558,7 +2563,7 @@ void sbrkfail(char *s)
     for (size_t i = 0; i < sizeof(pids) / sizeof(pids[0]); i++)
     {
         if (pids[i] == -1) continue;
-        kill(pids[i]);
+        kill(pids[i], SIGKILL);
         wait(NULL);
     }
     if (c == (char *)TEST_POINTER_ADDR_2)

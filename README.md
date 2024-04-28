@@ -16,3 +16,4 @@ Compile and try out:
 
 - Reorganized code, separate headers, renamed many functions and variables, using stdint types
 - Support 32-bit RISC V (in addition to 64 bit), both "bare metal" and running in a SBI environment. Inspired by a 32-bit xv6 port by Michael Schröder (https://github.com/x653/xv6-riscv-fpga/tree/main/xv6-riscv)
+- The user space tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.

@@ -74,7 +74,7 @@ static size_t (*syscalls[])() = {
     [SYS_dup] sys_dup,
     [SYS_getpid] sys_getpid,
     [SYS_sbrk] sys_sbrk,
-    [SYS_sleep] sys_sleep,
+    [SYS_ms_sleep] sys_ms_sleep,
     [SYS_uptime] sys_uptime,
     [SYS_open] sys_open,
     [SYS_write] sys_write,

@@ -35,5 +35,5 @@ entry("chdir");
 entry("dup");
 entry("getpid");
 entry("sbrk");
-entry("sleep");
+entry("ms_sleep");
 entry("uptime");

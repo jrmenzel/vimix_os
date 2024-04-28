@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     }
     for (size_t i = 1; i < argc; i++)
     {
-        kill(atoi(argv[i]));
+        kill(atoi(argv[i]), SIGKILL);
     }
 
     return 0;

@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <syscalls/syscall.h>
-
+#include <arch/riscv/clint.h>
 #include <arch/trap.h>
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
@@ -9,6 +8,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <mm/memlayout.h>
+#include <syscalls/syscall.h>
 
 size_t sys_exit()
 {
@@ -26,6 +26,7 @@ size_t sys_fork() { return fork(); }
 
 size_t sys_wait()
 {
+    // parameter 0: int32_t *wstatus
     size_t wstatus;
     argaddr(0, &wstatus);
     return wait((int32_t *)wstatus);
@@ -42,14 +43,17 @@ size_t sys_sbrk()
     return addr;
 }
 
-size_t sys_sleep()
+size_t sys_ms_sleep()
 {
-    // parameter 0: seconds
-    int n;
-    argint(0, &n);
+    // parameter 0: milli_seconds
+    int32_t milli_seconds;
+    argint(0, &milli_seconds);
+
+    size_t kernel_ticks = milli_seconds * TIMER_INTERRUPTS_PER_SECOND / 1000;
+
     spin_lock(&g_tickslock);
     size_t ticks0 = g_ticks;
-    while (g_ticks - ticks0 < n)
+    while (g_ticks - ticks0 < kernel_ticks)
     {
         if (proc_is_killed(get_current()))
         {
@@ -64,8 +68,13 @@ size_t sys_sleep()
 
 size_t sys_kill()
 {
-    int pid;
-
+    // parameter 0: pid
+    pid_t pid;
     argint(0, &pid);
-    return proc_kill(pid);
+
+    // parameter 1: signal
+    int32_t signal;
+    argint(1, &signal);
+
+    return proc_send_signal(pid, signal);
 }

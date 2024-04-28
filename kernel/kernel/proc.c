@@ -8,8 +8,8 @@
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
-#include <kernel/printk.h>
 #include <kernel/proc.h>
+#include <kernel/signal.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <kernel/vm.h>
@@ -25,7 +25,7 @@ _Static_assert((sizeof(g_initcode) <= PAGE_SIZE),
 
 struct cpu g_cpus[MAX_CPUS];
 
-/// @brief All user processes
+/// @brief All user processes (except for init)
 struct process g_process_list[MAX_PROCS];
 
 /// @brief The init process in user mode.
@@ -572,16 +572,21 @@ void wakeup(void *chan)
 /// Kill the process with the given pid.
 /// The victim won't exit until it tries to return
 /// to user space (see user_mode_interrupt_handler() in trap.c).
-int proc_kill(int pid)
+int32_t proc_send_signal(pid_t pid, int32_t sig)
 {
-    struct process *proc;
+    if (sig != SIGKILL)
+    {
+        // no other signals are supported so far
+        return -1;
+    }
 
-    for (proc = g_process_list; proc < &g_process_list[MAX_PROCS]; proc++)
+    for (struct process *proc = g_process_list;
+         proc < &g_process_list[MAX_PROCS]; proc++)
     {
         spin_lock(&proc->lock);
         if (proc->pid == pid)
         {
-            proc->killed = 1;
+            proc->killed = true;
             if (proc->state == SLEEPING)
             {
                 // Wake process from sleep().

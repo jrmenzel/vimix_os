@@ -47,7 +47,19 @@ extern void exit(int32_t status) __attribute__((noreturn));
 extern pid_t getpid();
 
 // let process sleep
-extern int32_t sleep(int32_t seconds);
+extern int32_t ms_sleep(int32_t milliseconds);
+
+// let process sleep
+static inline int32_t sleep(int32_t seconds)
+{
+    return ms_sleep(seconds * 1000);
+}
+
+// let process sleep
+static inline int32_t usleep(int32_t useconds)
+{
+    return ms_sleep(useconds / 1000);
+}
 
 ///////////////////////////////////////
 // 2. File Management
