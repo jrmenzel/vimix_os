@@ -28,7 +28,7 @@ struct file *file_alloc()
 {
     spin_lock(&g_file_table.lock);
     for (struct file *f = g_file_table.file;
-         f < g_file_table.file + MAX_FILES_SUPPORTED; f++)
+         f < (g_file_table.file + MAX_FILES_SUPPORTED); f++)
     {
         if (f->ref == 0)
         {

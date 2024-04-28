@@ -60,6 +60,15 @@ struct inode *inode_dir_lookup(struct inode *dir, const char *name,
 /// or NULL if there is no free inode.
 struct inode *inode_alloc(dev_t dev, short mode);
 
+/// @brief Opens the inode belonging to pathname or creates one if none existed.
+/// Used for regular files and directories.
+/// @param pathname Path / file name
+/// @param mode File mode
+/// @param device Device the inode is located
+/// @return NULL on failure, requested inode otherwise.
+struct inode *inode_open_or_create(char *path, short type, short major,
+                                   short minor);
+
 /// @brief Increment reference count for ip.
 /// @return ip to enable ip = inode_dup(ip1) idiom.
 struct inode *inode_dup(struct inode *ip);

@@ -8,14 +8,16 @@
 
 #define PIPE_SIZE 512
 
+/// @brief A pipe consists of this struct and two files (struct file)
+/// which have a pointer to this pipe object.
 struct pipe
 {
     struct spinlock lock;
-    char data[PIPE_SIZE];
-    size_t nread;     ///< number of bytes read
-    size_t nwrite;    ///< number of bytes written
-    bool read_open;   ///< read fd is still open
-    bool write_open;  ///< write fd is still open
+    char data[PIPE_SIZE];  ///< circular buffer
+    size_t nread;          ///< number of bytes read
+    size_t nwrite;         ///< number of bytes written
+    bool read_open;        ///< read fd is still open
+    bool write_open;       ///< write fd is still open
 };
 _Static_assert(sizeof(struct pipe) <= PAGE_SIZE, "struct pipe too big");
 

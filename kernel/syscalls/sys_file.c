@@ -233,82 +233,6 @@ bad:
     return -1;
 }
 
-static struct inode *create(char *path, short type, short major, short minor)
-{
-    char name[XV6_NAME_MAX];
-
-    struct inode *dir = inode_of_parent_from_path(path, name);
-    if (dir == NULL)
-    {
-        return NULL;
-    }
-
-    inode_lock(dir);
-
-    struct inode *ip = inode_dir_lookup(dir, name, 0);
-    if (ip != NULL)
-    {
-        inode_unlock_put(dir);
-        inode_lock(ip);
-        if (type == XV6_FT_FILE &&
-            (ip->type == XV6_FT_FILE || ip->type == XV6_FT_DEVICE))
-            return ip;
-        inode_unlock_put(ip);
-        return NULL;
-    }
-
-    // create new inode
-    ip = inode_alloc(dir->dev, type);
-    if (ip == NULL)
-    {
-        inode_unlock_put(dir);
-        return NULL;
-    }
-
-    inode_lock(ip);
-    ip->major = major;
-    ip->minor = minor;
-    ip->nlink = 1;
-    inode_update(ip);
-
-#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
-    strncpy(ip->path, path, PATH_MAX);
-#endif
-
-    if (type == XV6_FT_DIR)
-    {
-        // Create . and .. entries.
-        // No ip->nlink++ for ".": avoid cyclic ref count.
-        if (inode_dir_link(ip, ".", ip->inum) < 0 ||
-            inode_dir_link(ip, "..", dir->inum) < 0)
-            goto fail;
-    }
-
-    if (inode_dir_link(dir, name, ip->inum) < 0)
-    {
-        goto fail;
-    }
-
-    if (type == XV6_FT_DIR)
-    {
-        // now that success is guaranteed:
-        dir->nlink++;  // for ".."
-        inode_update(dir);
-    }
-
-    inode_unlock_put(dir);
-
-    return ip;
-
-fail:
-    // something went wrong. de-allocate ip.
-    ip->nlink = 0;
-    inode_update(ip);
-    inode_unlock_put(ip);
-    inode_unlock_put(dir);
-    return 0;
-}
-
 size_t sys_open()
 {
     char path[PATH_MAX];
@@ -325,7 +249,7 @@ size_t sys_open()
 
     if (omode & O_CREATE)
     {
-        ip = create(path, XV6_FT_FILE, 0, 0);
+        ip = inode_open_or_create(path, XV6_FT_FILE, 0, 0);
         if (ip == 0)
         {
             log_end_fs_transaction();
@@ -396,7 +320,7 @@ size_t sys_mkdir()
 
     log_begin_fs_transaction();
     if (argstr(0, path, PATH_MAX) < 0 ||
-        (ip = create(path, XV6_FT_DIR, 0, 0)) == 0)
+        (ip = inode_open_or_create(path, XV6_FT_DIR, 0, 0)) == 0)
     {
         log_end_fs_transaction();
         return -1;
@@ -416,7 +340,7 @@ size_t sys_mknod()
     argint(1, &major);
     argint(2, &minor);
     if ((argstr(0, path, PATH_MAX)) < 0 ||
-        (ip = create(path, XV6_FT_DEVICE, major, minor)) == 0)
+        (ip = inode_open_or_create(path, XV6_FT_DEVICE, major, minor)) == 0)
     {
         log_end_fs_transaction();
         return -1;

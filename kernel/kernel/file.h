@@ -14,7 +14,7 @@ struct file
         FD_INODE,
         FD_DEVICE
     } type;
-    int ref;  ///< reference count
+    int32_t ref;  ///< reference count
     char readable;
     char writable;
     struct pipe *pipe;  ///< FD_PIPE

@@ -22,7 +22,7 @@ typedef int32_t dev_t;
 
 /// @brief UNIX file descriptor, must be int as this is dictated by the public
 /// UNIX/C API (stdio.h et al) Exposed to user space (e.g. open()). Internally
-/// an index into the per-process file list in struct task_struct->files.
+/// an index into the per-process file list in struct process->files.
 typedef int FILE_DESCRIPTOR;
 
 #endif  // __USE_REAL_STDC__
@@ -33,4 +33,6 @@ typedef unsigned char uchar;
 /// @brief Process ID.
 typedef int32_t pid_t;
 
-typedef uint64_t pde_t;
+#ifndef GIT_HASH
+#define GIT_HASH "unknown"
+#endif

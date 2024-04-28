@@ -10,13 +10,14 @@
 /// Per-CPU state.
 struct cpu
 {
-    struct process *proc;    // The process running on this cpu, or null.
-    struct context context;  // context_switch() here to enter scheduler().
-    int disable_dev_int_stack_depth;  // Depth of
-                                      // cpu_push_disable_device_interrupt_stack()
-                                      // nesting.
-    int disable_dev_int_stack_original_state;  // Were interrupts enabled before
-                                               // cpu_push_disable_device_interrupt_stack()?
+    struct process *proc;    ///< The process running on this cpu, or null.
+    struct context context;  ///< context_switch() here to enter scheduler().
+    int disable_dev_int_stack_depth;  ///< Depth of
+                                      ///< cpu_push_disable_device_interrupt_stack()
+                                      ///< nesting.
+    int disable_dev_int_stack_original_state;  ///< Were interrupts enabled
+                                               ///< before
+                                               ///< cpu_push_disable_device_interrupt_stack()?
 };
 
 extern struct cpu g_cpus[MAX_CPUS];

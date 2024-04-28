@@ -141,9 +141,9 @@ size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va)
 }
 
 int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
-                         size_t sz, int32_t perm)
+                         size_t size, int32_t perm)
 {
-    if (kvm_map(k_pagetable, va, sz, pa, perm) != 0)
+    if (kvm_map(k_pagetable, va, size, pa, perm) != 0)
     {
         panic("kvm_map_or_panic failed");
     }
@@ -158,11 +158,11 @@ int32_t kvm_map(pagetable_t pagetable, size_t va, size_t size, size_t pa,
         panic("kvm_map: size == 0");
     }
 
-    size_t a = PAGE_ROUND_DOWN(va);
-    size_t last = PAGE_ROUND_DOWN(va + size - 1);
+    size_t current_va = PAGE_ROUND_DOWN(va);
+    size_t last_va = PAGE_ROUND_DOWN(va + size - 1);
     while (true)
     {
-        pte_t *pte = vm_walk(pagetable, a, true);
+        pte_t *pte = vm_walk(pagetable, current_va, true);
         if (pte == NULL)
         {
             return -1;
@@ -172,11 +172,11 @@ int32_t kvm_map(pagetable_t pagetable, size_t va, size_t size, size_t pa,
             panic("kvm_map: remap");
         }
         *pte = PA2PTE(pa) | perm | PTE_V;
-        if (a == last)
+        if (current_va == last_va)
         {
             break;
         }
-        a += PAGE_SIZE;
+        current_va += PAGE_SIZE;
         pa += PAGE_SIZE;
     }
     return 0;

@@ -50,7 +50,7 @@ struct xv6fs_superblock
 _Static_assert((sizeof(struct xv6fs_superblock) < 1024),
                "xv6fs_superblock must fit in one buf->data");
 
-// On-disk inode structure
+/// On-disk inode structure
 struct xv6fs_dinode
 {
     short type;                   ///< File type
