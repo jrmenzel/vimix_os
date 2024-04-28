@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <kernel/file.h>
 #include <kernel/kernel.h>
 
 /// @brief Gets the syscall number from the processes trapframe and
@@ -104,21 +105,36 @@ size_t sys_pipe();
 //
 
 /// @brief Fetch the nth 32-bit system call argument.
-void argint(int32_t n, int32_t *ip);
+/// @return 0 on success, -1 on failure
+int32_t argint(int32_t n, int32_t *ip);
+
+/// @brief Fetch the nth 32-bit unsigned system call argument.
+/// @return 0 on success, -1 on failure
+uint32_t arguint(int32_t n, uint32_t *ip);
 
 /// @brief Fetch the nth word-sized system call argument as a null-terminated
 /// string. Copies into buf, at most max chars.
 /// @return string length if OK (including nul), -1 if error.
-int32_t argstr(int32_t n, char *buf, int32_t max);
+int32_t argstr(int32_t n, char *buf, size_t max);
+
+/// @brief Retrieve an argument as an ssize_t.
+/// @return 0 on success, -1 on failure
+int32_t argssize_t(int32_t n, ssize_t *ip);
 
 /// @brief Retrieve an argument as a pointer.
 /// Doesn't check for legality, since
-/// vm_copy_in/vm_copy_out will do that.
-void argaddr(int32_t n, size_t *ip);
+/// uvm_copy_in/uvm_copy_out will do that.
+/// @return 0 on success, -1 on failure
+int32_t argaddr(int32_t n, size_t *ip);
+
+/// @brief Fetch the nth word-sized system call argument as a file descriptor
+/// and return both the descriptor and the corresponding struct file.
+/// @return 0 on success, -1 on failure
+int32_t argfd(int32_t n, int32_t *pfd, struct file **pf);
 
 /// @brief Fetch the nul-terminated string at addr from the current process.
 /// @return length of string, not including nul, or -1 for error.
-int32_t fetchstr(size_t addr, char *buf, int32_t max);
+size_t fetchstr(size_t addr, char *buf, size_t max);
 
 /// @brief Fetch the size_t at addr from the current process.
 /// @return 0 on success, -1 on failure

@@ -8,9 +8,12 @@
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 
+/// @brief Main buffer cache.
 struct
 {
     struct spinlock lock;
+
+    // buffers to be used, access via head and the next/prev pointers
     struct buf buf[NUM_BUFFERS_IN_CACHE];
 
     // Linked list of all buffers, through prev/next.
@@ -21,18 +24,21 @@ struct
 
 void bio_init()
 {
-    struct buf *b;
-
     spin_lock_init(&g_buf_cache.lock, "g_buf_cache");
 
     // Create linked list of buffers
     g_buf_cache.head.prev = &g_buf_cache.head;
     g_buf_cache.head.next = &g_buf_cache.head;
-    for (b = g_buf_cache.buf; b < g_buf_cache.buf + NUM_BUFFERS_IN_CACHE; b++)
+    for (struct buf *b = g_buf_cache.buf;
+         b < g_buf_cache.buf + NUM_BUFFERS_IN_CACHE; b++)
     {
+        // init buffer
+        sleep_lock_init(&b->lock, "buffer");
+        b->valid = 0;
+
+        // setup linked list
         b->next = g_buf_cache.head.next;
         b->prev = &g_buf_cache.head;
-        sleep_lock_init(&b->lock, "buffer");
         g_buf_cache.head.next->prev = b;
         g_buf_cache.head.next = b;
     }
@@ -44,12 +50,11 @@ void bio_init()
 /// In either case, return a locked buffer.
 static struct buf *bget(dev_t dev, uint32_t blockno)
 {
-    struct buf *b;
-
     spin_lock(&g_buf_cache.lock);
 
     // Is the block already cached?
-    for (b = g_buf_cache.head.next; b != &g_buf_cache.head; b = b->next)
+    for (struct buf *b = g_buf_cache.head.next; b != &g_buf_cache.head;
+         b = b->next)
     {
         if (b->dev == dev && b->blockno == blockno)
         {
@@ -62,7 +67,8 @@ static struct buf *bget(dev_t dev, uint32_t blockno)
 
     // Not cached.
     // Recycle the least recently used (LRU) unused buffer.
-    for (b = g_buf_cache.head.prev; b != &g_buf_cache.head; b = b->prev)
+    for (struct buf *b = g_buf_cache.head.prev; b != &g_buf_cache.head;
+         b = b->prev)
     {
         if (b->refcnt == 0)
         {
@@ -75,14 +81,15 @@ static struct buf *bget(dev_t dev, uint32_t blockno)
             return b;
         }
     }
+
     panic("bget: no buffers");
 }
 
-struct buf *bio_read(uint32_t dev, uint32_t blockno)
+/// Return a locked buf with the contents of the indicated block.
+struct buf *bio_read(dev_t dev, uint32_t blockno)
 {
-    struct buf *b;
+    struct buf *b = bget(dev, blockno);
 
-    b = bget(dev, blockno);
     if (!b->valid)
     {
         virtio_disk_rw(b, 0);

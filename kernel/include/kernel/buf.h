@@ -10,7 +10,7 @@
 #define BLOCK_SIZE 1024
 
 /// @brief One disk buffer / cache entry.
-/// The buffers are stored and accessed via bcache in bio.c.
+/// The buffers are stored and accessed via g_buf_cache in bio.c.
 struct buf
 {
     int32_t valid;           ///< has data been read from disk?

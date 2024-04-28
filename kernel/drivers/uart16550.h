@@ -17,7 +17,7 @@ void uart_interrupt_handler();
 /// by write().
 void uart_putc(int32_t c);
 
-/// alternate version of uartputc() that doesn't
+/// alternate version of uart_putc() that doesn't
 /// use interrupts, for use by kernel printk() and
 /// to echo characters. it spins waiting for the uart's
 /// output register to be empty.

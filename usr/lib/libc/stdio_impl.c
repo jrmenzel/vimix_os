@@ -47,7 +47,7 @@ int fileno(FILE *stream)
     return (int)stream->fd;
 }
 
-char *get_from_fd(char *buf, int32_t max, int fd)
+char *get_from_fd(char *buf, int32_t max, FILE_DESCRIPTOR fd)
 {
     int32_t i, cc;
     char c;

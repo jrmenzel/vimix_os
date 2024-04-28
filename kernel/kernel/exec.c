@@ -4,7 +4,6 @@
 #include <fs/xv6fs/log.h>
 #include <kernel/elf.h>
 #include <kernel/kernel.h>
-#include <kernel/printk.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
@@ -18,15 +17,15 @@
 static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,
                        size_t offset, size_t sz);
 
-int flags2perm(int flags)
+int32_t flags2perm(int32_t flags)
 {
-    int perm = 0;
+    int32_t perm = 0;
     if (flags & 0x1) perm = PTE_X;
     if (flags & 0x2) perm |= PTE_W;
     return perm;
 }
 
-int execv(char *path, char **argv)
+int32_t execv(char *path, char **argv)
 {
     size_t argc, sz = 0, sp, ustack[MAX_EXEC_ARGS], stackbase;
     struct elfhdr elf;
@@ -81,7 +80,6 @@ int execv(char *path, char **argv)
     // Todo: this should happen on all cores that want to run this process.
     instruction_memory_barrier();
 
-    proc = get_current();
     size_t oldsz = proc->sz;
 
     // Allocate two pages at the next page boundary.
@@ -127,7 +125,10 @@ int execv(char *path, char **argv)
     char *last = path;
     for (; *s; s++)
     {
-        if (*s == '/') last = s + 1;
+        if (*s == '/')
+        {
+            last = s + 1;
+        }
     }
     safestrcpy(proc->name, last, sizeof(proc->name));
 
@@ -135,8 +136,9 @@ int execv(char *path, char **argv)
     oldpagetable = proc->pagetable;
     proc->pagetable = pagetable;
     proc->sz = sz;
-    proc->trapframe->epc = elf.entry;  // initial program counter = main
-    proc->trapframe->sp = sp;          // initial stack pointer
+
+    trapframe_set_program_counter(proc->trapframe, elf.entry);
+    trapframe_set_stack_pointer(proc->trapframe, sp);
     proc_free_pagetable(oldpagetable, oldsz);
 
     return argc;  // this ends up in a0, the first argument to main(argc, argv)

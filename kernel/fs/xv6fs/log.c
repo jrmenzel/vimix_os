@@ -37,9 +37,6 @@ static void commit();
 
 void log_init(dev_t dev, struct xv6fs_superblock *sb)
 {
-    if (sizeof(struct logheader) >= BLOCK_SIZE)
-        panic("log_init: too big logheader");
-
     spin_lock_init(&g_log.lock, "log");
     g_log.start = sb->logstart;
     g_log.size = sb->nlog;
@@ -199,18 +196,26 @@ void log_write(struct buf *b)
 {
     spin_lock(&g_log.lock);
     if (g_log.lh.n >= LOGSIZE || g_log.lh.n >= g_log.size - 1)
+    {
         panic("too big a transaction");
-    if (g_log.outstanding < 1) panic("log_write outside of trans");
+    }
+    if (g_log.outstanding < 1)
+    {
+        panic("log_write outside of trans");
+    }
 
     int32_t i;
     for (i = 0; i < g_log.lh.n; i++)
     {
         if (g_log.lh.block[i] == b->blockno)  // log absorption
+        {
             break;
+        }
     }
     g_log.lh.block[i] = b->blockno;
     if (i == g_log.lh.n)
-    {  // Add new block to log?
+    {
+        // Add new block to log?
         bio_pin(b);
         g_log.lh.n++;
     }

@@ -6,7 +6,6 @@
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
-#include <mm/memlayout.h>
 
 #ifdef CONFIG_DEBUG_SPINLOCK
 #include <kernel/string.h>

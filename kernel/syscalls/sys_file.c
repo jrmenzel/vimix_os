@@ -6,83 +6,84 @@
 // user code, and calls into file.c and fs.c.
 //
 
-#include <arch/riscv/mm/mm.h>
 #include <fs/xv6fs/log.h>
-#include <ipc/pipe.h>
-#include <kernel/exec.h>
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
-#include <kernel/fs.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
-#include <kernel/printk.h>
 #include <kernel/proc.h>
-#include <kernel/sleeplock.h>
-#include <kernel/spinlock.h>
-#include <kernel/stat.h>
 #include <kernel/string.h>
-#include <kernel/vm.h>
 #include <syscalls/syscall.h>
-
-/// Fetch the nth word-sized system call argument as a file descriptor
-/// and return both the descriptor and the corresponding struct file.
-static int argfd(int n, int *pfd, struct file **pf)
-{
-    int fd;
-    struct file *f;
-
-    argint(n, &fd);
-    if (fd < 0 || fd >= MAX_FILES_PER_PROCESS ||
-        (f = get_current()->files[fd]) == NULL)
-        return -1;
-    if (pfd) *pfd = fd;
-    if (pf) *pf = f;
-    return 0;
-}
 
 size_t sys_dup()
 {
+    // parameter 0: int fd
     struct file *f;
-    int fd;
+    if (argfd(0, NULL, &f) < 0)
+    {
+        return -1;
+    }
 
-    if (argfd(0, NULL, &f) < 0) return -1;
-    if ((fd = fd_alloc(f)) < 0) return -1;
+    FILE_DESCRIPTOR fd = fd_alloc(f);
+    if (fd < 0)
+    {
+        return -1;
+    }
+
     file_dup(f);
     return fd;
 }
 
 size_t sys_read()
 {
+    // parameter 0: int fd
     struct file *f;
+    if (argfd(0, NULL, &f) < 0)
+    {
+        return -1;
+    }
+
+    // parameter 1: void *buffer
     size_t buffer;
 
     argaddr(1, &buffer);
 
+    // parameter 2: n
     int32_t n;
     argint(2, &n);
-    if (argfd(0, NULL, &f) < 0) return -1;
+
     return file_read(f, buffer, n);
 }
 
 size_t sys_write()
 {
+    // parameter 0: int fd
     struct file *f;
+    if (argfd(0, NULL, &f) < 0)
+    {
+        return -1;
+    }
+
+    // parameter 1: void *buffer
     size_t buffer;
     argaddr(1, &buffer);
 
+    // parameter 2: n
     int32_t n;
     argint(2, &n);
-    if (argfd(0, NULL, &f) < 0) return -1;
 
     return file_write(f, buffer, n);
 }
 
 size_t sys_close()
 {
-    int fd;
+    // parameter 0: int fd
+    FILE_DESCRIPTOR fd;
     struct file *f;
+    if (argfd(0, &fd, &f) < 0)
+    {
+        return -1;
+    }
 
-    if (argfd(0, &fd, &f) < 0) return -1;
     get_current()->files[fd] = NULL;
     file_close(f);
     return 0;
@@ -90,21 +91,30 @@ size_t sys_close()
 
 size_t sys_fstat()
 {
+    // parameter 0: int fd
     struct file *f;
-    size_t stat_buffer;  // user pointer to struct stat
+    if (argfd(0, NULL, &f) < 0)
+    {
+        return -1;
+    }
 
+    // parameter 1: stat *buffer
+    size_t stat_buffer;  // user pointer to struct stat
     argaddr(1, &stat_buffer);
-    if (argfd(0, NULL, &f) < 0) return -1;
+
     return file_stat(f, stat_buffer);
 }
 
 size_t sys_link()
 {
+    // parameter 0 / 1: const char *from / *to
     char name[XV6_NAME_MAX], path_to[PATH_MAX], path_from[PATH_MAX];
     struct inode *dir, *ip;
 
     if (argstr(0, path_from, PATH_MAX) < 0 || argstr(1, path_to, PATH_MAX) < 0)
+    {
         return -1;
+    }
 
     log_begin_fs_transaction();
     if ((ip = inode_from_path(path_from)) == NULL)
@@ -166,10 +176,15 @@ size_t sys_unlink()
 {
     struct inode *ip, *dir;
     struct xv6fs_dirent de;
-    char name[XV6_NAME_MAX], path[PATH_MAX];
+    char name[XV6_NAME_MAX];
     uint32_t off;
 
-    if (argstr(0, path, PATH_MAX) < 0) return -1;
+    // parameter 0: const char *pathname
+    char path[PATH_MAX];
+    if (argstr(0, path, PATH_MAX) < 0)
+    {
+        return -1;
+    }
 
     log_begin_fs_transaction();
     if ((dir = inode_of_parent_from_path(path, name)) == NULL)
@@ -220,14 +235,18 @@ bad:
 
 static struct inode *create(char *path, short type, short major, short minor)
 {
-    struct inode *ip, *dir;
     char name[XV6_NAME_MAX];
 
-    if ((dir = inode_of_parent_from_path(path, name)) == NULL) return 0;
+    struct inode *dir = inode_of_parent_from_path(path, name);
+    if (dir == NULL)
+    {
+        return NULL;
+    }
 
     inode_lock(dir);
 
-    if ((ip = inode_dir_lookup(dir, name, 0)) != NULL)
+    struct inode *ip = inode_dir_lookup(dir, name, 0);
+    if (ip != NULL)
     {
         inode_unlock_put(dir);
         inode_lock(ip);
@@ -235,13 +254,15 @@ static struct inode *create(char *path, short type, short major, short minor)
             (ip->type == XV6_FT_FILE || ip->type == XV6_FT_DEVICE))
             return ip;
         inode_unlock_put(ip);
-        return 0;
+        return NULL;
     }
 
-    if ((ip = inode_alloc(dir->dev, type)) == NULL)
+    // create new inode
+    ip = inode_alloc(dir->dev, type);
+    if (ip == NULL)
     {
         inode_unlock_put(dir);
-        return 0;
+        return NULL;
     }
 
     inode_lock(ip);
@@ -250,15 +271,23 @@ static struct inode *create(char *path, short type, short major, short minor)
     ip->nlink = 1;
     inode_update(ip);
 
+#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
+    strncpy(ip->path, path, PATH_MAX);
+#endif
+
     if (type == XV6_FT_DIR)
-    {  // Create . and .. entries.
+    {
+        // Create . and .. entries.
         // No ip->nlink++ for ".": avoid cyclic ref count.
         if (inode_dir_link(ip, ".", ip->inum) < 0 ||
             inode_dir_link(ip, "..", dir->inum) < 0)
             goto fail;
     }
 
-    if (inode_dir_link(dir, name, ip->inum) < 0) goto fail;
+    if (inode_dir_link(dir, name, ip->inum) < 0)
+    {
+        goto fail;
+    }
 
     if (type == XV6_FT_DIR)
     {
@@ -283,7 +312,8 @@ fail:
 size_t sys_open()
 {
     char path[PATH_MAX];
-    int fd, omode;
+    FILE_DESCRIPTOR fd;
+    int omode;
     struct file *f;
     struct inode *ip;
     int n;
@@ -398,12 +428,13 @@ size_t sys_mknod()
 
 size_t sys_chdir()
 {
-    char path[PATH_MAX];
+    char pathname[PATH_MAX];
     struct inode *ip;
     struct process *proc = get_current();
 
     log_begin_fs_transaction();
-    if (argstr(0, path, PATH_MAX) < 0 || (ip = inode_from_path(path)) == 0)
+    if (argstr(0, pathname, PATH_MAX) < 0 ||
+        (ip = inode_from_path(pathname)) == NULL)
     {
         log_end_fs_transaction();
         return -1;
@@ -420,51 +451,4 @@ size_t sys_chdir()
     log_end_fs_transaction();
     proc->cwd = ip;
     return 0;
-}
-
-size_t sys_execv()
-{
-    char path[PATH_MAX], *argv[MAX_EXEC_ARGS];
-    size_t uargv, uarg;
-
-    argaddr(1, &uargv);
-    if (argstr(0, path, PATH_MAX) < 0)
-    {
-        return -1;
-    }
-    memset(argv, 0, sizeof(argv));
-    for (size_t i = 0;; i++)
-    {
-        if (i >= NELEM(argv))
-        {
-            goto bad;
-        }
-        if (fetchaddr(uargv + sizeof(size_t) * i, (size_t *)&uarg) < 0)
-        {
-            goto bad;
-        }
-        if (uarg == 0)
-        {
-            argv[i] = 0;
-            break;
-        }
-        argv[i] = kalloc();
-        if (argv[i] == NULL) goto bad;
-        if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0) goto bad;
-    }
-
-    size_t ret = execv(path, argv);
-
-    for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
-    {
-        kfree(argv[i]);
-    }
-    return ret;
-
-bad:
-    for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
-    {
-        kfree(argv[i]);
-    }
-    return -1;
 }

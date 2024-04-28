@@ -2,8 +2,8 @@
 #pragma once
 
 #include <arch/context.h>
-#include <kernel/file.h>
 #include <kernel/kernel.h>
+#include <kernel/process.h>
 #include <kernel/spinlock.h>
 #include <kernel/vm.h>
 
@@ -20,44 +20,6 @@ struct cpu
 };
 
 extern struct cpu g_cpus[MAX_CPUS];
-
-enum process_state
-{
-    UNUSED,
-    USED,
-    SLEEPING,
-    RUNNABLE,
-    RUNNING,
-    ZOMBIE
-};
-
-/// Per-process state
-struct process
-{
-    struct spinlock lock;
-
-    // p->lock must be held when using these:
-    enum process_state state;  ///< Process state
-    void *chan;                ///< If non-zero, sleeping on chan
-    int killed;                ///< If non-zero, have been killed
-    int xstate;                ///< Exit status to be returned to parent's wait
-    int pid;                   ///< Process ID
-
-    // g_wait_lock must be held when using this:
-    struct process *parent;  ///< Parent process
-
-    // these are private to the process, so p->lock need not be held.
-    uint64_t kstack;              ///< Virtual address of kernel stack
-    uint64_t sz;                  ///< Size of process memory (bytes)
-    pagetable_t pagetable;        ///< User page table
-    struct trapframe *trapframe;  ///< data page for u_mode_trap_vector.S
-    struct context context;       ///< context_switch() here to run process
-    struct file *files[MAX_FILES_PER_PROCESS];  ///< Open files
-    struct inode *cwd;                          ///< Current directory
-    char name[16];                              ///< Process name (debugging)
-};
-
-int smp_processor_id();
 
 /// @brief Exit process.
 /// @param status Exit code ( return value from main() )
@@ -100,7 +62,7 @@ void proc_init();
 
 void sched();
 
-void sleep(void *, struct spinlock *);
+void sleep(void *chan, struct spinlock *lk);
 
 void userspace_init();
 
@@ -110,7 +72,7 @@ void userspace_init();
 /// @return -1 if this process has no children.
 extern pid_t wait(int32_t *wstatus);
 
-void wakeup(void *);
+void wakeup(void *chan);
 
 void yield();
 
@@ -136,8 +98,11 @@ int32_t either_copyout(bool addr_is_userspace, size_t dst, void *src,
 int32_t either_copyin(void *dst, bool addr_is_userspace, size_t src,
                       size_t len);
 
+/// Prints the process list to the console (wired to CTRL+P)
 void debug_print_process_list();
 
-/// Allocate a file descriptor for the given file.
-/// Takes over file reference from caller on success.
-int fd_alloc(struct file *f);
+/// @brief Allocate a file descriptor for the given file and add it to the
+/// current process.
+/// @param f the file
+/// @return the file descriptor or -1 on failure
+FILE_DESCRIPTOR fd_alloc(struct file *f);

@@ -10,33 +10,58 @@
 #include <kernel/spinlock.h>
 #include <kernel/vm.h>
 
+static inline bool pipe_is_empty(struct pipe *pipe)
+{
+    return pipe->nread == pipe->nwrite;
+}
+
+static inline bool pipe_is_full(struct pipe *pipe)
+{
+    return pipe->nwrite == pipe->nread + PIPE_SIZE;
+}
+
 int32_t pipe_alloc(struct file **f0, struct file **f1)
 {
-    struct pipe *pi = NULL;
+    // create two files
+    *f0 = file_alloc();
+    *f1 = file_alloc();
+    if (*f0 == NULL || *f1 == NULL)
+    {
+        if (*f0) file_close(*f0);
+        if (*f1) file_close(*f1);
+        return -1;
+    }
 
-    *f0 = *f1 = 0;
-    if ((*f0 = file_alloc()) == 0 || (*f1 = file_alloc()) == 0) goto bad;
-    if ((pi = (struct pipe *)kalloc()) == 0) goto bad;
-    pi->read_open = 1;
-    pi->write_open = 1;
-    pi->nwrite = 0;
-    pi->nread = 0;
-    spin_lock_init(&pi->lock, "pipe");
+    // create the pipe
+    struct pipe *new_pipe = (struct pipe *)kalloc();
+    if (new_pipe == NULL)
+    {
+        file_close(*f0);
+        file_close(*f1);
+        return -1;
+    }
+
+    // stay true till pipe_close() is called:
+    new_pipe->read_open = true;
+    new_pipe->write_open = true;
+
+    new_pipe->nwrite = 0;
+    new_pipe->nread = 0;
+    spin_lock_init(&new_pipe->lock, "pipe");
+
+    // read end
     (*f0)->type = FD_PIPE;
     (*f0)->readable = 1;
     (*f0)->writable = 0;
-    (*f0)->pipe = pi;
+    (*f0)->pipe = new_pipe;
+
+    // write end
     (*f1)->type = FD_PIPE;
     (*f1)->readable = 0;
     (*f1)->writable = 1;
-    (*f1)->pipe = pi;
-    return 0;
+    (*f1)->pipe = new_pipe;
 
-bad:
-    if (pi) kfree((char *)pi);
-    if (*f0) file_close(*f0);
-    if (*f1) file_close(*f1);
-    return -1;
+    return 0;
 }
 
 void pipe_close(struct pipe *pipe, bool close_writing_end)
@@ -52,13 +77,15 @@ void pipe_close(struct pipe *pipe, bool close_writing_end)
         pipe->read_open = false;
         wakeup(&pipe->nwrite);
     }
-    if (pipe->read_open == false && pipe->write_open == false)
+
+    // free if both ends closed the pipe
+    bool free_pipe = (!pipe->read_open) && (!pipe->write_open);
+    spin_unlock(&pipe->lock);
+
+    if (free_pipe)
     {
-        spin_unlock(&pipe->lock);
-        kfree((char *)pipe);
+        kfree((void *)pipe);
     }
-    else
-        spin_unlock(&pipe->lock);
 }
 
 ssize_t pipe_write(struct pipe *pipe, size_t src_user_addr, size_t n)
@@ -74,7 +101,8 @@ ssize_t pipe_write(struct pipe *pipe, size_t src_user_addr, size_t n)
             spin_unlock(&pipe->lock);
             return -1;
         }
-        if (pipe->nwrite == pipe->nread + PIPE_SIZE)
+
+        if (pipe_is_full(pipe))
         {
             wakeup(&pipe->nread);
             // wait till another process read from the pipe
@@ -84,8 +112,11 @@ ssize_t pipe_write(struct pipe *pipe, size_t src_user_addr, size_t n)
         {
             char ch;
             if (uvm_copy_in(proc->pagetable, &ch, src_user_addr + i, 1) == -1)
+            {
                 break;
-            pipe->data[pipe->nwrite++ % PIPE_SIZE] = ch;
+            }
+            pipe->data[pipe->nwrite % PIPE_SIZE] = ch;
+            pipe->nwrite++;
             i++;
         }
     }
@@ -97,28 +128,38 @@ ssize_t pipe_write(struct pipe *pipe, size_t src_user_addr, size_t n)
 
 ssize_t pipe_read(struct pipe *pipe, size_t src_kernel_addr, size_t n)
 {
-    int i;
     struct process *proc = get_current();
-    char ch;
 
     spin_lock(&pipe->lock);
-    while (pipe->nread == pipe->nwrite && pipe->write_open)
+    while (pipe_is_empty(pipe) && pipe->write_open)
     {
         if (proc_is_killed(proc))
         {
             spin_unlock(&pipe->lock);
             return -1;
         }
+        // wait for another process to write into the pipe
         sleep(&pipe->nread, &pipe->lock);
     }
+
+    size_t i;
     for (i = 0; i < n; i++)
     {
-        if (pipe->nread == pipe->nwrite) break;
-        ch = pipe->data[pipe->nread++ % PIPE_SIZE];
-        if (uvm_copy_out(proc->pagetable, src_kernel_addr + i, &ch, 1) == -1)
+        if (pipe_is_empty(pipe))
+        {
             break;
+        }
+
+        char ch = pipe->data[pipe->nread % PIPE_SIZE];
+        pipe->nread++;
+
+        if (uvm_copy_out(proc->pagetable, src_kernel_addr + i, &ch, 1) == -1)
+        {
+            break;
+        }
     }
     wakeup(&pipe->nwrite);
     spin_unlock(&pipe->lock);
+
     return i;
 }

@@ -8,11 +8,9 @@
 
 #include <drivers/virtio_disk.h>
 #include <kernel/buf.h>
-#include <kernel/cpu.h>
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
-#include <kernel/printk.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
@@ -296,7 +294,7 @@ void virtio_disk_rw(struct buf *b, bool write)
     spin_unlock(&g_virtio_disk.vdisk_lock);
 }
 
-/// @brief The interrupt handler
+/// @brief The interrupt handler for the Block_Device
 void virtio_block_device_interrupt()
 {
     spin_lock(&g_virtio_disk.vdisk_lock);
@@ -311,7 +309,7 @@ void virtio_block_device_interrupt()
 
     __sync_synchronize();
 
-    // the device increments disk.used->idx when it
+    // the device increments g_virtio_disk.used->idx when it
     // adds an entry to the used ring.
 
     while (g_virtio_disk.used_idx != g_virtio_disk.used->idx)

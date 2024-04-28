@@ -2,7 +2,8 @@
 
 #include <arch/riscv/clint.h>
 #include <arch/trap.h>
-#include <kernel/cpu.h>
+#include <kernel/exec.h>
+#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
@@ -34,12 +35,15 @@ size_t sys_wait()
 
 size_t sys_sbrk()
 {
-    size_t addr;
-    int n;
+    // parameter 0: intptr_t increment
+    size_t increment;
+    argaddr(0, &increment);
 
-    argint(0, &n);
-    addr = get_current()->sz;
-    if (proc_grow_memory(n) < 0) return -1;
+    size_t addr = get_current()->sz;
+    if (proc_grow_memory(increment) < 0)
+    {
+        return -1;
+    }
     return addr;
 }
 
@@ -77,4 +81,56 @@ size_t sys_kill()
     argint(1, &signal);
 
     return proc_send_signal(pid, signal);
+}
+
+size_t sys_execv()
+{
+    // parameter 0: char *pathname
+    char path[PATH_MAX];
+    if (argstr(0, path, PATH_MAX) < 0)
+    {
+        return -1;
+    }
+
+    // parameter 1: char *argv[]
+    char *argv[MAX_EXEC_ARGS];
+    memset(argv, 0, sizeof(argv));
+
+    size_t uargv, uarg;
+    argaddr(1, &uargv);
+
+    for (size_t i = 0;; i++)
+    {
+        if (i >= NELEM(argv))
+        {
+            goto bad;
+        }
+        if (fetchaddr(uargv + sizeof(size_t) * i, (size_t *)&uarg) < 0)
+        {
+            goto bad;
+        }
+        if (uarg == 0)
+        {
+            argv[i] = 0;
+            break;
+        }
+        argv[i] = kalloc();
+        if (argv[i] == NULL) goto bad;
+        if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0) goto bad;
+    }
+
+    size_t ret = execv(path, argv);
+
+    for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    {
+        kfree(argv[i]);
+    }
+    return ret;
+
+bad:
+    for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    {
+        kfree(argv[i]);
+    }
+    return -1;
 }

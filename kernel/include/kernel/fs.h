@@ -31,6 +31,10 @@ struct inode
     /// are listed in ip->addrs[].  The next NINDIRECT blocks are
     /// listed in block ip->addrs[NDIRECT].
     uint32_t addrs[NDIRECT + 1];
+
+#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
+    char path[PATH_MAX];
+#endif
 };
 
 /// @brief inits the filesystem with device dev becoming "/"
@@ -39,7 +43,14 @@ void init_root_file_system(dev_t dev);
 
 int inode_dir_link(struct inode *, char *, uint32_t);
 
-struct inode *inode_dir_lookup(struct inode *, char *, uint32_t *);
+/// @brief Look for a directory entry in a directory.
+/// Increases ref count (release with inode_put()).
+/// @param dir Directory to look in
+/// @param name Name of entry (e.g. file name)
+/// @param poff If found, set *poff to byte offset of entry.
+/// @return Inode of entry on success or NULL.
+struct inode *inode_dir_lookup(struct inode *dir, const char *name,
+                               uint32_t *poff);
 
 /// @brief Allocate an inode on device dev.
 /// Mark it as allocated by giving it type based on mode.

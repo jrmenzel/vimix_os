@@ -162,6 +162,13 @@ int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char *format,
                 _printIntType value = va_arg(vl, _printIntType);
                 charsWritten += print_signed_int(func, payload, value);
             }
+            else if ((*format == 'l') && (*(format + 1) == 'd'))
+            {
+                long int value = va_arg(vl, long int);
+                charsWritten +=
+                    print_signed_int(func, payload, (_printIntType)value);
+                format++;
+            }
             else if (*format == 'u')
             {
                 _printUIntType value = va_arg(vl, _printUIntType);

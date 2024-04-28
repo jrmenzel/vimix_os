@@ -4,7 +4,9 @@
 #include <kernel/buf.h>
 #include <kernel/kernel.h>
 
-// Buffer cache.
+// Buffer cache / Buffer IO
+//
+// All access to disks / block devices go through this buffer.
 //
 // The buffer cache is a linked list of buf structures holding
 // cached copies of disk block contents.  Caching disk blocks

@@ -9,7 +9,6 @@
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
-#include <kernel/printk.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
@@ -27,11 +26,9 @@ void file_init() { spin_lock_init(&g_file_table.lock, "ftable"); }
 
 struct file *file_alloc()
 {
-    struct file *f;
-
     spin_lock(&g_file_table.lock);
-    for (f = g_file_table.file; f < g_file_table.file + MAX_FILES_SUPPORTED;
-         f++)
+    for (struct file *f = g_file_table.file;
+         f < g_file_table.file + MAX_FILES_SUPPORTED; f++)
     {
         if (f->ref == 0)
         {
@@ -41,13 +38,16 @@ struct file *file_alloc()
         }
     }
     spin_unlock(&g_file_table.lock);
-    return 0;
+    return NULL;
 }
 
 struct file *file_dup(struct file *f)
 {
     spin_lock(&g_file_table.lock);
-    if (f->ref < 1) panic("file_dup");
+    if (f->ref < 1)
+    {
+        panic("file_dup() called for a file with ref count 0");
+    }
     f->ref++;
     spin_unlock(&g_file_table.lock);
     return f;
@@ -55,16 +55,24 @@ struct file *file_dup(struct file *f)
 
 void file_close(struct file *f)
 {
-    struct file ff;
-
     spin_lock(&g_file_table.lock);
-    if (f->ref < 1) panic("file_close");
-    if (--f->ref > 0)
+    if (f->ref < 1)
+    {
+        panic("file_close() called for file without open references");
+    }
+
+    f->ref--;
+
+    if (f->ref > 0)
     {
         spin_unlock(&g_file_table.lock);
         return;
     }
-    ff = *f;
+
+    // that was the last reference -> close the file
+    // make a copy of the struct to savely access the values after
+    // unlocking the file table access lock.
+    struct file ff = *f;
     f->ref = 0;
     f->type = FD_NONE;
     spin_unlock(&g_file_table.lock);
@@ -83,16 +91,18 @@ void file_close(struct file *f)
 
 int32_t file_stat(struct file *f, size_t addr)
 {
-    struct process *proc = get_current();
-    struct stat st;
-
     if (f->type == FD_INODE || f->type == FD_DEVICE)
     {
+        struct stat st;
+        struct process *proc = get_current();
+
         inode_lock(f->ip);
         inode_stat(f->ip, &st);
         inode_unlock(f->ip);
         if (uvm_copy_out(proc->pagetable, addr, (char *)&st, sizeof(st)) < 0)
+        {
             return -1;
+        }
         return 0;
     }
     return -1;
@@ -102,7 +112,10 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
 {
     ssize_t read_bytes = 0;
 
-    if (f->readable == 0) return -1;
+    if (f->readable == 0)
+    {
+        return -1;
+    }
 
     if (f->type == FD_PIPE)
     {
@@ -111,19 +124,25 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
     else if (f->type == FD_DEVICE)
     {
         if (f->major < 0 || f->major >= MAX_DEVICES || !devsw[f->major].read)
+        {
             return -1;
+        }
         read_bytes = devsw[f->major].read(1, addr, n);
     }
     else if (f->type == FD_INODE)
     {
         inode_lock(f->ip);
-        if ((read_bytes = inode_read(f->ip, true, addr, f->off, n)) > 0)
+        read_bytes = inode_read(f->ip, true, addr, f->off, n);
+        if (read_bytes > 0)
+        {
+            // check is needed, read_bytes can be negative on error
             f->off += read_bytes;
+        }
         inode_unlock(f->ip);
     }
     else
     {
-        panic("file_read");
+        panic("file_read() on unknown file type");
     }
 
     return read_bytes;
@@ -131,9 +150,12 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
 
 ssize_t file_write(struct file *f, size_t addr, size_t n)
 {
-    ssize_t r, ret = 0;
+    ssize_t ret = 0;
 
-    if (f->writable == 0) return -1;
+    if (f->writable == 0)
+    {
+        return -1;
+    }
 
     if (f->type == FD_PIPE)
     {
@@ -142,7 +164,9 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
     else if (f->type == FD_DEVICE)
     {
         if (f->major < 0 || f->major >= MAX_DEVICES || !devsw[f->major].write)
+        {
             return -1;
+        }
         ret = devsw[f->major].write(1, addr, n);
     }
     else if (f->type == FD_INODE)
@@ -157,13 +181,21 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
         ssize_t i = 0;
         while (i < n)
         {
+            ssize_t r;
             ssize_t n1 = n - i;
-            if (n1 > max) n1 = max;
+            if (n1 > max)
+            {
+                n1 = max;
+            }
 
             log_begin_fs_transaction();
             inode_lock(f->ip);
-            if ((r = inode_write(f->ip, true, addr + i, f->off, n1)) > 0)
+
+            r = inode_write(f->ip, true, addr + i, f->off, n1);
+            if (r > 0)
+            {
                 f->off += r;
+            }
             inode_unlock(f->ip);
             log_end_fs_transaction();
 
@@ -178,7 +210,7 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
     }
     else
     {
-        panic("file_write");
+        panic("file_write() on unknown file type");
     }
 
     return ret;

@@ -24,6 +24,7 @@ OBJS = $(ARCH)/asm/entry.o \
 	drivers/virtio_disk.o \
 	fs/fs.o \
 	fs/xv6fs/log.o \
+	fs/xv6fs/xv6fs.o \
 	init/main.o \
 	ipc/pipe.o \
 	kernel/console.o \

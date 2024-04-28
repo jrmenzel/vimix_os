@@ -15,16 +15,19 @@ void *memset(void *dst, int c, size_t n)
 
 int memcmp(const void *v1, const void *v2, size_t n)
 {
-    const uchar *s1, *s2;
-
-    s1 = v1;
-    s2 = v2;
+    const uchar *s1 = v1;
+    const uchar *s2 = v2;
     while (n-- > 0)
     {
-        if (*s1 != *s2) return *s1 - *s2;
-        s1++, s2++;
+        if (*s1 != *s2)
+        {
+            return (*s1 - *s2);
+        }
+        s1++;
+        s2++;
     }
 
+    // memory was equal
     return 0;
 }
 
@@ -45,7 +48,9 @@ void *memmove(void *dst, const void *src, size_t n)
         while (signed_n-- > 0) *--d = *--s;
     }
     else
+    {
         while (signed_n-- > 0) *d++ = *s++;
+    }
 
     return dst;
 }

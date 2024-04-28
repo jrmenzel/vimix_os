@@ -40,7 +40,7 @@ void printk(char *format, ...)
         spin_lock(&g_printk.lock);
     }
 
-    // printing via consputc()
+    // printing via console_putc()
     va_list ap;
     va_start(ap, format);
     print_impl(console_putc_dummy, 0, format, ap);
@@ -53,11 +53,11 @@ void printk(char *format, ...)
     }
 }
 
-void panic(char *s)
+void panic(char *error_message)
 {
     g_printk.locking = false;
     printk("panic: ");
-    printk(s);
+    printk(error_message);
     printk("\n");
     g_kernel_panicked = true;  // freeze uart output from other CPUs
     while (true)

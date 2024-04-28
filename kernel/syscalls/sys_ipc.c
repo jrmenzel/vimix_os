@@ -12,17 +12,25 @@
 
 size_t sys_pipe()
 {
-    size_t fdarray;  // user pointer to array of two integers
-    struct file *rf, *wf;
-    int fd0, fd1;
-    struct process *proc = get_current();
-
+    // parameter 0: int pipe_descriptors[]
+    size_t fdarray;
     argaddr(0, &fdarray);
-    if (pipe_alloc(&rf, &wf) < 0) return -1;
-    fd0 = -1;
+
+    struct file *rf, *wf;
+    if (pipe_alloc(&rf, &wf) < 0)
+    {
+        return -1;
+    }
+
+    struct process *proc = get_current();
+    FILE_DESCRIPTOR fd0 = INVALID_FILE_DESCRIPTOR;
+    FILE_DESCRIPTOR fd1 = INVALID_FILE_DESCRIPTOR;
     if ((fd0 = fd_alloc(rf)) < 0 || (fd1 = fd_alloc(wf)) < 0)
     {
-        if (fd0 >= 0) proc->files[fd0] = 0;
+        if (fd0 >= 0)
+        {
+            proc->files[fd0] = NULL;
+        }
         file_close(rf);
         file_close(wf);
         return -1;
@@ -31,8 +39,8 @@ size_t sys_pipe()
         uvm_copy_out(proc->pagetable, fdarray + sizeof(fd0), (char *)&fd1,
                      sizeof(fd1)) < 0)
     {
-        proc->files[fd0] = 0;
-        proc->files[fd1] = 0;
+        proc->files[fd0] = NULL;
+        proc->files[fd1] = NULL;
         file_close(rf);
         file_close(wf);
         return -1;

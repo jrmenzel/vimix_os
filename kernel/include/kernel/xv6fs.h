@@ -1,25 +1,31 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+// Both the kernel and user programs use this header file.
+// Only include the defines that tools like mkfs need (so they don't
+// have to include kernel internal headers which might clash
+// with system headers from the host)
+
 #include <kernel/kernel.h>
 
-// On-disk file system format.
-// Both the kernel and user programs use this header file.
+#define ROOT_INODE 1  // root i-number
 
-#define ROOT_INODE 1     // root i-number
-#define BLOCK_SIZE 1024  // block size
+#define XV6FS_MAGIC 0x10203040
+
+#define NDIRECT 12
+#define NINDIRECT (BLOCK_SIZE / sizeof(uint32_t))
+#define MAXFILE (NDIRECT + NINDIRECT)
+
+// dublicate for mkfs
+#ifndef BLOCK_SIZE
+#define BLOCK_SIZE 1024
+#endif
 
 /// Inodes per block.
 #define IPB (BLOCK_SIZE / sizeof(struct xv6fs_dinode))
 
 /// Block containing inode i
 #define IBLOCK(i, sb) ((i) / IPB + sb.inodestart)
-
-/// Bitmap bits per block
-#define BPB (BLOCK_SIZE * 8)
-
-/// Block of free map containing bit for block b
-#define BBLOCK(b, sb) ((b) / BPB + sb.bmapstart)
 
 /// Max file name length (without the NULL-terminator)
 #define XV6_NAME_MAX 14
@@ -41,12 +47,8 @@ struct xv6fs_superblock
     uint32_t inodestart;  ///< Block number of first inode block
     uint32_t bmapstart;   ///< Block number of first free map block
 };
-
-#define XV6FS_MAGIC 0x10203040
-
-#define NDIRECT 12
-#define NINDIRECT (BLOCK_SIZE / sizeof(uint32_t))
-#define MAXFILE (NDIRECT + NINDIRECT)
+_Static_assert((sizeof(struct xv6fs_superblock) < 1024),
+               "xv6fs_superblock must fit in one buf->data");
 
 // On-disk inode structure
 struct xv6fs_dinode
@@ -59,6 +61,10 @@ struct xv6fs_dinode
     uint32_t addrs[NDIRECT + 1];  ///< Data block addresses
 };
 
+#define XV6FS_UNUSED_INODE 0
+
+/// A directory in xv6fs is a file containing a sequence of xv6fs_dirent
+/// structures.
 struct xv6fs_dirent
 {
     uint16_t inum;

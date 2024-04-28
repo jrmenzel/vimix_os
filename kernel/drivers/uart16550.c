@@ -178,7 +178,10 @@ void uart_interrupt_handler()
     while (true)
     {
         int c = uart_getc();
-        if (c == -1) break;
+        if (c == -1)
+        {
+            break;
+        }
         console_interrupt_handler(c);
     }
 

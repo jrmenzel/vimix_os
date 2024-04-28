@@ -68,6 +68,7 @@ void kfree(void *pa)
 
     r = (struct free_page *)pa;
 
+    // add page to the start of the list of free pages:
     spin_lock(&g_kernel_memory.lock);
     r->next = g_kernel_memory.free_list;
     g_kernel_memory.free_list = r;

@@ -162,11 +162,20 @@ int32_t kvm_map(pagetable_t pagetable, size_t va, size_t size, size_t pa,
     size_t last = PAGE_ROUND_DOWN(va + size - 1);
     while (true)
     {
-        pte_t *pte;
-        if ((pte = vm_walk(pagetable, a, true)) == NULL) return -1;
-        if (*pte & PTE_V) panic("kvm_map: remap");
+        pte_t *pte = vm_walk(pagetable, a, true);
+        if (pte == NULL)
+        {
+            return -1;
+        }
+        if (*pte & PTE_V)
+        {
+            panic("kvm_map: remap");
+        }
         *pte = PA2PTE(pa) | perm | PTE_V;
-        if (a == last) break;
+        if (a == last)
+        {
+            break;
+        }
         a += PAGE_SIZE;
         pa += PAGE_SIZE;
     }
@@ -175,16 +184,26 @@ int32_t kvm_map(pagetable_t pagetable, size_t va, size_t size, size_t pa,
 
 void uvm_unmap(pagetable_t pagetable, size_t va, size_t npages, bool do_free)
 {
-    pte_t *pte;
-
-    if ((va % PAGE_SIZE) != 0) panic("uvm_unmap: not aligned");
+    if ((va % PAGE_SIZE) != 0)
+    {
+        panic("uvm_unmap: not aligned");
+    }
 
     for (size_t a = va; a < va + npages * PAGE_SIZE; a += PAGE_SIZE)
     {
-        if ((pte = vm_walk(pagetable, a, false)) == NULL)
+        pte_t *pte = vm_walk(pagetable, a, false);
+        if (pte == NULL)
+        {
             panic("uvm_unmap: vm_walk");
-        if ((*pte & PTE_V) == 0) panic("uvm_unmap: not mapped");
-        if (PTE_FLAGS(*pte) == PTE_V) panic("uvm_unmap: not a leaf");
+        }
+        if ((*pte & PTE_V) == 0)
+        {
+            panic("uvm_unmap: not mapped");
+        }
+        if (PTE_FLAGS(*pte) == PTE_V)
+        {
+            panic("uvm_unmap: not a leaf");
+        }
         if (do_free)
         {
             size_t pa = PTE2PA(*pte);
@@ -210,7 +229,10 @@ pagetable_t uvm_create()
 size_t uvm_alloc(pagetable_t pagetable, size_t oldsz, size_t newsz,
                  int32_t xperm)
 {
-    if (newsz < oldsz) return oldsz;
+    if (newsz < oldsz)
+    {
+        return oldsz;
+    }
 
     oldsz = PAGE_ROUND_UP(oldsz);
     for (size_t a = oldsz; a < newsz; a += PAGE_SIZE)
@@ -276,29 +298,47 @@ void freewalk(pagetable_t pagetable)
 
 void uvm_free(pagetable_t pagetable, size_t sz)
 {
-    if (sz > 0) uvm_unmap(pagetable, 0, PAGE_ROUND_UP(sz) / PAGE_SIZE, 1);
+    if (sz > 0)
+    {
+        uvm_unmap(pagetable, 0, PAGE_ROUND_UP(sz) / PAGE_SIZE, 1);
+    }
     freewalk(pagetable);
 }
 
 int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
 {
     pte_t *pte;
-    size_t pa, i;
-    char *mem;
+    size_t i;
+
+    bool fatal_error_happened = false;
 
     for (i = 0; i < sz; i += PAGE_SIZE)
     {
-        if ((pte = vm_walk(old, i, false)) == NULL)
+        pte = vm_walk(old, i, false);
+        if (pte == NULL)
+        {
             panic("uvm_copy: pte should exist");
-        if ((*pte & PTE_V) == 0) panic("uvm_copy: page not present");
-        pa = PTE2PA(*pte);
+        }
+        if ((*pte & PTE_V) == 0)
+        {
+            panic("uvm_copy: page not present");
+        }
+        pte_t pa = PTE2PA(*pte);
         uint32_t flags = PTE_FLAGS(*pte);
-        if ((mem = kalloc()) == 0) goto err;
+
+        char *mem = kalloc();
+        if (mem == NULL)
+        {
+            fatal_error_happened = true;
+            break;
+        }
+
         memmove(mem, (char *)pa, PAGE_SIZE);
         if (kvm_map(new, i, PAGE_SIZE, (size_t)mem, flags) != 0)
         {
             kfree(mem);
-            goto err;
+            fatal_error_happened = true;
+            break;
         }
     }
 
@@ -306,11 +346,13 @@ int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
     // instruction caches
     instruction_memory_barrier();
 
-    return 0;
+    if (fatal_error_happened)
+    {
+        uvm_unmap(new, 0, i / PAGE_SIZE, 1);
+        return -1;
+    }
 
-err:
-    uvm_unmap(new, 0, i / PAGE_SIZE, 1);
-    return -1;
+    return 0;
 }
 
 void uvm_clear(pagetable_t pagetable, size_t va)
@@ -323,80 +365,108 @@ void uvm_clear(pagetable_t pagetable, size_t va)
     *pte &= ~PTE_U;
 }
 
-int32_t uvm_copy_out(pagetable_t pagetable, size_t dstva, char *src, size_t len)
+int32_t uvm_copy_out(pagetable_t pagetable, size_t dst_va, char *src_pa,
+                     size_t len)
 {
-    size_t n, va0, pa0;
-
     while (len > 0)
     {
-        va0 = PAGE_ROUND_DOWN(dstva);
-        pa0 = uvm_get_physical_addr(pagetable, va0);
-        if (pa0 == 0) return -1;
-        n = PAGE_SIZE - (dstva - va0);
-        if (n > len) n = len;
-        memmove((void *)(pa0 + (dstva - va0)), src, n);
+        // copy up to one page each loop
+
+        size_t dst_va_page_start = PAGE_ROUND_DOWN(dst_va);
+        size_t dst_pa_page_start =
+            uvm_get_physical_addr(pagetable, dst_va_page_start);
+        if (dst_pa_page_start == 0)
+        {
+            return -1;
+        }
+
+        size_t dst_offset_in_page = dst_va - dst_va_page_start;
+        size_t n = PAGE_SIZE - dst_offset_in_page;
+        if (n > len)
+        {
+            n = len;
+        }
+        memmove((void *)(dst_pa_page_start + dst_offset_in_page), src_pa, n);
 
         len -= n;
-        src += n;
-        dstva = va0 + PAGE_SIZE;
+        src_pa += n;
+        dst_va = dst_va_page_start + PAGE_SIZE;
     }
     return 0;
 }
 
-int32_t uvm_copy_in(pagetable_t pagetable, char *dst, size_t srcva, size_t len)
+int32_t uvm_copy_in(pagetable_t pagetable, char *dst_pa, size_t src_va,
+                    size_t len)
 {
-    size_t n, va0, pa0;
-
     while (len > 0)
     {
-        va0 = PAGE_ROUND_DOWN(srcva);
-        pa0 = uvm_get_physical_addr(pagetable, va0);
-        if (pa0 == 0) return -1;
-        n = PAGE_SIZE - (srcva - va0);
-        if (n > len) n = len;
-        memmove(dst, (void *)(pa0 + (srcva - va0)), n);
+        // copy up to one page each loop
+
+        size_t src_va_page_start = PAGE_ROUND_DOWN(src_va);
+        size_t src_pa_page_start =
+            uvm_get_physical_addr(pagetable, src_va_page_start);
+        if (src_pa_page_start == 0)
+        {
+            return -1;
+        }
+
+        size_t src_offset_in_page = src_va - src_va_page_start;
+        size_t n = PAGE_SIZE - src_offset_in_page;
+        if (n > len)
+        {
+            n = len;
+        }
+        memmove(dst_pa, (void *)(src_pa_page_start + src_offset_in_page), n);
 
         len -= n;
-        dst += n;
-        srcva = va0 + PAGE_SIZE;
+        dst_pa += n;
+        src_va = src_va_page_start + PAGE_SIZE;
     }
     return 0;
 }
 
-int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst, size_t srcva,
+int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
                         size_t max)
 {
-    size_t n, va0, pa0;
     bool got_null = false;
 
     while (got_null == false && max > 0)
     {
-        va0 = PAGE_ROUND_DOWN(srcva);
-        pa0 = uvm_get_physical_addr(pagetable, va0);
-        if (pa0 == 0) return -1;
-        n = PAGE_SIZE - (srcva - va0);
-        if (n > max) n = max;
+        size_t src_va_page_start = PAGE_ROUND_DOWN(src_va);
+        size_t src_pa_page_start =
+            uvm_get_physical_addr(pagetable, src_va_page_start);
+        if (src_pa_page_start == 0)
+        {
+            return -1;
+        }
 
-        char *p = (char *)(pa0 + (srcva - va0));
+        size_t src_offset_in_page = src_va - src_va_page_start;
+        size_t n = PAGE_SIZE - src_offset_in_page;
+        if (n > max)
+        {
+            n = max;
+        }
+
+        char *src_pa = (char *)(src_pa_page_start + src_offset_in_page);
         while (n > 0)
         {
-            if (*p == '\0')
+            if (*src_pa == '\0')
             {
-                *dst = '\0';
+                *dst_pa = '\0';
                 got_null = true;
                 break;
             }
             else
             {
-                *dst = *p;
+                *dst_pa = *src_pa;
             }
             --n;
             --max;
-            p++;
-            dst++;
+            src_pa++;
+            dst_pa++;
         }
 
-        srcva = va0 + PAGE_SIZE;
+        src_va = src_va_page_start + PAGE_SIZE;
     }
     if (got_null)
     {

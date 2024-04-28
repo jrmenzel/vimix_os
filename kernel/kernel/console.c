@@ -21,12 +21,13 @@
 #include <mm/memlayout.h>
 
 #define BACKSPACE 0x100
+#define DELETE_KEY '\x7f'
 #define CONTROL_KEY(x) ((x) - '@')  // Control-x
 
 /// send one character to the uart.
 /// called by printk(), and to echo input characters,
 /// but not from write().
-void console_putc(int c)
+void console_putc(int32_t c)
 {
     if (c == BACKSPACE)
     {
@@ -58,10 +59,13 @@ ssize_t console_write(bool addr_is_userspace, size_t src, size_t n)
 {
     ssize_t i;
 
-    for (i = 0; i < n; i++)
+    for (i = 0; i < (ssize_t)n; i++)
     {
         char c;
-        if (either_copyin(&c, addr_is_userspace, src + i, 1) == -1) break;
+        if (either_copyin(&c, addr_is_userspace, src + i, 1) == -1)
+        {
+            break;
+        }
         uart_putc(c);
     }
 
@@ -74,11 +78,8 @@ ssize_t console_write(bool addr_is_userspace, size_t src, size_t n)
 /// or kernel address.
 ssize_t console_read(bool addr_is_userspace, size_t dst, size_t n)
 {
-    size_t target;
-    int c;
-    char cbuf;
+    size_t target = n;
 
-    target = n;
     spin_lock(&g_console.lock);
     while (n > 0)
     {
@@ -94,7 +95,7 @@ ssize_t console_read(bool addr_is_userspace, size_t dst, size_t n)
             sleep(&g_console.r, &g_console.lock);
         }
 
-        c = g_console.buf[g_console.r++ % INPUT_BUF_SIZE];
+        int32_t c = g_console.buf[g_console.r++ % INPUT_BUF_SIZE];
 
         if (c == CONTROL_KEY('D'))
         {  // end-of-file
@@ -108,7 +109,7 @@ ssize_t console_read(bool addr_is_userspace, size_t dst, size_t n)
         }
 
         // copy the input byte to the user-space buffer.
-        cbuf = c;
+        char cbuf = c;
         if (either_copyout(addr_is_userspace, dst, &cbuf, 1) == -1) break;
 
         dst++;
@@ -130,7 +131,7 @@ ssize_t console_read(bool addr_is_userspace, size_t dst, size_t n)
 /// uart_interrupt_handler() calls this for input character.
 /// do erase/kill processing, append to g_console.buf,
 /// wake up console_read() if a whole line has arrived.
-void console_interrupt_handler(int c)
+void console_interrupt_handler(int32_t c)
 {
     spin_lock(&g_console.lock);
 
@@ -148,7 +149,7 @@ void console_interrupt_handler(int c)
             }
             break;
         case CONTROL_KEY('H'):  // Backspace
-        case '\x7f':            // Delete key
+        case DELETE_KEY:        // Delete key
             if (g_console.e != g_console.w)
             {
                 g_console.e--;

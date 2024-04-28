@@ -17,9 +17,22 @@
 #include <kernel/smp.h>
 #include <mm/memlayout.h>
 
+// to get a string from the git version number define
+#define str_from_define(s) str(s)
+#define str(s) #s
+
 /// let hart 0 (or the first hart in SBI mode) signal to other harts when the
 /// init is done which should only run on one core
 volatile size_t g_global_init_done = GLOBAL_INIT_NOT_STARTED;
+
+/// @brief print some debug info during boot
+void print_kernel_info()
+{
+    printk("%dKB of Kernel code\n", (size_t)(size_of_text) / 1024);
+    printk("%dKB of read only data\n", (size_t)(size_of_rodata) / 1024);
+    printk("%dKB of data\n", (size_t)(size_of_data) / 1024);
+    printk("%dKB of bss / uninitialized data\n", (size_t)(size_of_bss) / 1024);
+}
 
 #ifdef __ENABLE_SBI__
 #define FEATURE_STRING "(SBI enabled)"
@@ -40,7 +53,8 @@ void main(void *device_tree, size_t is_first_thread)
         printk_init();
         printk("\n");
         printk("VIMIX OS " _arch_bits_string " bit " FEATURE_STRING
-               " is booting\n");
+               " kernel version " str_from_define(GIT_HASH) " is booting\n");
+        print_kernel_info();
         printk("\n");
 
         // e.g. boots other harts in SBI mode:
@@ -83,8 +97,9 @@ void main(void *device_tree, size_t is_first_thread)
         {
             __sync_synchronize();
         }
-        printk("hart %d starting\n", smp_processor_id());
     }
+    printk("hart %d starting %s\n", smp_processor_id(),
+           (is_first_thread ? "(init hart)" : ""));
 
     kvm_init_per_cpu();        // turn on paging
     set_s_mode_trap_vector();  // install kernel trap vector

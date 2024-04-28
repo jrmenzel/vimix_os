@@ -28,6 +28,7 @@ typedef int FILE_DESCRIPTOR;
 #endif  // __USE_REAL_STDC__
 
 typedef unsigned char uchar;
+#define INVALID_FILE_DESCRIPTOR (-1)
 
 /// @brief Process ID.
 typedef int32_t pid_t;
