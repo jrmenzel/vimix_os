@@ -142,7 +142,7 @@ struct inode *inode_alloc(dev_t dev, mode_t mode)
 
 struct inode *inode_open_or_create(const char *path, mode_t mode, dev_t device)
 {
-    char name[XV6_NAME_MAX];
+    char name[NAME_MAX];
 
     struct inode *dir = inode_of_parent_from_path(path, name);
     if (dir == NULL)
@@ -483,7 +483,7 @@ ssize_t inode_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
 
 int file_name_cmp(const char *s, const char *t)
 {
-    return strncmp(s, t, XV6_NAME_MAX);
+    return strncmp(s, t, NAME_MAX);
 }
 
 struct inode *inode_dir_lookup(struct inode *dir, const char *name,
@@ -592,9 +592,9 @@ static const char *skipelem(const char *path, char *name)
     }
 
     size_t len = path - s;
-    if (len >= XV6_NAME_MAX)
+    if (len >= NAME_MAX)
     {
-        memmove(name, s, XV6_NAME_MAX);
+        memmove(name, s, NAME_MAX);
     }
     else
     {
@@ -611,7 +611,7 @@ static const char *skipelem(const char *path, char *name)
 
 /// Look up and return the inode for a path name.
 /// If get_parent == true, return the inode for the parent and copy the final
-/// path element into name, which must have room for XV6_NAME_MAX bytes.
+/// path element into name, which must have room for NAME_MAX bytes.
 /// Must be called inside a transaction since it calls inode_put().
 static struct inode *namex(const char *path, bool get_parent, char *name)
 {
@@ -665,7 +665,7 @@ static struct inode *namex(const char *path, bool get_parent, char *name)
 
 struct inode *inode_from_path(const char *path)
 {
-    char name[XV6_NAME_MAX];
+    char name[NAME_MAX];
     return namex(path, false, name);
 }
 

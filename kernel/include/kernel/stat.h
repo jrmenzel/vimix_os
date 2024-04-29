@@ -1,4 +1,7 @@
 /* SPDX-License-Identifier: MIT */
+/*
+ * Some defines / values from Minix 2 and Linux
+ */
 #pragma once
 
 #include <kernel/kernel.h>

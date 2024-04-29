@@ -74,6 +74,7 @@ int fflush(FILE *stream) { return 0; }
 FILE *fopen(const char *filename, const char *modes)
 {
     int32_t flags = 0;
+    mode_t mode = S_IFREG;
 
     if (strcmp(modes, "r") == 0)
     {
@@ -82,10 +83,12 @@ FILE *fopen(const char *filename, const char *modes)
     else if (strcmp(modes, "w") == 0)
     {
         flags = O_WRONLY | O_CREAT | O_TRUNC;
+        mode |= S_IWUSR;
     }
     else if (strcmp(modes, "a") == 0)
     {
         flags = O_WRONLY | O_CREAT | O_APPEND;
+        mode |= S_IWUSR;
     }
     else if (strcmp(modes, "r+") == 0)
     {
@@ -94,10 +97,12 @@ FILE *fopen(const char *filename, const char *modes)
     else if (strcmp(modes, "w+") == 0)
     {
         flags = O_RDWR | O_CREAT | O_TRUNC;
+        mode = mode | S_IRUSR | S_IWUSR;
     }
     else if (strcmp(modes, "a+") == 0)
     {
         flags = O_RDWR | O_CREAT | O_APPEND;
+        mode = mode | S_IRUSR | S_IWUSR;
     }
     else
     {
@@ -105,7 +110,7 @@ FILE *fopen(const char *filename, const char *modes)
     }
 
     FILE *file = malloc(sizeof(FILE));
-    file->fd = open(filename, flags);
+    file->fd = open(filename, flags, mode);
 
     return file;
 }

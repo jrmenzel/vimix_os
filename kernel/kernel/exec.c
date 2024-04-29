@@ -3,11 +3,11 @@
 #include <arch/fence.h>
 #include <fs/xv6fs/log.h>
 #include <kernel/elf.h>
+#include <kernel/exec.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
-#include <kernel/vm.h>
 #include <mm/memlayout.h>
 
 // Load a program segment into pagetable at virtual address va.

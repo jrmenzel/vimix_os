@@ -16,10 +16,6 @@ static const pagetable_t INVALID_PAGETABLE_T = NULL;
 /// Initialize the one g_kernel_pagetable
 void kvm_init(char *end_of_memory);
 
-/// Switch h/w page table register to the kernel's page table
-/// and enable paging.
-void kvm_init_per_cpu();
-
 /// @brief add a mapping to the page table.
 /// only used when booting, does not flush TLB or enable paging. Kernel panic if
 /// mapping failed.

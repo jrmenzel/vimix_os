@@ -109,77 +109,17 @@ size_t sys_fstat()
 size_t sys_link()
 {
     // parameter 0 / 1: const char *from / *to
-    char name[XV6_NAME_MAX], path_to[PATH_MAX], path_from[PATH_MAX];
-    struct inode *dir, *ip;
-
+    char path_to[PATH_MAX], path_from[PATH_MAX];
     if (argstr(0, path_from, PATH_MAX) < 0 || argstr(1, path_to, PATH_MAX) < 0)
     {
         return -1;
     }
 
-    log_begin_fs_transaction();
-    if ((ip = inode_from_path(path_from)) == NULL)
-    {
-        log_end_fs_transaction();
-        return -1;
-    }
-
-    inode_lock(ip);
-    if (S_ISDIR(ip->i_mode))
-    {
-        inode_unlock_put(ip);
-        log_end_fs_transaction();
-        return -1;
-    }
-
-    ip->nlink++;
-    inode_update(ip);
-    inode_unlock(ip);
-
-    if ((dir = inode_of_parent_from_path(path_to, name)) == NULL) goto bad;
-    inode_lock(dir);
-    if (dir->dev != ip->dev || inode_dir_link(dir, name, ip->inum) < 0)
-    {
-        inode_unlock_put(dir);
-        goto bad;
-    }
-    inode_unlock_put(dir);
-    inode_put(ip);
-
-    log_end_fs_transaction();
-
-    return 0;
-
-bad:
-    inode_lock(ip);
-    ip->nlink--;
-    inode_update(ip);
-    inode_unlock_put(ip);
-    log_end_fs_transaction();
-    return -1;
-}
-
-/// Is the directory dp empty except for "." and ".." ?
-static int isdirempty(struct inode *dir)
-{
-    struct xv6fs_dirent de;
-
-    for (size_t off = 2 * sizeof(de); off < dir->size; off += sizeof(de))
-    {
-        if (inode_read(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
-            panic("isdirempty: inode_read");
-        if (de.inum != 0) return 0;
-    }
-    return 1;
+    return file_link(path_from, path_to);
 }
 
 size_t sys_unlink()
 {
-    struct inode *ip, *dir;
-    struct xv6fs_dirent de;
-    char name[XV6_NAME_MAX];
-    uint32_t off;
-
     // parameter 0: const char *pathname
     char path[PATH_MAX];
     if (argstr(0, path, PATH_MAX) < 0)
@@ -187,51 +127,7 @@ size_t sys_unlink()
         return -1;
     }
 
-    log_begin_fs_transaction();
-    if ((dir = inode_of_parent_from_path(path, name)) == NULL)
-    {
-        log_end_fs_transaction();
-        return -1;
-    }
-
-    inode_lock(dir);
-
-    // Cannot unlink "." or "..".
-    if (file_name_cmp(name, ".") == 0 || file_name_cmp(name, "..") == 0)
-        goto bad;
-
-    if ((ip = inode_dir_lookup(dir, name, &off)) == NULL) goto bad;
-    inode_lock(ip);
-
-    if (ip->nlink < 1) panic("unlink: nlink < 1");
-    if (S_ISDIR(ip->i_mode) && !isdirempty(ip))
-    {
-        inode_unlock_put(ip);
-        goto bad;
-    }
-
-    memset(&de, 0, sizeof(de));
-    if (inode_write(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
-        panic("unlink: inode_write");
-    if (S_ISDIR(ip->i_mode))
-    {
-        dir->nlink--;
-        inode_update(dir);
-    }
-    inode_unlock_put(dir);
-
-    ip->nlink--;
-    inode_update(ip);
-    inode_unlock_put(ip);
-
-    log_end_fs_transaction();
-
-    return 0;
-
-bad:
-    inode_unlock_put(dir);
-    log_end_fs_transaction();
-    return -1;
+    return file_unlink(path);
 }
 
 size_t sys_open()

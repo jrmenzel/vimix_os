@@ -5,6 +5,7 @@
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
+#include <kernel/smp.h>
 #include <kernel/spinlock.h>
 
 #ifdef CONFIG_DEBUG_SPINLOCK

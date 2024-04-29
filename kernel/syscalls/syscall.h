@@ -3,12 +3,13 @@
 
 #include <kernel/file.h>
 #include <kernel/kernel.h>
+#include <kernel/proc.h>
 
 /// @brief Gets the syscall number from the processes trapframe and
 /// calls the matching syscall. Also sets return value to trapframe.
 /// Called by the interrupt vector user_mode_interrupt_handler() for all
 /// syscalls.
-void syscall();
+void syscall(struct process *proc);
 
 // ********************************************************
 // Process control from sys_process.c

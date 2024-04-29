@@ -5,6 +5,7 @@
 #include <kernel/exec.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
+#include <kernel/limits.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>

@@ -10,11 +10,6 @@
 #include <kernel/string.h>
 #include <mm/memlayout.h>
 
-void kfree_range(void *pa_start, void *pa_end);
-
-extern char end_of_kernel[];  /// first address after kernel.
-                              /// defined by kernel.ld.
-
 /// each free 4KB page will contain this struct to form a linked list
 struct free_page
 {
@@ -25,6 +20,7 @@ struct free_page
 struct
 {
     struct spinlock lock;
+    char *end_of_physical_memory;
     struct free_page *list_of_free_pages;
 #ifdef CONFIG_DEBUG_KALLOC
     size_t pages_allocated;
@@ -45,10 +41,11 @@ void kfree_range(void *pa_start, void *pa_end)
     }
 }
 
-void kalloc_init()
+void kalloc_init(char *pa_start, char *pa_end)
 {
     spin_lock_init(&g_kernel_memory.lock, "kmem");
-    kfree_range(end_of_kernel, (void *)PHYSTOP);
+    g_kernel_memory.end_of_physical_memory = pa_end;
+    kfree_range(pa_start, pa_end);
 
 #ifdef CONFIG_DEBUG_KALLOC
     // reset *after* kfree_range (as kfree decrements the counter)
@@ -58,9 +55,15 @@ void kalloc_init()
 
 void kfree(void *pa)
 {
-    if (((size_t)pa % PAGE_SIZE) != 0 || (char *)pa < end_of_kernel ||
-        (size_t)pa >= PHYSTOP)
-        panic("kfree");
+    if (((size_t)pa % PAGE_SIZE) != 0  // if pa is not page aligned
+        || (char *)pa < end_of_kernel  // or pa is before or inside the kernel
+                                       // binary in memory
+        || (char *)pa >=
+               g_kernel_memory.end_of_physical_memory)  // or pa is outside of
+                                                        // the physical memory
+    {
+        panic("kfree: out of range or unaligned address");
+    }
 
     // Fill with junk to catch dangling refs.
     memset(pa, 1, PAGE_SIZE);

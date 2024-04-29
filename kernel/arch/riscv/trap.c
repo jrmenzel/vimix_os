@@ -144,7 +144,7 @@ void user_mode_interrupt_handler()
         // so enable only now that we're done with those registers.
         cpu_enable_device_interrupts();
 
-        syscall();
+        syscall(proc);
     }
     else if (int_src != INTERRUPT_SOURCE_NOT_RECOGNIZED)
     {

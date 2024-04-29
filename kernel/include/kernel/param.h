@@ -12,8 +12,6 @@
 #define MAX_OP_BLOCKS 10             ///< max # of blocks any FS op writes
 #define LOGSIZE (MAX_OP_BLOCKS * 3)  ///< max data blocks in on-disk log
 #define NUM_BUFFERS_IN_CACHE (MAX_OP_BLOCKS * 3)  ///< size of disk block cache
-#define FSSIZE 2000   ///< size of file system in blocks
-#define PATH_MAX 128  ///< maximum file path name
 
 /// adds extra runtime tests to check correct spinlock
 /// usage and stores an optional name per lock for debugging.

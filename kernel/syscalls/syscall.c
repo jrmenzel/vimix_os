@@ -76,11 +76,22 @@ int argfd(int n, int *pfd, struct file **pf)
     struct file *f;
 
     argint(n, &fd);
-    if (fd < 0 || fd >= MAX_FILES_PER_PROCESS ||
-        (f = get_current()->files[fd]) == NULL)
+    struct process *proc = get_current();
+    if (fd < 0 || fd >= MAX_FILES_PER_PROCESS || (f = proc->files[fd]) == 0)
+    {
         return -1;
-    if (pfd) *pfd = fd;
-    if (pf) *pf = f;
+    }
+
+    if (pfd)
+    {
+        *pfd = fd;
+    }
+
+    if (pf)
+    {
+        *pf = f;
+    }
+
     return 0;
 }
 
@@ -112,9 +123,8 @@ static size_t (*syscalls[])() = {
 };
 // clang-format on
 
-void syscall()
+void syscall(struct process *proc)
 {
-    struct process *proc = get_current();
     size_t num = trapframe_get_sys_call_number(proc->trapframe);
 
     if (num > 0 && num < NELEM(syscalls) && syscalls[num])

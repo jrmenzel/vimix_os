@@ -33,23 +33,20 @@ int memcmp(const void *v1, const void *v2, size_t n)
 
 void *memmove(void *dst, const void *src, size_t n)
 {
-    ssize_t signed_n = n;
-    const char *s;
-    char *d;
+    char *_dst;
+    const char *_src;
 
-    if (signed_n == 0) return dst;
-
-    s = src;
-    d = dst;
-    if (s < d && s + signed_n > d)
+    _dst = dst;
+    _src = src;
+    if (_src > _dst)
     {
-        s += signed_n;
-        d += signed_n;
-        while (signed_n-- > 0) *--d = *--s;
+        while (n-- > 0) *_dst++ = *_src++;
     }
     else
     {
-        while (signed_n-- > 0) *d++ = *s++;
+        _dst += n;
+        _src += n;
+        while (n-- > 0) *--_dst = *--_src;
     }
 
     return dst;
@@ -88,22 +85,30 @@ char *strcpy(char *dst, const char *src)
     return input_dst;
 }
 
-int strncmp(const char *p, const char *q, size_t n)
+int strncmp(const char *s1, const char *s2, size_t n)
 {
-    while (n > 0 && *p && *p == *q) n--, p++, q++;
-    if (n == 0) return 0;
-    return (uchar)*p - (uchar)*q;
+    while (n > 0 && *s1 && *s1 == *s2)
+    {
+        n--;
+        s1++;
+        s2++;
+    }
+    if (n == 0)
+    {
+        return 0;
+    }
+    return (uchar)*s1 - (uchar)*s2;
 }
 
-char *strncpy(char *s, const char *t, size_t n)
+char *strncpy(char *dst, const char *src, size_t n)
 {
-    char *input_dst = s;
+    char *input_dst = dst;
 
     while (n)
     {
         n--;
         // copy char and test for null terminator
-        const char current_char = (*s++ = *t++);
+        const char current_char = (*dst++ = *src++);
         if (current_char == '\0')
         {
             break;
@@ -114,30 +119,26 @@ char *strncpy(char *s, const char *t, size_t n)
     while (n)
     {
         n--;
-        *s++ = 0;
+        *dst++ = 0;
     }
 
     return input_dst;
 }
 
-/// Like strncpy but guaranteed to NUL-terminate.
-char *safestrcpy(char *s, const char *t, size_t n)
+char *safestrcpy(char *dst, const char *src, size_t n)
 {
-    char *os;
-
-    os = s;
-    if (n <= 0) return os;
-    while (--n > 0 && (*s++ = *t++) != 0)
-        ;
-    *s = 0;
-    return os;
+    char *ret = strncpy(dst, src, n);
+    dst[n - 1] = 0;
+    return ret;
 }
 
-size_t strlen(const char *s)
+size_t strlen(const char *str)
 {
     size_t n;
 
-    for (n = 0; s[n]; n++)
-        ;
+    for (n = 0; str[n]; n++)
+    {
+    };
+
     return n;
 }

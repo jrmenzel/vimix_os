@@ -4,6 +4,7 @@
 #include <drivers/virtio.h>
 #include <kernel/buf.h>
 #include <kernel/kernel.h>
+#include <kernel/spinlock.h>
 
 struct virtio_disk
 {

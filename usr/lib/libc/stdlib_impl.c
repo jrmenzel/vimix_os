@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <kernel/limits.h>
 #include <stdlib.h>
 #include <unistd.h>
 

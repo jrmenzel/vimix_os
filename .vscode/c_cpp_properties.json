@@ -38,6 +38,19 @@
             "compilerArgs": [
                 "-nostdinc"
             ]
+        },
+        {
+            "name": "userspace host",
+            "intelliSenseMode": "linux-gcc-x64",
+            "cStandard": "c17",
+            "compilerPath": "/usr/bin/gcc",
+            "includePath": [
+                "/usr/include",
+                "/usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include"
+            ],
+            "defines": [
+                "BUILD_ON_HOST"
+            ]
         }
     ],
     "version": 4

@@ -40,56 +40,60 @@ void print_kernel_info()
 #define FEATURE_STRING "(bare metal)"
 #endif
 
+/// some init that only one thread should perform while all others wait
+void init_by_first_thread()
+{
+    // init a way to print, also starts uart:
+    console_init();
+    printk_init();
+    printk("\n");
+    printk("VIMIX OS " _arch_bits_string " bit " FEATURE_STRING
+           " kernel version " str_from_define(GIT_HASH) " is booting\n");
+    print_kernel_info();
+    printk("\n");
+
+    // e.g. boots other harts in SBI mode:
+    init_platform();
+
+    // init memory management:
+    printk("init memory management...\n");
+    kalloc_init(end_of_kernel, (char *)PHYSTOP);  // physical page allocator
+    kvm_init((char *)PHYSTOP);                    // create kernel page table
+
+    // init processes, syscalls and interrupts:
+    printk("init process and syscall support...\n");
+    proc_init();  // process table
+    trap_init();  // trap vectors
+    init_interrupt_controller();
+
+    // init filesystem:
+    printk("init filesystem...\n");
+    bio_init();          // buffer cache
+    inode_init();        // inode table
+    file_init();         // file table
+    virtio_disk_init();  // emulated hard disk
+    // file system init will happen when the first process gets forked below
+    // in userspace init.
+
+    // process 0:
+    printk("init userspace...\n");
+    userspace_init();  // first user process
+
+#ifdef CONFIG_DEBUG_KALLOC
+    printk("Memory used: %dkb\n", kalloc_debug_get_allocation_count() * 4);
+#endif  // CONFIG_DEBUG_KALLOC
+
+    // full memory barrier (gcc buildin):
+    __sync_synchronize();
+    g_global_init_done = GLOBAL_INIT_DONE;
+}
+
 /// start() jumps here in supervisor mode on all CPUs.
 void main(void *device_tree, size_t is_first_thread)
 {
     if (is_first_thread)
     {
-        // this init code is executed on one hart while the others wait:
-        g_global_init_done = GLOBAL_INIT_BSS_CLEAR;
-
-        // init a way to print, also starts uart:
-        console_init();
-        printk_init();
-        printk("\n");
-        printk("VIMIX OS " _arch_bits_string " bit " FEATURE_STRING
-               " kernel version " str_from_define(GIT_HASH) " is booting\n");
-        print_kernel_info();
-        printk("\n");
-
-        // e.g. boots other harts in SBI mode:
-        init_platform();
-
-        // init memory management:
-        kalloc_init(end_of_kernel, (char *)PHYSTOP);  // physical page allocator
-        kvm_init((char *)PHYSTOP);  // create kernel page table
-        kvm_init_per_cpu();         // turn on paging
-
-        // init processes, syscalls and interrupts:
-        proc_init();               // process table
-        trap_init();               // trap vectors
-        set_s_mode_trap_vector();  // install kernel trap vector
-        init_interrupt_controller();
-        init_interrupt_controller_per_hart();
-
-        // init filesystem:
-        bio_init();          // buffer cache
-        inode_init();        // inode table
-        file_init();         // file table
-        virtio_disk_init();  // emulated hard disk
-
-        // process 0:
-        userspace_init();  // first user process
-
-        printk("hart %d starting after init...\n", smp_processor_id());
-
-#ifdef CONFIG_DEBUG_KALLOC
-        printk("Memory used: %dkb\n", kalloc_debug_get_allocation_count() * 4);
-#endif  // CONFIG_DEBUG_KALLOC
-
-        // full memory barrier (gcc buildin):
-        __sync_synchronize();
-        g_global_init_done = GLOBAL_INIT_DONE;
+        init_by_first_thread();
     }
     else
     {

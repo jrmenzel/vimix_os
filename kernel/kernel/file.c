@@ -15,7 +15,7 @@
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/stat.h>
-#include <kernel/vm.h>
+#include <kernel/string.h>
 
 struct devsw devsw[MAX_DEVICES];
 struct
@@ -87,13 +87,14 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
 
     if (flags & O_CREAT)
     {
+        // only create regular files this way:
         if (!check_and_adjust_mode(&mode, S_IFREG) || !S_ISREG(mode))
         {
             log_end_fs_transaction();
             return -1;
         }
 
-        char name[XV6_NAME_MAX];
+        char name[NAME_MAX];
         struct inode *iparent = inode_of_parent_from_path(pathname, name);
         if (iparent != NULL)
         {
@@ -346,4 +347,140 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
     }
 
     return ret;
+}
+
+ssize_t file_link(char *path_from, char *path_to)
+{
+    log_begin_fs_transaction();
+    struct inode *ip = inode_from_path(path_from);
+    if (ip == NULL)
+    {
+        log_end_fs_transaction();
+        return -1;
+    }
+
+    inode_lock(ip);
+    if (S_ISDIR(ip->i_mode))
+    {
+        inode_unlock_put(ip);
+        log_end_fs_transaction();
+        return -1;
+    }
+
+    ip->nlink++;
+    inode_update(ip);
+    inode_unlock(ip);
+
+    char name[NAME_MAX];
+    struct inode *dir = inode_of_parent_from_path(path_to, name);
+    if (dir == NULL)
+    {
+        inode_lock(ip);
+        ip->nlink--;
+        inode_update(ip);
+        inode_unlock_put(ip);
+        log_end_fs_transaction();
+        return -1;
+    }
+
+    inode_lock(dir);
+    if (dir->dev != ip->dev || inode_dir_link(dir, name, ip->inum) < 0)
+    {
+        inode_unlock_put(dir);
+
+        inode_lock(ip);
+        ip->nlink--;
+        inode_update(ip);
+        inode_unlock_put(ip);
+        log_end_fs_transaction();
+        return -1;
+    }
+    inode_unlock_put(dir);
+    inode_put(ip);
+
+    log_end_fs_transaction();
+
+    return 0;
+}
+
+/// Is the directory dir empty except for "." and ".." ?
+static int isdirempty(struct inode *dir)
+{
+    struct xv6fs_dirent de;
+
+    for (size_t off = 2 * sizeof(de); off < dir->size; off += sizeof(de))
+    {
+        if (inode_read(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
+            panic("isdirempty: inode_read");
+        if (de.inum != 0) return 0;
+    }
+    return 1;
+}
+
+ssize_t file_unlink(char *path)
+{
+    log_begin_fs_transaction();
+    char name[NAME_MAX];
+    struct inode *dir = inode_of_parent_from_path(path, name);
+    if (dir == NULL)
+    {
+        log_end_fs_transaction();
+        return -1;
+    }
+
+    inode_lock(dir);
+
+    // Cannot unlink "." or "..".
+    if (file_name_cmp(name, ".") == 0 || file_name_cmp(name, "..") == 0)
+    {
+        inode_unlock_put(dir);
+        log_end_fs_transaction();
+        return -1;
+    }
+
+    uint32_t off;
+    struct inode *ip = inode_dir_lookup(dir, name, &off);
+    if (ip == NULL)
+    {
+        inode_unlock_put(dir);
+        log_end_fs_transaction();
+        return -1;
+    }
+    inode_lock(ip);
+
+    if (ip->nlink < 1)
+    {
+        panic("unlink: nlink < 1");
+    }
+
+    if (S_ISDIR(ip->i_mode) && !isdirempty(ip))
+    {
+        inode_unlock_put(ip);
+        inode_unlock_put(dir);
+        log_end_fs_transaction();
+        return -1;
+    }
+
+    // delete directory entry by over-writing it with zeros:
+    struct xv6fs_dirent de;
+    memset(&de, 0, sizeof(de));
+    if (inode_write(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
+    {
+        panic("unlink: inode_write");
+    }
+
+    if (S_ISDIR(ip->i_mode))
+    {
+        dir->nlink--;
+        inode_update(dir);
+    }
+    inode_unlock_put(dir);
+
+    ip->nlink--;
+    inode_update(ip);
+    inode_unlock_put(ip);
+
+    log_end_fs_transaction();
+
+    return 0;
 }

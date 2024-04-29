@@ -17,7 +17,9 @@ void kfree(void* pa);
 
 /// @brief Free the RAM after the kernel loaded, called once at
 /// boot.
-void kalloc_init();
+/// @param pa_start physical address of the start to use for kernel allocations
+/// @param pa_end physical address of the end
+void kalloc_init(char* pa_start, char* pa_end);
 
 #ifdef CONFIG_DEBUG_KALLOC
 /// Returns the number of 4K allocations currently used.

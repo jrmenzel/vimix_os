@@ -97,6 +97,36 @@
                     "ignoreFailures": false
                 }
             ]
+        },
+        {
+            // debug a user space application on the host
+            "name": "host userspace: cat",
+            "program": "${workspaceRoot}/build/root_host/cat",
+            "args": ["README.md"],
+            "cwd": "${workspaceRoot}",
+            "type": "cppdbg",
+            "request": "launch",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    // https://sourceware.org/gdb/onlinedocs/gdb/Forks.html
+                    "description": "Fork follows Child process",
+                    "text": "set follow-fork-mode child",
+                    "ignoreFailures": true
+                },
+                {
+                    // https://sourceware.org/gdb/onlinedocs/gdb/Forks.html
+                    "description": "Fork will keep the other process attached to debugger",
+                    "text": "set detach-on-fork off",
+                    "ignoreFailures": true
+                }
+            ]
         }
     ]
 }

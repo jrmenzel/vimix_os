@@ -10,6 +10,7 @@
 
 #define stat xv6_stat  // avoid clash with host struct stat
 
+#define FSSIZE 2000  ///< size of file system in blocks
 #define MAX_ACTIVE_INODESS 200
 
 // Disk layout:
@@ -108,12 +109,14 @@ int main(int argc, char *argv[])
     rootino = i_alloc(XV6_FT_DIR);
     assert(rootino == ROOT_INODE);
 
-    bzero(&de, sizeof(de));
+    memset(&de, 0, sizeof(de));
+
     de.inum = xshort(rootino);
     strcpy(de.name, ".");
     iappend(rootino, &de, sizeof(de));
 
-    bzero(&de, sizeof(de));
+    memset(&de, 0, sizeof(de));
+
     de.inum = xshort(rootino);
     strcpy(de.name, "..");
     iappend(rootino, &de, sizeof(de));
@@ -139,7 +142,8 @@ int main(int argc, char *argv[])
 
         inum = i_alloc(XV6_FT_FILE);
 
-        bzero(&de, sizeof(de));
+        memset(&de, 0, sizeof(de));
+
         de.inum = xshort(inum);
         strncpy(de.name, shortname, XV6_NAME_MAX);
         iappend(rootino, &de, sizeof(de));
@@ -203,7 +207,8 @@ uint32_t i_alloc(uint16_t type)
     uint32_t inum = freeinode++;
     struct xv6fs_dinode din;
 
-    bzero(&din, sizeof(din));
+    memset(&din, 0, sizeof(din));
+
     din.type = xshort(type);
     din.nlink = xshort(1);
     din.size = xint(0);
@@ -218,7 +223,9 @@ void balloc(int used)
 
     printf("balloc: first %d blocks have been allocated\n", used);
     assert(used < BLOCK_SIZE * 8);
-    bzero(buf, BLOCK_SIZE);
+
+    memset(&buf, 0, BLOCK_SIZE);
+
     for (i = 0; i < used; i++)
     {
         buf[i / 8] = buf[i / 8] | (0x1 << (i % 8));
@@ -269,7 +276,9 @@ void iappend(uint32_t inum, void *xp, int n)
         }
         n1 = min(n, (fbn + 1) * BLOCK_SIZE - off);
         rsect(x, buf);
-        bcopy(p, buf + off - (fbn * BLOCK_SIZE), n1);
+
+        memmove(buf + off - (fbn * BLOCK_SIZE), p, n1);
+
         wsect(x, buf);
         n -= n1;
         off += n1;
@@ -281,6 +290,6 @@ void iappend(uint32_t inum, void *xp, int n)
 
 void die(const char *s)
 {
-    perror(s);
+    printf("ERROR: %s\n", s);
     exit(1);
 }

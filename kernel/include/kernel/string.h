@@ -17,6 +17,13 @@ int32_t memcmp(const void *s1, const void *s2, size_t n);
 /// @return Pointer to dst
 void *memmove(void *dst, const void *src, size_t n);
 
+/// @brief Copy memory area; areas CAN NOT overlap. Use memmove!
+/// @param dst destination address
+/// @param src source address
+/// @param n bytes to copy
+/// @return Pointer to dst
+void *memcpy(void *dst, const void *src, size_t n);
+
 /// @brief Fills memory region with constant value.
 /// @param dst Memory to set
 /// @param constant Only lower 8bit is used!

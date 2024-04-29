@@ -168,7 +168,10 @@ void copyinstr2(char *s)
 {
     char b[PATH_MAX + 1];
 
-    for (size_t i = 0; i < PATH_MAX; i++) b[i] = 'x';
+    for (size_t i = 0; i < PATH_MAX; i++)
+    {
+        b[i] = 'x';
+    }
     b[PATH_MAX] = '\0';
 
     int ret = unlink(b);
@@ -225,7 +228,7 @@ void copyinstr2(char *s)
     wait(&st);
     if (st != 747)
     {
-        printf("execv(echo, BIG) succeeded, should have failed\n");
+        printf("execv(echo, BIG) succeeded, should have failed (%d)\n", st);
         exit(1);
     }
 }
@@ -283,7 +286,7 @@ void copyinstr3(char *s)
 // application doesn't have anymore, because it returned it.
 void rwsbrk()
 {
-    size_t a = (size_t)sbrk(8192);
+    size_t a = (size_t)sbrk(2 * PAGE_SIZE);
 
     if (a == TEST_POINTER_ADDR_2)
     {
@@ -291,7 +294,7 @@ void rwsbrk()
         exit(1);
     }
 
-    if ((size_t)sbrk(-8192) == TEST_POINTER_ADDR_2)
+    if ((size_t)sbrk(-(2 * PAGE_SIZE)) == TEST_POINTER_ADDR_2)
     {
         printf("sbrk(rwsbrk) shrink failed\n");
         exit(1);
@@ -344,7 +347,7 @@ void truncate1(char *s)
     ssize_t n = read(fd2, buf, sizeof(buf));
     if (n != 4)
     {
-        printf("%s: read %d bytes, wanted 4\n", s, n);
+        printf("%s: read %ld bytes, wanted 4\n", s, n);
         exit(1);
     }
 
@@ -355,7 +358,7 @@ void truncate1(char *s)
     if (n != 0)
     {
         printf("aaa fd3=%d\n", fd3);
-        printf("%s: read %d bytes, wanted 0\n", s, n);
+        printf("%s: read %ld bytes, wanted 0\n", s, n);
         exit(1);
     }
 
@@ -363,7 +366,7 @@ void truncate1(char *s)
     if (n != 0)
     {
         printf("bbb fd2=%d\n", fd2);
-        printf("%s: read %d bytes, wanted 0\n", s, n);
+        printf("%s: read %ld bytes, wanted 0\n", s, n);
         exit(1);
     }
 
@@ -372,14 +375,14 @@ void truncate1(char *s)
     n = read(fd3, buf, sizeof(buf));
     if (n != 6)
     {
-        printf("%s: read %d bytes, wanted 6\n", s, n);
+        printf("%s: read %ld bytes, wanted 6\n", s, n);
         exit(1);
     }
 
     n = read(fd2, buf, sizeof(buf));
     if (n != 2)
     {
-        printf("%s: read %d bytes, wanted 2\n", s, n);
+        printf("%s: read %ld bytes, wanted 2\n", s, n);
         exit(1);
     }
 
@@ -406,7 +409,7 @@ void truncate2(char *s)
     ssize_t n = write(fd1, "x", 1);
     if (n != -1)
     {
-        printf("%s: write returned %d, expected -1\n", s, n);
+        printf("%s: write returned %ld, expected -1\n", s, n);
         exit(1);
     }
 
@@ -440,7 +443,7 @@ void truncate3(char *s)
             ssize_t n = write(fd, "1234567890", 10);
             if (n != 10)
             {
-                printf("%s: write got %d, expected 10\n", s, n);
+                printf("%s: write got %ld, expected 10\n", s, n);
                 exit(1);
             }
             close(fd);
@@ -462,7 +465,7 @@ void truncate3(char *s)
         ssize_t n = write(fd, "xxx", 3);
         if (n != 3)
         {
-            printf("%s: write got %d, expected 3\n", s, n);
+            printf("%s: write got %ld, expected 3\n", s, n);
             exit(1);
         }
         close(fd);
@@ -567,7 +570,7 @@ void openiputtest(char *s)
         }
         exit(0);
     }
-    sleep(1);
+    usleep(SHORT_SLEEP_MS * 1000);
     if (unlink("oidir") != 0)
     {
         printf("%s: unlink failed\n", s);
@@ -613,12 +616,12 @@ void writetest(char *s)
     {
         if (write(fd, "aaaaaaaaaa", SZ) != SZ)
         {
-            printf("%s: error: write aa %d new file failed\n", s, i);
+            printf("%s: error: write aa %ld new file failed\n", s, i);
             exit(1);
         }
         if (write(fd, "bbbbbbbbbb", SZ) != SZ)
         {
-            printf("%s: error: write bb %d new file failed\n", s, i);
+            printf("%s: error: write bb %ld new file failed\n", s, i);
             exit(1);
         }
     }
@@ -758,9 +761,7 @@ void dirtest(char *s)
 
 void exectest(char *s)
 {
-    int fd;
     char *echoargv[] = {"echo", "OK", 0};
-    char buf[3];
 
     unlink("echo-ok");
     pid_t pid = fork();
@@ -798,7 +799,8 @@ void exectest(char *s)
     }
     if (xstatus != 0) exit(xstatus);
 
-    fd = open("echo-ok", O_RDONLY);
+    int fd = open("echo-ok", O_RDONLY);
+    char buf[3];
     if (fd < 0)
     {
         printf("%s: open failed\n", s);
@@ -900,6 +902,7 @@ void pipe1(char *s)
 }
 
 // test if child is killed (status = -1)
+// assumes to run out of processes
 void killstatus(char *s)
 {
     for (size_t i = 0; i < 25; i++)
@@ -973,7 +976,10 @@ void preempt(char *s)
     if (pid3 == 0)
     {
         close(pfds[0]);
-        if (write(pfds[1], "x", 1) != 1) printf("%s: preempt write error", s);
+        if (write(pfds[1], "x", 1) != 1)
+        {
+            printf("%s: preempt write error", s);
+        }
         close(pfds[1]);
         while (true)
         {
@@ -1106,10 +1112,7 @@ void twochildren(char *s)
 // concurrent forks to try to expose locking bugs.
 void forkfork(char *s)
 {
-    enum
-    {
-        N = 2
-    };
+    const size_t N = 2;
 
     for (size_t i = 0; i < N; i++)
     {
@@ -1179,7 +1182,7 @@ void forkforkfork(char *s)
     }
 
     usleep(FORK_FORK_FORK_DURATION_MS * 1000);
-    close(open("stopforking", O_CREATE | O_RDWR));
+    close(open("stopforking", O_CREATE | O_RDWR, 0755));
     wait(NULL);
     usleep(FORK_FORK_FORK_SLEEP_MS * 1000);
 }
@@ -2003,7 +2006,7 @@ void bigwrite(char *s)
             ssize_t cc = write(fd, buf, sz);
             if (cc != sz)
             {
-                printf("%s: write(%d) ret %d\n", s, sz, cc);
+                printf("%s: write(%ld) ret %ld\n", s, sz, cc);
                 exit(1);
             }
         }
@@ -2514,7 +2517,7 @@ void MAXVAplus(char *s)
         if (pid == 0)
         {
             *(char *)a = 99;
-            printf("%s: oops wrote %x\n", s, a);
+            printf("%s: oops wrote %x\n", s, (unsigned int)a);
             exit(1);
         }
         int32_t xstatus;
@@ -3136,7 +3139,7 @@ void manywrites(char *s)
                     ssize_t cc = write(fd, buf, sz);
                     if (cc != sz)
                     {
-                        printf("%s: write(%d) ret %d\n", s, sz, cc);
+                        printf("%s: write(%ld) ret %ld\n", s, sz, cc);
                         exit(1);
                     }
                     close(fd);
@@ -3307,7 +3310,7 @@ void diskfull(char *s)
     // this mkdir() is expected to fail.
     if (mkdir("diskfulldir", 0755) == 0)
     {
-        printf("%s: mkdir(diskfulldir) unexpectedly succeeded!\n");
+        printf("%s: mkdir(diskfulldir) unexpectedly succeeded!\n", s);
     }
 
     unlink("diskfulldir");
@@ -3546,12 +3549,12 @@ int drivetests(int quick, int continuous, char *justone)
 int main(int argc, char *argv[])
 {
     int continuous = 0;
-    int quick = 0;
+    bool quick_tests_only = false;
     char *justone = NULL;
 
     if (argc == 2 && strcmp(argv[1], "-q") == 0)
     {
-        quick = 1;
+        quick_tests_only = true;
     }
     else if (argc == 2 && strcmp(argv[1], "-c") == 0)
     {
@@ -3570,7 +3573,7 @@ int main(int argc, char *argv[])
         printf("Usage: usertests [-c] [-C] [-q] [testname]\n");
         return 1;
     }
-    if (drivetests(quick, continuous, justone))
+    if (drivetests(quick_tests_only, continuous, justone))
     {
         return 1;
     }

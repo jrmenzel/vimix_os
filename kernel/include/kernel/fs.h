@@ -48,17 +48,6 @@ struct inode
 /// @param dev device of the root fs
 void init_root_file_system(dev_t dev);
 
-int inode_dir_link(struct inode *, char *, uint32_t);
-
-/// @brief Look for a directory entry in a directory.
-/// Increases ref count (release with inode_put()).
-/// @param dir Directory to look in
-/// @param name Name of entry (e.g. file name)
-/// @param poff If found, set *poff to byte offset of entry.
-/// @return Inode of entry on success or NULL.
-struct inode *inode_dir_lookup(struct inode *dir, const char *name,
-                               uint32_t *poff);
-
 /// @brief Allocate an inode on device dev.
 /// Mark it as allocated by giving it type based on mode.
 /// @param dev The device/filesystem to allocate on.
@@ -117,16 +106,6 @@ void inode_unlock_put(struct inode *ip);
 /// Caller must hold ip->lock.
 void inode_update(struct inode *ip);
 
-int file_name_cmp(const char *, const char *);
-
-/// @brief get inode based on the path.
-/// Increases ref count (release with inode_put()).
-struct inode *inode_from_path(const char *path);
-
-/// @brief get inode of the parent directory
-/// Increases ref count (release with inode_put()).
-struct inode *inode_of_parent_from_path(const char *path, char *name);
-
 /// @brief Read data from inode.
 /// Caller must hold ip->lock.
 /// @param ip Inode belonging to a file system
@@ -138,11 +117,6 @@ struct inode *inode_of_parent_from_path(const char *path, char *name);
 /// @return Number of bytes successfully read.
 ssize_t inode_read(struct inode *ip, bool dst_addr_is_userspace,
                    size_t dst_addr, size_t off, size_t n);
-
-/// @brief Copy stat information from inode. Caller must hold ip->lock.
-/// @param ip Source inode
-/// @param st Target stat
-void inode_stat(struct inode *ip, struct stat *st);
 
 /// @brief Write data to inode.
 /// Caller must hold ip->lock.
@@ -159,7 +133,51 @@ void inode_stat(struct inode *ip, struct stat *st);
 ssize_t inode_write(struct inode *ip, bool src_addr_is_userspace,
                     size_t src_addr, size_t off, size_t n);
 
+/// @brief Copy stat information from inode. Caller must hold ip->lock.
+/// @param ip Source inode
+/// @param st Target stat
+void inode_stat(struct inode *ip, struct stat *st);
+
 /// @brief Truncate inode (discard contents).
 /// Caller must hold ip->lock.
 /// @param ip inode to truncate.
 void inode_trunc(struct inode *ip);
+
+//
+// inode look ups
+//
+
+/// @brief get inode based on the path.
+/// Increases ref count (release with inode_put()).
+struct inode *inode_from_path(const char *path);
+
+/// @brief get inode of the parent directory
+/// Increases ref count (release with inode_put()).
+struct inode *inode_of_parent_from_path(const char *path, char *name);
+
+/// @brief Look for a directory entry in a directory.
+/// Increases ref count (release with inode_put()).
+/// @param dir Directory to look in
+/// @param name Name of entry (e.g. file name)
+/// @param poff If found, set *poff to byte offset of entry.
+/// @return Inode of entry on success or NULL.
+struct inode *inode_dir_lookup(struct inode *dir, const char *name,
+                               uint32_t *poff);
+
+//
+// directories
+//
+
+/// @brief Helper to compare two file names
+/// @param s0 string 0
+/// @param s1 string 1
+/// @return 0 if the file names are equal
+int file_name_cmp(const char *s, const char *t);
+
+/// @brief Write a new directory entry (name, inum) into the directory
+/// `directory`.
+/// @param dir directory to edit
+/// @param name file name of new entry
+/// @param inum inode of new entry
+/// @return 0 on success, -1 on failure (e.g. out of disk blocks).
+int inode_dir_link(struct inode *dir, char *name, uint32_t inum);

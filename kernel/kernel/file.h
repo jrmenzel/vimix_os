@@ -69,3 +69,13 @@ int32_t file_stat(struct file *f, size_t addr);
 /// @param n Max bytes to write.
 /// @return Number of bytes written or -1 on error.
 ssize_t file_write(struct file *f, size_t addr, size_t n);
+
+/// @brief creates a new hard link for file path_from with
+/// new name path_to.
+/// @return 0 on success, -1 on error
+ssize_t file_link(char *path_from, char *path_to);
+
+/// @brief Most of the syscall unlink
+/// @param path path name
+/// @return 0 on success, -1 on error
+ssize_t file_unlink(char *path);

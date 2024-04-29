@@ -3,13 +3,10 @@
 #include <ipc/pipe.h>
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
-#include <kernel/fs.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
-#include <kernel/sleeplock.h>
-#include <kernel/spinlock.h>
-#include <kernel/vm.h>
+#include <kernel/stat.h>
 
 static inline bool pipe_is_empty(struct pipe *pipe)
 {

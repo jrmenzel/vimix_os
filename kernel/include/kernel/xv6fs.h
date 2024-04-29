@@ -7,6 +7,7 @@
 // with system headers from the host)
 
 #include <kernel/kernel.h>
+#include <kernel/limits.h>
 
 #define ROOT_INODE 1  // root i-number
 
@@ -29,6 +30,9 @@
 
 /// Max file name length (without the NULL-terminator)
 #define XV6_NAME_MAX 14
+#if NAME_MAX != XV6_NAME_MAX
+#error "xv6fs requires that MAX_NAME is set to 14"
+#endif
 
 // values of inode types:
 #define XV6_FT_UNUSED 0  ///< init value
@@ -61,10 +65,10 @@ _Static_assert((sizeof(struct xv6fs_superblock) < 1024),
 /// On-disk inode structure
 struct xv6fs_dinode
 {
-    short type;                   ///< File type
-    short major;                  ///< Major device number (XV6_FT_DEVICE only)
-    short minor;                  ///< Minor device number (XV6_FT_DEVICE only)
-    short nlink;                  ///< Number of links to inode in file system
+    xv6fs_file_type type;         ///< File type
+    int16_t major;                ///< Major device number (XV6_FT_DEVICE only)
+    int16_t minor;                ///< Minor device number (XV6_FT_DEVICE only)
+    int16_t nlink;                ///< Number of links to inode in file system
     uint32_t size;                ///< Size of file (bytes)
     uint32_t addrs[NDIRECT + 1];  ///< Data block addresses
 };
