@@ -86,6 +86,10 @@ size_t sys_unlink();
 /// stat.h.
 size_t sys_fstat();
 
+/// @brief Syscall "ssize_t get_dirent(int fd, struct dirent *dirp, size_t
+/// seek_pos);" from dirent.h
+size_t sys_get_dirent();
+
 // ********************************************************
 // System information from sys_system.c
 //

@@ -10,6 +10,7 @@ LIBC_BUILD_DIR=$(LIB_BUILD_DIR)/libc
 
 STD_LIBC=\
 	$(LIBC_BUILD_DIR)/crt0.o \
+	$(LIBC_BUILD_DIR)/dirent_impl.o \
 	$(LIBC_BUILD_DIR)/stdio_impl.o \
 	$(LIBC_BUILD_DIR)/stdio_printf.o \
 	$(LIBC_BUILD_DIR)/stdlib_impl.o \

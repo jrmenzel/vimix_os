@@ -109,7 +109,7 @@ CFLAGS_TARGET_ONLY += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev
 # c flags for the kernel and user space apps on the target OS:
 CFLAGS = $(CFLAGS_TARGET_ONLY) $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS)
 # c flags for the user space apps on the host OS (with host stdlib):
-CFLAGS_HOST = $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS)
+CFLAGS_HOST = $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS) -DBUILD_ON_HOST
 
 #####
 # linker flags

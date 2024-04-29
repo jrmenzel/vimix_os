@@ -4,6 +4,7 @@
 // On-disk file system format.
 // Both the kernel and user programs use this header file.
 
+#include <kernel/dirent.h>
 #include <kernel/kernel.h>
 #include <kernel/sleeplock.h>
 #include <kernel/stat.h>
@@ -181,3 +182,12 @@ int file_name_cmp(const char *s, const char *t);
 /// @param inum inode of new entry
 /// @return 0 on success, -1 on failure (e.g. out of disk blocks).
 int inode_dir_link(struct inode *dir, char *name, uint32_t inum);
+
+/// @brief For the syscall to get directory entries get_dirent() from dirent.h.
+/// @param dir Directory inode
+/// @param dir_entry_addr address of buffer to fill with one struct dirent
+/// @param addr_is_userspace True if dir_entry_addr is a user virtual address.
+/// @param seek_pos A seek pos previously returned by inode_get_dirent or 0.
+/// @return next seek_pos on success, 0 on dir end and -1 on error.
+ssize_t inode_get_dirent(struct inode *dir, size_t dir_entry_addr,
+                         bool addr_is_userspace, ssize_t seek_pos);

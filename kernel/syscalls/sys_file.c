@@ -7,6 +7,7 @@
 //
 
 #include <fs/xv6fs/log.h>
+#include <kernel/dirent.h>
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/kernel.h>
@@ -222,4 +223,25 @@ size_t sys_chdir()
     log_end_fs_transaction();
     proc->cwd = ip;
     return 0;
+}
+
+size_t sys_get_dirent()
+{
+    // size_t get_dirent(int fd, struct dirent *dirp, size_t seek_pos);
+    // parameter 0: int fd
+    struct file *f;
+    if (argfd(0, NULL, &f) < 0)
+    {
+        return -1;
+    }
+
+    // parameter 1: struct dirent *dirp
+    size_t dir_entry_addr;
+    argaddr(1, &dir_entry_addr);
+
+    // parameter 2: seek_pos
+    ssize_t seek_pos;
+    argssize_t(2, &seek_pos);
+
+    return inode_get_dirent(f->ip, dir_entry_addr, true, seek_pos);
 }

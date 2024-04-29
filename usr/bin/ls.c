@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <dirent.h>
 #include <fcntl.h>
-#include <kernel/fs.h>
-#include <kernel/xv6fs.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,20 +11,55 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-char *fmtname(char *path)
+#if defined(BUILD_ON_HOST)
+#include <linux/limits.h>
+#else
+#include <kernel/limits.h>
+#endif
+
+struct Parameters
 {
-    static char buf[XV6_NAME_MAX + 1];
-    char *p;
+    bool print_directory_name;
+    bool print_dot_dotdot;
+    bool print_hidden;
+};
+
+void set_default_parameters(struct Parameters *parameters)
+{
+    parameters->print_directory_name = false;
+    parameters->print_dot_dotdot = !false;
+    parameters->print_hidden = !false;
+}
+
+const int S_OK = 0;
+const int S_MINOR_ERROR = 1;
+const int S_SERIOUS_ERROR = 2;
+
+int max_error(int a, int b) { return (a > b) ? a : b; }
+
+const char *fmtname(const char *path_name)
+{
+    static char buf[NAME_MAX + 1];
 
     // Find first character after last slash.
-    for (p = path + strlen(path); p >= path && *p != '/'; p--)
-        ;
+    const char *p = path_name + strlen(path_name);
+    while (p >= path_name && *p != '/')
+    {
+        p--;
+    }
     p++;
 
+    size_t name_length = strlen(p);
+    if (name_length >= NAME_MAX)
+    {
+        return p;
+    }
+
     // Return blank-padded name.
-    if (strlen(p) >= XV6_NAME_MAX) return p;
-    memmove(buf, p, strlen(p));
-    memset(buf + strlen(p), ' ', XV6_NAME_MAX - strlen(p));
+    memmove(buf, p, name_length);
+    memset(buf + name_length, ' ', NAME_MAX - name_length);
+    buf[name_length] = 0;
+
     return buf;
 }
 
@@ -77,82 +113,143 @@ void print_padded(size_t value, size_t min_chars_wide, bool min_one_space)
         }
     }
 
-    printf("%d", value);
+    printf("%ld", value);
 }
 
-void print_file(char *path, struct stat *st)
+int print_file(const char *file_name, const char *full_path,
+               struct Parameters *parameters)
 {
-    print_padded(st->st_ino, 4, false);
-    printf(" ");
-    print_access(st->st_mode);
-
-    print_padded(st->st_size, 8, true);
-    printf(" B %s\n", fmtname(path));
-}
-
-void ls(char *path)
-{
-    int fd = open(path, 0);
-    if (fd < 0)
-    {
-        fprintf(stderr, "ls: cannot open %s\n", path);
-        return;
-    }
-
     struct stat st;
-    if (fstat(fd, &st) < 0)
+    if (stat(full_path, &st) < 0) return S_SERIOUS_ERROR;
+
+    // print_padded(st.st_ino, 4, false);
+    // printf(" ");
+    print_access(st.st_mode);
+
+    // print_padded(st.st_uid, 3, true);
+    // print_padded(st.st_gid, 3, true);
+
+    print_padded(st.st_size, 8, true);
+    printf(" B ");
+
+    printf("%s\n", file_name);
+
+    return 0;
+}
+
+int build_full_path(char *dst, const char *path, const char *file)
+{
+    strncpy(dst, path, PATH_MAX);
+    size_t len = strlen(dst);
+    if (dst[len - 1] != '/')
     {
-        fprintf(stderr, "ls: cannot stat %s\n", path);
-        close(fd);
-        return;
+        dst[len] = '/';
+        len++;
+    }
+    size_t name_len = strlen(file);
+    if (len + name_len > PATH_MAX - 1)
+    {
+        return S_SERIOUS_ERROR;
+    }
+    strncpy(dst + len, file, PATH_MAX - len);
+
+    return S_OK;
+}
+
+enum FileVisibility
+{
+    DOT_OR_DOTDOT,
+    HIDDEN,
+    VISIBLE
+};
+enum FileVisibility get_visibility(const char *file_name)
+{
+    if (file_name[0] == '.')
+    {
+        if (file_name[1] == 0) return DOT_OR_DOTDOT;
+        if (file_name[1] == '.' && file_name[2] == 0) return DOT_OR_DOTDOT;
+
+        return HIDDEN;
     }
 
-    if (S_ISREG(st.st_mode) || S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode))
+    return VISIBLE;
+}
+
+int print_dir(const char *path_name, struct Parameters *parameters)
+{
+    if (parameters->print_directory_name)
     {
-        print_file(path, &st);
+        printf("%s:\n", path_name);
     }
-    else if (S_ISDIR(st.st_mode))
+
+    DIR *dir = opendir(path_name);
+    if (dir == NULL)
     {
-        char buf[512], *p;
-        if (strlen(path) + 1 + XV6_NAME_MAX + 1 > sizeof buf)
+        return S_SERIOUS_ERROR;
+    }
+
+    char full_path[PATH_MAX];
+    struct dirent *dir_entry = NULL;
+    while ((dir_entry = readdir(dir)))
+    {
+        // for all entries:
+        enum FileVisibility visibility = get_visibility(dir_entry->d_name);
+        if (visibility == HIDDEN && parameters->print_hidden == false)
         {
-            printf("ls: path too long\n");
-            close(fd);
-            return;
+            continue;
         }
-        strcpy(buf, path);
-        p = buf + strlen(buf);
-        *p++ = '/';
-
-        struct xv6fs_dirent de;
-        while (read(fd, &de, sizeof(de)) == sizeof(de))
+        if (visibility == DOT_OR_DOTDOT &&
+            parameters->print_dot_dotdot == false)
         {
-            if (de.inum == 0) continue;
-            memmove(p, de.name, XV6_NAME_MAX);
-            p[XV6_NAME_MAX] = 0;
-            if (stat(buf, &st) < 0)
-            {
-                printf("ls: cannot stat %s\n", buf);
-                continue;
-            }
-            print_file(buf, &st);
+            continue;
         }
+
+        build_full_path(full_path, path_name, dir_entry->d_name);
+
+        print_file(dir_entry->d_name, full_path, parameters);
     }
 
-    close(fd);
+    closedir(dir);
+
+    return S_OK;
+}
+
+int ls(const char *path_name, struct Parameters *parameters)
+{
+    struct stat st;
+    if (stat(path_name, &st) < 0) return S_SERIOUS_ERROR;
+
+    int return_code = S_OK;
+    if (S_ISDIR(st.st_mode))
+    {
+        return_code = print_dir(path_name, parameters);
+    }
+    else
+    {
+        return_code = print_file(fmtname(path_name), path_name, parameters);
+    }
+
+    return return_code;
 }
 
 int main(int argc, char *argv[])
 {
+    struct Parameters parameters;
+    set_default_parameters(&parameters);
+
     if (argc < 2)
     {
-        ls(".");
-        return 0;
-    }
-    for (size_t i = 1; i < argc; i++)
-    {
-        ls(argv[i]);
+        return ls(".", &parameters);
     }
 
-    return 0;
+    // print multiple files and/or directories:
+    parameters.print_directory_name = true;
+    int highest_error = S_OK;
+    for (size_t i = 1; i < argc; i++)
+    {
+        int error = ls(argv[i], &parameters);
+        highest_error = max_error(highest_error, error);
+    }
+
+    return highest_error;
 }

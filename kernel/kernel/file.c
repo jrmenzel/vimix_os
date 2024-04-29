@@ -411,8 +411,14 @@ static int isdirempty(struct inode *dir)
     for (size_t off = 2 * sizeof(de); off < dir->size; off += sizeof(de))
     {
         if (inode_read(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
+        {
             panic("isdirempty: inode_read");
-        if (de.inum != 0) return 0;
+        }
+
+        if (de.inum != 0)
+        {
+            return 0;
+        }
     }
     return 1;
 }

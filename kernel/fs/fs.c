@@ -561,6 +561,47 @@ int inode_dir_link(struct inode *dir, char *name, uint32_t inum)
     return 0;
 }
 
+ssize_t inode_get_dirent(struct inode *dir, size_t dir_entry_addr,
+                    bool addr_is_userspace, ssize_t seek_pos)
+{
+    if (!S_ISDIR(dir->i_mode) || seek_pos < 0) return -1;
+
+    struct xv6fs_dirent xv6_dir_entry;
+    inode_lock(dir);
+    ssize_t new_seek_pos = seek_pos;
+
+    do {
+        size_t read_bytes;
+        read_bytes =
+            inode_read(dir, false, (size_t)&xv6_dir_entry, (size_t)new_seek_pos,
+                       sizeof(struct xv6fs_dirent));
+        if (read_bytes <= 0)
+        {
+            inode_unlock(dir);
+            return read_bytes;  // 0 if no more dirents to read or -1 on error
+        }
+        else if (read_bytes < sizeof(struct xv6fs_dirent))
+        {
+            inode_unlock(dir);
+            return 0;
+        }
+        new_seek_pos += read_bytes;
+    } while (xv6_dir_entry.inum == XV6FS_UNUSED_INODE);  // skip unused entries
+
+    inode_unlock(dir);
+
+    struct dirent dir_entry;
+    dir_entry.d_ino = xv6_dir_entry.inum;
+    strncpy(dir_entry.d_name, xv6_dir_entry.name, XV6_NAME_MAX);
+    dir_entry.d_off = (long)(new_seek_pos);
+
+    int32_t res = either_copyout(addr_is_userspace, dir_entry_addr,
+                                 (void *)&dir_entry, sizeof(struct dirent));
+    if (res < 0) return -1;
+
+    return new_seek_pos;
+}
+
 // Paths
 
 /// Copy the next path element from path into name.

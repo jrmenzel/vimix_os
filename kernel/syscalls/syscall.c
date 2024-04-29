@@ -120,6 +120,7 @@ static size_t (*syscalls[])() = {
     [SYS_link] sys_link,
     [SYS_mkdir] sys_mkdir,
     [SYS_close] sys_close,
+    [SYS_get_dirent] sys_get_dirent,
 };
 // clang-format on
 

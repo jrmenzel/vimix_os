@@ -39,6 +39,7 @@ UPROGS_NAME_HOST=\
 	grep\
 	kill\
 	ln\
+	ls\
 	mkdir\
 	rm\
 	sh\

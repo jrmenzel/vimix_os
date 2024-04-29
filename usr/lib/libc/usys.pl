@@ -37,3 +37,4 @@ entry("getpid");
 entry("sbrk");
 entry("ms_sleep");
 entry("uptime");
+entry("get_dirent");

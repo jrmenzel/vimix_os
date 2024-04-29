@@ -8,8 +8,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define stat xv6_stat  // avoid clash with host struct stat
-
 #define FSSIZE 2000  ///< size of file system in blocks
 #define MAX_ACTIVE_INODESS 200
 
