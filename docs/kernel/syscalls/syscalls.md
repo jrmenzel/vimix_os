@@ -39,9 +39,9 @@ See also: [calling_syscall](calling_syscall.md).
 
 
 ---
-**Overview:** [kernel](kernel.md)
-**Boot:**
-[boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
-**Subsystems:**
-[interrupts](../interrupts/interrupts.md) | [devices](devices/devices.md) | [file_system](file_system.md) | [memory_management](../mm/memory_management.md)
-[processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](syscalls.md)
+**Overview:** [kernel](../kernel.md)
+
+**Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
+
+**Subsystems:** [interrupts](../interrupts/interrupts.md) | [devices](../devices.md) | [file_system](file_system.md) | [memory_management](../mm/memory_management.md)
+[processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](../syscalls.md)

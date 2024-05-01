@@ -17,9 +17,9 @@ The main struct to hold all data of one process is `struct process` (in Linux it
 There are a number of [syscalls](syscalls/syscalls.md) to modify process state.
 
 ---
-**Overview:** [kernel](kernel.md)
-**Boot:**
-[boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
-**Subsystems:**
-[interrupts](../interrupts/interrupts.md) | [devices](devices/devices.md) | [file_system](file_system.md) | [memory_management](mm/memory_management.md)
-[processes](processes.md) | [scheduling](scheduling.md) | [syscalls](syscalls/syscalls.md)
+**Overview:** [kernel](../kernel.md)
+
+**Boot:** [boot_process](../boot_process.md) | [init_overview](../init_overview.md)
+
+**Subsystems:** [interrupts](../interrupts/interrupts.md) | [devices](../devices.md) | [file_system](file_system.md) | [memory_management](../memory_management.md)
+[processes](../processes.md) | [scheduling](../scheduling.md) | [syscalls](../syscalls.md)

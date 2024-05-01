@@ -47,8 +47,8 @@ See [timer_interrupt](timer_interrupt.md).
 
 ---
 **Overview:** [kernel](../kernel.md)
-**Boot:**
-[boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
-**Subsystems:**
-[interrupts](interrupts.md) | [devices](../devices/devices.md) | [file_system](../file_system/file_system.md) | [memory_management](../mm/memory_management.md)
+
+**Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
+
+**Subsystems:** [interrupts](interrupts.md) | [devices](../devices/devices.md) | [file_system](../file_system/file_system.md) | [memory_management](../mm/memory_management.md)
 [processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](../syscalls/syscalls.md)

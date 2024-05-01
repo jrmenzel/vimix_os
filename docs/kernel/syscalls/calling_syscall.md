@@ -31,8 +31,8 @@ It defines a global label (so other files can call the functions), loads a const
 
 ---
 **Overview:** [kernel](../kernel.md)
-**Boot:**
-[boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
-**Subsystems:**
-[interrupts](../interrupts/interrupts.md) | [devices](../devices.md) | [file_system](file_system.md) | [memory_management](../mm/memory_management.md)
+
+**Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
+
+**Subsystems:** [interrupts](../interrupts/interrupts.md) | [devices](../devices.md) | [file_system](file_system.md) | [memory_management](../mm/memory_management.md)
 [processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](../syscalls.md)

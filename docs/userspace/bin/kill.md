@@ -11,4 +11,5 @@ Sends signal `SIGKILL` to the given PIDs which ends the process.
 
 ---
 **Up:** [user space](../userspace.md)
+
 **Process Management:** [kill](kill)

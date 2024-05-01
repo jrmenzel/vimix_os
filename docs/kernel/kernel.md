@@ -48,11 +48,9 @@ See [syscalls](syscalls/syscalls.md) for a list of System Calls.
 To see how the application-kernel interaction works see [calling_syscall](syscalls/calling_syscall.md).
 
 
-
 ---
 **Up:** [README](../../README.md)
-**Boot:**
-[boot_process](../boot_process.md) | [init_overview](../init_overview.md)
-**Subsystems:**
-[interrupts](../interrupts.md) | [devices](../devices.md) | [file_system](file_system.md) | [memory_management](../memory_management.md)
-[processes](../processes.md) | [scheduling](../scheduling.md) | [syscalls](../syscalls.md)
+
+**Boot:** [boot_process](overview/boot_process.md) | [init_overview](overview/init_overview.md)
+
+**Subsystems:** [interrupts](interrupts/interrupts.md) | [devices](devices/devices.md) | [file_system](file_system/file_system.md) | [memory_management](mm/memory_management.md) | [processes](processes/processes.md) | [scheduling](processes/scheduling.md) | [syscalls](syscalls/syscalls.md)

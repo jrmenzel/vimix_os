@@ -68,7 +68,7 @@ Unhandled interrupts (user mode and kernel mode) will set the process flag to ki
 
 ---
 **Overview:** [kernel](../kernel.md)
-**Boot:**
-[boot_process](boot_process.md) | [init_overview](init_overview.md)
-**See also:**
-[life_cycle_cpu](life_cycle_cpu.md) [life_cycle_user_application](life_cycle_user_application.md)
+
+**Boot:** [boot_process](boot_process.md) | [init_overview](init_overview.md)
+
+**See also:** [life_cycle_cpu](life_cycle_cpu.md) [life_cycle_user_application](life_cycle_user_application.md)

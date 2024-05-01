@@ -27,8 +27,8 @@ All the initcode does is call [execv](syscalls/execv.md) `to execute` /init.
 
 ---
 **Overview:** [kernel](../kernel.md)
-**Boot:**
-[boot_process](../boot_process.md) | [init_overview](../init_overview.md)
-**Subsystems:**
-[interrupts](../interrupts/interrupts.md) | [devices](../devices.md) | [file_system](file_system.md) | [memory_management](../memory_management.md)
+
+**Boot:** [boot_process](../boot_process.md) | [init_overview](../init_overview.md)
+
+**Subsystems:** [interrupts](../interrupts/interrupts.md) | [devices](../devices.md) | [file_system](file_system.md) | [memory_management](../memory_management.md)
 [processes](../processes.md) | [scheduling](../scheduling.md) | [syscalls](../syscalls.md)

@@ -21,7 +21,7 @@ From now on the harts will do this forever:
 
 ---
 **Overview:** [kernel](../kernel.md)
-**Boot:**
-[boot_process](boot_process.md) | [init_overview](init_overview.md)
-**See also:**
-[life_cycle_cpu](life_cycle_cpu.md) [life_cycle_user_application](life_cycle_user_application.md)
+
+**Boot:** [boot_process](boot_process.md) | [init_overview](init_overview.md)
+
+**See also:** [life_cycle_cpu](life_cycle_cpu.md) [life_cycle_user_application](life_cycle_user_application.md)

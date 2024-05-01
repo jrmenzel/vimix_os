@@ -11,4 +11,5 @@ Prints file or directory stats like size and [inode](../../kernel/file_system/in
 
 ---
 **Up:** [user space](../userspace.md)
+
 **File Management:** [ln](ln.md) | [ls](ls.md) | [mkdir](mkdir.md) | [rm](rm.md) | [stat](stat.md)

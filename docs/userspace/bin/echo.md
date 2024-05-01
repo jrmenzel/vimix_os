@@ -9,4 +9,5 @@ Prints the arguments back to [stdout](../../misc/stdio.md).
 
 ---
 **Up:** [user space](../userspace.md)
+
 **Misc:** [cat](cat.md) | [echo](echo.md) | [grep](grep.md) | [wc](wc.md)

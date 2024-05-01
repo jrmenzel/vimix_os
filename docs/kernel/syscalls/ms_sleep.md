@@ -17,5 +17,5 @@ Implemented in `sys_process.c` as `sys_sleep()`.
 ## See also
 
 **Overview:** [syscalls](syscalls.md)
-**Process Control Syscalls:**
-[fork](fork.md) | [execv](execv.md) | [exit](exit.md) | [kill](kill.md) | [ms_sleep](ms_sleep.md) | [wait](wait.md) | [chdir](chdir.md) | [sbrk](sbrk.md)
+
+**Process Control Syscalls:** [fork](fork.md) | [execv](execv.md) | [exit](exit.md) | [kill](kill.md) | [ms_sleep](ms_sleep.md) | [wait](wait.md) | [chdir](chdir.md) | [sbrk](sbrk.md)
