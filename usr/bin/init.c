@@ -11,7 +11,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-char *argv[] = {"sh", 0};
+#if defined(DEBUG_AUTOSTART_USERTESTS)
+const char *SHELL_NAME = "usertests";
+char *SHELL_ARGV[] = {"usertests", 0};
+#else
+const char *SHELL_NAME = "sh";
+char *SHELL_ARGV[] = {"sh", 0};
+#endif
 
 int main()
 {
@@ -43,7 +49,7 @@ int main()
         }
         if (pid == 0)
         {
-            execv("sh", argv);
+            execv(SHELL_NAME, SHELL_ARGV);
             printf("init: execv sh failed\n");
             exit(1);
         }

@@ -152,6 +152,25 @@ int getcmd(char *buf, int nbuf)
     return 0;
 }
 
+int is_whitespace(char c)
+{
+    // \t = 9, \n = 10, \v = 11, \f = 12, \r = 13
+    return (('\t' <= c && c <= '\r') || (c == ' '));
+}
+
+int is_blank_string(const char *s)
+{
+    char c = 0;
+    while ((c = *s++))
+    {
+        if (!is_whitespace(c))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 int main()
 {
     static char buf[100];
@@ -177,8 +196,20 @@ int main()
             if (chdir(buf + 3) < 0) fprintf(stderr, "cannot cd %s\n", buf + 3);
             continue;
         }
-        if (fork1() == 0) runcmd(parsecmd(buf));
-        wait(NULL);
+        if (is_blank_string(buf))
+        {
+            // ignore blank lines and don't fork just to return
+            continue;
+        }
+        if (fork1() == 0)
+        {
+            runcmd(parsecmd(buf));
+        }
+
+        int status = 0;
+        wait(&status);
+        status = WEXITSTATUS(status);
+        // printf("return code: %d\n", status);
     }
     return 0;
 }
