@@ -143,14 +143,14 @@ size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va)
 int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
                          size_t size, int32_t perm)
 {
-    if (kvm_map(k_pagetable, va, size, pa, perm) != 0)
+    if (kvm_map(k_pagetable, va, pa, size, perm) != 0)
     {
         panic("kvm_map_or_panic failed");
     }
     return 0;
 }
 
-int32_t kvm_map(pagetable_t pagetable, size_t va, size_t size, size_t pa,
+int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
                 int32_t perm)
 {
     if (size == 0)
@@ -244,7 +244,7 @@ size_t uvm_alloc(pagetable_t pagetable, size_t oldsz, size_t newsz,
             return 0;
         }
         memset(mem, 0, PAGE_SIZE);
-        if (kvm_map(pagetable, a, PAGE_SIZE, (size_t)mem,
+        if (kvm_map(pagetable, a, (size_t)mem, PAGE_SIZE,
                     PTE_R | PTE_U | xperm) != 0)
         {
             kfree(mem);
@@ -334,7 +334,7 @@ int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
         }
 
         memmove(mem, (char *)pa, PAGE_SIZE);
-        if (kvm_map(new, i, PAGE_SIZE, (size_t)mem, flags) != 0)
+        if (kvm_map(new, i, (size_t)mem, PAGE_SIZE, flags) != 0)
         {
             kfree(mem);
             fatal_error_happened = true;

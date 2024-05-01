@@ -33,10 +33,10 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
 /// allocate a needed page-table page.
 /// @param pagetable page table to modify
 /// @param va virtual address
-/// @param size size in bytes
 /// @param pa physical address
+/// @param size size in bytes
 /// @param perm access permission
-int32_t kvm_map(pagetable_t pagetable, size_t va, size_t size, size_t pa,
+int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
                 int32_t perm);
 
 /// @brief create an empty user page table.

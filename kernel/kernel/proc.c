@@ -223,7 +223,7 @@ pagetable_t proc_pagetable(struct process *proc)
     // at the highest user virtual address.
     // only the supervisor uses it, on the way
     // to/from user space, so not PTE_U.
-    if (kvm_map(pagetable, TRAMPOLINE, PAGE_SIZE, (size_t)trampoline,
+    if (kvm_map(pagetable, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
                 PTE_R | PTE_X) < 0)
     {
         uvm_free(pagetable, 0);
@@ -232,7 +232,7 @@ pagetable_t proc_pagetable(struct process *proc)
 
     // map the trapframe page just below the trampoline page, for
     // u_mode_trap_vector.S.
-    if (kvm_map(pagetable, TRAPFRAME, PAGE_SIZE, (size_t)(proc->trapframe),
+    if (kvm_map(pagetable, TRAPFRAME, (size_t)(proc->trapframe), PAGE_SIZE,
                 PTE_R | PTE_W) < 0)
     {
         uvm_unmap(pagetable, TRAMPOLINE, 1, 0);
@@ -263,7 +263,7 @@ void userspace_init()
     // address 0 of pagetable
     char *mem = kalloc();
     memset(mem, 0, PAGE_SIZE);
-    kvm_map(proc->pagetable, 0, PAGE_SIZE, (size_t)mem,
+    kvm_map(proc->pagetable, 0, (size_t)mem, PAGE_SIZE,
             PTE_W | PTE_R | PTE_X | PTE_U);
     memmove(mem, g_initcode, sizeof(g_initcode));
 
