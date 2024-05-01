@@ -7,7 +7,11 @@
 int32_t kill(pid_t pid);
 ```
 
-Kills the process with PID. 
+Kills the process with given [process](../processes/processes.md) ID `pid`. 
+
+## User Apps
+
+The app [kill](../../userspace/bin/kill.md) exposes this syscall.
 
 ## Kernel Mode
 

@@ -6,7 +6,7 @@ List contents of provided directories or the content of the CWD if no directory 
 
 **Returns:**
 - 0 on success
-**Syscall:** [[../../kernel/syscalls/get_dirent]]
+**Syscall:** [get_dirent](../../kernel/syscalls/get_dirent.md)
 
 ---
 **Up:** [user space](../userspace.md)
