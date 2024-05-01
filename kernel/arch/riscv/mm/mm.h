@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#define PAGE_SIZE 4096  ///< bytes per page
+#include <kernel/param.h> // for PAGE_SIZE
+
 #define PAGE_SHIFT 12   ///< bits of offset within a page
 
 /// rounds up an address to the next page address

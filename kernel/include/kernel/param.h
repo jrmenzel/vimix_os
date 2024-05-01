@@ -13,6 +13,8 @@
 #define LOGSIZE (MAX_OP_BLOCKS * 3)  ///< max data blocks in on-disk log
 #define NUM_BUFFERS_IN_CACHE (MAX_OP_BLOCKS * 3)  ///< size of disk block cache
 
+#define PAGE_SIZE 4096  ///< bytes per page
+
 /// adds extra runtime tests to check correct spinlock
 /// usage and stores an optional name per lock for debugging.
 #define CONFIG_DEBUG_SPINLOCK

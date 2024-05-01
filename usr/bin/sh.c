@@ -178,7 +178,7 @@ int main()
             continue;
         }
         if (fork1() == 0) runcmd(parsecmd(buf));
-        wait(0);
+        wait(NULL);
     }
     return 0;
 }

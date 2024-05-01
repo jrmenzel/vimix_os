@@ -54,6 +54,7 @@ int main()
             // or if a parentless process exits.
             int32_t status = 0;
             pid_t wpid = wait(&status);
+            status = WEXITSTATUS(status);
             if (wpid == pid)
             {
                 // the shell exited; restart it.

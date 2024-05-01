@@ -93,6 +93,13 @@ extern int dup(int fd);
 ///////////////////////////////////////
 // 4. Information Management
 
+// provides some system information at runtime. Implemented in the stdc lib
+#define _SC_PAGE_SIZE 0
+#define _SC_PAGESIZE _SC_PAGE_SIZE
+#define _SC_ARG_MAX 1
+#define _SC_OPEN_MAX 2
+extern long sysconf(int name);
+
 ///////////////////////////////////////
 // 5. Communication
 

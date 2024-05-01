@@ -363,7 +363,9 @@ void go(int which_child)
             close(bb[0]);
             int st1, st2;
             wait(&st1);
+            st1 = WEXITSTATUS(st1);
             wait(&st2);
+            st2 = WEXITSTATUS(st2);
             if (st1 != 0 || st2 != 0 || strcmp(buf, "hi\n") != 0)
             {
                 printf("grind: execv pipeline failed %d %d \"%s\"\n", st1, st2,
@@ -407,6 +409,7 @@ void iter()
 
     int st1 = -1;
     wait(&st1);
+    st1 = WEXITSTATUS(st1);
     if (st1 != 0)
     {
         kill(pid1, SIGKILL);
@@ -414,6 +417,7 @@ void iter()
     }
     int st2 = -1;
     wait(&st2);
+    st2 = WEXITSTATUS(st2);
 
     exit(0);
 }

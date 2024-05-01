@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <kernel/limits.h>
+#include <kernel/param.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -30,4 +31,16 @@ int32_t atoi(const char *string)
         n = n * (-1);
     }
     return n;
+}
+
+long sysconf(int name)
+{
+    switch (name)
+    {
+        case _SC_PAGE_SIZE: return PAGE_SIZE;
+        case _SC_ARG_MAX: return PAGE_SIZE;
+        case _SC_OPEN_MAX: return MAX_FILES_PER_PROCESS;
+    }
+
+    return -1;
 }

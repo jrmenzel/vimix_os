@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <fcntl.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/signal.h>
@@ -211,11 +214,17 @@ void copyinstr2(char *s)
     }
     if (pid == 0)
     {
-        static char big[PAGE_SIZE + 1];
-        for (size_t i = 0; i < PAGE_SIZE; i++) big[i] = 'x';
-        big[PAGE_SIZE] = '\0';
+        long max_arg_size = sysconf(_SC_ARG_MAX);
+        char *big = malloc(max_arg_size + 1);
+
+        for (size_t i = 0; i < max_arg_size; i++)
+        {
+            big[i] = 'x';
+        }
+        big[max_arg_size] = '\0';
         char *args2[] = {big, big, big, 0};
         ret = execv("echo", args2);
+        free(big);
         if (ret != -1)
         {
             printf("execv(echo, BIG) returned %d, not -1\n", fd);
@@ -226,6 +235,7 @@ void copyinstr2(char *s)
 
     int st = 0;
     wait(&st);
+    st = WEXITSTATUS(st);
     if (st != 747)
     {
         printf("execv(echo, BIG) succeeded, should have failed (%d)\n", st);
@@ -236,14 +246,16 @@ void copyinstr2(char *s)
 // what if a string argument crosses over the end of last user page?
 void copyinstr3(char *s)
 {
-    sbrk(2 * PAGE_SIZE);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+
+    sbrk(2 * page_size);
     size_t top = (size_t)sbrk(0);
-    if ((top % PAGE_SIZE) != 0)
+    if ((top % page_size) != 0)
     {
-        sbrk(PAGE_SIZE - (top % PAGE_SIZE));
+        sbrk(page_size - (top % page_size));
     }
     top = (size_t)sbrk(0);
-    if (top % PAGE_SIZE)
+    if (top % page_size)
     {
         printf("oops\n");
         exit(1);
@@ -286,7 +298,8 @@ void copyinstr3(char *s)
 // application doesn't have anymore, because it returned it.
 void rwsbrk()
 {
-    size_t a = (size_t)sbrk(2 * PAGE_SIZE);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    size_t a = (size_t)sbrk(2 * page_size);
 
     if (a == TEST_POINTER_ADDR_2)
     {
@@ -294,7 +307,7 @@ void rwsbrk()
         exit(1);
     }
 
-    if ((size_t)sbrk(-(2 * PAGE_SIZE)) == TEST_POINTER_ADDR_2)
+    if ((size_t)sbrk(-(2 * page_size)) == TEST_POINTER_ADDR_2)
     {
         printf("sbrk(rwsbrk) shrink failed\n");
         exit(1);
@@ -307,10 +320,10 @@ void rwsbrk()
         exit(1);
     }
 
-    ssize_t n = write(fd, (void *)(a + PAGE_SIZE), 1024);
+    ssize_t n = write(fd, (void *)(a + page_size), 1024);
     if (n >= 0)
     {
-        printf("write(fd, %p, 1024) returned %d, not -1\n", a + PAGE_SIZE, n);
+        printf("write(fd, %p, 1024) returned %d, not -1\n", a + page_size, n);
         exit(1);
     }
     close(fd);
@@ -322,10 +335,10 @@ void rwsbrk()
         printf("open(rwsbrk) failed\n");
         exit(1);
     }
-    n = read(fd, (void *)(a + PAGE_SIZE), 10);
+    n = read(fd, (void *)(a + page_size), 10);
     if (n >= 0)
     {
-        printf("read(fd, %p, 10) returned %d, not -1\n", a + PAGE_SIZE, n);
+        printf("read(fd, %p, 10) returned %d, not -1\n", a + page_size, n);
         exit(1);
     }
     close(fd);
@@ -473,6 +486,7 @@ void truncate3(char *s)
 
     int32_t xstatus;
     wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
     unlink("truncfile");
     exit(xstatus);
 }
@@ -533,6 +547,7 @@ void exitiputtest(char *s)
 
     int32_t xstatus;
     wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
     exit(xstatus);
 }
 
@@ -579,6 +594,7 @@ void openiputtest(char *s)
 
     int32_t xstatus;
     wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
     exit(xstatus);
 }
 
@@ -797,7 +813,11 @@ void exectest(char *s)
     {
         printf("%s: wait failed!\n", s);
     }
-    if (xstatus != 0) exit(xstatus);
+    xstatus = WEXITSTATUS(xstatus);
+    if (xstatus != 0)
+    {
+        exit(xstatus);
+    }
 
     int fd = open("echo-ok", O_RDONLY);
     char buf[3];
@@ -892,6 +912,7 @@ void pipe1(char *s)
 
         int32_t xstatus;
         wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
         exit(xstatus);
     }
     else
@@ -926,6 +947,7 @@ void killstatus(char *s)
 
         int32_t xstatus;
         wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
         if (xstatus != -1)
         {
             printf("%s: status should be -1\n", s);
@@ -1024,6 +1046,7 @@ void exitwait(char *s)
                 printf("%s: wait wrong pid\n", s);
                 exit(1);
             }
+            xstate = WEXITSTATUS(xstate);
             if (i != xstate)
             {
                 printf("%s: wait wrong exit status\n", s);
@@ -1145,6 +1168,7 @@ void forkfork(char *s)
     {
         int32_t xstatus;
         wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
         if (xstatus != 0)
         {
             printf("%s: fork in child failed", s);
@@ -1247,6 +1271,7 @@ void mem(char *s)
     {
         int32_t xstatus;
         wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
         if (xstatus == -1)
         {
             // probably page fault, so might be lazy lab,
@@ -1292,6 +1317,7 @@ void sharedfd(char *s)
     {
         int32_t xstatus;
         wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
         if (xstatus != 0)
         {
             exit(xstatus);
@@ -1379,6 +1405,7 @@ void fourfiles(char *s)
     for (size_t pi = 0; pi < NCHILD; pi++)
     {
         wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
         if (xstatus != 0) exit(xstatus);
     }
 
@@ -1459,6 +1486,7 @@ void createdelete(char *s)
     for (size_t pi = 0; pi < NCHILD; pi++)
     {
         wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
         if (xstatus != 0)
         {
             exit(1);
@@ -1663,6 +1691,7 @@ void concreate(char *s)
         {
             int32_t xstatus;
             wait(&xstatus);
+            xstatus = WEXITSTATUS(xstatus);
             if (xstatus != 0) exit(1);
         }
     }
@@ -2364,6 +2393,7 @@ void sbrkbasic(char *s)
 
     int32_t xstatus;
     wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
     if (xstatus == 1)
     {
         printf("%s: too much memory allocated!\n", s);
@@ -2398,6 +2428,7 @@ void sbrkbasic(char *s)
     }
     if (pid == 0) exit(0);
     wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
     exit(xstatus);
 }
 
@@ -2422,7 +2453,9 @@ void sbrkmuch(char *s)
 
     // touch each page to make sure it exists.
     char *eee = sbrk(0);
-    for (char *pp = a; pp < eee; pp += PAGE_SIZE)
+
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    for (char *pp = a; pp < eee; pp += page_size)
     {
         *pp = 1;
     }
@@ -2434,14 +2467,14 @@ void sbrkmuch(char *s)
 
     // can one de-allocate?
     a = sbrk(0);
-    char *c = sbrk(-PAGE_SIZE);
+    char *c = sbrk(-page_size);
     if (c == (char *)TEST_POINTER_ADDR_2)
     {
         printf("%s: sbrk could not deallocate\n", s);
         exit(1);
     }
     c = sbrk(0);
-    if (c != a - PAGE_SIZE)
+    if (c != a - page_size)
     {
         printf("%s: sbrk deallocation produced wrong address, a %x c %x\n", s,
                a, c);
@@ -2450,8 +2483,8 @@ void sbrkmuch(char *s)
 
     // can one re-allocate that page?
     a = sbrk(0);
-    c = sbrk(PAGE_SIZE);
-    if (c != a || sbrk(0) != a + PAGE_SIZE)
+    c = sbrk(page_size);
+    if (c != a || sbrk(0) != a + page_size)
     {
         printf("%s: sbrk re-allocation failed, a %x c %x\n", s, a, c);
         exit(1);
@@ -2491,6 +2524,7 @@ void kernmem(char *s)
         }
         int32_t xstatus;
         wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
         if (xstatus != -1)  // did kernel kill child?
         {
             exit(1);
@@ -2522,6 +2556,7 @@ void MAXVAplus(char *s)
         }
         int32_t xstatus;
         wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
         if (xstatus != -1)  // did kernel kill child?
         {
             exit(1);
@@ -2566,7 +2601,8 @@ void sbrkfail(char *s)
 
     // if those failed allocations freed up the pages they did allocate,
     // we'll be able to allocate here
-    char *c = sbrk(PAGE_SIZE);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    char *c = sbrk(page_size);
     for (size_t i = 0; i < sizeof(pids) / sizeof(pids[0]); i++)
     {
         if (pids[i] == -1) continue;
@@ -2594,7 +2630,7 @@ void sbrkfail(char *s)
         char *a = sbrk(0);
         sbrk(10 * BIG);
         int32_t n = 0;
-        for (size_t i = 0; i < 10 * BIG; i += PAGE_SIZE)
+        for (size_t i = 0; i < 10 * BIG; i += page_size)
         {
             n += *(a + i);
         }
@@ -2606,6 +2642,7 @@ void sbrkfail(char *s)
 
     int32_t xstatus;
     wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
     if (xstatus != -1 && xstatus != 2)
     {
         exit(1);
@@ -2615,7 +2652,8 @@ void sbrkfail(char *s)
 // test reads/writes from/to allocated memory
 void sbrkarg(char *s)
 {
-    char *a = sbrk(PAGE_SIZE);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    char *a = sbrk(page_size);
     int fd = open("sbrk", O_CREATE | O_WRONLY, 0755);
     unlink("sbrk");
     if (fd < 0)
@@ -2624,7 +2662,7 @@ void sbrkarg(char *s)
         exit(1);
     }
 
-    ssize_t n = write(fd, a, PAGE_SIZE);
+    ssize_t n = write(fd, a, page_size);
     if (n < 0)
     {
         printf("%s: write sbrk failed\n", s);
@@ -2633,7 +2671,7 @@ void sbrkarg(char *s)
     close(fd);
 
     // test writes to allocated memory
-    a = sbrk(PAGE_SIZE);
+    a = sbrk(page_size);
     if (pipe((int *)a) != 0)
     {
         printf("%s: pipe() failed\n", s);
@@ -2644,8 +2682,9 @@ void sbrkarg(char *s)
 void validatetest(char *s)
 {
     size_t hi = 1100 * 1024;
+    long page_size = sysconf(_SC_PAGE_SIZE);
 
-    for (size_t p = 0; p <= hi; p += PAGE_SIZE)
+    for (size_t p = 0; p <= hi; p += page_size)
     {
         // try to crash the kernel by passing in a bad string pointer
         if (link("nosuchfile", (char *)p) != -1)
@@ -2701,6 +2740,7 @@ void bigargtest(char *s)
 
     int32_t xstatus;
     wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
     if (xstatus != 0)
     {
         exit(xstatus);
@@ -2796,10 +2836,11 @@ static inline size_t read_stack_pointer()
 void stacktest(char *s)
 {
     pid_t pid = fork();
+    long page_size = sysconf(_SC_PAGE_SIZE);
     if (pid == 0)
     {
         char *sp = (char *)read_stack_pointer();
-        sp -= PAGE_SIZE;
+        sp -= page_size;
         // the *sp should cause a trap.
         printf("%s: stacktest: read below stack %p\n", s, *sp);
         exit(1);
@@ -2812,6 +2853,7 @@ void stacktest(char *s)
 
     int32_t xstatus;
     wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
     if (xstatus == -1)  // kernel killed child?
     {
         exit(0);
@@ -2840,6 +2882,7 @@ void textwrite(char *s)
 
     int32_t xstatus;
     wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
     if (xstatus == -1)  // kernel killed child?
     {
         exit(0);
@@ -2912,9 +2955,10 @@ void sbrkbugs(char *s)
     }
     if (pid == 0)
     {
+        long page_size = sysconf(_SC_PAGE_SIZE);
         // set the break in the middle of a page.
-        size_t half_page = PAGE_SIZE / 2;
-        sbrk((10 * PAGE_SIZE + half_page) - (intptr_t)sbrk(0));
+        size_t half_page = page_size / 2;
+        sbrk((10 * page_size + half_page) - (intptr_t)sbrk(0));
 
         // reduce the break a bit, but not enough to
         // cause a page to be freed. this used to cause
@@ -2934,12 +2978,13 @@ void sbrkbugs(char *s)
 void sbrklast(char *s)
 {
     intptr_t top = (intptr_t)sbrk(0);
-    if ((top % PAGE_SIZE) != 0)
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    if ((top % page_size) != 0)
     {
-        sbrk(PAGE_SIZE - (top % PAGE_SIZE));
+        sbrk(page_size - (top % page_size));
     }
 
-    sbrk(PAGE_SIZE);
+    sbrk(page_size);
     sbrk(10);
     sbrk(-20);
 
@@ -3156,6 +3201,7 @@ void manywrites(char *s)
     {
         int32_t st = 0;
         wait(&st);
+        st = WEXITSTATUS(st);
         if (st != 0)
         {
             exit(st);
@@ -3219,22 +3265,23 @@ void execout(char *s)
         }
         else if (pid == 0)
         {
+            long page_size = sysconf(_SC_PAGE_SIZE);
             // allocate all of memory.
             while (true)
             {
-                intptr_t a = (intptr_t)sbrk(PAGE_SIZE);
+                intptr_t a = (intptr_t)sbrk(page_size);
                 if (a == TEST_POINTER_ADDR_2)
                 {
                     break;
                 }
-                *(char *)(a + PAGE_SIZE - 1) = 1;
+                *(char *)(a + page_size - 1) = 1;
             }
 
             // free a few pages, in order to let execv() make some
             // progress.
             for (size_t i = 0; i < avail; i++)
             {
-                sbrk(-PAGE_SIZE);
+                sbrk(-page_size);
             }
 
             close(1);
@@ -3406,6 +3453,7 @@ int run(void f(char *), char *s)
     {
         int32_t xstatus;
         wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
         if (xstatus != 0)
         {
             printf("FAILED\n");
@@ -3461,17 +3509,18 @@ int countfree()
     if (pid == 0)
     {
         close(fds[0]);
+        long page_size = sysconf(_SC_PAGE_SIZE);
 
         while (true)
         {
-            void *a = sbrk(PAGE_SIZE);
+            void *a = sbrk(page_size);
             if (a == ((void *)-1))
             {
                 break;
             }
 
             // modify the memory to make sure it's really allocated.
-            *(char *)(a + PAGE_SIZE - 1) = 1;
+            *(char *)(a + page_size - 1) = 1;
 
             // report back one more page.
             if (write(fds[1], "x", 1) != 1)
