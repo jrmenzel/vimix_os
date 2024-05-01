@@ -12,12 +12,12 @@ qemu will wait for a debugger to attach, plain `gdb` works (you'll need the port
 
 Alternatively use `VSCode`, a `launch.json` is provided with various settings:
 - 32-bit vs 64-bit must be selected matching the compile target.
-- Either user space applications or the kernel can be debugged, but not both at the same time (read: no stepping through a syscalls into the kernel).
+- Either [user space](userspace/userspace.md) applications or the [kernel](kernel/kernel.md) can be debugged, but not both at the same time (read: no stepping through a [syscall](kernel/syscalls/syscalls.md) into the kernel).
 - Adjust the presets for user space apps that don't have one.
 
 **Note:** In both cases, `gdb` or `VSCode`, qemu must be started manually.
 
 ---
-[README](../README.md)
-
-[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md)
+**Up:** [README](../README.md)
+[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [overview_directories](../overview_directories.md) | [architectures](architectures.md) 
+[kernel](../kernel/kernel.md) | [user space](userspace.md)

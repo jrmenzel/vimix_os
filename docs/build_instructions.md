@@ -1,6 +1,6 @@
 # Build Instructions
 
-Requirements: qemu, 32- or 64-bit RISC V gcc toolchain
+Requirements: qemu, 32- or 64-bit [RISC V](riscv/RISCV.md) gcc toolchain
 
 on Arch Linux install for 64-bit:
 > sudo pacman -S qemu-system-riscv qemu-system-riscv-firmware riscv64-elf-binutils riscv64-elf-gcc riscv64-elf-gdb riscv64-elf-newlib
@@ -22,21 +22,32 @@ Run in qemu waiting for a debugger:
 
 In `MakefileCommon.mk` some options can get selected, e.g. debug vs. release build, 32 vs 64-bit etc.
 
+
 ### 32- vs 64-bit
 
-For RISC V either 32-bit or 64-bit target can get selected in `MakefileCommon.mk`. 64-bit kernels can only run 64-bit applications. Both versions have the same features. `make qemu` will automatically run the right variant of qemu, but in VSCode the matching debug targets must get selected manually. For VSCode two settings for syntax highlighting are provided: one per bit width. They set the correct defines which are defined by the Makefiles.
+For RISC V either 32-bit or 64-bit target can get selected in `MakefileCommon.mk`. 64-bit [kernel](kernel/kernel.md) can only run 64-bit [applications](userspace/userspace.md). Both versions have the same features. `make qemu` will automatically run the right variant of qemu, but in VSCode the matching debug targets must get selected manually. For VSCode two settings for syntax highlighting are provided: one per bit width. They set the correct defines which are defined by the Makefiles.
 
 
 ### SBI
 
-VIMIX can run bare-metal (booting in **M Mode**) or via a SBI compatible environment in **S Mode**. See `SBI_SUPPORT` in `MakefileCommon.mk`.
+VIMIX can run bare-metal (booting in [M-mode](riscv/M-mode.md)) or via a [SBI](riscv/SBI.md) compatible environment in [S-mode](riscv/S-mode.md). See `SBI_SUPPORT` in `MakefileCommon.mk`.
 
 
 ### Kernel parameters
 
 The file `param.h` sets various system values like the maximum supported CPUs or processes. It also contains debug switches which enable additional runtime tests.
 
----
-[README](../README.md)
 
-[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md)
+## Compile apps for the host
+
+Some [user space](userspace/userspace.md) apps compile on the host (tested on Linux).
+
+> make userspace_host
+
+The binaries end up in `build/root_host`. See `.vscode/launch.json` on how to debug them running on the host.
+
+
+---
+**Up:** [README](../README.md)
+[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [overview_directories](../overview_directories.md) | [architectures](architectures.md) 
+[kernel](../kernel/kernel.md) | [user space](userspace.md)
