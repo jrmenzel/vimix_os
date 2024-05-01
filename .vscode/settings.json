@@ -1,5 +1,10 @@
 {
     "gitlens.advanced.blame.customArguments": [
         "-C"
-    ]
+    ],
+    "editor.formatOnSave": true,
+    "disasexpl.associations": {
+        "**/*.c": "${workspaceFolder}/build/${relativeFileDirname}/${fileBasenameNoExtension}.s",
+        "**/*.cpp": "${workspaceFolder}/build/${relativeFileDirname}/${fileBasenameNoExtension}.s"
+    }
 }

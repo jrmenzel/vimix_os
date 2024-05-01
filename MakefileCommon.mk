@@ -16,6 +16,12 @@ SBI_SUPPORT=yes
 KERNEL_NAME=kernel-vimix
 KERNEL_FILE=$(BUILD_DIR)/$(KERNEL_NAME)
 
+# create assembly files from C, can be compared with the VSCode extension "Disassembly Explorer"
+#CREATE_ASSEMBLY=yes
+
+# -DDEBUG_AUTOSTART_USERTESTS : init will start the tests instead of the shell
+#EXTRA_DEBUG_FLAGS=-DDEBUG_AUTOSTART_USERTESTS
+
 #####
 # e.g. riscv64-unknown-elf-
 # perhaps in /opt/riscv/bin
@@ -87,6 +93,7 @@ CFLAGS_COMMON += -MD
 else
 CFLAGS_COMMON += -O2
 endif
+CFLAGS += $(EXTRA_DEBUG_FLAGS)
 
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)

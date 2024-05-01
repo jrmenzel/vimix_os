@@ -84,12 +84,13 @@ directories:
 # compile assembly
 $(K_BUILD_DIR)/%.o: %.S
 	$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
-	$(OBJDUMP) -S $@ > $(basename $@).s
 
-# compile C
+# compile C, also create assembly listing
 $(K_BUILD_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
-	$(OBJDUMP) -S $@ > $(basename $@).s
+ifeq ($(CREATE_ASSEMBLY), yes)
+	$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -S $< -g -o $(basename $@).s
+endif
 
 # special case: initcode
 INIT_BUILD_DIR=$(K_BUILD_DIR)/$(ARCH)/asm
@@ -108,8 +109,10 @@ endif
 # the kernel itself
 KERNEL_PATH=../$(KERNEL_FILE)
 $(KERNEL_FILE): $(ARCH)/asm/initcode.h $(OBJECT_FILES) $(ARCH)/kernel.ld
-	$(LD) $(LDFLAGS) $(LD_DEFINES) -T $(ARCH)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES) 
+	$(LD) $(LDFLAGS) $(LD_DEFINES) -T $(ARCH)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
+ifeq ($(CREATE_ASSEMBLY), yes)
 	$(OBJDUMP) -S $(KERNEL_PATH) > $(K_BUILD_DIR)/$(KERNEL_NAME).asm
+endif
 
 clean:
 	-@rm $(KERNEL_PATH)

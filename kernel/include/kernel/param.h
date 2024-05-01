@@ -41,6 +41,3 @@
 
 /// stores the filename / last element of path in an inode for easier debugging
 #define CONFIG_DEBUG_INODE_PATH_NAME
-
-/// let init start the usertests instead of the shell
-//#define DEBUG_AUTOSTART_USERTESTS
