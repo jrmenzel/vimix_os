@@ -18,3 +18,6 @@ a3e92cba6b45b1c777b45c4a040f8a9cc0f9a0c2
 
 # Minor cosmetic changes
 217f80b112be74a866dbeed247d7b0a797fb4622
+
+# uchar -> uint8_t, removed dead code and formatting
+1acb167982e22c4d9b3fcf20ae26188318a87120
