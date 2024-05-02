@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <kernel/xv6fs.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +40,7 @@ void die(const char *);
 uint16_t xshort(uint16_t x)
 {
     uint16_t y;
-    uchar *a = (uchar *)&y;
+    uint8_t *a = (uint8_t *)&y;
     a[0] = x;
     a[1] = x >> 8;
     return y;
@@ -48,7 +49,7 @@ uint16_t xshort(uint16_t x)
 uint32_t xint(uint32_t x)
 {
     uint32_t y;
-    uchar *a = (uchar *)&y;
+    uint8_t *a = (uint8_t *)&y;
     a[0] = x;
     a[1] = x >> 8;
     a[2] = x >> 16;
@@ -216,7 +217,7 @@ uint32_t i_alloc(uint16_t type)
 
 void balloc(int used)
 {
-    uchar buf[BLOCK_SIZE];
+    uint8_t buf[BLOCK_SIZE];
     int i;
 
     printf("balloc: first %d blocks have been allocated\n", used);

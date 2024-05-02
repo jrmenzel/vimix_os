@@ -11,7 +11,7 @@
 struct elfhdr
 {
     uint32_t magic;  // must equal ELF_MAGIC
-    uchar elf[12];
+    uint8_t elf[12];
     uint16_t type;
     uint16_t machine;
     uint32_t version;

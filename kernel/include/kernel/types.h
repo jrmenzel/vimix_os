@@ -32,7 +32,6 @@ typedef uint32_t mode_t;
 
 #endif  // __USE_REAL_STDC__
 
-typedef unsigned char uchar;
 #define INVALID_FILE_DESCRIPTOR (-1)
 
 /// @brief Process ID.

@@ -562,7 +562,7 @@ int inode_dir_link(struct inode *dir, char *name, uint32_t inum)
 }
 
 ssize_t inode_get_dirent(struct inode *dir, size_t dir_entry_addr,
-                    bool addr_is_userspace, ssize_t seek_pos)
+                         bool addr_is_userspace, ssize_t seek_pos)
 {
     if (!S_ISDIR(dir->i_mode) || seek_pos < 0) return -1;
 
