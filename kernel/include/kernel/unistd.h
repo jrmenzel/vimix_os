@@ -24,3 +24,4 @@
 #define SYS_mkdir 20
 #define SYS_close 21
 #define SYS_get_dirent 22
+#define SYS_reboot 23

@@ -69,4 +69,7 @@ $
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
 - Added applications:
 	- [stat](docs/userspace/bin/stat.md)
-
+	- [shutdown](docs/userspace/bin/shutdown.md)
+- Added syscalls:
+	- [get_dirent](docs/kernel/syscalls/get_dirent.md)
+	- [reboot](docs/kernel/syscalls/reboot.md)

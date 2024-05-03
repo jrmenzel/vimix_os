@@ -35,6 +35,9 @@ pagetable_t kvm_make_kernel_pagetable(char *end_of_memory)
     // CLINT
     kvm_map_or_panic(kpage_table, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
 
+    // shutdown qemu
+    kvm_map_or_panic(kpage_table, 0x100000, 0x100000, PAGE_SIZE, PTE_R | PTE_W);
+
     // PLIC
     kvm_map_or_panic(kpage_table, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
 

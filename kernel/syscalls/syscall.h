@@ -98,6 +98,10 @@ size_t sys_get_dirent();
 /// @return how many clock tick interrupts have occurred
 size_t sys_uptime();
 
+/// @brief Syscall "ssize_t reboot(int32_t cmd)" from reboot.h
+/// @return ideally not...
+size_t sys_reboot();
+
 // ********************************************************
 // IPC from sys_ipc.c
 //

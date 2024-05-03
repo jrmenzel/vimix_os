@@ -90,6 +90,9 @@ void start(xlen_t cpuid, void *device_tree)
     rv_write_csr_mideleg(0xffff);
     rv_write_csr_sie(rv_read_csr_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
 
+    // disable interrupts, might be enabled after a soft reboot
+    cpu_disable_device_interrupts();
+
     // configure Physical Memory Protection to give supervisor mode
     // access to all of physical memory.
 #if (__riscv_xlen == 32)

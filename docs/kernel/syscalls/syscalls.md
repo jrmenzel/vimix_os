@@ -37,6 +37,9 @@ See also: [calling_syscall](calling_syscall.md).
 **Communication**
 - [pipe](pipe.md)
 
+**Misc**
+- [reboot](reboot.md)
+
 
 ---
 **Overview:** [kernel](../kernel.md)

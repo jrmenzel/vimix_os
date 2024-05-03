@@ -26,7 +26,8 @@ UPROGS_NAME=\
 	wc\
 	zombie\
 	ls\
-	stat
+	stat\
+	shutdown
 
 # Some user space apps can be compiled on the host as well,
 # e.g. as native Linux apps. This can be helpful for app

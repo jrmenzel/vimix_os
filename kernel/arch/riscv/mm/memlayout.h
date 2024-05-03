@@ -30,6 +30,16 @@
 #define VIRTIO0 0x10001000
 #define VIRTIO0_IRQ 1
 
+/// one page where writing to the first int can trigger a qemu shutdown or
+/// reboot
+#define VIRT_TEST 0x100000
+
+/// written to location VIRT_TEST qemu should shutdown
+#define VIRT_TEST_SHUTDOWN 0x5555
+
+/// written to location VIRT_TEST qemu should reboot the emulator
+#define VIRT_TEST_REBOOT 0x7777
+
 /// core local interruptor (CLINT), which contains the timer.
 #define CLINT 0x2000000L
 
