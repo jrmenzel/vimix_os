@@ -55,16 +55,16 @@ PROGS_HOST=$(foreach a, $(UPROGS_NAME_HOST), $(B_DEPLOY_DIR_HOST)/$a)
 all: directories $(UPROGS)
 
 $(B_BUILD_DIR)/%.o: %.c
-	$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) -c $< -o $@
+	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 $(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a
-	$(LD) $(LDFLAGS) -T user.ld $(LIB_PATH)/stdlib.a -o $@ $^
-	$(OBJDUMP) -S $@ > $(B_BUILD_DIR)/$*.S
+	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
+	@$(LD) $(LDFLAGS) -T user.ld $(LIB_PATH)/stdlib.a -o $@ $^
+#	@$(OBJDUMP) -S $@ > $(B_BUILD_DIR)/$*.S
 
 $(LIB_PATH)/stdlib.a: 
-	pushd ../lib; \
-	$(MAKE) all; \
-	popd;
+	$(MAKE) -C ../lib all;
 
 # special case:
 # usertest includes internal kernel API and needs more include search paths
@@ -79,23 +79,22 @@ KERNEL_SPACE_INC += ./
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I../../kernel/$d)
 #
 $(B_BUILD_DIR)/usertests.o: usertests.c 
-	$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
+	@printf "$(TASK_COLOR)Compile with extra flags: $(@)\n$(NO_COLOR)"
+	@$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
-$(B_BUILD_DIR)/mkfs.o: ../../tools/mkfs/mkfs.c
-	$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
-
-directories:
+directories: # make temp build directories
 	mkdir -p $(B_BUILD_DIR)
 	mkdir -p $(B_DEPLOY_DIR)
 	mkdir -p $(B_DEPLOY_DIR_HOST)
 
-clean:
+clean: # delete build dir
 	-@rm -rf $(B_BUILD_DIR)
-	mkdir -p $(B_BUILD_DIR)
+	-@rm -rf $(B_DEPLOY_DIR)
+	-@rm -rf $(B_DEPLOY_DIR_HOST)
 
-# build supported apps for the host OS / architecture:
 # binaries will end up in build/root_host/PATH_IN_VIMIX
-host: $(PROGS_HOST)
+host: directories $(PROGS_HOST) # build supported apps for the host OS / architecture
 
 $(B_DEPLOY_DIR_HOST)/%: %.c
-	$(CC_HOST) $(CFLAGS_HOST) -I/usr/include $< -o $@
+	@printf "$(TASK_COLOR)Compile for host: $(@)\n$(NO_COLOR)"
+	@$(CC_HOST) $(CFLAGS_HOST) -I/usr/include $< -o $@

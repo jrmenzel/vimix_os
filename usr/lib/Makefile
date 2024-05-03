@@ -21,25 +21,29 @@ STD_LIBC=\
 
 .PHONY: all directories clean
 
-all: directories $(LIB_BUILD_DIR)/stdlib.a
+all: directories $(LIB_BUILD_DIR)/stdlib.a # statically linked stdlib 
 
 CFLAGS += -fPIC
 
 $(LIB_BUILD_DIR)/stdlib.a : $(STD_LIBC)
-	$(AR) -r -o $(LIB_BUILD_DIR)/stdlib.a $(STD_LIBC)
+	@printf "$(TASK_COLOR)Create library: $(@)\n$(NO_COLOR)"
+	@$(AR) -r -o $(LIB_BUILD_DIR)/stdlib.a $(STD_LIBC)
 
 $(LIB_BUILD_DIR)/%.o: %.c
-	$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) -c $< -o $@
+	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 # automatically generated
 $(LIBC_BUILD_DIR)/usys.S : libc/usys.pl
-	perl libc/usys.pl > $(LIBC_BUILD_DIR)/usys.S
+	@printf "$(TASK_COLOR)Generate $(@) from libc/usys.pl\n$(NO_COLOR)"
+	@perl libc/usys.pl > $(LIBC_BUILD_DIR)/usys.S
 
 $(LIBC_BUILD_DIR)/usys.o : $(LIBC_BUILD_DIR)/usys.S
-	$(CC) $(CFLAGS) -c -o $(LIBC_BUILD_DIR)/usys.o $(LIBC_BUILD_DIR)/usys.S $(USER_SPACE_INC_PARAMS)
+	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@$(CC) $(CFLAGS) -c -o $(LIBC_BUILD_DIR)/usys.o $(LIBC_BUILD_DIR)/usys.S $(USER_SPACE_INC_PARAMS)
 
 
-directories:
+directories: # temp build directories
 	mkdir -p $(LIBC_BUILD_DIR)/libc
 
 clean:

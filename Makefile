@@ -6,41 +6,31 @@
 #
 include MakefileCommon.mk
 
-.PHONY: all kernel tools userspace clean
+.PHONY: all directories kernel tools userspace_lib userspace userspace_host
 
-all: directories kernel tools userspace_lib userspace userspace_host
+all: directories kernel tools userspace_lib userspace userspace_host $(BUILD_DIR)/filesystem.img
 
-directories:
+directories: # make build output directory
 	mkdir -p $(BUILD_DIR);
 
-kernel:
-	pushd kernel; \
-	$(MAKE) all; \
-	popd;
+kernel: # the kernel itself
+	$(MAKE) -C kernel all;
 
-tools:
-	pushd tools/mkfs; \
-	$(MAKE) all; \
-	popd;
+tools: # mkfs
+	$(MAKE) -C tools/mkfs all;
 
-userspace_lib:
-	pushd usr/lib; \
-	$(MAKE) all; \
-	popd;
+userspace_lib: # user space clib
+	$(MAKE) -C usr/lib all;
 
-userspace: userspace_lib
-	pushd usr/bin; \
-	$(MAKE) all; \
-	popd;
+userspace: userspace_lib # user space apps and libs
+	$(MAKE) -C usr/bin all; 
 
-userspace_host: 
-	pushd usr/bin; \
-	$(MAKE) directories; \
-	$(MAKE) host; \
-	popd;
+userspace_host: # some user space apps for the host (Linux)
+	$(MAKE) -C usr/bin host; 
 
 # filesystem in a file containing userspace to run with qemu (kernel is set manually)
 $(BUILD_DIR)/filesystem.img: tools README.md userspace
+	@printf "$(TASK_COLOR)Create file system: $(@)\n$(NO_COLOR)"
 	tools/mkfs/mkfs $(BUILD_DIR)/filesystem.img README.md $(BUILD_DIR)/root/* 
 
 ###
@@ -72,10 +62,8 @@ QEMU_OPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 QEMU_DEBUG_OPTS = -S -gdb tcp:localhost:$(GDB_PORT)
 
 # run in qemu
-qemu: kernel $(BUILD_DIR)/filesystem.img
-	@echo
-	@echo "*** CTRL+A X to close qemu"
-	@echo
+qemu: kernel $(BUILD_DIR)/filesystem.img # run VIMIX in qemu
+	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
 	$(QEMU) $(QEMU_OPTS)
 
 ifeq ($(BITWIDTH), 32)
@@ -92,13 +80,15 @@ endif
 
 
 # run in qemu waiting for a debugger
-qemu-gdb: kernel .gdbinit $(BUILD_DIR)/filesystem.img
-	@echo
-	@echo "*** CTRL+A X to close qemu"
-	@echo
-	@echo "    Now run 'gdb' in another window."
-	@echo " OR Attach with VSCode for debugging."
+qemu-gdb: kernel .gdbinit $(BUILD_DIR)/filesystem.img # run VIMIX in qemu waiting for a debugger
+	@printf "\n$(YELLOW)CTRL+A X to close qemu\n"
+	@printf " Now run 'gdb' in another window.\n"
+	@printf " OR attach with VSCode for debugging.$(NO_COLOR)\n"
 	$(QEMU) $(QEMU_OPTS) $(QEMU_DEBUG_OPTS)
 
-clean:
-	-@rm -r $(BUILD_DIR)/*
+clean: # clean up
+	$(MAKE) -C kernel clean;
+	$(MAKE) -C tools/mkfs clean;
+	$(MAKE) -C usr/lib clean;
+	$(MAKE) -C usr/bin clean;
+#	-@rm -r $(BUILD_DIR)/*

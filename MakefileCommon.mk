@@ -128,3 +128,19 @@ LDFLAGS = -z max-page-size=4096
 USER_SPACE_INC  = ../../usr/include     # /usr/include : general purpose C headers for userspace
 USER_SPACE_INC += ../../kernel/include  # OS public API, required for stdlib
 USER_SPACE_INC_PARAMS=$(foreach d, $(USER_SPACE_INC), -I$d)
+
+TASK_COLOR  = \033[0;34m
+YELLOW      = \033[93m
+NO_COLOR    = \033[m
+ERROR_COLOR = \033[0;31m
+
+# add "make help" to all Makefiles, based on https://blog.ovhcloud.com/pimp-my-makefile/
+help: # Print help on Makefile
+	@grep '^[^.#]\+:\s\+.*#' Makefile | \
+	sed "s/\(.\+\):\s*\(.*\) #\s*\(.*\)/`printf "$(YELLOW)"`\1`printf "$(NO_COLOR)"`	\3/" | \
+	expand -t20
+
+# just calling "make" will execute the default target, which would be "help" as it is
+# the first in the file. Avaid a second include for help at the end of the makefiles
+# by setting an explicit default.
+.DEFAULT_GOAL := all
