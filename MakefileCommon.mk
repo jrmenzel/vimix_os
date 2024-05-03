@@ -16,6 +16,13 @@ SBI_SUPPORT=yes
 KERNEL_NAME=kernel-vimix
 KERNEL_FILE=$(BUILD_DIR)/$(KERNEL_NAME)
 
+# MB
+# OpenSBI uses the lowest 2MB for itself
+MEMORY_SIZE=64
+
+# for qemu
+CPUS=4
+
 # create assembly files from C, can be compared with the VSCode extension "Disassembly Explorer"
 #CREATE_ASSEMBLY=yes
 

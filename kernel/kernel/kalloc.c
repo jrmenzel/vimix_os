@@ -65,8 +65,10 @@ void kfree(void *pa)
         panic("kfree: out of range or unaligned address");
     }
 
+#ifdef CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
     // Fill with junk to catch dangling refs.
     memset(pa, 1, PAGE_SIZE);
+#endif  // CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
 
     struct free_page *page = (struct free_page *)pa;
 
@@ -93,10 +95,12 @@ void *kalloc()
     }
     spin_unlock(&g_kernel_memory.lock);
 
+#ifdef CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
     if (page)
     {
         memset((char *)page, 5, PAGE_SIZE);  // fill with junk
     }
+#endif  // CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
     return (void *)page;
 }
 
@@ -109,3 +113,20 @@ size_t kalloc_debug_get_allocation_count()
     return count;
 }
 #endif  // CONFIG_DEBUG_KALLOC
+
+size_t kalloc_get_free_memory()
+{
+    spin_lock(&g_kernel_memory.lock);
+    size_t pages = 0;
+
+    struct free_page *mem = g_kernel_memory.list_of_free_pages;
+    while (mem)
+    {
+        mem = mem->next;
+        pages++;
+    }
+
+    spin_unlock(&g_kernel_memory.lock);
+
+    return pages * PAGE_SIZE;
+}

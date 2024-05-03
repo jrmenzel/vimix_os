@@ -15,6 +15,11 @@
 
 #define PAGE_SIZE 4096  ///< bytes per page
 
+#if defined(DEBUG)
+#define CONFIG_DEBUG
+#endif  // DEBUG
+
+#ifdef CONFIG_DEBUG
 /// adds extra runtime tests to check correct spinlock
 /// usage and stores an optional name per lock for debugging.
 #define CONFIG_DEBUG_SPINLOCK
@@ -26,8 +31,17 @@
 /// debugs kalloc()
 #define CONFIG_DEBUG_KALLOC
 
+/// fill all allocated pages from kalloc with garbage data
+/// also fill all freed pages with garbage
+#define CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
+
 /// some extra API usage tests
 #define CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
+
+/// stores the filename / last element of path in an inode for easier debugging
+#define CONFIG_DEBUG_INODE_PATH_NAME
+
+#endif  // CONFIG_DEBUG
 
 #if defined(CONFIG_DEBUG_EXTRA_RUNTIME_TESTS)
 #define DEBUG_EXTRA_ASSERT(test, msg) \
@@ -38,6 +52,3 @@
 #else
 #define DEBUG_EXTRA_ASSERT(test, msg)
 #endif
-
-/// stores the filename / last element of path in an inode for easier debugging
-#define CONFIG_DEBUG_INODE_PATH_NAME

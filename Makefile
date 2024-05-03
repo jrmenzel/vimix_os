@@ -51,8 +51,7 @@ else
 QEMU_BIOS=none
 endif
 
-CPUS := 4
-QEMU_OPTS = -machine virt -bios $(QEMU_BIOS) -kernel $(KERNEL_FILE) -m 128M -smp $(CPUS) -nographic
+QEMU_OPTS = -machine virt -bios $(QEMU_BIOS) -kernel $(KERNEL_FILE) -m $(MEMORY_SIZE)M -smp $(CPUS) -nographic
 QEMU_OPTS += -global virtio-mmio.force-legacy=false
 QEMU_OPTS += -drive file=$(BUILD_DIR)/filesystem.img,if=none,format=raw,id=x0
 QEMU_OPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0

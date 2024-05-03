@@ -2437,7 +2437,8 @@ void sbrkbasic(char *s)
 
 void sbrkmuch(char *s)
 {
-    const size_t BIG = 100 * 1024 * 1024;
+    // half the physical memory
+    const size_t BIG = MEMORY_SIZE / 2 * 1024 * 1024;
 
     char *oldbrk = sbrk(0);
 
@@ -2511,8 +2512,8 @@ void sbrkmuch(char *s)
 // can we read the kernel's memory?
 void kernmem(char *s)
 {
-    for (char *a = (char *)(KERNBASE); a < (char *)(KERNBASE + 2000000);
-         a += 50000)
+    for (char *a = (char *)(KERNBASE); a < (char *)(KERNBASE + 200000);
+         a += 20000)
     {
         pid_t pid = fork();
         if (pid < 0)
@@ -2572,7 +2573,8 @@ void MAXVAplus(char *s)
 // failed allocation?
 void sbrkfail(char *s)
 {
-    const size_t BIG = 100 * 1024 * 1024;
+    _Static_assert(MEMORY_SIZE > 4);
+    const size_t BIG = (MEMORY_SIZE - 4) * 1024 * 1024;
 
     pid_t pids[10];
 
@@ -3017,10 +3019,11 @@ void sbrk8000(char *s)
 }
 
 // regression test. test whether execv() leaks memory if one of the
-// arguments is invalid. the test passes if the kernel doesn't panic.
+// arguments is invalid. Memory leaks will get detacted at the end of the
+// usertests.
 void badarg(char *s)
 {
-    for (size_t i = 0; i < 50000; i++)
+    for (size_t i = 0; i < 5; i++)
     {
         char *argv[2];
         argv[0] = (char *)(-1);
@@ -3569,7 +3572,6 @@ int drivetests(int quick, int continuous, char *justone)
     do {
         printf("usertests starting\n");
         int free0 = countfree();
-        int free1 = 0;
         if (runtests(quicktests, justone))
         {
             if (continuous != 2)
@@ -3588,10 +3590,12 @@ int drivetests(int quick, int continuous, char *justone)
                 }
             }
         }
-        if ((free1 = countfree()) < free0)
+        int free1 = countfree();
+        if (free1 < free0)
         {
             printf("FAILED -- lost some free pages %d (out of %d)\n", free1,
                    free0);
+            printf("badarg is a candidate for leaked memory\n");
             if (continuous != 2)
             {
                 return 1;

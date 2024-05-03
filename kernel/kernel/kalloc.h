@@ -25,3 +25,6 @@ void kalloc_init(char* pa_start, char* pa_end);
 /// Returns the number of 4K allocations currently used.
 size_t kalloc_debug_get_allocation_count();
 #endif  // CONFIG_DEBUG_KALLOC
+
+/// @brief Returns free memory in bytes
+size_t kalloc_get_free_memory();

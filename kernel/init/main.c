@@ -80,7 +80,11 @@ void init_by_first_thread()
     userspace_init();  // first user process
 
 #ifdef CONFIG_DEBUG_KALLOC
-    printk("Memory used: %dkb\n", kalloc_debug_get_allocation_count() * 4);
+    printk("Memory used: %dkb - %dkb free\n",
+           kalloc_debug_get_allocation_count() * 4,
+           kalloc_get_free_memory() / 1024);
+#else
+    printk("%dkb free\n", kalloc_get_free_memory() / 1024);
 #endif  // CONFIG_DEBUG_KALLOC
 
     // full memory barrier (gcc buildin):

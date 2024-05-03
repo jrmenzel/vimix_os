@@ -80,7 +80,7 @@ KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I../../kernel/$d)
 #
 $(B_BUILD_DIR)/usertests.o: usertests.c 
 	@printf "$(TASK_COLOR)Compile with extra flags: $(@)\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
+	@$(CC) $(CFLAGS) -DMEMORY_SIZE=$(MEMORY_SIZE) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 directories: # make temp build directories
 	mkdir -p $(B_BUILD_DIR)

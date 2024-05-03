@@ -63,7 +63,13 @@
 /// the kernel expects there to be RAM
 /// for use by the kernel and user pages
 /// from physical address 0x80000000/0x80200000L to PHYSTOP.
+#ifdef MEMORY_SIZE
+// set in Makefile
+#define RAM_SIZE_IN_MB MEMORY_SIZE
+#else
+// fallback
 #define RAM_SIZE_IN_MB 128
+#endif
 
 #ifdef __ENABLE_SBI__
 #define KERNBASE 0x80200000L

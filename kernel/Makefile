@@ -74,7 +74,7 @@ KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I$d)
 ifeq ($(SBI_SUPPORT), yes)
 CFLAGS += -D__ENABLE_SBI__
 endif
-
+CFLAGS += -DMEMORY_SIZE=$(MEMORY_SIZE)
 
 .PHONY: all directories clean
 all: directories $(ARCH)/asm/initcode.h $(KERNEL_PATH) # build all
