@@ -14,6 +14,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+const char *bin_echo = "/usr/bin/echo";
+const char *bin_cat = "/usr/bin/cat";
+
 // from FreeBSD.
 int do_rand(unsigned long *ctx)
 {
@@ -315,7 +318,7 @@ void go(int which_child)
                 }
                 close(aa[1]);
                 char *args[3] = {"echo", "hi", 0};
-                execv("grindir/../echo", args);
+                execv(bin_echo, args);
                 fprintf(stderr, "grind: echo: not found\n");
                 exit(2);
             }
@@ -344,7 +347,7 @@ void go(int which_child)
                 }
                 close(bb[1]);
                 char *args[2] = {"cat", 0};
-                execv("/cat", args);
+                execv(bin_cat, args);
                 fprintf(stderr, "grind: cat: not found\n");
                 exit(6);
             }

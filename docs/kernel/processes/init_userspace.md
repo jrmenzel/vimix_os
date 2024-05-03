@@ -22,7 +22,7 @@ All the initcode does is call [execv](syscalls/execv.md) `to execute` /init.
 
 ## Process 1: init
 
-`/init` sets up console IO for its child processes (all processes in this case) and starts a shell which then can [fork](syscalls/fork.md) and [execv](syscalls/execv.md) applications. For details see [init](../../userspace/bin/init.md).
+`/usr/bin/init` sets up console IO for its child processes (all processes in this case) and starts a shell which then can [fork](syscalls/fork.md) and [execv](syscalls/execv.md) applications. For details see [init](../../userspace/bin/init.md).
 
 
 ---

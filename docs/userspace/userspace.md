@@ -9,13 +9,15 @@ This normally starts a shell ([sh](bin/sh.md)) for users to start any applicatio
 
 ## System Applications
 
-[init](bin/init.md) - the first process
+[/usr/bin/init](bin/init.md) - the first process
 
 **User interface:** 
 - [sh](bin/sh.md) - the shell
 
 
 ## User Applications
+
+Stored in `/usr/bin`.
 
 **Process Management:**
 - [kill](bin/kill.md) - send signals to [processes](../kernel/processes/processes.md)

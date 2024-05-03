@@ -23,7 +23,7 @@ userspace_lib: # user space clib
 	$(MAKE) -C usr/lib all;
 
 userspace: userspace_lib # user space apps and libs
-	$(MAKE) -C usr/bin all; 
+	$(MAKE) -C usr/bin all;
 
 userspace_host: # some user space apps for the host (Linux)
 	$(MAKE) -C usr/bin host; 
@@ -31,7 +31,10 @@ userspace_host: # some user space apps for the host (Linux)
 # filesystem in a file containing userspace to run with qemu (kernel is set manually)
 $(BUILD_DIR)/filesystem.img: tools README.md userspace
 	@printf "$(TASK_COLOR)Create file system: $(@)\n$(NO_COLOR)"
-	tools/mkfs/mkfs $(BUILD_DIR)/filesystem.img README.md $(BUILD_DIR)/root/* 
+	cp README.md $(BUILD_DIR)/root/
+	mkdir -p $(BUILD_DIR)/root/dev
+	mkdir -p $(BUILD_DIR)/root/home
+	tools/mkfs/mkfs $(BUILD_DIR)/filesystem.img $(BUILD_DIR)/root/ 
 
 ###
 # qemu
@@ -91,4 +94,4 @@ clean: # clean up
 	$(MAKE) -C tools/mkfs clean;
 	$(MAKE) -C usr/lib clean;
 	$(MAKE) -C usr/bin clean;
-#	-@rm -r $(BUILD_DIR)/*
+	-@rm -r $(BUILD_DIR)/root/*

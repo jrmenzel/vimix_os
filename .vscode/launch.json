@@ -27,7 +27,26 @@
             "name": "64 bit userspace: init",
             "type": "cppdbg",
             "request": "launch",
-            "program": "build/root/init",
+            "program": "build/root/usr/bin/init",
+            "cwd": "${workspaceRoot}",
+            "miDebuggerPath": "riscv64-elf-gdb",
+            "miDebuggerServerAddress": "127.0.0.1:26002",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": false
+                }
+            ]
+        },
+        {
+            // debug a user space application
+            "name": "64 bit userspace: sh",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "build/root/usr/bin/sh",
             "cwd": "${workspaceRoot}",
             "miDebuggerPath": "riscv64-elf-gdb",
             "miDebuggerServerAddress": "127.0.0.1:26002",
@@ -65,7 +84,7 @@
             "name": "32 bit userspace: init",
             "type": "cppdbg",
             "request": "launch",
-            "program": "build/root/init",
+            "program": "build/root/usr/bin/init",
             "cwd": "${workspaceRoot}",
             "miDebuggerPath": "riscv32-elf-gdb",
             "miDebuggerServerAddress": "127.0.0.1:26002",
@@ -103,6 +122,36 @@
             "name": "host userspace: cat",
             "program": "${workspaceRoot}/build/root_host/cat",
             "args": ["README.md"],
+            "cwd": "${workspaceRoot}",
+            "type": "cppdbg",
+            "request": "launch",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    // https://sourceware.org/gdb/onlinedocs/gdb/Forks.html
+                    "description": "Fork follows Child process",
+                    "text": "set follow-fork-mode child",
+                    "ignoreFailures": true
+                },
+                {
+                    // https://sourceware.org/gdb/onlinedocs/gdb/Forks.html
+                    "description": "Fork will keep the other process attached to debugger",
+                    "text": "set detach-on-fork off",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            // debug a user space application on the host
+            "name": "host mkfs",
+            "program": "${workspaceRoot}/tools/mkfs/mkfs",
+            "args": ["build/filesystem.img"],
             "cwd": "${workspaceRoot}",
             "type": "cppdbg",
             "request": "launch",

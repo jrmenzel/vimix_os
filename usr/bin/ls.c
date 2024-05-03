@@ -27,8 +27,8 @@ struct Parameters
 void set_default_parameters(struct Parameters *parameters)
 {
     parameters->print_directory_name = false;
-    parameters->print_dot_dotdot = !false;
-    parameters->print_hidden = !false;
+    parameters->print_dot_dotdot = false;
+    parameters->print_hidden = true;
 }
 
 const int S_OK = 0;

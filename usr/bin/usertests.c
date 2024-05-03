@@ -44,6 +44,9 @@ const size_t TEST_POINTER_ADDR_1 = 0x80000000LL;
 const size_t TEST_POINTER_ADDR_2 = 0xffffffffffffffff;
 #endif
 
+const char *bin_echo = "/usr/bin/echo";
+const char *bin_init = "/usr/bin/init";
+
 //
 // Section with tests that run fairly quickly.  Use -q if you want to
 // run just those.  With -q usertests also runs the ones that take a
@@ -109,10 +112,10 @@ void copyout(char *s)
     {
         void *addr = (void *)addrs[ai];
 
-        int fd = open("README.md", 0);
+        int fd = open("/README.md", 0);
         if (fd < 0)
         {
-            printf("open(README.md) failed\n");
+            printf("open(/README.md) failed\n");
             exit(1);
         }
         ssize_t n = read(fd, (void *)addr, 8192);
@@ -223,7 +226,7 @@ void copyinstr2(char *s)
         }
         big[max_arg_size] = '\0';
         char *args2[] = {big, big, big, 0};
-        ret = execv("echo", args2);
+        ret = execv(bin_echo, args2);
         free(big);
         if (ret != -1)
         {
@@ -329,7 +332,7 @@ void rwsbrk()
     close(fd);
     unlink("rwsbrk");
 
-    fd = open("README.md", O_RDONLY);
+    fd = open("/README.md", O_RDONLY);
     if (fd < 0)
     {
         printf("open(rwsbrk) failed\n");
@@ -509,7 +512,7 @@ void iputtest(char *s)
         printf("%s: unlink ../iputdir failed\n", s);
         exit(1);
     }
-    if (chdir("/") < 0)
+    if (chdir("/utests-tmp") < 0)
     {
         printf("%s: chdir / failed\n", s);
         exit(1);
@@ -602,10 +605,10 @@ void openiputtest(char *s)
 
 void opentest(char *s)
 {
-    int fd = open("echo", 0);
+    int fd = open("/usr/bin/echo", 0);
     if (fd < 0)
     {
-        printf("%s: open echo failed!\n", s);
+        printf("%s: open /usr/bin/echo failed!\n", s);
         exit(1);
     }
     close(fd);
@@ -777,7 +780,7 @@ void dirtest(char *s)
 
 void exectest(char *s)
 {
-    char *echoargv[] = {"echo", "OK", 0};
+    char *echoargv[] = {"/usr/bin/echo", "OK", 0};
 
     unlink("echo-ok");
     pid_t pid = fork();
@@ -800,7 +803,7 @@ void exectest(char *s)
             printf("%s: wrong fd\n", s);
             exit(1);
         }
-        if (execv("echo", echoargv) < 0)
+        if (execv(bin_echo, echoargv) < 0)
         {
             printf("%s: execv echo failed\n", s);
             exit(1);
@@ -1828,9 +1831,9 @@ void subdir(char *s)
         exit(1);
     }
 
-    if (mkdir("/dd/dd", 0755) != 0)
+    if (mkdir("/utests-tmp/dd/dd", 0755) != 0)
     {
-        printf("%s: subdir mkdir dd/dd failed\n", s);
+        printf("%s: subdir mkdir /utests-tmp/dd/dd failed\n", s);
         exit(1);
     }
 
@@ -1884,9 +1887,9 @@ void subdir(char *s)
         printf("%s: chdir dd/../../dd failed\n", s);
         exit(1);
     }
-    if (chdir("dd/../../../dd") != 0)
+    if (chdir("dd/../../../utests-tmp/dd") != 0)
     {
-        printf("%s: chdir dd/../../../dd failed\n", s);
+        printf("%s: chdir dd/../../../utests-tmp/dd failed\n", s);
         exit(1);
     }
     if (chdir("./..") != 0)
@@ -2187,7 +2190,7 @@ void rmdot(char *s)
         printf("%s: rm .. worked!\n", s);
         exit(1);
     }
-    if (chdir("/") != 0)
+    if (chdir("/utests-tmp") != 0)
     {
         printf("%s: chdir / failed\n", s);
         exit(1);
@@ -2245,7 +2248,7 @@ void dirfile(char *s)
         printf("%s: unlink dirfile/xx succeeded!\n", s);
         exit(1);
     }
-    if (link("README.md", "dirfile/xx") == 0)
+    if (link("/README.md", "dirfile/xx") == 0)
     {
         printf("%s: link to dirfile/xx succeeded!\n", s);
         exit(1);
@@ -2310,7 +2313,7 @@ void iref(char *s)
         unlink("irefd");
     }
 
-    chdir("/");
+    chdir("/utests-tmp");
 }
 
 // test that fork fails gracefully
@@ -2727,7 +2730,7 @@ void bigargtest(char *s)
                 "                                                              "
                 "                                   ";
         args[MAX_EXEC_ARGS - 1] = 0;
-        execv("echo", args);
+        execv(bin_echo, args);
         int fd = open("bigarg-ok", O_CREATE, 0755);
         close(fd);
         exit(0);
@@ -2814,7 +2817,7 @@ void fsfull()
 
 void argptest(char *s)
 {
-    int fd = open("init", O_RDONLY);
+    int fd = open(bin_init, O_RDONLY);
     if (fd < 0)
     {
         printf("%s: open failed\n", s);
@@ -3022,7 +3025,7 @@ void badarg(char *s)
         char *argv[2];
         argv[0] = (char *)(-1);
         argv[1] = 0;
-        execv("echo", argv);
+        execv(bin_echo, argv);
     }
 
     exit(0);
@@ -3286,7 +3289,7 @@ void execout(char *s)
 
             close(1);
             char *args[] = {"echo", "x", 0};
-            execv("echo", args);
+            execv(bin_echo, args);
             exit(0);
         }
         else
@@ -3560,6 +3563,9 @@ int countfree()
 
 int drivetests(int quick, int continuous, char *justone)
 {
+    mkdir("/utests-tmp", 0755);
+    if (chdir("/utests-tmp") < 0) return -1;
+
     do {
         printf("usertests starting\n");
         int free0 = countfree();
@@ -3592,6 +3598,8 @@ int drivetests(int quick, int continuous, char *justone)
             }
         }
     } while (continuous);
+
+    if (chdir("..") < 0) return -1;
     return 0;
 }
 

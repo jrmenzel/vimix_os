@@ -29,7 +29,7 @@ FILE *stderr = NULL;
 void init_stdio()
 {
     // Setup standard files as defined by the C standard.
-    // /init will have these files already opened.
+    // /usr/bin/init will have these files already opened.
     STD_IN.fd = STDIN_FILENO;
     stdin = &STD_IN;
     STD_OUT.fd = STDOUT_FILENO;

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 
-# Initial process that execs /init.
+# Initial process that execs /usr/bin/init.
 # This code runs in user space.
 
 #include <kernel/unistd.h>
@@ -16,15 +16,15 @@ start:
 
 # for(;;) exit();
 exit:
-    # return -0xDEAD to signal the kernel that initcode returned, not /init
+    # return -0xDEAD to signal the kernel that initcode returned, not /usr/bin/init
     li a0, (-0xDEAD)
     li a7, SYS_exit
     ecall
     jal exit
 
-# char init[] = "/init\0";
+# char init[] = "/usr/bin/init\0";
 init:
-  .string "/init\0"
+  .string "/usr/bin/init\0"
 
 #if (__riscv_xlen == 64)
 

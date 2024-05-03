@@ -4,17 +4,17 @@
 include ../../MakefileCommon.mk
 BUILD_DIR_ROOT=../../$(BUILD_DIR)
 B_BUILD_DIR=$(BUILD_DIR_ROOT)/usr/bin
-B_DEPLOY_DIR=$(BUILD_DIR_ROOT)/root
-B_DEPLOY_DIR_HOST=$(BUILD_DIR_ROOT)/root_host
+B_DEPLOY_DIR=$(BUILD_DIR_ROOT)/root/usr/bin
+B_DEPLOY_DIR_HOST=$(BUILD_DIR_ROOT)/root_host/usr/bin
 
 LIB_PATH=$(BUILD_DIR_ROOT)/usr/lib
 
 UPROGS_NAME=\
+	init\
 	cat\
 	echo\
 	forktest\
 	grep\
-	init\
 	kill\
 	ln\
 	ls\
@@ -61,7 +61,6 @@ $(B_BUILD_DIR)/%.o: %.c
 $(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) -T user.ld $(LIB_PATH)/stdlib.a -o $@ $^
-#	@$(OBJDUMP) -S $@ > $(B_BUILD_DIR)/$*.S
 
 $(LIB_PATH)/stdlib.a: 
 	$(MAKE) -C ../lib all;

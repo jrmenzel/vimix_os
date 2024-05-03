@@ -12,10 +12,10 @@
 #include <unistd.h>
 
 #if defined(DEBUG_AUTOSTART_USERTESTS)
-const char *SHELL_NAME = "usertests";
+const char *SHELL_NAME = "/usr/bin/usertests";
 char *SHELL_ARGV[] = {"usertests", 0};
 #else
-const char *SHELL_NAME = "sh";
+const char *SHELL_NAME = "/usr/bin/sh";
 char *SHELL_ARGV[] = {"sh", 0};
 #endif
 
@@ -28,18 +28,18 @@ int main()
     // this way all programs that don't change these open files will
     // direct all stdin/stdout/stderr IO to console.
 
-    if (open("console", O_RDWR) < 0)
+    if (open("/dev/console", O_RDWR) < 0)
     {
-        mknod("console", S_IFCHR | 0666,
+        mknod("/dev/console", S_IFCHR | 0666,
               MKDEV(CONSOLE_DEVICE_MAJOR, CONSOLE_DEVICE_MINOR));
-        open("console", O_RDWR);
+        open("/dev/console", O_RDWR);
     }
     dup(0);  // stdout
     dup(0);  // stderr
 
     while (true)
     {
-        printf("init: starting sh\n");
+        printf("init: starting %s\n", SHELL_NAME);
         pid_t pid = fork();
 
         if (pid < 0)

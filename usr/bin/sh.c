@@ -8,6 +8,12 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#if defined(BUILD_ON_HOST)
+#include <linux/limits.h>
+#else
+#include <kernel/limits.h>
+#endif
+
 // Parsed command representation
 #define EXEC 1
 #define REDIR 2
@@ -64,12 +70,56 @@ void panic(char *);
 struct cmd *parsecmd(char *);
 void runcmd(struct cmd *) __attribute__((noreturn));
 
+int build_full_path(char *dst, const char *path, const char *file)
+{
+    strncpy(dst, path, PATH_MAX);
+    size_t len = strlen(dst);
+    if (dst[len - 1] != '/')
+    {
+        dst[len] = '/';
+        len++;
+    }
+    size_t name_len = strlen(file);
+    if (len + name_len > PATH_MAX - 1)
+    {
+        return -1;
+    }
+    strncpy(dst + len, file, PATH_MAX - len);
+
+    return 0;
+}
+
+const char *search_path[] = {"/usr/bin", NULL};
+
+void execute_command(struct execcmd *ecmd)
+{
+    if (ecmd->argv[0] == 0) exit(1);
+
+    if (ecmd->argv[0][0] == '.' || ecmd->argv[0][0] == '/')
+    {
+        // don't use the search path, e.g. for "./foo" or "/usr/bin/bar"
+        execv(ecmd->argv[0], ecmd->argv);
+    }
+    else
+    {
+        char full_path[PATH_MAX];
+        for (size_t search_path_index = 0;
+             search_path[search_path_index] != NULL; search_path_index++)
+        {
+            const char *current_search_path = search_path[search_path_index];
+            build_full_path(full_path, current_search_path, ecmd->argv[0]);
+            execv(full_path, ecmd->argv);
+        }
+        // execv only returns on error
+        fprintf(stderr, "exec %s failed\n", ecmd->argv[0]);
+    }
+}
+
 // Execute cmd.  Never returns.
 void runcmd(struct cmd *cmd)
 {
     int p[2];
     struct backcmd *bcmd;
-    struct execcmd *ecmd;
     struct listcmd *lcmd;
     struct pipecmd *pcmd;
     struct redircmd *rcmd;
@@ -80,12 +130,7 @@ void runcmd(struct cmd *cmd)
     {
         default: panic("runcmd");
 
-        case EXEC:
-            ecmd = (struct execcmd *)cmd;
-            if (ecmd->argv[0] == 0) exit(1);
-            execv(ecmd->argv[0], ecmd->argv);
-            fprintf(stderr, "exec %s failed\n", ecmd->argv[0]);
-            break;
+        case EXEC: execute_command((struct execcmd *)cmd); break;
 
         case REDIR:
             rcmd = (struct redircmd *)cmd;
@@ -177,7 +222,7 @@ int main()
     int fd;
 
     // Ensure that three file descriptors are open.
-    while ((fd = open("console", O_RDWR)) >= 0)
+    while ((fd = open("/dev/console", O_RDWR)) >= 0)
     {
         if (fd >= 3)
         {

@@ -42,7 +42,7 @@ Tools for the development environment.
 ## usr
 
 [user space](userspace/userspace.md) applications and libs for VIMIX.
-All default apps from /bin and /sbin are here.
+All default apps from /usr/bin are here.
 - `usr/include`: user space headers
 - `usr/include/sys`: user space [kernel](kernel/kernel.md) API
 

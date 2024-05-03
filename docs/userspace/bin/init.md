@@ -1,4 +1,4 @@
-# /init
+# /usr/bin/init
 
 ## Process 1: init
 
@@ -9,7 +9,7 @@ First it opens the `console` character device so that [file descriptor](../../ke
 Then it forks, the parent will [wait](../../kernel/syscalls/wait.md) on the child to close and fork again if that happens.
 The child will [execv](../../kernel/syscalls/execv.md) into the shell.
 
-**Note:** If `DEBUG_AUTOSTART_USERTESTS` is defined at compile time, the init process will start and restart the usertests for quicker testing during development ([build_instructions](../../build_instructions.md)).
+**Note:** If `DEBUG_AUTOSTART_USERTESTS` is defined at compile time, the init process will start and restart the [usertests](../tests/usertests.md) for quicker testing during development ([build_instructions](../../build_instructions.md)).
 
 **init is not expected to return**
 
