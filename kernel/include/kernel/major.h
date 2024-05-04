@@ -13,6 +13,12 @@
 #define CONSOLE_DEVICE_MAJOR 1
 #define CONSOLE_DEVICE_MINOR 0
 
+#define DEV_NULL_MAJOR 3
+#define DEV_NULL_MINOR 0
+
+#define DEV_ZERO_MAJOR 4
+#define DEV_ZERO_MINOR 0
+
 // NOTE: highest mayor value can be MAX_DEVICES-1
 
 // no uart device for now, the console device embedds the UART

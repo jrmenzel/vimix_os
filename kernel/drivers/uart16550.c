@@ -6,7 +6,7 @@
 
 #include "uart16550.h"
 
-#include <kernel/console.h>
+#include <drivers/console.h>
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
@@ -41,13 +41,7 @@
 #define ReadReg(reg) (*(Reg(reg)))
 #define WriteReg(reg, v) (*(Reg(reg)) = (v))
 
-/// the transmit output buffer.
-struct spinlock uart_tx_lock;
-#define UART_TX_BUF_SIZE 32
-char uart_tx_buf[UART_TX_BUF_SIZE];
-uint64_t uart_tx_w;  // write next to uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE]
-uint64_t uart_tx_r;  // read next from uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE]
-
+struct uart_16550 g_uart_16550;
 extern volatile bool g_kernel_panicked;  // from printk.c
 
 void uartstart();
@@ -77,12 +71,12 @@ void uart_init()
     WriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
 
     // init uart_16550 object
-    spin_lock_init(&uart_tx_lock, "uart");
+    spin_lock_init(&g_uart_16550.uart_tx_lock, "uart");
 }
 
 void uart_putc(int32_t c)
 {
-    spin_lock(&uart_tx_lock);
+    spin_lock(&g_uart_16550.uart_tx_lock);
 
     if (g_kernel_panicked)
     {
@@ -90,16 +84,16 @@ void uart_putc(int32_t c)
         {
         }
     }
-    while (uart_tx_w == uart_tx_r + UART_TX_BUF_SIZE)
+    while (g_uart_16550.uart_tx_w == g_uart_16550.uart_tx_r + UART_TX_BUF_SIZE)
     {
         // buffer is full.
         // wait for uartstart() to open up space in the buffer.
-        sleep(&uart_tx_r, &uart_tx_lock);
+        sleep(&g_uart_16550.uart_tx_r, &g_uart_16550.uart_tx_lock);
     }
-    uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE] = c;
-    uart_tx_w += 1;
+    g_uart_16550.uart_tx_buf[g_uart_16550.uart_tx_w % UART_TX_BUF_SIZE] = c;
+    g_uart_16550.uart_tx_w += 1;
     uartstart();
-    spin_unlock(&uart_tx_lock);
+    spin_unlock(&g_uart_16550.uart_tx_lock);
 }
 
 void uart_putc_sync(int32_t c)
@@ -129,7 +123,7 @@ void uartstart()
 {
     while (true)
     {
-        if (uart_tx_w == uart_tx_r)
+        if (g_uart_16550.uart_tx_w == g_uart_16550.uart_tx_r)
         {
             // transmit buffer is empty.
             ReadReg(ISR);  // clears the interrupt source
@@ -144,11 +138,12 @@ void uartstart()
             return;
         }
 
-        int32_t c = uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE];
-        uart_tx_r += 1;
+        int32_t c =
+            g_uart_16550.uart_tx_buf[g_uart_16550.uart_tx_r % UART_TX_BUF_SIZE];
+        g_uart_16550.uart_tx_r += 1;
 
         // maybe uart_putc() is waiting for space in the buffer.
-        wakeup(&uart_tx_r);
+        wakeup(&g_uart_16550.uart_tx_r);
 
         WriteReg(THR, c);
     }
@@ -186,7 +181,7 @@ void uart_interrupt_handler()
     }
 
     // send buffered characters.
-    spin_lock(&uart_tx_lock);
+    spin_lock(&g_uart_16550.uart_tx_lock);
     uartstart();
-    spin_unlock(&uart_tx_lock);
+    spin_unlock(&g_uart_16550.uart_tx_lock);
 }

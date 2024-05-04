@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <kernel/fs.h>
 #include <kernel/kernel.h>
+#include <kernel/stat.h>
 
 /// @brief Represents an open file. Each process has an array
 /// of these. The "file descriptor" in C is simply the index into that array.
@@ -13,19 +15,7 @@ struct file
     struct pipe *pipe;  ///< used if the file belongs to a pipe
     struct inode *ip;   ///< for files, dirs, char and block devices
     uint32_t off;       ///< for files
-    short major;        ///< FD_DEVICE
 };
-
-/// map major device number to device functions.
-struct devsw
-{
-    ssize_t (*read)(bool, size_t, size_t);
-    ssize_t (*write)(bool, size_t, size_t);
-};
-
-extern struct devsw devsw[];
-
-#define CONSOLE 1
 
 /// @brief Common code to check file mode.
 /// E.g. if no type is provided, regular file will be the default for multiple

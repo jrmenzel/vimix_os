@@ -10,6 +10,8 @@
 #include <kernel/stat.h>
 #include <kernel/xv6fs.h>
 
+extern dev_t ROOT_DEVICE_NUMBER;
+
 #define DEFAULT_ACCESS_MODES (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)
 
 /// in-memory copy of an inode

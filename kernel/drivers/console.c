@@ -11,6 +11,8 @@
 //   control-p -- print process list
 //
 
+#include <drivers/character_device.h>
+#include <drivers/console.h>
 #include <drivers/uart16550.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
@@ -45,6 +47,8 @@ void console_putc(int32_t c)
 
 struct
 {
+    struct Character_Device cdev;  ///< derived from a character device
+
     struct spinlock lock;
 
     // input
@@ -189,8 +193,12 @@ void console_init()
 
     uart_init();
 
-    // connect read and write system calls
-    // to console_read and console_write.
-    devsw[CONSOLE].read = console_read;
-    devsw[CONSOLE].write = console_write;
+    // init device and register it in the system
+    g_console.cdev.dev.type = CHAR;
+    g_console.cdev.dev.device_number =
+        MKDEV(CONSOLE_DEVICE_MAJOR, CONSOLE_DEVICE_MINOR);
+    g_console.cdev.ops.read = console_read;
+    g_console.cdev.ops.write = console_write;
+    dev_set_irq(&g_console.cdev.dev, UART0_IRQ, uart_interrupt_handler);
+    register_device(&g_console.cdev.dev);
 }

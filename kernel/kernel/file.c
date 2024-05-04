@@ -4,6 +4,8 @@
 // Support functions for system calls that involve file descriptors.
 //
 
+#include <drivers/block_device.h>
+#include <drivers/character_device.h>
 #include <fs/xv6fs/log.h>
 #include <ipc/pipe.h>
 #include <kernel/fcntl.h>
@@ -17,7 +19,6 @@
 #include <kernel/stat.h>
 #include <kernel/string.h>
 
-struct devsw devsw[MAX_DEVICES];
 struct
 {
     struct spinlock lock;
@@ -165,8 +166,6 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
         panic("inode has no type");
     }
 
-    f->major = MAJOR(ip->dev);
-
     if ((flags & O_TRUNC) && S_ISREG(ip->i_mode))
     {
         inode_trunc(ip);
@@ -254,13 +253,23 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
     {
         read_bytes = pipe_read(f->pipe, addr, n);
     }
-    else if ((S_ISCHR(f->mode)) || (S_ISBLK(f->mode)))
+    else if (S_ISCHR(f->mode))
     {
-        if (f->major < 0 || f->major >= MAX_DEVICES || !devsw[f->major].read)
+        struct Character_Device *cdev = get_character_device(f->ip->dev);
+        if (cdev == NULL)
         {
             return -1;
         }
-        read_bytes = devsw[f->major].read(true, addr, n);
+        read_bytes = cdev->ops.read(true, addr, n);
+    }
+    else if (S_ISBLK(f->mode))
+    {
+        struct Block_Device *bdev = get_block_device(f->ip->dev);
+        if (bdev == NULL)
+        {
+            return -1;
+        }
+        panic("add block device read");
     }
     else if (S_ISREG(f->mode) || S_ISDIR(f->mode))
     {
@@ -294,13 +303,23 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
     {
         ret = pipe_write(f->pipe, addr, n);
     }
-    else if ((S_ISCHR(f->mode)) || (S_ISBLK(f->mode)))
+    else if (S_ISCHR(f->mode))
     {
-        if (f->major < 0 || f->major >= MAX_DEVICES || !devsw[f->major].write)
+        struct Character_Device *cdev = get_character_device(f->ip->dev);
+        if (cdev == NULL)
         {
             return -1;
         }
-        ret = devsw[f->major].write(true, addr, n);
+        ret = cdev->ops.write(true, addr, n);
+    }
+    else if (S_ISBLK(f->mode))
+    {
+        struct Block_Device *bdev = get_block_device(f->ip->dev);
+        if (bdev == NULL)
+        {
+            return -1;
+        }
+        panic("add block device write");
     }
     else if (S_ISREG(f->mode) || S_ISDIR(f->mode))
     {

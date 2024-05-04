@@ -21,14 +21,18 @@ OBJS = $(ARCH)/asm/entry.o \
 	$(ARCH)/context.o \
 	$(ARCH)/trap.o \
 	$(ARCH)/sbi.o \
+	$(ARCH)/reset.o \
+	drivers/device.o \
+	drivers/console.o \
 	drivers/uart16550.o \
 	drivers/virtio_disk.o \
+	drivers/dev_null.o \
+	drivers/dev_zero.o \
 	fs/fs.o \
 	fs/xv6fs/log.o \
 	fs/xv6fs/xv6fs.o \
 	init/main.o \
 	ipc/pipe.o \
-	kernel/console.o \
 	kernel/cpu.o \
 	kernel/kalloc.o \
 	kernel/vm.o \

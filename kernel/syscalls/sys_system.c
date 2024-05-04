@@ -4,11 +4,11 @@
 // System Information system calls.
 //
 
+#include <arch/reset.h>
 #include <arch/trap.h>
 #include <kernel/kernel.h>
 #include <kernel/reboot.h>
 #include <kernel/spinlock.h>
-#include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
 size_t sys_uptime()
@@ -34,10 +34,13 @@ size_t sys_reboot()
     switch (cmd)
     {
         case VIMIX_REBOOT_CMD_POWER_OFF:
-            (*(volatile uint32_t *)VIRT_TEST) = VIRT_TEST_SHUTDOWN;
+            printk("Power off NOW!\n");
+            machine_power_off();
             break;
         case VIMIX_REBOOT_CMD_RESTART:
-            (*(volatile uint32_t *)VIRT_TEST) = VIRT_TEST_REBOOT;
+            printk("Restart NOW!\n");
+            machine_restart();
+            break;
         default: break;
     }
 

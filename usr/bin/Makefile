@@ -27,7 +27,8 @@ UPROGS_NAME=\
 	zombie\
 	ls\
 	stat\
-	shutdown
+	shutdown\
+	mknod
 
 # Some user space apps can be compiled on the host as well,
 # e.g. as native Linux apps. This can be helpful for app

@@ -2,7 +2,9 @@
 
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
+#include <arch/riscv/sbi.h>
 #include <arch/trap.h>
+#include <drivers/device.h>
 #include <drivers/uart16550.h>
 #include <drivers/virtio_disk.h>
 #include <kernel/cpu.h>
@@ -282,16 +284,21 @@ void handle_plic_device_interrupt()
 
     // irq indicates which device interrupted.
     int irq = plic_claim();
+    bool irq_handled = false;
 
-    if (irq == UART0_IRQ)
+    // find device for this IRQ and call interrupt handler
+    for (size_t i = 0; i < MAX_DEVICES; ++i)
     {
-        uart_interrupt_handler();
+        struct Device *dev = g_devices[i];
+        if (dev && irq == dev->irq_number)
+        {
+            dev->dev_ops.interrupt_handler();
+            irq_handled = true;
+            break;
+        }
     }
-    else if (irq == VIRTIO0_IRQ)
-    {
-        virtio_block_device_interrupt();
-    }
-    else if (irq)
+
+    if (irq_handled == false && irq)
     {
         printk("unexpected interrupt irq=%d\n", irq);
     }

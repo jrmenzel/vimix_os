@@ -11,4 +11,4 @@ List contents of provided directories or the content of the CWD if no directory 
 ---
 **Up:** [user space](../userspace.md)
 
-**File Management:** [ln](ln.md) | [ls](ls.md) | [mkdir](mkdir.md) | [rm](rm.md) | [stat](stat.md)
+**File Management:** [ln](ln.md) | [ls](ls.md) | [mkdir](mkdir.md) | [mknod](mknod.md) | [rm](rm.md) | [stat](stat.md)

@@ -7,7 +7,9 @@ The [kernel](../kernel/kernel.md) starts the [init](bin/init.md) program as the 
 This normally starts a shell ([sh](bin/sh.md)) for users to start any application.
 
 
-## System Applications
+## Applications
+
+### System Applications
 
 [/usr/bin/init](bin/init.md) - the first process
 
@@ -15,7 +17,7 @@ This normally starts a shell ([sh](bin/sh.md)) for users to start any applicatio
 - [sh](bin/sh.md) - the shell
 
 
-## User Applications
+### User Applications
 
 Stored in `/usr/bin`.
 
@@ -26,6 +28,7 @@ Stored in `/usr/bin`.
 - [ln](bin/ln.md) - create hard links to files
 - [ls](bin/ls.md) - list directory content
 - [mkdir](bin/mkdir.md) - make new directories
+- [mknod](bin/mknod.md) - make device files for character or block [devices](../kernel/devices/devices.md)
 - [rm](bin/rm.md) - remove files
 - [stat](bin/stat.md) - get file status
 
@@ -43,9 +46,17 @@ Stored in `/usr/bin`.
 - [zombie](tests/zombie.md) - tests if a zombie process is correctly handled
 
 
-## Linux support
+### Linux support
 
 Some user space apps compile also on Linux. See [build_instructions](../build_instructions.md) for details.
+
+
+## File System
+
+**Devices in /dev:**
+- [/dev/console](dev/console.md)
+- [/dev/null](dev/null.md)
+- [/dev/zero](dev/zero.md)
 
 
 ---

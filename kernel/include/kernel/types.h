@@ -19,6 +19,7 @@
 /// Don't make any assumptions about the bits reserved for
 /// MAJOR vs MINOR number or the size of a full dev_t. Use the MKDEV macro.
 typedef int32_t dev_t;
+#define INVALID_DEVICE (0)
 
 /// @brief UNIX file descriptor, must be int as this is dictated by the public
 /// UNIX/C API (stdio.h et al) Exposed to user space (e.g. open()). Internally

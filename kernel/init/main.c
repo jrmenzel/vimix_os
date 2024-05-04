@@ -5,9 +5,11 @@
 #include <arch/interrupts.h>
 #include <arch/platform.h>
 #include <arch/trap.h>
+#include <drivers/console.h>
+#include <drivers/dev_null.h>
+#include <drivers/dev_zero.h>
 #include <drivers/virtio_disk.h>
 #include <kernel/bio.h>
-#include <kernel/console.h>
 #include <kernel/cpu.h>
 #include <kernel/file.h>
 #include <kernel/kalloc.h>
@@ -68,12 +70,16 @@ void init_by_first_thread()
 
     // init filesystem:
     printk("init filesystem...\n");
-    bio_init();          // buffer cache
-    inode_init();        // inode table
-    file_init();         // file table
-    virtio_disk_init();  // emulated hard disk
+    bio_init();                               // buffer cache
+    inode_init();                             // inode table
+    file_init();                              // file table
+    ROOT_DEVICE_NUMBER = virtio_disk_init();  // emulated hard disk
     // file system init will happen when the first process gets forked below
     // in userspace init.
+
+    // init additional devices
+    dev_null_init();
+    dev_zero_init();
 
     // process 0:
     printk("init userspace...\n");

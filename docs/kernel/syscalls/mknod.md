@@ -4,10 +4,14 @@
 
 ```C
 #include <stat.h>
-int32_t mknod(const char *path, int16_t mode, int16_t dev)
+int32_t mknod(const char *path, mode_t mode, dev_t dev);
 ```
 
 Create a special or ordinary file ("make node (in file system)"). Since research UNIX v4.
+
+## User Apps
+
+The app [mknod](../../userspace/bin/mknod.md) exposes this syscall.
 
 ## Kernel Mode
 

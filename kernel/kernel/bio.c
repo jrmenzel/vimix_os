@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/virtio_disk.h>
+#include <drivers/block_device.h>
+#include <kernel/bio.h>
 #include <kernel/buf.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
@@ -91,7 +92,14 @@ struct buf *bio_read(dev_t dev, uint32_t blockno)
 
     if (!b->valid)
     {
-        virtio_disk_rw(b, 0);
+        struct Block_Device *bdevice = get_block_device(dev);
+        if (!bdevice)
+        {
+            panic("bio_read called for non block device!");
+        }
+
+        bdevice->ops.read(bdevice, b);
+
         b->valid = 1;
     }
     return b;
@@ -106,7 +114,13 @@ void bio_write(struct buf *b)
     }
 #endif  // CONFIG_DEBUG_SLEEPLOCK
 
-    virtio_disk_rw(b, 1);
+    struct Block_Device *bdevice = get_block_device(b->dev);
+    if (!bdevice)
+    {
+        panic("bio_write called for non block device!");
+    }
+
+    bdevice->ops.write(bdevice, b);
 }
 
 void bio_release(struct buf *b)

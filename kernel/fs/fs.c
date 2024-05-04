@@ -27,6 +27,8 @@
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
+dev_t ROOT_DEVICE_NUMBER;
+
 /// Read the super block.
 static void readsb(dev_t dev, struct xv6fs_superblock *sb)
 {

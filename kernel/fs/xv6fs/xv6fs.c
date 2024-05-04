@@ -16,8 +16,8 @@ xv6fs_file_type imode_to_xv6_file_type(mode_t imode)
 {
     if (S_ISREG(imode)) return XV6_FT_FILE;
     if (S_ISDIR(imode)) return XV6_FT_DIR;
-    if (S_ISCHR(imode)) return XV6_FT_DEVICE;
-    if (S_ISBLK(imode)) return XV6_FT_DEVICE;
+    if (S_ISCHR(imode)) return XV6_FT_CHAR_DEVICE;
+    if (S_ISBLK(imode)) return XV6_FT_BLOCK_DEVICE;
 
     return XV6_FT_UNUSED;
 }
@@ -26,7 +26,8 @@ mode_t xv6_file_type_to_imode(xv6fs_file_type type)
 {
     if (type == XV6_FT_FILE) return S_IFREG | DEFAULT_ACCESS_MODES;
     if (type == XV6_FT_DIR) return S_IFDIR | DEFAULT_ACCESS_MODES;
-    if (type == XV6_FT_DEVICE) return S_IFCHR | DEFAULT_ACCESS_MODES;
+    if (type == XV6_FT_CHAR_DEVICE) return S_IFCHR | DEFAULT_ACCESS_MODES;
+    if (type == XV6_FT_BLOCK_DEVICE) return S_IFBLK | DEFAULT_ACCESS_MODES;
 
     return 0;
 }

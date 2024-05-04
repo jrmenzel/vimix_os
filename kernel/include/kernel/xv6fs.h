@@ -31,10 +31,11 @@
 #define XV6_NAME_MAX 14
 
 // values of inode types:
-#define XV6_FT_UNUSED 0  ///< init value
-#define XV6_FT_DIR 1     ///< Directory
-#define XV6_FT_FILE 2    ///< File
-#define XV6_FT_DEVICE 3  ///< Device
+#define XV6_FT_UNUSED 0        ///< init value
+#define XV6_FT_DIR 1           ///< Directory
+#define XV6_FT_FILE 2          ///< File
+#define XV6_FT_CHAR_DEVICE 3   ///< Character Device
+#define XV6_FT_BLOCK_DEVICE 4  ///< Block Device
 
 typedef int16_t xv6fs_file_type;
 

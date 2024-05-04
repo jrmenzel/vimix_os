@@ -6,6 +6,7 @@
 // qemu ... -drive file=fs.img,if=none,format=raw,id=x0 -device
 // virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
+#include <drivers/virtio.h>
 #include <drivers/virtio_disk.h>
 #include <kernel/buf.h>
 #include <kernel/fs.h>
@@ -22,7 +23,11 @@
 
 struct virtio_disk g_virtio_disk;
 
-void virtio_disk_init()
+void virtio_block_device_read(struct Block_Device *bd, struct buf *b);
+void virtio_block_device_write(struct Block_Device *bd, struct buf *b);
+void virtio_block_device_interrupt();
+
+dev_t virtio_disk_init()
 {
     spin_lock_init(&g_virtio_disk.vdisk_lock, "virtio_disk");
 
@@ -127,7 +132,18 @@ void virtio_disk_init()
     status |= VIRTIO_CONFIG_S_DRIVER_OK;
     *R(VIRTIO_MMIO_STATUS) = status;
 
+    // init device and register it in the system
+    g_virtio_disk.disk.bdev.dev.type = BLOCK;
+    g_virtio_disk.disk.bdev.dev.device_number =
+        MKDEV(QEMU_VIRT_IO_DISK_MAJOR, 0);
+    g_virtio_disk.disk.bdev.ops.read = virtio_block_device_read;
+    g_virtio_disk.disk.bdev.ops.write = virtio_block_device_write;
     // plic.c and trap.c arrange for interrupts from VIRTIO0_IRQ.
+    dev_set_irq(&g_virtio_disk.disk.bdev.dev, VIRTIO0_IRQ,
+                virtio_block_device_interrupt);
+    register_device(&g_virtio_disk.disk.bdev.dev);
+
+    return g_virtio_disk.disk.bdev.dev.device_number;
 }
 
 /// find a free descriptor, mark it non-free, return its index.
@@ -292,6 +308,22 @@ void virtio_disk_rw(struct buf *b, bool write)
     free_chain(idx[0]);
 
     spin_unlock(&g_virtio_disk.vdisk_lock);
+}
+
+/// @brief Read function as mandated for a Block_Device
+/// @param bd Pointer to the device
+/// @param b The buffer to fill.
+void virtio_block_device_read(struct Block_Device *bd, struct buf *b)
+{
+    virtio_disk_rw(b, false);
+}
+
+/// @brief Write function as mandated for a Block_Device
+/// @param bd Pointer to the device
+/// @param b The buffer to write out to disk.
+void virtio_block_device_write(struct Block_Device *bd, struct buf *b)
+{
+    virtio_disk_rw(b, true);
 }
 
 /// @brief The interrupt handler for the Block_Device

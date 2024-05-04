@@ -4,7 +4,7 @@
 
 Implemented in `usr/bin/init.c`. First user space program to run.
 
-First it opens the `console` character device so that [file descriptor](../../kernel/file_system/file.md) `0`,`1` and `2` are set to `console`. These file descriptors are defined to map to `stdin`, `stdout` and `stderr` in C (see [stdio](../../misc/stdio.md)).
+First it opens the `console` character device as [/dev/console](../dev/console.md) so that [file descriptor](../../kernel/file_system/file.md) `0`,`1` and `2` are set to `console`. These file descriptors are defined to map to `stdin`, `stdout` and `stderr` in C (see [stdio](../../misc/stdio.md)).
 
 Then it forks, the parent will [wait](../../kernel/syscalls/wait.md) on the child to close and fork again if that happens.
 The child will [execv](../../kernel/syscalls/execv.md) into the shell.

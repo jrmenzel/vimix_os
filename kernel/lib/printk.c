@@ -6,7 +6,7 @@
 
 #include <kernel/printk.h>
 
-#include <kernel/console.h>
+#include <drivers/console.h>
 #include <kernel/spinlock.h>
 #include <kernel/stdarg.h>
 #include <kernel/types.h>

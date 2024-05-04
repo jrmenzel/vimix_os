@@ -19,6 +19,18 @@ const char *SHELL_NAME = "/usr/bin/sh";
 char *SHELL_ARGV[] = {"sh", 0};
 #endif
 
+int make_dev(const char *file, int device_type, dev_t dev)
+{
+    int f = open(file, O_RDWR);
+    if (f < 0)
+    {
+        return mknod(file, device_type | 0666, dev);
+    }
+    close(f);
+
+    return 0;
+}
+
 int main()
 {
     // init is called from the kernels initcode and has no open files.
@@ -36,6 +48,9 @@ int main()
     }
     dup(0);  // stdout
     dup(0);  // stderr
+
+    make_dev("/dev/null", S_IFCHR, MKDEV(DEV_NULL_MAJOR, DEV_NULL_MINOR));
+    make_dev("/dev/zero", S_IFCHR, MKDEV(DEV_ZERO_MAJOR, DEV_ZERO_MINOR));
 
     while (true)
     {
