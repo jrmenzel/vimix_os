@@ -4,9 +4,9 @@
 // formatted console output -- printk, panic.
 //
 
-#include <kernel/printk.h>
-
+#include <arch/reset.h>
 #include <drivers/console.h>
+#include <kernel/printk.h>
 #include <kernel/spinlock.h>
 #include <kernel/stdarg.h>
 #include <kernel/types.h>
@@ -60,9 +60,13 @@ void panic(char *error_message)
     printk(error_message);
     printk("\n");
     g_kernel_panicked = true;  // freeze uart output from other CPUs
+#ifdef DEBUG_AUTOSTART_USERTESTS
+    machine_power_off();
+#else
     while (true)
     {
     }
+#endif
 }
 
 void printk_init()

@@ -83,6 +83,7 @@ static struct buf *bget(dev_t dev, uint32_t blockno)
     }
 
     panic("bget: no buffers");
+    return 0;
 }
 
 /// Return a locked buf with the contents of the indicated block.

@@ -9,7 +9,7 @@ SECTIONS
    * or at 0x80200000 for OpenSBI systems
    */
   .text.start (DEFINED(openbsi) ? 0x80200000 : 0x80000000) : {
-    ../build/kernel/arch/riscv/asm/entry.o( .text )
+    *entry.o( .text )
   }
 
   .text : {

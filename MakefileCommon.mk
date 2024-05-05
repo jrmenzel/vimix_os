@@ -13,6 +13,12 @@ BUILD_TYPE=debug
 SBI_SUPPORT=yes
 #SBI_SUPPORT=no
 
+# "build" is used as the foldername outside of the Makefiles as well.
+# So if this gets changed, the Makefiles should be fine, but externel
+# configs and scripts might need to be updated.
+# (e.g. launch.json).
+BUILD_DIR=build
+
 KERNEL_NAME=kernel-vimix
 KERNEL_FILE=$(BUILD_DIR)/$(KERNEL_NAME)
 
@@ -26,7 +32,7 @@ CPUS=4
 # create assembly files from C, can be compared with the VSCode extension "Disassembly Explorer"
 #CREATE_ASSEMBLY=yes
 
-# -DDEBUG_AUTOSTART_USERTESTS : init will start the tests instead of the shell
+# Start automated tests and shutdown OS afterwards. Will also shutdown on panic.
 #EXTRA_DEBUG_FLAGS=-DDEBUG_AUTOSTART_USERTESTS
 
 #####
@@ -64,12 +70,6 @@ else
 	echo "***" 1>&2; exit 1; fi)
 endif # bitwidth
 endif
-
-# "build" is used as the foldername outside of the Makefiles as well.
-# So if this gets changed, the Makefiles should be fine, but externel
-# configs and scripts might need to be updated.
-# (e.g. launch.json).
-BUILD_DIR=build
 
 #####
 # tools

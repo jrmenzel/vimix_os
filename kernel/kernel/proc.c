@@ -20,7 +20,6 @@
 /// assembled from initcode.S
 /// od -t xC initcode
 #include <arch/riscv/asm/initcode.h>
-#define g_initcode ___build_kernel_arch_riscv_asm_initcode
 _Static_assert((sizeof(g_initcode) <= PAGE_SIZE),
                "Initcode must fit into one page");
 

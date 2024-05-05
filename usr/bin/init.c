@@ -12,8 +12,8 @@
 #include <unistd.h>
 
 #if defined(DEBUG_AUTOSTART_USERTESTS)
-const char *SHELL_NAME = "/usr/bin/usertests";
-char *SHELL_ARGV[] = {"usertests", 0};
+const char *SHELL_NAME = "/usr/bin/sh";
+char *SHELL_ARGV[] = {"sh", "/usr/bin/run_tests.sh", 0};
 #else
 const char *SHELL_NAME = "/usr/bin/sh";
 char *SHELL_ARGV[] = {"sh", 0};

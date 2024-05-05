@@ -234,4 +234,5 @@ size_t bmap(struct inode *ip, uint32_t bn)
     }
 
     panic("bmap: out of range");
+    return 0;
 }

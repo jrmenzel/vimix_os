@@ -4,6 +4,7 @@
 include ../MakefileCommon.mk
 K_BUILD_DIR=../$(BUILD_DIR)/kernel
 KERNEL_PATH=../$(KERNEL_FILE)
+INIT_BUILD_DIR=$(K_BUILD_DIR)/$(ARCH)/asm
 
 #
 # Entry code must be located at the beginning of the binary.
@@ -73,6 +74,7 @@ SUB_DIRS_TO_MAKE=$(addprefix $(K_BUILD_DIR)/, $(SUB_DIRS))
 #
 KERNEL_SPACE_INC = ./arch/riscv # selected architecture
 KERNEL_SPACE_INC += ./include   # public kernel API
+KERNEL_SPACE_INC += $(K_BUILD_DIR)/ # for initcode.h
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I$d)
 
 ifeq ($(SBI_SUPPORT), yes)
@@ -81,7 +83,7 @@ endif
 CFLAGS += -DMEMORY_SIZE=$(MEMORY_SIZE)
 
 .PHONY: all directories clean
-all: directories $(ARCH)/asm/initcode.h $(KERNEL_PATH) # build all
+all: directories $(INIT_BUILD_DIR)/initcode.h $(KERNEL_PATH) # build all
 
 directories: # create temp build directories
 	@mkdir -p $(SUB_DIRS_TO_MAKE)
@@ -91,7 +93,7 @@ $(K_BUILD_DIR)/%.o: %.S
 	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 # compile C, also create assembly listing
-$(K_BUILD_DIR)/%.o: %.c $(ARCH)/asm/initcode.h
+$(K_BUILD_DIR)/%.o: %.c $(INIT_BUILD_DIR)/initcode.h
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 ifeq ($(CREATE_ASSEMBLY), yes)
@@ -100,13 +102,14 @@ ifeq ($(CREATE_ASSEMBLY), yes)
 endif
 
 # special case: initcode
-INIT_BUILD_DIR=$(K_BUILD_DIR)/$(ARCH)/asm
-$(ARCH)/asm/initcode.h: $(ARCH)/asm/initcode.S 
+$(INIT_BUILD_DIR)/initcode.h: $(ARCH)/asm/initcode.S 
 	@printf "$(TASK_COLOR)Compile initcode and dump it into initcode.h\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(ARCH)/asm/initcode.S -o $(INIT_BUILD_DIR)/initcode.o
 	@$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode.o
 	@$(OBJCOPY) -S -O binary $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode
-	@xxd -i $(INIT_BUILD_DIR)/initcode > $(ARCH)/asm/initcode.h
+	@echo "unsigned char g_initcode[] = {" > $(INIT_BUILD_DIR)/initcode.h
+	@xxd -i < $(INIT_BUILD_DIR)/initcode >> $(INIT_BUILD_DIR)/initcode.h
+	@echo "};" >> $(INIT_BUILD_DIR)/initcode.h
 
 
 
@@ -115,7 +118,7 @@ LD_DEFINES=--defsym=openbsi=1
 endif
 
 
-$(KERNEL_PATH): $(ARCH)/asm/initcode.h $(OBJECT_FILES) $(ARCH)/kernel.ld # build kernel
+$(KERNEL_PATH): $(INIT_BUILD_DIR)/initcode.h $(OBJECT_FILES) $(ARCH)/kernel.ld # build kernel
 	@printf "$(TASK_COLOR)Link kernel: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) $(LD_DEFINES) -T $(ARCH)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
 ifeq ($(CREATE_ASSEMBLY), yes)

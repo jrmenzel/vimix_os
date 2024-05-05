@@ -2,6 +2,7 @@
 
 // Shell.
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -187,9 +188,12 @@ void runcmd(struct cmd *cmd)
     exit(0);
 }
 
-int getcmd(char *buf, int nbuf)
+int getcmd(char *buf, int nbuf, bool print_prompt)
 {
-    write(2, "$ ", 2);
+    if (print_prompt)
+    {
+        write(STDOUT_FILENO, "$ ", 2);
+    }
     memset(buf, 0, nbuf);
     fgets(buf, nbuf, stdin);
     if (buf[0] == 0)  // EOF
@@ -216,24 +220,41 @@ int is_blank_string(const char *s)
     return 1;
 }
 
-int main()
+int main(int argc, const char *argv[])
 {
     static char buf[100];
-    int fd;
+    bool print_prompt = true;
 
-    // Ensure that three file descriptors are open.
-    while ((fd = open("/dev/console", O_RDWR)) >= 0)
+    if (argc == 2)
     {
-        if (fd >= 3)
+        close(STDIN_FILENO);
+        int fd = open(argv[1], O_RDONLY);
+        if (fd != STDIN_FILENO)
         {
-            close(fd);
-            break;
+            fprintf(stderr, "Error reading %s\n", argv[1]);
+            return 1;
         }
+        print_prompt = false;
+    }
+    else if (argc > 2)
+    {
+        fprintf(stderr, "Error: usage: sh [script]\n");
+        return 1;
     }
 
     // Read and run input commands.
-    while (getcmd(buf, sizeof(buf)) >= 0)
+    while (getcmd(buf, sizeof(buf), print_prompt) >= 0)
     {
+        // check for comments:
+        for (size_t i = 0; i < sizeof(buf); ++i)
+        {
+            if (buf[i] == 0) break;
+            if (buf[i] == '#')
+            {
+                buf[i] = 0;  // terminate string where the comment starts
+                break;
+            }
+        }
         if (buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' ')
         {
             // Chdir must be called by the parent, not the child.

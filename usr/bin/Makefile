@@ -54,7 +54,7 @@ PROGS_HOST=$(foreach a, $(UPROGS_NAME_HOST), $(B_DEPLOY_DIR_HOST)/$a)
 
 .PHONY: all directories clean
 
-all: directories $(UPROGS)
+all: directories $(UPROGS) scripts
 
 $(B_BUILD_DIR)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
@@ -82,6 +82,9 @@ KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I../../kernel/$d)
 $(B_BUILD_DIR)/usertests.o: usertests.c 
 	@printf "$(TASK_COLOR)Compile with extra flags: $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) -DMEMORY_SIZE=$(MEMORY_SIZE) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
+
+scripts: # copy shell scripts
+	cp *.sh $(B_DEPLOY_DIR)
 
 directories: # make temp build directories
 	mkdir -p $(B_BUILD_DIR)

@@ -7,6 +7,7 @@ _*
 *.sym
 *.img
 build/*
+build_tests/*
 tools/mkfs/mkfs
 
 # auto generated:

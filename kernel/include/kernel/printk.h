@@ -11,4 +11,8 @@ void printk_init();
 void printk(char *format, ...);
 
 /// @brief Kernel panic: print an error and halt the OS
+#ifdef DEBUG_AUTOSTART_USERTESTS
+void panic(char *error_message);
+#else
 void panic(char *error_message) __attribute__((noreturn));
+#endif
