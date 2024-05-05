@@ -36,8 +36,8 @@ uint32_t freeblock;
 
 void balloc(int);
 void write_sector(uint32_t, void *);
-void write_inode(uint32_t, struct xv6fs_dinode *);
-void read_inode(uint32_t inum, struct xv6fs_dinode *ip);
+void write_dinode(uint32_t, struct xv6fs_dinode *);
+void read_dinode(uint32_t inum, struct xv6fs_dinode *ip);
 void read_sector(uint32_t sec, void *buf);
 uint32_t i_alloc(uint16_t type);
 void iappend(uint32_t inum, void *p, int n);
@@ -154,7 +154,7 @@ uint32_t create_empty_filesystem(const char *filename, size_t fs_size)
     char block_buffer[BLOCK_SIZE];
     memset(block_buffer, 0, sizeof(block_buffer));
     memmove(block_buffer, &g_super_block, sizeof(g_super_block));
-    write_sector(1, block_buffer);
+    write_sector(XV6FS_SUPER_BLOCK_NUMBER, block_buffer);
 
     uint32_t rootino = create_root_directory();
     return rootino;
@@ -164,13 +164,13 @@ void fix_dir_size(int32_t inode)
 {
     // fix size of dir inode: round up offset to BLOCK_SIZE
     struct xv6fs_dinode din;
-    read_inode(inode, &din);
+    read_dinode(inode, &din);
     uint32_t off = xint(din.size);
     if (off % BLOCK_SIZE != 0)
     {
         off = ((off / BLOCK_SIZE) + 1) * BLOCK_SIZE;
         din.size = xint(off);
-        write_inode(inode, &din);
+        write_dinode(inode, &din);
     }
 }
 
@@ -189,7 +189,7 @@ int build_full_path(char *dst, const char *path, const char *file)
 {
     strncpy(dst, path, PATH_MAX);
     size_t len = strlen(dst);
-    if (dst[len - 1] != '/')
+    if (dst[len - 1] != '/' && file[0] != '/')
     {
         dst[len] = '/';
         len++;
@@ -272,24 +272,211 @@ void copy_dir_to_filesystem(const char *dir_on_host, int32_t dir_inode_on_fs)
     closedir(dir);
 }
 
+int32_t open_filesystem(const char *filename)
+{
+    g_filesystem_fd = open(filename, O_RDWR);
+    if (g_filesystem_fd < 0)
+    {
+        die(filename);
+    }
+
+    char block_buffer[BLOCK_SIZE];
+    read_sector(XV6FS_SUPER_BLOCK_NUMBER, block_buffer);
+    memmove(&g_super_block, block_buffer, sizeof(g_super_block));
+
+    return ROOT_INODE;
+}
+
+size_t read_inode(struct xv6fs_dinode *din, void *buffer, size_t off,
+                  size_t size)
+{
+    size_t inode_size = xshort(din->size);
+    if (off > inode_size || off + size < off)
+    {
+        return 0;
+    }
+    if (off + size > inode_size)
+    {
+        size = inode_size - off;
+    }
+
+    uint32_t indirect[NINDIRECT];
+    size_t sector_of_indirect_blocks = xint(din->addrs[NDIRECT]);
+    if (sector_of_indirect_blocks != 0)
+    {
+        read_sector(sector_of_indirect_blocks, (void *)indirect);
+    }
+
+    char buf[BLOCK_SIZE];
+    size_t buffer_offset = 0;
+    size_t read_total = 0;
+    while (size > 0)
+    {
+        size_t block = off / BLOCK_SIZE;
+        size_t off_in_block = off % BLOCK_SIZE;
+        size_t read_from_sector = BLOCK_SIZE - off_in_block;
+        if (read_from_sector > size) read_from_sector = size;
+        size_t sector;
+        if (block < NDIRECT)
+        {
+            sector = xint(din->addrs[block]);
+        }
+        else
+        {
+            sector = xint(indirect[block - NDIRECT]);
+        }
+
+        read_sector(sector, buf);
+        memmove(buffer + buffer_offset, buf + off_in_block, read_from_sector);
+
+        buffer_offset += read_from_sector;
+        off += read_from_sector;
+        size -= read_from_sector;
+        read_total += read_from_sector;
+    }
+
+    return read_total;
+}
+
+ssize_t inode_get_dirent(int32_t inode_dir, struct xv6fs_dirent *dir_entry,
+                         ssize_t seek_pos)
+{
+    if (seek_pos < 0) return -1;
+
+    struct xv6fs_dinode din;
+    read_dinode(inode_dir, &din);
+
+    xv6fs_file_type type = xshort(din.type);
+    if (type != XV6_FT_DIR)
+    {
+        return -1;
+    }
+
+    ssize_t new_seek_pos = seek_pos;
+    do {
+        size_t read_bytes;
+        read_bytes = read_inode(&din, (void *)dir_entry, (size_t)new_seek_pos,
+                                sizeof(struct xv6fs_dirent));
+        if (read_bytes != sizeof(struct xv6fs_dirent))
+        {
+            return -1;
+        }
+        new_seek_pos += read_bytes;
+    } while (xshort(dir_entry->inum) ==
+             XV6FS_UNUSED_INODE);  // skip unused entries
+
+    return new_seek_pos;
+}
+
+void copy_out_file(int32_t inode, const char *filename)
+{
+    struct xv6fs_dinode din;
+    read_dinode(inode, &din);
+
+    xv6fs_file_type type = xshort(din.type);
+    if (type != XV6_FT_FILE)
+    {
+        return;
+    }
+
+    size_t file_size = xint(din.size);
+    char *buffer = malloc(file_size);
+
+    size_t read = read_inode(&din, buffer, 0, file_size);
+    if (read != file_size)
+    {
+        return;
+    }
+
+    int fd = open(filename, O_RDWR | O_CREAT, 0655);
+    write(fd, buffer, file_size);
+    close(fd);
+
+    free(buffer);
+}
+
+void copy_filesystem_to_dir(int32_t dir_inode_on_fs, const char *sub_path,
+                            const char *dir_on_host)
+{
+    char full_path_on_host[PATH_MAX];
+    build_full_path(full_path_on_host, dir_on_host, sub_path);
+
+    int fd = open(full_path_on_host, O_RDWR);
+    if (fd < 0)
+    {
+        mkdir(full_path_on_host, 0755);
+    }
+    else
+    {
+        close(fd);
+    }
+
+    struct xv6fs_dirent dir_entry;
+    ssize_t next_entry = 0;
+    while (true)
+    {
+        next_entry = inode_get_dirent(dir_inode_on_fs, &dir_entry, next_entry);
+        if (next_entry < 0) break;
+
+        if (is_dot_or_dotdot(dir_entry.name)) continue;
+
+        struct xv6fs_dinode din;
+        read_dinode(dir_entry.inum, &din);
+
+        char full_file_path_on_host[PATH_MAX];
+        build_full_path(full_file_path_on_host, full_path_on_host,
+                        dir_entry.name);
+
+        xv6fs_file_type type = xshort(din.type);
+        if (type == XV6_FT_DIR)
+        {
+            printf("create dir %s\n", full_file_path_on_host);
+
+            char new_sub_path[PATH_MAX];
+            build_full_path(new_sub_path, sub_path, dir_entry.name);
+
+            copy_filesystem_to_dir(dir_entry.inum, new_sub_path, dir_on_host);
+        }
+        else if (type == XV6_FT_FILE)
+        {
+            printf("create file %s\n", full_file_path_on_host);
+            copy_out_file(dir_entry.inum, full_file_path_on_host);
+        }
+        else
+        {
+            printf("ignore %s\n", full_file_path_on_host);
+        }
+    };
+}
+
 int main(int argc, char *argv[])
 {
     _Static_assert(sizeof(int) == 4, "Integers must be 4 bytes!");
-    assert((BLOCK_SIZE % sizeof(struct xv6fs_dinode)) == 0);
-    assert((BLOCK_SIZE % sizeof(struct xv6fs_dirent)) == 0);
 
-    if (argc != 3)
+    if (argc == 4)
     {
-        fprintf(stderr, "Usage: mkfs fs.img dir\n");
-        exit(1);
+        uint32_t rootino;
+        if (strcmp(argv[2], "--in") == 0)
+        {
+            // --in: create a new fs and copy in a directory
+            rootino = create_empty_filesystem(argv[1], 2048 * BLOCK_SIZE);
+            copy_dir_to_filesystem(argv[3], rootino);
+            balloc(freeblock);
+            close(g_filesystem_fd);
+            return 0;
+        }
+        else if (strcmp(argv[2], "--out") == 0)
+        {
+            // --out: open an existing fs and copy out everything to a directory
+            rootino = open_filesystem(argv[1]);
+            copy_filesystem_to_dir(rootino, "/", argv[3]);
+            close(g_filesystem_fd);
+            return 0;
+        }
     }
 
-    uint32_t rootino = create_empty_filesystem(argv[1], 2048 * BLOCK_SIZE);
-    copy_dir_to_filesystem(argv[2], rootino);
-
-    balloc(freeblock);
-
-    return 0;
+    fprintf(stderr, "Usage: mkfs fs.img [--in|--out] dir\n");
+    return 1;
 }
 
 /// @brief Write one block to the file at location sec.
@@ -302,7 +489,7 @@ void write_sector(uint32_t sec, void *buf)
     if (write(g_filesystem_fd, buf, BLOCK_SIZE) != BLOCK_SIZE) die("write");
 }
 
-void write_inode(uint32_t inum, struct xv6fs_dinode *ip)
+void write_dinode(uint32_t inum, struct xv6fs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
     struct xv6fs_dinode *dip;
@@ -314,7 +501,7 @@ void write_inode(uint32_t inum, struct xv6fs_dinode *ip)
     write_sector(block_index, buf);
 }
 
-void read_inode(uint32_t inum, struct xv6fs_dinode *ip)
+void read_dinode(uint32_t inum, struct xv6fs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
     struct xv6fs_dinode *dip;
@@ -348,7 +535,7 @@ uint32_t i_alloc(uint16_t type)
     din.type = xshort(type);
     din.nlink = xshort(1);
     din.size = xint(0);
-    write_inode(inum, &din);
+    write_dinode(inum, &din);
     return inum;
 }
 
@@ -382,7 +569,7 @@ void iappend(uint32_t inum, void *xp, int n)
     uint32_t indirect[NINDIRECT];
     uint32_t x;
 
-    read_inode(inum, &din);
+    read_dinode(inum, &din);
     off = xint(din.size);
     // printf("append inum %d at off %d sz %d\n", inum, off, n);
     while (n > 0)
@@ -422,7 +609,7 @@ void iappend(uint32_t inum, void *xp, int n)
         p += n1;
     }
     din.size = xint(off);
-    write_inode(inum, &din);
+    write_dinode(inum, &din);
 }
 
 /// @brief Exit the program after printing a error message

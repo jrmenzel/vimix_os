@@ -34,7 +34,7 @@ static void readsb(dev_t dev, struct xv6fs_superblock *sb)
 {
     struct buf *bp;
 
-    bp = bio_read(dev, 1);
+    bp = bio_read(dev, XV6FS_SUPER_BLOCK_NUMBER);
     memmove(sb, bp->data, sizeof(*sb));
     bio_release(bp);
 }

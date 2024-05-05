@@ -34,7 +34,7 @@ $(BUILD_DIR)/filesystem.img: tools README.md userspace
 	cp README.md $(BUILD_DIR)/root/
 	mkdir -p $(BUILD_DIR)/root/dev
 	mkdir -p $(BUILD_DIR)/root/home
-	tools/mkfs/mkfs $(BUILD_DIR)/filesystem.img $(BUILD_DIR)/root/ 
+	tools/mkfs/mkfs $(BUILD_DIR)/filesystem.img --in $(BUILD_DIR)/root/ 
 
 ###
 # qemu

@@ -14,7 +14,8 @@
             ],
             "defines": [
                 "__riscv_xlen=64",
-                "__ENABLE_SBI__"
+                "__ENABLE_SBI__",
+                "DEBUG"
             ],
             "compilerArgs": [
                 "-nostdinc"
@@ -33,7 +34,8 @@
                 "${workspaceFolder}/usr/include"
             ],
             "defines": [
-                "__riscv_xlen=32"
+                "__riscv_xlen=32",
+                "DEBUG"
             ],
             "compilerArgs": [
                 "-nostdinc"

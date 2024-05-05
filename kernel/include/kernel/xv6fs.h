@@ -59,16 +59,22 @@ struct xv6fs_superblock
 _Static_assert((sizeof(struct xv6fs_superblock) < 1024),
                "xv6fs_superblock must fit in one buf->data");
 
+/// which block on the device contains the fs superblock?
+#define XV6FS_SUPER_BLOCK_NUMBER 1
+
 /// On-disk inode structure
 struct xv6fs_dinode
 {
-    xv6fs_file_type type;         ///< File type
-    int16_t major;                ///< Major device number (XV6_FT_DEVICE only)
-    int16_t minor;                ///< Minor device number (XV6_FT_DEVICE only)
-    int16_t nlink;                ///< Number of links to inode in file system
-    uint32_t size;                ///< Size of file (bytes)
+    xv6fs_file_type type;  ///< File type
+    int16_t major;         ///< Major device number (XV6_FT_*_DEVICE only)
+    int16_t minor;         ///< Minor device number (XV6_FT_*_DEVICE only)
+    int16_t nlink;         ///< Number of links to inode in file system
+    uint32_t size;         ///< Size of file (bytes)
     uint32_t addrs[NDIRECT + 1];  ///< Data block addresses
 };
+_Static_assert((BLOCK_SIZE % sizeof(struct xv6fs_dinode)) == 0,
+               "Size of one block (1024 bytes) must be a multiple of the size "
+               "of xv6fs_dinode");
 
 #define XV6FS_UNUSED_INODE 0
 
@@ -79,3 +85,6 @@ struct xv6fs_dirent
     uint16_t inum;
     char name[XV6_NAME_MAX];
 };
+_Static_assert((BLOCK_SIZE % sizeof(struct xv6fs_dirent)) == 0,
+               "Size of one block (1024 bytes) must be a multiple of the size "
+               "of xv6fs_dirent");
