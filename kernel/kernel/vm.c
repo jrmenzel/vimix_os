@@ -55,6 +55,10 @@ pagetable_t kvm_make_kernel_pagetable(char *end_of_memory)
     kvm_map_or_panic(kpage_table, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
                      PTE_R | PTE_X);
 
+    // map the ramdisk
+    // kvm_map_or_panic(kpage_table, 0x82200000, 0x82200000,
+    //                 0x82400000 - 0x82200000, PTE_R | PTE_W);
+
     // allocate and map a kernel stack for each process.
     init_per_process_kernel_stack(kpage_table);
 
@@ -156,6 +160,7 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
 int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
                 int32_t perm)
 {
+    // printk("mapping %ld to %ld\n", va, va + size);
     if (size == 0)
     {
         panic("kvm_map: size == 0");

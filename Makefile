@@ -13,7 +13,7 @@ all: directories kernel tools userspace_lib userspace userspace_host $(BUILD_DIR
 directories: # make build output directory
 	mkdir -p $(BUILD_DIR);
 
-kernel: # the kernel itself
+kernel: userspace # the kernel itself, depends on userspace for the embedded ram disk only
 	$(MAKE) -C kernel all;
 
 tools: # mkfs
@@ -53,8 +53,15 @@ endif
 
 QEMU_OPTS = -machine virt -bios $(QEMU_BIOS) -kernel $(KERNEL_FILE) -m $(MEMORY_SIZE)M -smp $(CPUS) -nographic
 QEMU_OPTS += -global virtio-mmio.force-legacy=false
+
+ifeq ($(VIRTIO_DISK), yes)
 QEMU_OPTS += -drive file=$(BUILD_DIR)/filesystem.img,if=none,format=raw,id=x0
 QEMU_OPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+endif
+
+ifeq ($(RAMDISK_BOOTLOADER), yes)
+QEMU_OPTS += -initrd $(BUILD_DIR)/filesystem.img
+endif
 
 #
 # Debugging in QEMU
@@ -67,6 +74,11 @@ QEMU_DEBUG_OPTS = -S -gdb tcp:localhost:$(GDB_PORT)
 qemu: kernel $(BUILD_DIR)/filesystem.img # run VIMIX in qemu
 	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
 	$(QEMU) $(QEMU_OPTS)
+
+# dump device tree
+qemu-dump-tree: kernel $(BUILD_DIR)/filesystem.img
+	$(QEMU) $(QEMU_OPTS) -M dumpdtb=qemu-riscv.dtb
+	dtc -o qemu-riscv.dts -O dts -I dtb qemu-riscv.dtb
 
 ifeq ($(BITWIDTH), 32)
 GDB_ARCHITECTURE = riscv:rv32

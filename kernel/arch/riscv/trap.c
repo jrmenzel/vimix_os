@@ -2,6 +2,7 @@
 
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
+#include <arch/riscv/asm/registers.h>
 #include <arch/riscv/sbi.h>
 #include <arch/trap.h>
 #include <drivers/device.h>
@@ -110,6 +111,29 @@ void dump_scause()
                    stval, offset, page_start);
         }
     }
+}
+
+/// @brief Dump kernel thread state from before the interrupt.
+void dump_pre_int_kthread_state(size_t *stack)
+{
+    // The kernel trap vector (s_mode_trap_vector) is using the same stack as
+    // the previous kernel thread. The register state of that thread is stored
+    // in the stack.
+    if (stack == NULL) return;
+
+    printk("stack: 0x%x | CPU ID (tp): %d\n", (size_t)stack, stack[IDX_TP]);
+    printk("ra  = 0x%x\n", stack[IDX_RA]);
+    printk("sp  = 0x%x\n", stack[IDX_SP]);
+    printk("gp  = 0x%x\n", stack[IDX_GP]);
+
+    printk("a0  = 0x%x\n", stack[IDX_A0]);
+    printk("a1  = 0x%x\n", stack[IDX_A1]);
+    printk("a2  = 0x%x\n", stack[IDX_A2]);
+    printk("a3  = 0x%x\n", stack[IDX_A3]);
+    printk("a4  = 0x%x\n", stack[IDX_A4]);
+    printk("a5  = 0x%x\n", stack[IDX_A5]);
+    printk("a6  = 0x%x\n", stack[IDX_A6]);
+    printk("a7  = 0x%x\n", stack[IDX_A7]);
 }
 
 /// Handle an interrupt, exception, or system call from user space.
@@ -225,7 +249,7 @@ void return_to_user_mode()
 
 /// Interrupts and exceptions go here via s_mode_trap_vector,
 /// on whatever the current kernel stack is.
-void kernel_mode_interrupt_handler()
+void kernel_mode_interrupt_handler(size_t *stack)
 {
     xlen_t sepc = rv_read_csr_sepc();
     xlen_t sstatus = rv_read_csr_sstatus();
@@ -248,6 +272,7 @@ void kernel_mode_interrupt_handler()
             "\nFatal: unhandled interrupt in "
             "kernel_mode_interrupt_handler()\n");
         dump_scause();
+        dump_pre_int_kthread_state(stack);
         panic("kernel_mode_interrupt_handler");
     }
 

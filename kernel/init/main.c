@@ -8,6 +8,7 @@
 #include <drivers/console.h>
 #include <drivers/dev_null.h>
 #include <drivers/dev_zero.h>
+#include <drivers/ramdisk.h>
 #include <drivers/virtio_disk.h>
 #include <kernel/bio.h>
 #include <kernel/cpu.h>
@@ -19,12 +20,16 @@
 #include <kernel/smp.h>
 #include <mm/memlayout.h>
 
+#ifdef RAMDISK_EMBEDDED
+#include <ramdisk_fs.h>
+#endif
+
 // to get a string from the git version number define
 #define str_from_define(s) str(s)
 #define str(s) #s
 
-/// let hart 0 (or the first hart in SBI mode) signal to other harts when the
-/// init is done which should only run on one core
+/// let hart 0 (or the first hart in SBI mode) signal to other harts when
+/// the init is done which should only run on one core
 volatile size_t g_global_init_done = GLOBAL_INIT_NOT_STARTED;
 
 /// @brief print some debug info during boot
@@ -59,8 +64,15 @@ void init_by_first_thread()
 
     // init memory management:
     printk("init memory management...\n");
+#ifdef RAMDISK_BOOTLOADER
+    const size_t RAMDISK_START_ADDR = 0x82200000;
+    const size_t RAMDISC_END_ADDR = 0x82400000;
+    kalloc_init((char *)RAMDISC_END_ADDR,
+                (char *)PHYSTOP);  // physical page allocator
+#else
     kalloc_init(end_of_kernel, (char *)PHYSTOP);  // physical page allocator
-    kvm_init((char *)PHYSTOP);                    // create kernel page table
+#endif
+    kvm_init((char *)PHYSTOP);  // create kernel page table
 
     // init processes, syscalls and interrupts:
     printk("init process and syscall support...\n");
@@ -70,10 +82,23 @@ void init_by_first_thread()
 
     // init filesystem:
     printk("init filesystem...\n");
-    bio_init();                               // buffer cache
-    inode_init();                             // inode table
-    file_init();                              // file table
+    bio_init();    // buffer cache
+    inode_init();  // inode table
+    file_init();   // file table
+
+#ifdef RAMDISK_BOOTLOADER
+    ROOT_DEVICE_NUMBER = ramdisk_init((void *)RAMDISK_START_ADDR,
+                                      RAMDISC_END_ADDR - RAMDISK_START_ADDR);
+#endif
+
+#ifdef RAMDISK_EMBEDDED
+    ROOT_DEVICE_NUMBER = ramdisk_init((void *)ramdisk_fs, ramdisk_fs_size);
+#endif
+
+#ifdef VIRTIO_DISK
     ROOT_DEVICE_NUMBER = virtio_disk_init();  // emulated hard disk
+#endif
+
     // file system init will happen when the first process gets forked below
     // in userspace init.
 

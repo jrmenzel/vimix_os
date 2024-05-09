@@ -29,6 +29,7 @@ OBJS = $(ARCH)/asm/entry.o \
 	drivers/virtio_disk.o \
 	drivers/dev_null.o \
 	drivers/dev_zero.o \
+	drivers/ramdisk.o \
 	fs/fs.o \
 	fs/xv6fs/log.o \
 	fs/xv6fs/xv6fs.o \
@@ -52,6 +53,12 @@ OBJS = $(ARCH)/asm/entry.o \
 	lib/spinlock.o \
 	lib/print_impl.o \
 	lib/printk.o
+
+ifeq ($(RAMDISK_EMBEDDED), yes)
+OBJS += ramdisk_fs.o
+#RAMDISC_C = ../kernel/ramdisk_fs.c
+RAMDISC_C = $(K_BUILD_DIR)/ramdisk_fs.c
+endif
 
 SUB_DIRS = \
   kernel \
@@ -81,6 +88,16 @@ ifeq ($(SBI_SUPPORT), yes)
 CFLAGS += -D__ENABLE_SBI__
 endif
 CFLAGS += -DMEMORY_SIZE=$(MEMORY_SIZE)
+
+ifeq ($(VIRTIO_DISK), yes)
+CFLAGS += -DVIRTIO_DISK
+endif
+ifeq ($(RAMDISK_EMBEDDED), yes)
+CFLAGS += -DRAMDISK_EMBEDDED
+endif
+ifeq ($(RAMDISK_BOOTLOADER), yes)
+CFLAGS += -DRAMDISK_BOOTLOADER
+endif
 
 .PHONY: all directories clean
 all: directories $(INIT_BUILD_DIR)/initcode.h $(KERNEL_PATH) # build all
@@ -112,13 +129,36 @@ $(INIT_BUILD_DIR)/initcode.h: $(ARCH)/asm/initcode.S
 	@echo "};" >> $(INIT_BUILD_DIR)/initcode.h
 
 
+# embedd the filesystem image into the kernel as an array:
+ifeq ($(RAMDISK_EMBEDDED), yes)
+$(K_BUILD_DIR)/ramdisk_fs.h:
+	echo "#pragma once" > $(K_BUILD_DIR)/ramdisk_fs.h
+	echo "#include <kernel/kernel.h>" >> $(K_BUILD_DIR)/ramdisk_fs.h
+	echo "extern unsigned char ramdisk_fs[];" >> $(K_BUILD_DIR)/ramdisk_fs.h
+	echo "extern const size_t ramdisk_fs_size;" >> $(K_BUILD_DIR)/ramdisk_fs.h
+
+$(K_BUILD_DIR)/ramdisk_fs.c:
+	echo "#include \"ramdisk_fs.h\"" > $(K_BUILD_DIR)/ramdisk_fs.c
+	echo "unsigned char ramdisk_fs[] = {" >> $(K_BUILD_DIR)/ramdisk_fs.c
+	xxd -i < ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.c
+	echo "};" >> $(K_BUILD_DIR)/ramdisk_fs.c
+	echo "const size_t ramdisk_fs_size = sizeof(ramdisk_fs);" >> $(K_BUILD_DIR)/ramdisk_fs.c
+
+$(K_BUILD_DIR)/ramdisk_fs.o: $(K_BUILD_DIR)/ramdisk_fs.c
+	$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(K_BUILD_DIR)/ramdisk_fs.c -o $(K_BUILD_DIR)/ramdisk_fs.o
+
+else
+$(K_BUILD_DIR)/ramdisk_fs.h:
+	touch $(K_BUILD_DIR)/ramdisk_fs.h
+endif
+
 
 ifeq ($(SBI_SUPPORT), yes)
 LD_DEFINES=--defsym=openbsi=1
 endif
 
 
-$(KERNEL_PATH): $(INIT_BUILD_DIR)/initcode.h $(OBJECT_FILES) $(ARCH)/kernel.ld # build kernel
+$(KERNEL_PATH): $(INIT_BUILD_DIR)/initcode.h $(K_BUILD_DIR)/ramdisk_fs.h $(OBJECT_FILES) $(ARCH)/kernel.ld # build kernel
 	@printf "$(TASK_COLOR)Link kernel: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) $(LD_DEFINES) -T $(ARCH)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
 ifeq ($(CREATE_ASSEMBLY), yes)
@@ -130,4 +170,6 @@ clean:
 	-@rm $(KERNEL_PATH)
 	-@rm -rf $(K_BUILD_DIR)
 	-@rm $(ARCH)/asm/initcode.h
+	-@rm $(K_BUILD_DIR)/ramdisk_fs.h
+	-@rm $(RAMDISC_C)
 

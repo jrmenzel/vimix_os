@@ -19,6 +19,8 @@
 #define DEV_ZERO_MAJOR 4
 #define DEV_ZERO_MINOR 0
 
+#define RAMDISK_MAJOR 5
+
 // NOTE: highest mayor value can be MAX_DEVICES-1
 
 // no uart device for now, the console device embedds the UART

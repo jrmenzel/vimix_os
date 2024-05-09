@@ -2,9 +2,9 @@
 #pragma once
 
 #include <drivers/device.h>
+#include <drivers/generic_disc.h>
 #include <drivers/virtio.h>
 #include <kernel/buf.h>
-#include <kernel/generic_disc.h>
 #include <kernel/kernel.h>
 #include <kernel/spinlock.h>
 

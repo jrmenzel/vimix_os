@@ -14,5 +14,5 @@ void printk(char *format, ...);
 #ifdef DEBUG_AUTOSTART_USERTESTS
 void panic(char *error_message);
 #else
-void panic(char *error_message) __attribute__((noreturn));
+void panic(char *error_message);  //__attribute__((noreturn));
 #endif

@@ -74,25 +74,25 @@ function test_config {
 }
 
 test_config 32 debug no 32 1 
-#test_config 64 debug no 32 1 
+test_config 64 debug no 32 1 
 
-#test_config 32 release no 32 1 
-#test_config 64 release no 32 1 
+test_config 32 release no 32 1 
+test_config 64 release no 32 1 
 
-#test_config 32 debug yes 32 1 
-#test_config 64 debug yes 32 1 
+test_config 32 debug yes 32 1 
+test_config 64 debug yes 32 1 
 
-#test_config 32 release yes 32 1 
-#test_config 64 release yes 32 1 
+test_config 32 release yes 32 1 
+test_config 64 release yes 32 1 
 
-#test_config 32 debug no 64 4 
-#test_config 64 debug no 64 4 
+test_config 32 debug no 64 4 
+test_config 64 debug no 64 4 
 
-#test_config 32 release no 64 4 
-#test_config 64 release no 64 4 
+test_config 32 release no 64 4 
+test_config 64 release no 64 4 
 
-#test_config 32 debug yes 64 4 
-#test_config 64 debug yes 64 4 
+test_config 32 debug yes 64 4 
+test_config 64 debug yes 64 4 
 
-#test_config 32 release yes 64 4 
-#test_config 64 release yes 64 4 
+test_config 32 release yes 64 4 
+test_config 64 release yes 64 4 

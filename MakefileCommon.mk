@@ -13,6 +13,13 @@ BUILD_TYPE=debug
 SBI_SUPPORT=yes
 #SBI_SUPPORT=no
 
+# assume root partition on virtio disk
+VIRTIO_DISK=yes
+# statically added to the kernel binary, low flexibility but no need fo boot loader support
+#RAMDISK_EMBEDDED=yes
+# let qemu or a boot loader load the file from a filesystem and load it for us in memory
+#RAMDISK_BOOTLOADER=yes
+
 # "build" is used as the foldername outside of the Makefiles as well.
 # So if this gets changed, the Makefiles should be fine, but externel
 # configs and scripts might need to be updated.
