@@ -33,6 +33,11 @@ For RISC V either 32-bit or 64-bit target can get selected in `MakefileCommon.mk
 VIMIX can run bare-metal (booting in [M-mode](riscv/M-mode.md)) or via a [SBI](riscv/SBI.md) compatible environment in [S-mode](riscv/S-mode.md). See `SBI_SUPPORT` in `MakefileCommon.mk`.
 
 
+### Root Filesystem
+
+The root [file_system](kernel/file_system/file_system.md) can be on a [ramdisk](kernel/devices/ramdisk.md), either embedded in the kernel binary or loaded by the boot loader from a file.
+
+
 ### Kernel parameters
 
 The file `param.h` sets various system values like the maximum supported CPUs or processes. It also contains debug switches which enable additional runtime tests.

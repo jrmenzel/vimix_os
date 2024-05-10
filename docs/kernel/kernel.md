@@ -20,18 +20,18 @@ See [init_overview](overview/init_overview.md) to see how main() inits all subsy
 
 See [interrupts](interrupts/interrupts.md) and [timer_interrupt](interrupts/timer_interrupt.md)
 
-### Drivers
+### Devices / Drivers
 
 See [devices](devices/devices.md).
 
 ### File Management
 
 **Kernel**
-[init_filesystem](file_system/init_filesystem.md)
-[file_system](file_system/file_system.md)
+- [init_filesystem](file_system/init_filesystem.md)
+- [file_system](file_system/file_system.md)
 
 **User space**
-[init_userspace](processes/init_userspace.md)
+- [init_userspace](processes/init_userspace.md)
 
 ### Memory Management
 

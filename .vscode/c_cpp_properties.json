@@ -10,12 +10,14 @@
                 "${workspaceFolder}/kernel",
                 "${workspaceFolder}/kernel/arch/riscv",
                 "${workspaceFolder}/usr/lib/libc",
-                "${workspaceFolder}/usr/include"
+                "${workspaceFolder}/usr/include",
+                "${workspaceFolder}/build/kernel"
             ],
             "defines": [
                 "__riscv_xlen=64",
                 "__ENABLE_SBI__",
-                "DEBUG"
+                "DEBUG",
+                "VIRTIO_DISK"
             ],
             "compilerArgs": [
                 "-nostdinc"
@@ -31,11 +33,13 @@
                 "${workspaceFolder}/kernel",
                 "${workspaceFolder}/kernel/arch/riscv",
                 "${workspaceFolder}/usr/lib/libc",
-                "${workspaceFolder}/usr/include"
+                "${workspaceFolder}/usr/include",
+                "${workspaceFolder}/build/kernel"
             ],
             "defines": [
                 "__riscv_xlen=32",
-                "DEBUG"
+                "DEBUG",
+                "VIRTIO_DISK"
             ],
             "compilerArgs": [
                 "-nostdinc"

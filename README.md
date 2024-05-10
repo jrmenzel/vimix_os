@@ -77,4 +77,5 @@ $
 - Support multiple [devices](docs/kernel/devices/devices.md), not just two hard coded ones.
 - Added devices:
 	- [/dev/null](docs/userspace/dev/null.md), [/dev/zero](docs/userspace/dev/zero.md)
+	- [ramdisk](docs/kernel/devices/ramdisk.md)
 - [xv6 file system](docs/kernel/file_system/xv6fs.md) was changed to differentiate between character and block devices.

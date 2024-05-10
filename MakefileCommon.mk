@@ -29,8 +29,11 @@ BUILD_DIR=build
 KERNEL_NAME=kernel-vimix
 KERNEL_FILE=$(BUILD_DIR)/$(KERNEL_NAME)
 
-# MB
-# OpenSBI uses the lowest 2MB for itself
+# RAM in MB
+# Note:
+# - OpenSBI uses the lowest 2MB for itself
+# - if RAMDISK_BOOTLOADER is set, the ram disk can use up a few MB
+# (the boot loader might reserve more than is needed)
 MEMORY_SIZE=64
 
 # for qemu

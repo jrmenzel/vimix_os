@@ -28,8 +28,6 @@ Linux has a similar structure (`device`, `block_device`, `gendisk`, `cdev`).
 - encodes major and minor device ID
 - together with block number the key for the block cache of block devices
 
-The minor number is not used yet.
-
 
 #### Access via File System
 
@@ -46,16 +44,25 @@ All devices can have a `dev->irq_number` to get interrupts for that number (`dev
 Block devices are normally disks with [file systems](../file_system/file_system.md). Access to block devices is routed through a block io cache: 
 _Filesystem syscall_ -> _file system_ -> _block io cache_ -> _block device_
 
+**List of Block Devices:**
+- virtio_disk
+- [ramdisk](ramdisk.md)
+
 
 ### Character Devices
 
 Character devices have read / write functions for variable length of strings. 
 
+**List of Character Devices:**
+- [console](../../userspace/dev/console.md)
+- [null](../../userspace/dev/null.md)
+- [zero](../../userspace/dev/zero.md)
+
 
 ---
 **Overview:** [kernel](../kernel.md)
 
-**Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
-
 **Subsystems:** [interrupts](../interrupts/interrupts.md) | [devices](devices.md) | [file_system](../file_system/file_system.md) | [memory_management](../mm/memory_management.md)
 [processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](../syscalls/syscalls.md)
+
+**Devices:** [ramdisk](ramdisk.md)

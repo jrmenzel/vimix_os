@@ -65,6 +65,8 @@ void init_by_first_thread()
     // init memory management:
     printk("init memory management...\n");
 #ifdef RAMDISK_BOOTLOADER
+    // TODO: memory locations should not be hardcoded -> read from boot loader /
+    // device tree file
     const size_t RAMDISK_START_ADDR = 0x82200000;
     const size_t RAMDISC_END_ADDR = 0x82400000;
     kalloc_init((char *)RAMDISC_END_ADDR,
