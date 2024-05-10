@@ -38,6 +38,7 @@ Stored in `/usr/bin`.
 - [grep](bin/grep.md) - find a string in a file
 - [wc](bin/wc.md) - count words and characters in a text file
 - [shutdown](bin/shutdown.md) - Halts or shuts down the OS
+- [date](bin/date.md) - Prints date and time
 
 **Tests:**
 - [usertests](tests/usertests.md) - various automated tests

@@ -102,6 +102,11 @@ size_t sys_uptime();
 /// @return ideally not...
 size_t sys_reboot();
 
+/// @brief Syscall "ssize_t get_time(time_t *tloc);" (exposed via time() in
+/// time.h)
+/// @return -1 on error
+size_t sys_get_time();
+
 // ********************************************************
 // IPC from sys_ipc.c
 //

@@ -1,11 +1,12 @@
-# echo
+# date - print current time and date
 
-Prints the arguments back to [stdout](../../misc/stdio.md).
+Prints the current date and time.
 
-> echo `ARG0` `ARG1` ... `ARGn`
+> date
 
 **Returns:**
 - 0 on success
+**Syscall:** [get_time](../../kernel/syscalls/get_time.md)
 
 ---
 **Up:** [user space](../userspace.md)

@@ -39,6 +39,7 @@ See also: [calling_syscall](calling_syscall.md).
 
 **Misc**
 - [reboot](reboot.md)
+- [get_time](get_time.md) - UNIX time
 
 
 ---

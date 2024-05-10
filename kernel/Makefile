@@ -30,6 +30,7 @@ OBJS = $(ARCH)/asm/entry.o \
 	drivers/dev_null.o \
 	drivers/dev_zero.o \
 	drivers/ramdisk.o \
+	drivers/rtc.o \
 	fs/fs.o \
 	fs/xv6fs/log.o \
 	fs/xv6fs/xv6fs.o \
@@ -54,9 +55,12 @@ OBJS = $(ARCH)/asm/entry.o \
 	lib/print_impl.o \
 	lib/printk.o
 
+ifeq ($(BITWIDTH), 32)
+OBJS += lib/div64.o
+endif
+
 ifeq ($(RAMDISK_EMBEDDED), yes)
 OBJS += ramdisk_fs.o
-#RAMDISC_C = ../kernel/ramdisk_fs.c
 RAMDISC_C = $(K_BUILD_DIR)/ramdisk_fs.c
 endif
 

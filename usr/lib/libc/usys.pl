@@ -39,3 +39,4 @@ entry("ms_sleep");
 entry("uptime");
 entry("get_dirent");
 entry("reboot");
+entry("get_time");

@@ -8,6 +8,11 @@ VIMIX supports [RISC V](riscv/RISCV.md) 32- and 64-bit.
 Booting from a [SBI](riscv/SBI.md) bootloader works (at least in `qemu`), to enable this see [build_instructions](build_instructions.md). 
 
 
+## 32-bit RISC V
+
+64-bit integer math on a 32-bit CPU requires software implementations of division etc. This is why only the 32-bit [kernel](../kernel.md) and [userspace](../../userspace/userspace.md) require `kernel/lib/div64.c`. Handling of 64-bit time values on 32-bit systems makes this necessary (see [get_time](kernel/syscalls/get_time.md)).
+
+
 ## 64-bit RISC V
 
 Only 64-bit [user space](userspace/userspace.md) is supported.

@@ -6,9 +6,11 @@
 
 #include <arch/reset.h>
 #include <arch/trap.h>
+#include <drivers/rtc.h>
 #include <kernel/kernel.h>
 #include <kernel/reboot.h>
 #include <kernel/spinlock.h>
+#include <kernel/time.h>
 #include <syscalls/syscall.h>
 
 size_t sys_uptime()
@@ -46,4 +48,22 @@ size_t sys_reboot()
 
     panic("sys_reboot() failed\n");
     return -1;
+}
+
+ssize_t get_time_to_user(size_t tloc_va)
+{
+    time_t time = rtc_get_time();
+    struct process *proc = get_current();
+
+    int32_t res =
+        uvm_copy_out(proc->pagetable, tloc_va, (char *)&time, sizeof(time_t));
+    return res;
+}
+
+size_t sys_get_time()
+{
+    // parameter 0: time_t *tloc
+    size_t tloc_va;
+    argaddr(0, &tloc_va);
+    return get_time_to_user(tloc_va);
 }

@@ -19,6 +19,10 @@ STD_LIBC=\
 	$(LIBC_BUILD_DIR)/sys_stat_impl.o \
 	$(LIBC_BUILD_DIR)/usys.o 
 
+ifeq ($(BITWIDTH), 32)
+STD_LIBC += $(LIBC_BUILD_DIR)/div64.o
+endif
+
 .PHONY: all directories clean
 
 all: directories $(LIB_BUILD_DIR)/stdlib.a # statically linked stdlib 

@@ -25,3 +25,4 @@
 #define SYS_close 21
 #define SYS_get_dirent 22
 #define SYS_reboot 23
+#define SYS_get_time 24

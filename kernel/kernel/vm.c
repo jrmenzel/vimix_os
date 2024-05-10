@@ -41,6 +41,12 @@ pagetable_t kvm_make_kernel_pagetable(char *end_of_memory)
     // PLIC
     kvm_map_or_panic(kpage_table, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
 
+#ifdef RTC_GOLDFISH
+    // RTC
+    kvm_map_or_panic(kpage_table, RTC_GOLDFISH, RTC_GOLDFISH, PAGE_SIZE,
+                     PTE_R | PTE_W);
+#endif
+
     // map kernel text executable and read-only.
     kvm_map_or_panic(kpage_table, KERNBASE, KERNBASE,
                      (size_t)end_of_text - KERNBASE, PTE_R | PTE_X);

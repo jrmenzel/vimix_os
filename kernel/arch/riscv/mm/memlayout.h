@@ -40,6 +40,9 @@
 /// written to location VIRT_TEST qemu should reboot the emulator
 #define VIRT_TEST_REBOOT 0x7777
 
+/// "Goldfish" real-time clock (supported on qemu)
+#define RTC_GOLDFISH 0x101000
+
 /// core local interruptor (CLINT), which contains the timer.
 #define CLINT 0x2000000L
 
