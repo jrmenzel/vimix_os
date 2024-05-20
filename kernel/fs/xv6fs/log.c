@@ -5,20 +5,12 @@
 #include <kernel/buf.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
+#include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
-
-/// Contents of the header block, used for both the on-disk header block
-/// and to keep track in memory of logged block# before commit.
-struct logheader
-{
-    int32_t n;
-    int32_t block[LOGSIZE];
-};
-_Static_assert((sizeof(struct logheader) < BLOCK_SIZE),
-               "Size incorrect for logheader! Must be smaller than one page.");
+#include <kernel/xv6fs.h>
 
 struct log
 {
@@ -28,7 +20,7 @@ struct log
     int32_t outstanding;  // how many FS sys calls are executing.
     int32_t committing;   // in commit(), please wait.
     dev_t dev;
-    struct logheader lh;
+    struct xv6fs_log_header lh;
 };
 struct log g_log;
 
@@ -41,12 +33,26 @@ void log_init(dev_t dev, struct xv6fs_superblock *sb)
     g_log.start = sb->logstart;
     g_log.size = sb->nlog;
     g_log.dev = dev;
+
+    // if the FS was not shutdown correctly and a log was uncommitted,
+    // finish the log write now:
     recover_from_log();
 }
 
-/// Copy committed blocks from g_log to their home location
-static void install_trans(int32_t recovering)
+/// @brief Copy committed blocks from g_log to their home location
+/// @param recovering true if the FS is being recovered (called at each FS init,
+/// but will only find an uncommited log after a system crash
+static void install_trans(bool recovering)
 {
+    if (recovering && g_log.lh.n != 0)
+    {
+        int minor = MINOR(g_log.dev);
+        int major = MAJOR(g_log.dev);
+        printk(
+            "xv6fs: Replaying %d uncommited filesystem transactions on device "
+            "(%d,%d)\n",
+            g_log.lh.n, minor, major);
+    }
     for (int32_t tail = 0; tail < g_log.lh.n; tail++)
     {
         struct buf *lbuf =
@@ -55,7 +61,7 @@ static void install_trans(int32_t recovering)
             bio_read(g_log.dev, g_log.lh.block[tail]);  // read dst
         memmove(dbuf->data, lbuf->data, BLOCK_SIZE);    // copy block to dst
         bio_write(dbuf);                                // write dst to disk
-        if (recovering == 0)
+        if (recovering == false)
         {
             bio_unpin(dbuf);
         }
@@ -68,7 +74,7 @@ static void install_trans(int32_t recovering)
 static void read_head()
 {
     struct buf *buf = bio_read(g_log.dev, g_log.start);
-    struct logheader *lh = (struct logheader *)(buf->data);
+    struct xv6fs_log_header *lh = (struct xv6fs_log_header *)(buf->data);
     g_log.lh.n = lh->n;
 
     for (size_t i = 0; i < g_log.lh.n; i++)
@@ -84,7 +90,7 @@ static void read_head()
 static void write_head()
 {
     struct buf *buf = bio_read(g_log.dev, g_log.start);
-    struct logheader *hb = (struct logheader *)(buf->data);
+    struct xv6fs_log_header *hb = (struct xv6fs_log_header *)(buf->data);
     hb->n = g_log.lh.n;
     for (size_t i = 0; i < g_log.lh.n; i++)
     {
@@ -97,7 +103,7 @@ static void write_head()
 static void recover_from_log()
 {
     read_head();
-    install_trans(1);  // if committed, copy from g_log to disk
+    install_trans(true);  // if committed, copy from g_log to disk
     g_log.lh.n = 0;
     write_head();  // clear the log
 }
@@ -184,9 +190,9 @@ static void commit()
 {
     if (g_log.lh.n > 0)
     {
-        write_log();       // Write modified blocks from cache to log
-        write_head();      // Write header to disk -- the real commit
-        install_trans(0);  // Now install writes to home locations
+        write_log();           // Write modified blocks from cache to log
+        write_head();          // Write header to disk -- the real commit
+        install_trans(false);  // Now install writes to home locations
         g_log.lh.n = 0;
         write_head();  // Erase the transaction from the log
     }
@@ -201,7 +207,7 @@ void log_write(struct buf *b)
     }
     if (g_log.outstanding < 1)
     {
-        panic("log_write outside of trans");
+        panic("log_write outside of transaction");
     }
 
     int32_t i;

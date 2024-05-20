@@ -22,10 +22,11 @@
 #endif
 
 /// Inodes per block.
-#define IPB (BLOCK_SIZE / sizeof(struct xv6fs_dinode))
+#define XV6FS_INODES_PER_BLOCK (BLOCK_SIZE / sizeof(struct xv6fs_dinode))
 
 /// Block containing inode i
-#define IBLOCK(i, sb) ((i) / IPB + sb.inodestart)
+#define XV6FS_BLOCK_OF_INODE(i, sb) \
+    ((i) / XV6FS_INODES_PER_BLOCK + sb.inodestart)
 
 /// Max file name length (without the NULL-terminator)
 #define XV6_NAME_MAX 14
@@ -36,6 +37,16 @@
 #define XV6_FT_FILE 2          ///< File
 #define XV6_FT_CHAR_DEVICE 3   ///< Character Device
 #define XV6_FT_BLOCK_DEVICE 4  ///< Block Device
+
+/// Bitmap bits per block
+#define XV6FS_BMAP_BITS_PER_BLOCK (BLOCK_SIZE * 8)
+
+/// Block of free map containing bit for block b
+#define XV6FS_BMAP_BLOCK_OF_BIT(b, bmapstart) \
+    ((b) / XV6FS_BMAP_BITS_PER_BLOCK + bmapstart)
+
+#define XV6_BLOCKS_FOR_BITMAP(size_in_blocks) \
+    ((size_in_blocks) / XV6FS_BMAP_BITS_PER_BLOCK + 1)
 
 typedef int16_t xv6fs_file_type;
 
@@ -56,7 +67,7 @@ struct xv6fs_superblock
     uint32_t inodestart;  ///< Block number of first inode block
     uint32_t bmapstart;   ///< Block number of first free map block
 };
-_Static_assert((sizeof(struct xv6fs_superblock) < 1024),
+_Static_assert((sizeof(struct xv6fs_superblock) < BLOCK_SIZE),
                "xv6fs_superblock must fit in one buf->data");
 
 /// which block on the device contains the fs superblock?
@@ -88,3 +99,14 @@ struct xv6fs_dirent
 _Static_assert((BLOCK_SIZE % sizeof(struct xv6fs_dirent)) == 0,
                "Size of one block (1024 bytes) must be a multiple of the size "
                "of xv6fs_dirent");
+
+/// Contents of the header block, used for both the on-disk header block
+/// and to keep track in memory of logged block# before commit.
+struct xv6fs_log_header
+{
+    int32_t n;
+    int32_t block[LOGSIZE];
+};
+_Static_assert(
+    (sizeof(struct xv6fs_log_header) < BLOCK_SIZE),
+    "Size incorrect for xv6fs_log_header! Must be smaller than one page.");

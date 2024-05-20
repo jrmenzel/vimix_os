@@ -36,8 +36,9 @@ struct inode *xv6fs_iops_alloc(dev_t dev, mode_t mode)
 {
     for (size_t inum = 1; inum < sb.ninodes; inum++)
     {
-        struct buf *bp = bio_read(dev, IBLOCK(inum, sb));
-        struct xv6fs_dinode *dip = (struct xv6fs_dinode *)bp->data + inum % IPB;
+        struct buf *bp = bio_read(dev, XV6FS_BLOCK_OF_INODE(inum, sb));
+        struct xv6fs_dinode *dip =
+            (struct xv6fs_dinode *)bp->data + inum % XV6FS_INODES_PER_BLOCK;
 
         if (dip->type == XV6_FT_UNUSED)
         {
@@ -59,8 +60,9 @@ struct inode *xv6fs_iops_alloc(dev_t dev, mode_t mode)
 
 int xv6fs_iops_update(struct inode *ip)
 {
-    struct buf *bp = bio_read(ip->i_sb_dev, IBLOCK(ip->inum, sb));
-    struct xv6fs_dinode *dip = (struct xv6fs_dinode *)bp->data + ip->inum % IPB;
+    struct buf *bp = bio_read(ip->i_sb_dev, XV6FS_BLOCK_OF_INODE(ip->inum, sb));
+    struct xv6fs_dinode *dip =
+        (struct xv6fs_dinode *)bp->data + ip->inum % XV6FS_INODES_PER_BLOCK;
     dip->type = imode_to_xv6_file_type(ip->i_mode);
 
     if (ip->dev == ip->i_sb_dev)
@@ -86,8 +88,9 @@ int xv6fs_iops_update(struct inode *ip)
 
 int xv6fs_iops_read_in(struct inode *ip)
 {
-    struct buf *bp = bio_read(ip->i_sb_dev, IBLOCK(ip->inum, sb));
-    struct xv6fs_dinode *dip = (struct xv6fs_dinode *)bp->data + ip->inum % IPB;
+    struct buf *bp = bio_read(ip->i_sb_dev, XV6FS_BLOCK_OF_INODE(ip->inum, sb));
+    struct xv6fs_dinode *dip =
+        (struct xv6fs_dinode *)bp->data + ip->inum % XV6FS_INODES_PER_BLOCK;
     ip->i_mode = xv6_file_type_to_imode(dip->type);
 
     if (dip->major == 0 && dip->minor == 0)
@@ -149,10 +152,12 @@ static void block_zero(dev_t dev, uint32_t blockno)
 
 uint32_t balloc(dev_t dev)
 {
-    for (uint32_t b = 0; b < sb.size; b += BPB)
+    for (uint32_t b = 0; b < sb.size; b += XV6FS_BMAP_BITS_PER_BLOCK)
     {
-        struct buf *bp = bio_read(dev, BBLOCK(b, sb));
-        for (uint32_t bi = 0; bi < BPB && b + bi < sb.size; bi++)
+        struct buf *bp =
+            bio_read(dev, XV6FS_BMAP_BLOCK_OF_BIT(b, sb.bmapstart));
+        for (uint32_t bi = 0;
+             bi < XV6FS_BMAP_BITS_PER_BLOCK && b + bi < sb.size; bi++)
         {
             uint32_t m = 1 << (bi % 8);
             if ((bp->data[bi / 8] & m) == 0)
@@ -173,8 +178,8 @@ uint32_t balloc(dev_t dev)
 /// Free a disk block.
 void bfree(dev_t dev, uint32_t b)
 {
-    struct buf *bp = bio_read(dev, BBLOCK(b, sb));
-    int32_t bi = b % BPB;
+    struct buf *bp = bio_read(dev, XV6FS_BMAP_BLOCK_OF_BIT(b, sb.bmapstart));
+    int32_t bi = b % XV6FS_BMAP_BITS_PER_BLOCK;
     int32_t m = 1 << (bi % 8);
 
     if ((bp->data[bi / 8] & m) == 0)

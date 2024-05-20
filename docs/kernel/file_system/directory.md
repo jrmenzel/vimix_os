@@ -15,9 +15,6 @@ Loosely related:
 
 
 ---
-**Overview:** [kernel](../kernel.md)
+**Overview:** [kernel](kernel.md) | [file_system](file_system.md)
 
-**Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
-
-**Subsystems:** [interrupts](../interrupts/interrupts.md) | [devices](../devices/devices.md) | [file_system](file_system.md) | [memory_management](../mm/memory_management.md)
-[processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](../syscalls/syscalls.md)
+**File System:** [init_filesystem](init_filesystem.md) | [xv6fs](xv6fs.md) | [xv6fs_log](xv6fs_log.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)

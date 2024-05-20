@@ -1,13 +1,13 @@
 # File System
 
-See also: [init_filesystem](init_filesystem.md).
+A UNIX file system stores [inodes](inode.md), which represent [files](file.md), [directories](directory.md) or [devices](../devices/devices.md).
 
-## Block IO
-
-Data on block devices (see [devices](../devices/devices.md)) are split into blocks of `1024` bytes and are indexed by a block ID (0 to device specific maximum).
-The first block, called `superblock`, will contain the information of how many blocks there are.
-
-All block device read / writes go through the block IO buffer which buffers a number of blocks in RAM. See `bio.h` for the API.
+**Software stack:**
+- File System related [system calls](../syscalls/syscalls.md) 
+- [xv6 File System](xv6fs.md)
+	- [xv6fs Log](xv6fs_log.md)
+- [Block IO Cache](block_io.md)
+- [device drivers](../devices/devices.md) read()/write()
 
 
 ## Supported File Systems
@@ -16,19 +16,7 @@ File systems supported:
 - mostly original [xv6 filesystem](xv6fs.md) (`sys/fs/xv6fs`)
 
 
-## Real World
-
-### Blocks and sectors
-
-Disks often have `512` byte block sizes (sectors), the block buffer should be a multiple of the disk block size.
-
-Linux also uses a `1024` byte block buffer.
-
-
 ---
-**Overview:** [kernel](kernel.md)
+**Overview:** [kernel](kernel.md) | [file_system](file_system.md)
 
-**Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
-
-**Subsystems:** [interrupts](../interrupts/interrupts.md) | [devices](../devices/devices.md) | [file_system](file_system.md) | [memory_management](../mm/memory_management.md)
-[processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](../syscalls/syscalls.md)
+**File System:** [init_filesystem](init_filesystem.md) | [xv6fs](xv6fs.md) | [xv6fs_log](xv6fs_log.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)

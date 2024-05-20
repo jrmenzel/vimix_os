@@ -9,6 +9,7 @@ _*
 build/*
 build_tests/*
 tools/mkfs/mkfs
+tools/mkfs/fsck.xv6fs
 
 # auto generated:
 kernel/arch/riscv/asm/initcode.h

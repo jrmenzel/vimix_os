@@ -7,12 +7,6 @@
 
 extern struct xv6fs_superblock sb;
 
-/// Bitmap bits per block
-#define BPB (BLOCK_SIZE * 8)
-
-/// Block of free map containing bit for block b
-#define BBLOCK(b, sb) ((b) / BPB + sb.bmapstart)
-
 /// Allocate a zeroed disk block.
 /// returns 0 if out of disk space.
 uint32_t balloc(dev_t dev);

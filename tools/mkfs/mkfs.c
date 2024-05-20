@@ -20,7 +20,7 @@
 // Disk layout:
 // [ boot block | sb block | log | inode blocks | free bit map | data blocks ]
 
-int ninodeblocks = MAX_ACTIVE_INODESS / IPB + 1;
+int ninodeblocks = MAX_ACTIVE_INODESS / XV6FS_INODES_PER_BLOCK + 1;
 int nlog = LOGSIZE;
 int nmeta;  // Number of meta blocks (boot, g_super_block, nlog, inode, bitmap)
 int nblocks;  // Number of data blocks
@@ -116,7 +116,7 @@ uint32_t create_empty_filesystem(const char *filename, size_t fs_size)
         exit(-1);
     }
     size_t fs_size_in_blocks = fs_size / BLOCK_SIZE;
-    int nbitmap = fs_size_in_blocks / (BLOCK_SIZE * 8) + 1;
+    int nbitmap = XV6_BLOCKS_FOR_BITMAP(fs_size_in_blocks);
     nmeta = 2 + nlog + ninodeblocks + nbitmap;
 
     // open and/or create output file
@@ -494,9 +494,9 @@ void write_dinode(uint32_t inum, struct xv6fs_dinode *ip)
     char buf[BLOCK_SIZE];
     struct xv6fs_dinode *dip;
 
-    uint32_t block_index = IBLOCK(inum, g_super_block);
+    uint32_t block_index = XV6FS_BLOCK_OF_INODE(inum, g_super_block);
     read_sector(block_index, buf);
-    dip = ((struct xv6fs_dinode *)buf) + (inum % IPB);
+    dip = ((struct xv6fs_dinode *)buf) + (inum % XV6FS_INODES_PER_BLOCK);
     *dip = *ip;  // copy struct of the inode to dip (== copy into buf)
     write_sector(block_index, buf);
 }
@@ -506,9 +506,9 @@ void read_dinode(uint32_t inum, struct xv6fs_dinode *ip)
     char buf[BLOCK_SIZE];
     struct xv6fs_dinode *dip;
 
-    uint32_t block_index = IBLOCK(inum, g_super_block);
+    uint32_t block_index = XV6FS_BLOCK_OF_INODE(inum, g_super_block);
     read_sector(block_index, buf);
-    dip = ((struct xv6fs_dinode *)buf) + (inum % IPB);
+    dip = ((struct xv6fs_dinode *)buf) + (inum % XV6FS_INODES_PER_BLOCK);
     *ip = *dip;  // copy struct into ip
 }
 

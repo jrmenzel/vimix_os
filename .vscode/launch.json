@@ -176,6 +176,17 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            // debug a user space application on the host
+            "name": "host fsck.xv6fs",
+            "program": "${workspaceRoot}/tools/mkfs/fsck.xv6fs",
+            "args": ["build/filesystem.img"],
+            "cwd": "${workspaceRoot}",
+            "type": "cppdbg",
+            "request": "launch",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
         }
     ]
 }
