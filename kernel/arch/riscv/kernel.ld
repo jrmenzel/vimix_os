@@ -22,21 +22,21 @@ SECTIONS
     PROVIDE(end_of_text = .);
   }
 
-  .rodata : {
+  .rodata : ALIGN(CONSTANT(MAXPAGESIZE)) {
     . = ALIGN(16);
     *(.srodata .srodata.*) /* do not need to distinguish this from .rodata */
     . = ALIGN(16);
     *(.rodata .rodata.*)
   }
 
-  .data : {
+  .data : ALIGN(CONSTANT(MAXPAGESIZE)) {
     . = ALIGN(16);
     *(.sdata .sdata.*) /* do not need to distinguish this from .data */
     . = ALIGN(16);
     *(.data .data.*)
   }
 
-  .bss : {
+  .bss : ALIGN(CONSTANT(MAXPAGESIZE)) {
     . = ALIGN(16);
     PROVIDE(bss_start = .);
     *(.sbss .sbss.*) /* do not need to distinguish this from .bss */

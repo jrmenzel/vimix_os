@@ -10,7 +10,7 @@ SECTIONS
     *(.text .text.*)
   }
 
-  .rodata : {
+  .rodata : ALIGN(CONSTANT(MAXPAGESIZE)) {
     . = ALIGN(16);
     *(.srodata .srodata.*) /* do not need to distinguish this from .rodata */
     . = ALIGN(16);
@@ -18,7 +18,7 @@ SECTIONS
     . = ALIGN(0x1000);
   }
 
-  .data : {
+  .data : ALIGN(CONSTANT(MAXPAGESIZE)) {
     . = ALIGN(16);
     *(.sdata .sdata.*) /* do not need to distinguish this from .data */
     . = ALIGN(16);

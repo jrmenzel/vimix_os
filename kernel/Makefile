@@ -126,7 +126,7 @@ endif
 $(INIT_BUILD_DIR)/initcode.h: $(ARCH)/asm/initcode.S 
 	@printf "$(TASK_COLOR)Compile initcode and dump it into initcode.h\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(ARCH)/asm/initcode.S -o $(INIT_BUILD_DIR)/initcode.o
-	@$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode.o
+	@$(LD) $(LDFLAGS) --no-warn-rwx-segments -N -e start -Ttext 0 -o $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode.o
 	@$(OBJCOPY) -S -O binary $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode
 	@echo "unsigned char g_initcode[] = {" > $(INIT_BUILD_DIR)/initcode.h
 	@xxd -i < $(INIT_BUILD_DIR)/initcode >> $(INIT_BUILD_DIR)/initcode.h
