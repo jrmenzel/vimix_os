@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/fence.h>
+#include <arch/riscv/clint.h>
+#include <arch/riscv/plic.h>
 #include <kernel/elf.h>
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
@@ -18,6 +20,15 @@ extern char end_of_text[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[];  // u_mode_trap_vector.S
 
+/// @brief Map MMIO device to kernel page.
+/// @param k_pagetable Page table to add mapping to.
+/// @param address Physical address which will also be the virtual address.
+/// @param size Size of mapping in bytes.
+void kvm_map_mmio(pagetable_t k_pagetable, size_t address, size_t size)
+{
+    kvm_map_or_panic(k_pagetable, address, address, size, PTE_R | PTE_W);
+}
+
 /// Make a direct-map page table for the kernel.
 /// Here the "memory mapped devices" are mapped into kernel memory space
 /// (once the created pagetable is used).
@@ -26,25 +37,26 @@ pagetable_t kvm_make_kernel_pagetable(char *end_of_memory)
     pagetable_t kpage_table = (pagetable_t)kalloc();
     memset(kpage_table, 0, PAGE_SIZE);
 
-    // uart registers
-    kvm_map_or_panic(kpage_table, UART0, UART0, PAGE_SIZE, PTE_R | PTE_W);
-
     // virtio mmio disk interface
-    kvm_map_or_panic(kpage_table, VIRTIO0, VIRTIO0, PAGE_SIZE, PTE_R | PTE_W);
+    kvm_map_mmio(kpage_table, VIRTIO0, PAGE_SIZE);
 
-    // CLINT
-    kvm_map_or_panic(kpage_table, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
-
-    // shutdown qemu
-    kvm_map_or_panic(kpage_table, 0x100000, 0x100000, PAGE_SIZE, PTE_R | PTE_W);
+    // uart registers
+    kvm_map_mmio(kpage_table, UART0, PAGE_SIZE);
 
     // PLIC
-    kvm_map_or_panic(kpage_table, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
+    kvm_map_mmio(kpage_table, PLIC_BASE, PLIC_SIZE);
+
+    // CLINT
+    kvm_map_mmio(kpage_table, CLINT_BASE, CLINT_SIZE);
 
 #ifdef RTC_GOLDFISH
     // RTC
-    kvm_map_or_panic(kpage_table, RTC_GOLDFISH, RTC_GOLDFISH, PAGE_SIZE,
-                     PTE_R | PTE_W);
+    kvm_map_mmio(kpage_table, RTC_GOLDFISH, PAGE_SIZE);
+#endif
+
+#ifdef VIRT_TEST_BASE
+    // shutdown qemu
+    kvm_map_mmio(kpage_table, VIRT_TEST_BASE, PAGE_SIZE);
 #endif
 
     // map kernel text executable and read-only.
@@ -166,7 +178,9 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
 int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
                 int32_t perm)
 {
-    // printk("mapping %ld to %ld\n", va, va + size);
+    // printk("mapping (physical 0x%x) to 0x%x - 0x%x (size: %d pages)\n", pa,
+    // va, va + size - 1,
+    //        size / PAGE_SIZE);
     if (size == 0)
     {
         panic("kvm_map: size == 0");
@@ -185,7 +199,7 @@ int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
         {
             panic("kvm_map: remap");
         }
-        *pte = PA2PTE(pa) | perm | PTE_V;
+        *pte = PA2PTE(pa) | perm | PTE_V | PTE_A | PTE_D;
         if (current_va == last_va)
         {
             break;

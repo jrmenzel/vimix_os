@@ -50,6 +50,7 @@ typedef uint64_t xlen_t;
 #else
 // use riscv's sv39 page table scheme.
 #define SATP_SV39 (8L << 60)
+#define SATP_SV48 (9L << 60)
 #define MAKE_SATP(pagetable) (SATP_SV39 | (((uint64_t)pagetable) >> 12))
 #endif  // _arch_is_32bit
 
@@ -199,15 +200,20 @@ static inline uint64_t rv_get_instret()
 static inline uint64_t rv_get_instret() { return rv_read_csr_instret(); }
 #endif
 
-static inline void cpu_set_page_table(xlen_t addr) { rv_write_csr_satp(addr); }
-
-static inline xlen_t cpu_get_page_table() { return rv_read_csr_satp(); }
-
-static inline void w_tp(xlen_t x) { asm volatile("mv tp, %0" : : "r"(x)); }
-
 // flush the TLB.
 static inline void rv_sfence_vma()
 {
     // the zero, zero means flush all TLB entries.
     asm volatile("sfence.vma zero, zero");
 }
+
+static inline void cpu_set_page_table(xlen_t addr)
+{
+    rv_sfence_vma();
+    rv_write_csr_satp(addr);
+    rv_sfence_vma();
+}
+
+static inline xlen_t cpu_get_page_table() { return rv_read_csr_satp(); }
+
+static inline void w_tp(xlen_t x) { asm volatile("mv tp, %0" : : "r"(x)); }

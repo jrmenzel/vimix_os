@@ -12,18 +12,21 @@
 #define PAGE_ROUND_DOWN(a) (((a)) & ~(PAGE_SIZE - 1))
 
 // flags per page
-#define PTE_V (1L << 0)  // valid
+#define PTE_V (1L << 0)  ///< valid
 #define PTE_R (1L << 1)
 #define PTE_W (1L << 2)
 #define PTE_X (1L << 3)
-#define PTE_U (1L << 4)  // user can access
+#define PTE_U (1L << 4)  ///< user can access
+#define PTE_G (1L << 5)
+#define PTE_A (1L << 6)  ///< access bit
+#define PTE_D (1L << 7)  ///< dirty bit
 
 /// shift a physical address to the right place for a PTE.
 #define PA2PTE(pa) ((((size_t)pa) >> 12) << 10)
 
 #define PTE2PA(pte) (((pte) >> 10) << 12)
 
-#define PTE_FLAGS(pte) ((pte)&0x3FF)
+#define PTE_FLAGS(pte) ((pte) & 0x3FF)
 
 #if (__riscv_xlen == 32)
 // 32 bit

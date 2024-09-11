@@ -27,7 +27,8 @@
 #define IER 1  // interrupt enable register
 #define IER_RX_ENABLE (1 << 0)
 #define IER_TX_ENABLE (1 << 1)
-#define FCR 2  // FIFO control register
+#define ISR 2  //< which interrupt occured, read only
+#define FCR 2  //< FIFO control register, write only
 #define FCR_FIFO_ENABLE (1 << 0)
 #define FCR_FIFO_CLEAR (3 << 1)  // clear the content of the two FIFOs
 #define ISR 2                    // interrupt status register
@@ -67,8 +68,9 @@ void uart_init()
     // reset and enable FIFOs.
     WriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
-    // enable transmit and receive interrupts.
-    WriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
+    // enable receive interrupt. IER_TX_ENABLE would add an interrupt, when the
+    // send buffer is empty, but we busy wait on it to clear while sending.
+    WriteReg(IER, IER_RX_ENABLE);
 
     // init uart_16550 object
     spin_lock_init(&g_uart_16550.uart_tx_lock, "uart");
@@ -107,9 +109,10 @@ void uart_putc_sync(int32_t c)
         }
     }
 
-    // wait for Transmit Holding Empty to be set in LSR.
     while ((ReadReg(LSR) & LSR_TX_IDLE) == 0)
-        ;
+    {
+        // wait for Transmit Holding Empty to be set in LSR.
+    }
     WriteReg(THR, c);
 
     cpu_pop_disable_device_interrupt_stack();

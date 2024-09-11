@@ -6,12 +6,12 @@
 
 void machine_restart()
 {
-    (*(volatile uint32_t *)VIRT_TEST) = VIRT_TEST_REBOOT;
+    (*(volatile uint32_t *)VIRT_TEST_BASE) = VIRT_TEST_REBOOT;
     panic("machine_restart() failed");
 }
 
 void machine_power_off()
 {
-    (*(volatile uint32_t *)VIRT_TEST) = VIRT_TEST_SHUTDOWN;
+    (*(volatile uint32_t *)VIRT_TEST_BASE) = VIRT_TEST_SHUTDOWN;
     panic("machine_power_off() failed");
 }

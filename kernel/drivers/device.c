@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/interrupts.h>
 #include <drivers/block_device.h>
 #include <drivers/character_device.h>
 #include <drivers/device.h>
@@ -23,6 +24,14 @@ void register_device(struct Device *dev)
 
     // printk("register device %d\n", dev->device_number);
     g_devices[major] = dev;
+
+    // hook up interrupts:
+    if (dev->irq_number != INVALID_IRQ_NUMBER)
+    {
+        interrupt_controller_set_interrupt_priority(dev->irq_number, 1);
+        // printk("register device %d with IRQ %d\n", dev->device_number,
+        //        dev->irq_number);
+    }
 }
 
 void dev_set_irq(struct Device *dev, int32_t irq_number,

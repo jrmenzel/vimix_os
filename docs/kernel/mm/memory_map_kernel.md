@@ -11,7 +11,7 @@ For the [user space](../../userspace/userspace.md) [processes](../processes/proc
 
 | VA start  | VA end    | alias                | mapped from       | Permissions |
 | --------- | --------- | -------------------- | ----------------- | ----------- |
-| FFFF F000 | FFFF FFFF | TRAMPOLINE           | char trampoline[] | R, X        |
+| FFFF E000 | FFFF EFFF | TRAMPOLINE           | char trampoline[] | R, X        |
 | FFFF D000 | FFFF DFFF |                      |                   |             |
 | FFFF C000 | FFFF CFFF | proc 0 kernel stack  | kalloc()          | R, W        |
 | FFFF B000 | FFFF BFFF | (empty guard)        |                   |             |
@@ -40,15 +40,18 @@ On [SBI](../../riscv/SBI.md) enabled qemu the usable RAM starts at 0x8020.0000:
 
 ### Memory Mapped IO Devices
 
-| VA start  | VA end    | alias                      | mapped from | Permissions |
-| --------- | --------- | -------------------------- | ----------- | ----------- |
-| 1000 2000 | 7FFF FFFF | unused                     |             |             |
-| 1000 1000 | 1000 1FFF | VIRTIO disk                | VA = PA     | R, W        |
-| 1000 0000 | 1000 0FFF | UART0                      | VA = PA     | R, W        |
-|           |           | unused                     |             |             |
-| 0C00 0000 | 0C3F FFFF | [PLIC](../../riscv/PLIC.md)   | VA = PA     | R, W        |
-|           |           | unused                     |             |             |
+| VA start  | VA end    | alias                         | mapped from | Permissions |
+| --------- | --------- | ----------------------------- | ----------- | ----------- |
+| 1000 2000 | 7FFF FFFF | unused                        |             |             |
+| 1000 1000 | 1000 1FFF | VIRTIO disk                   | VA = PA     | R, W        |
+| 1000 0000 | 1000 0FFF | UART0                         | VA = PA     | R, W        |
+|           |           | unused                        |             |             |
+| 0C00 0000 | 0FFF FFFF | [PLIC](../../riscv/PLIC.md)   | VA = PA     | R, W        |
+|           |           | unused                        |             |             |
 | 0200 0000 | 0200 FFFF | [CLINT](../../riscv/CLINT.md) | VA = PA     | R, W        |
+|           |           | unused                        |             |             |
+| 0010 1000 | 0010 1FFF | RTC                           | VA = PA     | R, W        |
+| 0010 0000 | 0010 0FFF | VIRTIO test                   | VA = PA     | R, W        |
 
 
 - `kalloc()`: One page provided by kalloc() mapped.

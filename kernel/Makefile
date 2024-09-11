@@ -26,7 +26,6 @@ OBJS = $(ARCH)/asm/entry.o \
 	drivers/device.o \
 	drivers/console.o \
 	drivers/uart16550.o \
-	drivers/virtio_disk.o \
 	drivers/dev_null.o \
 	drivers/dev_zero.o \
 	drivers/ramdisk.o \
@@ -62,6 +61,10 @@ endif
 ifeq ($(RAMDISK_EMBEDDED), yes)
 OBJS += ramdisk_fs.o
 RAMDISC_C = $(K_BUILD_DIR)/ramdisk_fs.c
+endif
+
+ifeq ($(VIRTIO_DISK), yes)
+OBJS += drivers/virtio_disk.o
 endif
 
 SUB_DIRS = \
@@ -123,10 +126,11 @@ ifeq ($(CREATE_ASSEMBLY), yes)
 endif
 
 # special case: initcode
+# ld flag --no-warn-rwx-segments requres newer linker versions (2.39 or later)
 $(INIT_BUILD_DIR)/initcode.h: $(ARCH)/asm/initcode.S 
 	@printf "$(TASK_COLOR)Compile initcode and dump it into initcode.h\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(ARCH)/asm/initcode.S -o $(INIT_BUILD_DIR)/initcode.o
-	@$(LD) $(LDFLAGS) --no-warn-rwx-segments -N -e start -Ttext 0 -o $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode.o
+	@$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode.o
 	@$(OBJCOPY) -S -O binary $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode
 	@echo "unsigned char g_initcode[] = {" > $(INIT_BUILD_DIR)/initcode.h
 	@xxd -i < $(INIT_BUILD_DIR)/initcode >> $(INIT_BUILD_DIR)/initcode.h

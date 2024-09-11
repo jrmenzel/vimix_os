@@ -24,6 +24,8 @@
 #endif
 
 .globl s_mode_trap_vector
+# the address of this function must be 4 byte aligned because the lowest 
+# 2 bits of the stvec register are reserved for a mode.
 .align 4
 s_mode_trap_vector:
     # make room to save registers.

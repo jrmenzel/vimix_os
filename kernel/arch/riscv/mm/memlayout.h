@@ -32,36 +32,22 @@
 
 /// one page where writing to the first int can trigger a qemu shutdown or
 /// reboot
-#define VIRT_TEST 0x100000
+#define VIRT_TEST_BASE 0x100000
 
-/// written to location VIRT_TEST qemu should shutdown
+/// written to location VIRT_TEST_BASE qemu should shutdown
 #define VIRT_TEST_SHUTDOWN 0x5555
 
-/// written to location VIRT_TEST qemu should reboot the emulator
+/// written to location VIRT_TEST_BASE qemu should reboot the emulator
 #define VIRT_TEST_REBOOT 0x7777
 
 /// "Goldfish" real-time clock (supported on qemu)
 #define RTC_GOLDFISH 0x101000
 
 /// core local interruptor (CLINT), which contains the timer.
-#define CLINT 0x2000000L
-
-/// Compare value for the timer. Always 64 bit!
-#define CLINT_MTIMECMP(hartid) (CLINT + 0x4000 + 8 * (hartid))
-
-// Cycles since boot. This register is always 64 bit!
-#define CLINT_MTIME (CLINT + 0xBFF8)
+#define CLINT_BASE 0x02000000L
 
 /// qemu puts platform-level interrupt controller (PLIC) here.
-#define PLIC 0x0c000000L
-#define PLIC_PRIORITY (PLIC + 0x0)
-#define PLIC_PENDING (PLIC + 0x1000)
-#define PLIC_MENABLE(hart) (PLIC + 0x2000 + (hart)*0x100)
-#define PLIC_SENABLE(hart) (PLIC + 0x2080 + (hart)*0x100)
-#define PLIC_MPRIORITY(hart) (PLIC + 0x200000 + (hart)*0x2000)
-#define PLIC_SPRIORITY(hart) (PLIC + 0x201000 + (hart)*0x2000)
-#define PLIC_MCLAIM(hart) (PLIC + 0x200004 + (hart)*0x2000)
-#define PLIC_SCLAIM(hart) (PLIC + 0x201004 + (hart)*0x2000)
+#define PLIC_BASE 0x0c000000L
 
 /// the kernel expects there to be RAM
 /// for use by the kernel and user pages
@@ -82,10 +68,12 @@
 #define PHYSTOP (KERNBASE + RAM_SIZE_IN_MB * 1024 * 1024)
 #endif  // __ENABLE_SBI__
 
-/// map the trampoline page to the highest address,
+/// map the trampoline page to the (second) highest address,
 /// in both user and kernel space.
+/// Second highest in 32-bit mode as the highest results in strange issues
+/// during unmap.
 #if (__riscv_xlen == 32)
-#define TRAMPOLINE (0xFFFF000)
+#define TRAMPOLINE (0xFFFFE000)
 #else
 #define TRAMPOLINE (MAXVA - PAGE_SIZE)
 #endif

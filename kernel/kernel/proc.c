@@ -542,6 +542,7 @@ void forkret()
         // be run from main().
         first = false;
         init_root_file_system(ROOT_DEVICE_NUMBER);
+        __sync_synchronize();
     }
 
     return_to_user_mode();

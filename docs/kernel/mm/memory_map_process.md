@@ -13,7 +13,7 @@ Note that all the init code does is call [execv](../syscalls/execv.md) for the [
 
 | VA start  | VA end    | alias      | mapped from                   | Permissions |
 | --------- | --------- | ---------- | ----------------------------- | ----------- |
-| FFFF F000 | FFFF FFFF | TRAMPOLINE | char trampoline[]             | R, X        |
+| FFFF E000 | FFFF EFFF | TRAMPOLINE | char trampoline[]             | R, X        |
 | FFFF D000 | FFFF DFFF | TRAPFRAME  | proc->trapframe               | R, W        |
 | 0000 0000 | 0000 1000 | init code  | kalloc() & g_initcode memcopy | R, W, X, U  |
 
@@ -22,7 +22,7 @@ Afterwards the memory map looks like this:
 
 | VA start  | VA end    | alias      | mapped from                 | Permissions |
 | --------- | --------- | ---------- | --------------------------- | ----------- |
-| FFFF F000 | FFFF FFFF | TRAMPOLINE | char trampoline[]           | R, X        |
+| FFFF E000 | FFFF EFFF | TRAMPOLINE | char trampoline[]           | R, X        |
 | FFFF D000 | FFFF DFFF | TRAPFRAME  | proc->trapframe             | R, W        |
 |           |           |            |                             |             |
 |           |           | heap       | set via sbrk(), grows up    | R, W, U     |
