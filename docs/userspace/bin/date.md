@@ -11,4 +11,4 @@ Prints the current date and time.
 ---
 **Up:** [user space](../userspace.md)
 
-**Misc:** [cat](cat.md) | [echo](echo.md) | [grep](grep.md) | [wc](wc.md) | [shutdown](shutdown.md) | [date](date.md)
+**Misc:** [cat](cat.md) | [echo](echo.md) | [grep](grep.md) | [wc](wc.md) | [shutdown](shutdown.md) | [date](date.md) | [sleep](sleep.md)

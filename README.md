@@ -72,6 +72,7 @@ $
 	- [shutdown](docs/userspace/bin/shutdown.md)
 	- [mknod](docs/userspace/bin/mknod.md)
 	- [date](docs/userspace/bin/date.md)
+	- [sleep](docs/userspace/bin/sleep.md)
 - Added syscalls:
 	- [get_dirent](docs/kernel/syscalls/get_dirent.md)
 	- [reboot](docs/kernel/syscalls/reboot.md)

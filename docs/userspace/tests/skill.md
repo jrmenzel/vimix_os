@@ -1,13 +1,12 @@
-# grind
+# Stack Kill
 
-From xv6.
-Run random system calls in parallel forever.
+Calls a recursive function to grow the stack. Eventually the app will crash with a stack overflow.
 
 Run
-> grind
+> skill
 
 **Returns:**
-- wont return
+- Intended not to return
 
 ---
 **Up:** [user space](../userspace.md)

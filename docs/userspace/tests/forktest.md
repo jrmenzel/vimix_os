@@ -12,4 +12,4 @@ Run
 
 ---
 **Up:** [user space](../userspace.md)
-**Tests:** [forktest](forktest.md) | [grind](grind.md) | [usertests](usertests.md) | [zombie](zombie.md)
+**Tests:** [forktest](forktest.md) | [grind](grind.md) | [usertests](usertests.md) | [zombie](zombie.md) | [skill](skill.md)

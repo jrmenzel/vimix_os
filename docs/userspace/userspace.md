@@ -39,12 +39,14 @@ Stored in `/usr/bin`.
 - [wc](bin/wc.md) - count words and characters in a text file
 - [shutdown](bin/shutdown.md) - Halts or shuts down the OS
 - [date](bin/date.md) - Prints date and time
+- [sleep](bin/sleep.md) - Pauses execution for N seconds
 
 **Tests:**
 - [usertests](tests/usertests.md) - various automated tests
 - [forktest](tests/forktest.md) - tests [fork](../kernel/syscalls/fork.md) syscall
 - [grind](tests/grind.md) - tests random [syscalls](../kernel/syscalls/syscalls.md) forever (wont return)
 - [zombie](tests/zombie.md) - tests if a zombie process is correctly handled
+- [skill](tests/skill.md) - tests a stack overflow
 
 
 ### Linux support
