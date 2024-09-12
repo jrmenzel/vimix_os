@@ -144,10 +144,8 @@ pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc)
     return &pagetable[PAGE_TABLE_INDEX(0, va)];
 }
 
-/// Look up a virtual address, return the physical address,
-/// or 0 if not mapped.
-/// Can only be used to look up user pages.
-size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va)
+size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va,
+                             bool *is_writeable)
 {
 #if defined(_arch_is_64bit)
     if (va >= MAXVA)
@@ -160,6 +158,9 @@ size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va)
     if (pte == NULL) return 0;
     if ((*pte & PTE_V) == 0) return 0;
     if ((*pte & PTE_U) == 0) return 0;
+
+    // optionally pass out if the page can be written to
+    if (is_writeable) *is_writeable = (*pte & PTE_W);
 
     size_t pa = PTE2PA(*pte);
     return pa;
@@ -411,10 +412,13 @@ int32_t uvm_copy_out(pagetable_t pagetable, size_t dst_va, char *src_pa,
         // copy up to one page each loop
 
         size_t dst_va_page_start = PAGE_ROUND_DOWN(dst_va);
-        size_t dst_pa_page_start =
-            uvm_get_physical_addr(pagetable, dst_va_page_start);
-        if (dst_pa_page_start == 0)
+        bool dst_page_is_writeable;
+        size_t dst_pa_page_start = uvm_get_physical_addr(
+            pagetable, dst_va_page_start, &dst_page_is_writeable);
+
+        if (dst_pa_page_start == 0 || !dst_page_is_writeable)
         {
+            // page not mapped or read-only
             return -1;
         }
 
@@ -442,7 +446,7 @@ int32_t uvm_copy_in(pagetable_t pagetable, char *dst_pa, size_t src_va,
 
         size_t src_va_page_start = PAGE_ROUND_DOWN(src_va);
         size_t src_pa_page_start =
-            uvm_get_physical_addr(pagetable, src_va_page_start);
+            uvm_get_physical_addr(pagetable, src_va_page_start, NULL);
         if (src_pa_page_start == 0)
         {
             return -1;
@@ -472,7 +476,7 @@ int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
     {
         size_t src_va_page_start = PAGE_ROUND_DOWN(src_va);
         size_t src_pa_page_start =
-            uvm_get_physical_addr(pagetable, src_va_page_start);
+            uvm_get_physical_addr(pagetable, src_va_page_start, NULL);
         if (src_pa_page_start == 0)
         {
             return -1;

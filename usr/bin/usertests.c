@@ -34,34 +34,46 @@
 
 char buf[BUFSZ];
 
+const size_t TEST_PTR_RAM_BEGIN = 0x80000000LL;
+const size_t TEST_PTR_0 = 0x3fffffe000;
+const size_t TEST_PTR_1 = 0x3ffffff000;
+const size_t TEST_PTR_2 = 0x4000000000;
 #ifdef _ARCH_32BIT
 // 32 bit
-const size_t TEST_POINTER_ADDR_1 = 0x80000000LL;
-const size_t TEST_POINTER_ADDR_2 = 0xffffffff;
+const size_t TEST_PTR_MAX_ADDRESS = 0xffffffff;
 #else
 // 64 bit
-const size_t TEST_POINTER_ADDR_1 = 0x80000000LL;
-const size_t TEST_POINTER_ADDR_2 = 0xffffffffffffffff;
+const size_t TEST_PTR_MAX_ADDRESS = 0xffffffffffffffff;
 #endif
+
+// to test reads at invalid locations
+const size_t INVALID_PTRS[] = {TEST_PTR_RAM_BEGIN, TEST_PTR_0, TEST_PTR_1,
+                               TEST_PTR_2, TEST_PTR_MAX_ADDRESS};
+const size_t INVALID_PTR_COUNT = sizeof(INVALID_PTRS) / sizeof(INVALID_PTRS[0]);
+
+// to test writes at invalid locations
+const size_t INVALID_PTRS_W[] = {0x00,       TEST_PTR_RAM_BEGIN,
+                                 TEST_PTR_0, TEST_PTR_1,
+                                 TEST_PTR_2, TEST_PTR_MAX_ADDRESS};
+const size_t INVALID_PTR_COUNT_W =
+    sizeof(INVALID_PTRS_W) / sizeof(INVALID_PTRS_W[0]);
 
 const char *bin_echo = "/usr/bin/echo";
 const char *bin_init = "/usr/bin/init";
 
 //
 // Section with tests that run fairly quickly.  Use -q if you want to
-// run just those.  With -q usertests also runs the ones that take a
-// fair of time.
+// run just those.  Without -q usertests also runs the ones that take a
+// fair amount of time.
 //
 
 // what if you pass ridiculous pointers to system calls
 // that read user memory with uvm_copy_in?
 void copyin(char *s)
 {
-    size_t addrs[] = {TEST_POINTER_ADDR_1, TEST_POINTER_ADDR_2};
-
-    for (size_t ai = 0; ai < 2; ai++)
+    for (size_t ai = 0; ai < INVALID_PTR_COUNT; ai++)
     {
-        void *addr = (void *)addrs[ai];
+        void *addr = (void *)INVALID_PTRS[ai];
 
         int fd = open("copyin1", O_CREATE | O_WRONLY, 0755);
         if (fd < 0)
@@ -106,11 +118,9 @@ void copyin(char *s)
 // that write user memory with uvm_copy_out?
 void copyout(char *s)
 {
-    size_t addrs[] = {TEST_POINTER_ADDR_1, TEST_POINTER_ADDR_2};
-
-    for (size_t ai = 0; ai < 2; ai++)
+    for (size_t ai = 0; ai < INVALID_PTR_COUNT_W; ai++)
     {
-        void *addr = (void *)addrs[ai];
+        void *addr = (void *)INVALID_PTRS_W[ai];
 
         int fd = open("/README.md", O_RDONLY);
         if (fd < 0)
@@ -152,11 +162,9 @@ void copyout(char *s)
 // what if you pass ridiculous string pointers to system calls?
 void copyinstr1(char *s)
 {
-    size_t addrs[] = {TEST_POINTER_ADDR_1, TEST_POINTER_ADDR_2};
-
-    for (size_t ai = 0; ai < 2; ai++)
+    for (size_t ai = 0; ai < INVALID_PTR_COUNT; ai++)
     {
-        char *addr = (char *)addrs[ai];
+        char *addr = (char *)INVALID_PTRS[ai];
 
         int fd = open((char *)addr, O_CREATE | O_WRONLY, 0755);
         if (fd >= 0)
@@ -304,13 +312,13 @@ void rwsbrk()
     long page_size = sysconf(_SC_PAGE_SIZE);
     size_t a = (size_t)sbrk(2 * page_size);
 
-    if (a == TEST_POINTER_ADDR_2)
+    if (a == TEST_PTR_MAX_ADDRESS)
     {
         printf("sbrk(rwsbrk) failed\n");
         exit(1);
     }
 
-    if ((size_t)sbrk(-(2 * page_size)) == TEST_POINTER_ADDR_2)
+    if ((size_t)sbrk(-(2 * page_size)) == TEST_PTR_MAX_ADDRESS)
     {
         printf("sbrk(rwsbrk) shrink failed\n");
         exit(1);
@@ -2377,7 +2385,7 @@ void sbrkbasic(char *s)
     if (pid == 0)
     {
         a = sbrk(TOOMUCH);
-        if (a == (char *)TEST_POINTER_ADDR_2)
+        if (a == (char *)TEST_PTR_MAX_ADDRESS)
         {
             // it's OK if this fails.
             exit(0);
@@ -2472,7 +2480,7 @@ void sbrkmuch(char *s)
     // can one de-allocate?
     a = sbrk(0);
     char *c = sbrk(-page_size);
-    if (c == (char *)TEST_POINTER_ADDR_2)
+    if (c == (char *)TEST_PTR_MAX_ADDRESS)
     {
         printf("%s: sbrk could not deallocate\n", s);
         exit(1);
@@ -2614,7 +2622,7 @@ void sbrkfail(char *s)
         kill(pids[i], SIGKILL);
         wait(NULL);
     }
-    if (c == (char *)TEST_POINTER_ADDR_2)
+    if (c == (char *)TEST_PTR_MAX_ADDRESS)
     {
         printf("%s: failed sbrk leaked memory\n", s);
         exit(1);
@@ -2869,32 +2877,36 @@ void stacktest(char *s)
     }
 }
 
-// check that writes to text segment fault
-void textwrite(char *s)
+// check that writes to invalid addresses fail
+void nowrite(char *s)
 {
-    pid_t pid = fork();
-    if (pid == 0)
+    for (size_t ai = 0; ai < INVALID_PTR_COUNT_W; ai++)
     {
-        volatile int *addr = (int *)0;
-        *addr = 10;
-        exit(1);
-    }
-    else if (pid < 0)
-    {
-        printf("%s: fork failed\n", s);
-        exit(1);
-    }
+        pid_t pid = fork();
+        if (pid == 0)
+        {
+            volatile int *addr = (int *)INVALID_PTRS_W[ai];
+            *addr = 10;
+            printf("%s: write to %p did not fail!\n", s, addr);
+            exit(1);
+        }
+        else if (pid < 0)
+        {
+            printf("%s: fork failed\n", s);
+            exit(1);
+        }
 
-    int32_t xstatus;
-    wait(&xstatus);
-    xstatus = WEXITSTATUS(xstatus);
-    if (xstatus == -1)  // kernel killed child?
-    {
-        exit(0);
-    }
-    else
-    {
-        exit(xstatus);
+        int32_t xstatus;
+        wait(&xstatus);
+        xstatus = WEXITSTATUS(xstatus);
+        if (xstatus == -1)  // kernel killed child?
+        {
+            exit(0);
+        }
+        else
+        {
+            exit(xstatus);
+        }
     }
 }
 
@@ -3173,7 +3185,7 @@ struct test
     {bigargtest, "bigargtest"},
     {argptest, "argptest"},
     {stacktest, "stacktest"},
-    {textwrite, "textwrite"},
+    {nowrite, "nowrite"},
     {pgbug, "pgbug"},
     {sbrkbugs, "sbrkbugs"},
     {sbrklast, "sbrklast"},
@@ -3358,7 +3370,7 @@ void execout(char *s)
             while (true)
             {
                 intptr_t a = (intptr_t)sbrk(page_size);
-                if (a == TEST_POINTER_ADDR_2)
+                if (a == TEST_PTR_MAX_ADDRESS)
                 {
                     break;
                 }

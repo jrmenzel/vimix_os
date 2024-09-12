@@ -161,7 +161,7 @@ static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,
 {
     for (size_t i = 0; i < sz; i += PAGE_SIZE)
     {
-        size_t pa = uvm_get_physical_addr(pagetable, va + i);
+        size_t pa = uvm_get_physical_addr(pagetable, va + i, NULL);
         if (pa == 0)
         {
             panic("loadseg: address should exist");
