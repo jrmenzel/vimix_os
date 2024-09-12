@@ -36,7 +36,7 @@ KERNEL_FILE=$(BUILD_DIR)/$(KERNEL_NAME)
 # (the boot loader might reserve more than is needed)
 MEMORY_SIZE=64
 
-# for qemu
+# for qemu and Spike
 CPUS=4
 
 # create assembly files from C, can be compared with the VSCode extension "Disassembly Explorer"

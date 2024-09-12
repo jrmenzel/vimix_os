@@ -100,6 +100,39 @@ qemu-gdb: kernel .gdbinit $(BUILD_DIR)/filesystem.img # run VIMIX in qemu waitin
 	@printf " OR attach with VSCode for debugging.$(NO_COLOR)\n"
 	$(QEMU) $(QEMU_OPTS) $(QEMU_DEBUG_OPTS)
 
+#
+# Spike simulator
+# Note: see docs on how to build VIMIX for Spike
+
+# spike binary, edit to use e.g. a self compiled version
+SPIKE=spike
+#SPIKE_BUILD=../riscv-simulator/riscv-isa-sim/build
+#SPIKE=$(SPIKE_BUILD)/spike
+#SPIKE_SBI_FW=../opensbi/build/platform/generic/firmware/fw_payload.elf
+ifeq ($(BITWIDTH), 32)
+SPIKE_ISA = rv32gc
+else
+SPIKE_ISA = rv64gc
+endif
+
+SPIKE_OPTIONS = -m0x80000000:$(MEMORY_SIZE_BYTES) -p$(CPUS) --isa=$(SPIKE_ISA)
+SPIKE_OPTIONS += --initrd=$(BUILD_DIR)/filesystem.img --kernel=$(KERNEL_FILE) $(KERNEL_FILE)
+
+spike-requirements: kernel $(BUILD_DIR)/filesystem.img
+
+spike: spike-requirements
+	$(SPIKE) $(SPIKE_OPTIONS)
+
+spike-log: spike-requirements
+	$(SPIKE) -l --log=spike_log.txt $(SPIKE_OPTIONS) 
+
+spike-gdb: spike-requirements
+	$(SPIKE) --rbb-port=9824 $(SPIKE_OPTIONS)
+
+spike-sbi: spike-requirements
+	$(SPIKE) $(SPIKE_SBI_FW) $(SPIKE_OPTIONS)
+
+
 clean: # clean up
 	$(MAKE) -C kernel clean;
 	$(MAKE) -C tools/mkfs clean;
