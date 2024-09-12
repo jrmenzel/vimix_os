@@ -54,6 +54,8 @@ size_t sys_ms_sleep()
     int32_t milli_seconds;
     argint(0, &milli_seconds);
 
+    if (milli_seconds < 0) milli_seconds = 0;
+
     size_t kernel_ticks = milli_seconds * TIMER_INTERRUPTS_PER_SECOND / 1000;
 
     spin_lock(&g_tickslock);

@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     {
         int fd;
 
-        if ((fd = open(argv[i], 0)) < 0)
+        if ((fd = open(argv[i], O_RDONLY)) < 0)
         {
             fprintf(stderr, "cat: cannot open %s\n", argv[i]);
             return 1;

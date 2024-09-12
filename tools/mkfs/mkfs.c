@@ -207,7 +207,7 @@ int build_full_path(char *dst, const char *path, const char *file)
 void copy_file_to_filesystem(const char *path_on_host, const char *new_name,
                              int32_t dir_inode_on_fs)
 {
-    int fd = open(path_on_host, 0);
+    int fd = open(path_on_host, O_RDONLY);
     if (fd < 0) die(path_on_host);
 
     size_t max_file_size = MAXFILE * BLOCK_SIZE;

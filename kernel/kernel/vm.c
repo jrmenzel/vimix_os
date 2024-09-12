@@ -181,13 +181,23 @@ int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
     // printk("mapping (physical 0x%x) to 0x%x - 0x%x (size: %d pages)\n", pa,
     // va, va + size - 1,
     //        size / PAGE_SIZE);
+    if ((va % PAGE_SIZE) != 0)
+    {
+        panic("kvm_map: va not aligned");
+    }
+
+    if ((size % PAGE_SIZE) != 0)
+    {
+        panic("kvm_map: size not aligned");
+    }
+
     if (size == 0)
     {
         panic("kvm_map: size == 0");
     }
 
-    size_t current_va = PAGE_ROUND_DOWN(va);
-    size_t last_va = PAGE_ROUND_DOWN(va + size - 1);
+    size_t current_va = va;
+    size_t last_va = va + size - PAGE_SIZE;
     while (true)
     {
         pte_t *pte = vm_walk(pagetable, current_va, true);

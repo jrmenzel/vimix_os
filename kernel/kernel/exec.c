@@ -82,17 +82,20 @@ int32_t execv(char *path, char **argv)
 
     size_t oldsz = proc->sz;
 
-    // Allocate two pages at the next page boundary.
+    // Allocate some pages at the next page boundary:
     // Make the first inaccessible as a stack guard.
-    // Use the second as the user stack.
+    // Use the second (or more) as the user stack.
     sz = PAGE_ROUND_UP(sz);
-    size_t sz1;
-    if ((sz1 = uvm_alloc(pagetable, sz, sz + 2 * PAGE_SIZE, PTE_W)) == 0)
+    size_t alloc_size = (STACK_PAGES_PER_PROCESS + 1) * PAGE_SIZE;
+    size_t sz1 = uvm_alloc(pagetable, sz, sz + alloc_size, PTE_W);
+    if (sz1 == 0)
+    {
         goto bad;
+    }
     sz = sz1;
-    uvm_clear(pagetable, sz - 2 * PAGE_SIZE);
+    uvm_clear(pagetable, sz - alloc_size);
     sp = sz;
-    stackbase = sp - PAGE_SIZE;
+    stackbase = sp - STACK_PAGES_PER_PROCESS * PAGE_SIZE;
 
     // Push argument strings, prepare rest of stack in ustack.
     for (argc = 0; argv[argc]; argc++)

@@ -29,7 +29,8 @@ UPROGS_NAME=\
 	stat\
 	shutdown\
 	mknod\
-	date
+	date\
+	skill
 
 # Some user space apps can be compiled on the host as well,
 # e.g. as native Linux apps. This can be helpful for app
@@ -49,7 +50,8 @@ UPROGS_NAME_HOST=\
 	wc\
 	zombie\
 	stat\
-	date
+	date\
+	skill
 
 UPROGS=$(foreach a, $(UPROGS_NAME), $(B_DEPLOY_DIR)/$a)
 PROGS_HOST=$(foreach a, $(UPROGS_NAME_HOST), $(B_DEPLOY_DIR_HOST)/$a)

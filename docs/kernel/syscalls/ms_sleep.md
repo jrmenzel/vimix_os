@@ -12,7 +12,7 @@ Lets the process sleep for a given amount of seconds (`sleep`) or milli seconds 
 
 ## Kernel Mode
 
-Implemented in `sys_process.c` as `sys_sleep()`. 
+Implemented in `sys_process.c` as `sys_ms_sleep()`. 
 
 ## See also
 

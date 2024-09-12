@@ -112,7 +112,7 @@ void copyout(char *s)
     {
         void *addr = (void *)addrs[ai];
 
-        int fd = open("/README.md", 0);
+        int fd = open("/README.md", O_RDONLY);
         if (fd < 0)
         {
             printf("open(/README.md) failed\n");
@@ -605,14 +605,14 @@ void openiputtest(char *s)
 
 void opentest(char *s)
 {
-    int fd = open("/usr/bin/echo", 0);
+    int fd = open("/usr/bin/echo", O_RDONLY);
     if (fd < 0)
     {
         printf("%s: open /usr/bin/echo failed!\n", s);
         exit(1);
     }
     close(fd);
-    fd = open("doesnotexist", 0);
+    fd = open("doesnotexist", O_RDONLY);
     if (fd >= 0)
     {
         printf("%s: open doesnotexist succeeded!\n", s);
@@ -694,15 +694,15 @@ void writebig(char *s)
         exit(1);
     }
 
-    int32_t n = 0;
+    size_t blocks_read = 0;
     while (true)
     {
         ssize_t i = read(fd, buf, BLOCK_SIZE);
         if (i == 0)
         {
-            if (n == MAXFILE - 1)
+            if (blocks_read != MAXFILE)
             {
-                printf("%s: read only %d blocks from big", s, n);
+                printf("%s: read only %d blocks from big", s, blocks_read);
                 exit(1);
             }
             break;
@@ -712,13 +712,13 @@ void writebig(char *s)
             printf("%s: read failed %d\n", s, i);
             exit(1);
         }
-        if (((int *)buf)[0] != n)
+        if (((int *)buf)[0] != blocks_read)
         {
-            printf("%s: read content of block %d is %d\n", s, n,
+            printf("%s: read content of block %d is %d\n", s, blocks_read,
                    ((int *)buf)[0]);
             exit(1);
         }
-        n++;
+        blocks_read++;
     }
     close(fd);
     if (unlink("big") < 0)
@@ -1194,7 +1194,7 @@ void forkforkfork(char *s)
     {
         while (true)
         {
-            int fd = open("stopforking", 0);
+            int fd = open("stopforking", O_RDONLY);
             if (fd >= 0)
             {
                 exit(0);
@@ -1328,7 +1328,7 @@ void sharedfd(char *s)
     }
 
     close(fd);
-    fd = open("sharedfd", 0);
+    fd = open("sharedfd", O_RDONLY);
     if (fd < 0)
     {
         printf("%s: cannot open sharedfd for reading\n", s);
@@ -1415,7 +1415,7 @@ void fourfiles(char *s)
     for (size_t i = 0; i < NCHILD; i++)
     {
         char *fname = names[i];
-        int fd = open(fname, 0);
+        int fd = open(fname, O_RDONLY);
         int32_t total = 0;
         ssize_t n;
         while ((n = read(fd, buf, sizeof(buf))) > 0)
@@ -1503,7 +1503,7 @@ void createdelete(char *s)
         {
             name[0] = 'p' + pi;
             name[1] = '0' + i;
-            int fd = open(name, 0);
+            int fd = open(name, O_RDONLY);
             if ((i == 0 || i >= N / 2) && fd < 0)
             {
                 printf("%s: oops createdelete %s didn't exist\n", s, name);
@@ -1608,13 +1608,13 @@ void linktest(char *s)
     }
     unlink("lf1");
 
-    if (open("lf1", 0) >= 0)
+    if (open("lf1", O_RDONLY) >= 0)
     {
         printf("%s: unlinked lf1 but it is still there!\n", s);
         exit(1);
     }
 
-    fd = open("lf2", 0);
+    fd = open("lf2", O_RDONLY);
     if (fd < 0)
     {
         printf("%s: open lf2 failed\n", s);
@@ -1700,7 +1700,7 @@ void concreate(char *s)
     }
 
     memset(fa, 0, sizeof(fa));
-    int fd = open(".", 0);
+    int fd = open(".", O_RDONLY);
 
     size_t n = 0;
     while (read(fd, &de, sizeof(de)) > 0)
@@ -1746,12 +1746,12 @@ void concreate(char *s)
         }
         if (((i % 3) == 0 && pid == 0) || ((i % 3) == 1 && pid != 0))
         {
-            close(open(file, 0));
-            close(open(file, 0));
-            close(open(file, 0));
-            close(open(file, 0));
-            close(open(file, 0));
-            close(open(file, 0));
+            close(open(file, O_RDONLY));
+            close(open(file, O_RDONLY));
+            close(open(file, O_RDONLY));
+            close(open(file, O_RDONLY));
+            close(open(file, O_RDONLY));
+            close(open(file, O_RDONLY));
         }
         else
         {
@@ -1846,7 +1846,7 @@ void subdir(char *s)
     write(fd, "FF", 2);
     close(fd);
 
-    fd = open("dd/dd/../ff", 0);
+    fd = open("dd/dd/../ff", O_RDONLY);
     if (fd < 0)
     {
         printf("%s: open dd/dd/../ff failed\n", s);
@@ -1898,7 +1898,7 @@ void subdir(char *s)
         exit(1);
     }
 
-    fd = open("dd/dd/ffff", 0);
+    fd = open("dd/dd/ffff", O_RDONLY);
     if (fd < 0)
     {
         printf("%s: open dd/dd/ffff failed\n", s);
@@ -2070,7 +2070,7 @@ void bigfile(char *s)
     }
     close(fd);
 
-    fd = open("bigfile.dat", 0);
+    fd = open("bigfile.dat", O_RDONLY);
     if (fd < 0)
     {
         printf("%s: cannot open bigfile\n", s);
@@ -2139,7 +2139,7 @@ void fourteen(char *s)
         exit(1);
     }
     close(fd);
-    fd = open("12345678901234/12345678901234/12345678901234", 0);
+    fd = open("12345678901234/12345678901234/12345678901234", O_RDONLY);
     if (fd < 0)
     {
         printf("%s: open 12345678901234/12345678901234/12345678901234 failed\n",
@@ -2226,7 +2226,7 @@ void dirfile(char *s)
         printf("%s: chdir dirfile succeeded!\n", s);
         exit(1);
     }
-    fd = open("dirfile/xx", 0);
+    fd = open("dirfile/xx", O_RDONLY);
     if (fd >= 0)
     {
         printf("%s: create dirfile/xx succeeded!\n", s);
@@ -2265,7 +2265,7 @@ void dirfile(char *s)
         printf("%s: open . for writing succeeded!\n", s);
         exit(1);
     }
-    fd = open(".", 0);
+    fd = open(".", O_RDONLY);
     if (write(fd, "x", 1) > 0)
     {
         printf("%s: write . succeeded!\n", s);
@@ -2751,7 +2751,7 @@ void bigargtest(char *s)
         exit(xstatus);
     }
 
-    int fd = open("bigarg-ok", 0);
+    int fd = open("bigarg-ok", O_RDONLY);
     if (fd < 0)
     {
         printf("%s: bigarg test failed!\n", s);
@@ -2845,7 +2845,7 @@ void stacktest(char *s)
     if (pid == 0)
     {
         char *sp = (char *)read_stack_pointer();
-        sp -= page_size;
+        sp -= STACK_PAGES_PER_PROCESS * page_size;
         // the *sp should cause a trap.
         printf("%s: stacktest: read below stack %p\n", s, *sp);
         exit(1);
