@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 void print_help() { printf("Usage: sleep <time in seconds>\n"); }
