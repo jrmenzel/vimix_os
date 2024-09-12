@@ -3393,7 +3393,7 @@ void diskfull(char *s)
 
     bool done = false;
     size_t fi = 0;
-    for (fi = 0; done == false; fi++)
+    for (fi = 0; done == false && '0' + fi < 0177; fi++)
     {
         char name[32];
         name[0] = 'b';
@@ -3461,7 +3461,7 @@ void diskfull(char *s)
         unlink(name);
     }
 
-    for (size_t i = 0; i < fi; i++)
+    for (size_t i = 0; '0' + i < 0177; i++)
     {
         char name[32];
         name[0] = 'b';
@@ -3686,6 +3686,7 @@ int drivetests(int quick, int continuous, char *justone)
     } while (continuous);
 
     if (chdir("..") < 0) return -1;
+    unlink("utests-tmp");
     return 0;
 }
 
@@ -3720,6 +3721,7 @@ int main(int argc, char *argv[])
     {
         return 1;
     }
+
     printf("ALL TESTS PASSED\n");
 
     return 0;
