@@ -17,6 +17,12 @@ Alternatively use `VSCode`, a `launch.json` is provided with various settings:
 
 **Note:** In both cases, `gdb` or `VSCode`, qemu must be started manually.
 
+
+## Disassembly
+
+Sometimes it can be helpful to look at the generated assembly code. `tools/disassemble.sh` is a small wrapper around `objdump` for this. It can disassemble starting at an address defined by the ELF file. As binaries are mapped to these locations, program counter addresses (e.g. from exceptions) can be used as disassembly starting points to find the source location.
+
+
 ---
 **Up:** [README](../README.md)
 

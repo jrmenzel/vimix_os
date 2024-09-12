@@ -34,9 +34,9 @@ The sub-directory structure was inspired by Linux:
 ## tools
 
 Tools for the development environment.
-
-- `mkfs`
-	- is the tool to create xv6fs file systems. It is mostly unchanged from xv6.
+- `mkfs` The tool to create [xv6fs](kernel/file_system/xv6fs.md) file systems.
+- `fsck.xv6fs` A simple [xv6fs](kernel/file_system/xv6fs.md) file system checker.
+- Scripts for [debugging](debugging.md).
 
 
 ## usr
