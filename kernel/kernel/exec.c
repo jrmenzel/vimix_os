@@ -27,12 +27,6 @@ int32_t flags2perm(int32_t flags)
 
 int32_t execv(char *path, char **argv)
 {
-    size_t argc, sz = 0, sp, ustack[MAX_EXEC_ARGS], stackbase;
-    struct elfhdr elf;
-    struct proghdr ph;
-    pagetable_t pagetable = NULL;
-    pagetable_t oldpagetable = NULL;
-
     log_begin_fs_transaction();
 
     struct inode *ip = inode_from_path(path);
@@ -44,35 +38,80 @@ int32_t execv(char *path, char **argv)
     inode_lock(ip);
 
     // Check ELF header
-    if (inode_read(ip, 0, (size_t)&elf, 0, sizeof(elf)) != sizeof(elf))
-        goto bad;
-
-    if (elf.magic != ELF_MAGIC) goto bad;
+    struct elfhdr elf;
+    size_t header_read = inode_read(ip, false, (size_t)&elf, 0, sizeof(elf));
+    if (header_read != sizeof(elf) || elf.magic != ELF_MAGIC)
+    {
+        inode_unlock_put(ip);
+        log_end_fs_transaction();
+        return -1;
+    }
 
     struct process *proc = get_current();
-    if ((pagetable = proc_pagetable(proc)) == NULL) goto bad;
+    pagetable_t pagetable = proc_pagetable(proc);
+    if (pagetable == NULL)
+    {
+        inode_unlock_put(ip);
+        log_end_fs_transaction();
+        return -1;
+    }
+
+    // process size
+    size_t sz = 0;
 
     // Load program into memory.
-    int32_t i = 0;
-    int32_t off = elf.phoff;
-    for (; i < elf.phnum; i++, off += sizeof(ph))
+    bool fatal_error = false;
+    for (int32_t i = 0; i < elf.phnum; i++)
     {
-        if (inode_read(ip, 0, (size_t)&ph, off, sizeof(ph)) != sizeof(ph))
-            goto bad;
+        // read program header i
+        struct proghdr ph;
+        int32_t off = elf.phoff + i * sizeof(struct proghdr);
+        if (inode_read(ip, false, (size_t)&ph, off, sizeof(ph)) != sizeof(ph))
+        {
+            fatal_error = true;
+            break;
+        }
+
+        // ignore if not intended to be loaded
         if (ph.type != ELF_PROG_LOAD) continue;
-        if (ph.memsz < ph.filesz) goto bad;
-        if (ph.vaddr + ph.memsz < ph.vaddr) goto bad;
-        if (ph.vaddr % PAGE_SIZE != 0) goto bad;
-        size_t sz1;
-        if ((sz1 = uvm_alloc(pagetable, sz, ph.vaddr + ph.memsz,
-                             flags2perm(ph.flags))) == 0)
-            goto bad;
+
+        // error checks
+        if ((ph.memsz < ph.filesz) || (ph.vaddr + ph.memsz < ph.vaddr) ||
+            (ph.vaddr % PAGE_SIZE != 0))
+        {
+            fatal_error = true;
+            break;
+        }
+
+        // allocate pages and update sz
+        size_t sz1 =
+            uvm_alloc(pagetable, sz, ph.vaddr + ph.memsz - USER_TEXT_START,
+                      flags2perm(ph.flags));
+        if (sz1 == 0)
+        {
+            fatal_error = true;
+            break;
+        }
         sz = sz1;
-        if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0) goto bad;
+
+        // load actual data
+        if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
+        {
+            fatal_error = true;
+            break;
+        }
     }
     inode_unlock_put(ip);
     log_end_fs_transaction();
     ip = NULL;
+
+    // check error after handling the inode as this would have to be done now
+    // anyways
+    if (fatal_error)
+    {
+        proc_free_pagetable(pagetable, sz);
+        return -1;
+    }
 
     // Depending on the cpu implementation a memory barrier might
     // not affect the instruction caches, so after loading executable
@@ -90,33 +129,58 @@ int32_t execv(char *path, char **argv)
     size_t sz1 = uvm_alloc(pagetable, sz, sz + alloc_size, PTE_W);
     if (sz1 == 0)
     {
-        goto bad;
+        proc_free_pagetable(pagetable, sz);
+        return -1;
     }
     sz = sz1;
-    uvm_clear(pagetable, sz - alloc_size);
-    sp = sz;
-    stackbase = sp - STACK_PAGES_PER_PROCESS * PAGE_SIZE;
+
+    size_t sp = sz + USER_TEXT_START;
+    uvm_clear_user_access_bit(pagetable, sp - alloc_size);
+    size_t stackbase = sp - STACK_PAGES_PER_PROCESS * PAGE_SIZE;
 
     // Push argument strings, prepare rest of stack in ustack.
-    for (argc = 0; argv[argc]; argc++)
+    size_t argc, ustack[MAX_EXEC_ARGS];
+    for (argc = 0; argv[argc] && argc < MAX_EXEC_ARGS; argc++)
     {
-        if (argc >= MAX_EXEC_ARGS) goto bad;
+        // 16-byte aligned space on the stack for the string
+        // (sp alignement is a RISC V requirement)
         sp -= strlen(argv[argc]) + 1;
-        sp -= sp % 16;  // riscv sp must be 16-byte aligned
-        if (sp < stackbase) goto bad;
+        sp -= sp % 16;
+        if (sp < stackbase)
+        {
+            // stack overflow
+            fatal_error = true;
+            break;
+        }
+
         if (uvm_copy_out(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
-            goto bad;
+        {
+            fatal_error = true;
+            break;
+        }
         ustack[argc] = sp;
+    }
+    if (fatal_error || argc >= MAX_EXEC_ARGS)
+    {
+        proc_free_pagetable(pagetable, sz);
+        return -1;
     }
     ustack[argc] = 0;
 
     // push the array of argv[] pointers.
     sp -= (argc + 1) * sizeof(size_t);
     sp -= sp % 16;
-    if (sp < stackbase) goto bad;
+    if (sp < stackbase)
+    {
+        proc_free_pagetable(pagetable, sz);
+        return -1;
+    }
     if (uvm_copy_out(pagetable, sp, (char *)ustack,
                      (argc + 1) * sizeof(size_t)) < 0)
-        goto bad;
+    {
+        proc_free_pagetable(pagetable, sz);
+        return -1;
+    }
 
     // arguments to user main(argc, argv)
     // argc is returned via the system call return
@@ -136,7 +200,7 @@ int32_t execv(char *path, char **argv)
     safestrcpy(proc->name, last, sizeof(proc->name));
 
     // Commit to the user image.
-    oldpagetable = proc->pagetable;
+    pagetable_t oldpagetable = proc->pagetable;
     proc->pagetable = pagetable;
     proc->sz = sz;
 
@@ -145,15 +209,6 @@ int32_t execv(char *path, char **argv)
     proc_free_pagetable(oldpagetable, oldsz);
 
     return argc;  // this ends up in a0, the first argument to main(argc, argv)
-
-bad:
-    if (pagetable) proc_free_pagetable(pagetable, sz);
-    if (ip)
-    {
-        inode_unlock_put(ip);
-        log_end_fs_transaction();
-    }
-    return -1;
 }
 
 static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,
@@ -177,7 +232,7 @@ static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,
             n = PAGE_SIZE;
         }
 
-        if (inode_read(ip, 0, pa, offset + i, n) != n)
+        if (inode_read(ip, false, pa, offset + i, n) != n)
         {
             return -1;
         }

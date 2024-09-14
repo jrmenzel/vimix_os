@@ -13,13 +13,17 @@
 
 // flags per page
 #define PTE_V (1L << 0)  ///< valid
-#define PTE_R (1L << 1)
-#define PTE_W (1L << 2)
-#define PTE_X (1L << 3)
+#define PTE_R (1L << 1)  ///< readable
+#define PTE_W (1L << 2)  ///< writeable
+#define PTE_X (1L << 3)  ///< executable
 #define PTE_U (1L << 4)  ///< user can access
-#define PTE_G (1L << 5)
-#define PTE_A (1L << 6)  ///< access bit
-#define PTE_D (1L << 7)  ///< dirty bit
+#define PTE_G (1L << 5)  ///< global mapping (=exists in all address spaces)
+#define PTE_A \
+    (1L << 6)  ///< page has been accessed (r/w/x) since last time this bit was
+               ///< cleared
+#define PTE_D \
+    (1L << 7)  ///< page has been written to since last time this bit
+               ///< was cleared
 
 /// shift a physical address to the right place for a PTE.
 #define PA2PTE(pa) ((((size_t)pa) >> 12) << 10)
@@ -32,6 +36,7 @@
 // 32 bit
 #define PXMASK 0x3FF  // 10 bits
 #define PXSHIFT(level) (PAGE_SHIFT + (10 * (level)))
+#define PAGE_TABLE_MAX_LEVELS 2
 /// Extract one of the two 10-bit page table index from a virtual address.
 /// va is [[10 bit idx level 1][10 bit idx level 0][12 bits address in page]]
 #define PAGE_TABLE_INDEX(level, va) \
@@ -43,6 +48,7 @@
 /// extract the three 9-bit page table indices from a virtual address.
 #define PXMASK 0x1FF  // 9 bits
 #define PXSHIFT(level) (PAGE_SHIFT + (9 * (level)))
+#define PAGE_TABLE_MAX_LEVELS 3
 
 /// Extract one of the three 9-bit page table indices (one per level) from a
 /// virtual address. va is [[0][9 bit idx level 2][9 bit idx level 1][9 bit idx
@@ -56,3 +62,7 @@
 /// that have the high bit set.
 #define MAXVA (1L << (9 + 9 + 9 + PAGE_SHIFT - 1))
 #endif
+
+/// Reconstruct a part of the virtual address, do this for all levels to get the
+/// full virtual address
+#define VA_FROM_PAGE_TABLE_INDEX(level, pti) (pti << PXSHIFT(level))

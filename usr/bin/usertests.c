@@ -35,28 +35,25 @@
 char buf[BUFSZ];
 
 const size_t TEST_PTR_RAM_BEGIN = 0x80000000LL;
-const size_t TEST_PTR_0 = 0x3fffffe000;
-const size_t TEST_PTR_1 = 0x3ffffff000;
-const size_t TEST_PTR_2 = 0x4000000000;
 #ifdef _ARCH_32BIT
 // 32 bit
 const size_t TEST_PTR_MAX_ADDRESS = 0xffffffff;
+const size_t TEST_PTR_0 = 0x3fffffe0;
+const size_t TEST_PTR_1 = 0x3ffffff0;
+const size_t TEST_PTR_2 = 0x40000000;
 #else
 // 64 bit
 const size_t TEST_PTR_MAX_ADDRESS = 0xffffffffffffffff;
+const size_t TEST_PTR_0 = 0x3fffffe000;
+const size_t TEST_PTR_1 = 0x3ffffff000;
+const size_t TEST_PTR_2 = 0x4000000000;
 #endif
 
 // to test reads at invalid locations
-const size_t INVALID_PTRS[] = {TEST_PTR_RAM_BEGIN, TEST_PTR_0, TEST_PTR_1,
+const size_t INVALID_PTRS[] = {0x00,       TEST_PTR_RAM_BEGIN,
+                               TEST_PTR_0, TEST_PTR_1,
                                TEST_PTR_2, TEST_PTR_MAX_ADDRESS};
 const size_t INVALID_PTR_COUNT = sizeof(INVALID_PTRS) / sizeof(INVALID_PTRS[0]);
-
-// to test writes at invalid locations
-const size_t INVALID_PTRS_W[] = {0x00,       TEST_PTR_RAM_BEGIN,
-                                 TEST_PTR_0, TEST_PTR_1,
-                                 TEST_PTR_2, TEST_PTR_MAX_ADDRESS};
-const size_t INVALID_PTR_COUNT_W =
-    sizeof(INVALID_PTRS_W) / sizeof(INVALID_PTRS_W[0]);
 
 const char *bin_echo = "/usr/bin/echo";
 const char *bin_init = "/usr/bin/init";
@@ -118,9 +115,9 @@ void copyin(char *s)
 // that write user memory with uvm_copy_out?
 void copyout(char *s)
 {
-    for (size_t ai = 0; ai < INVALID_PTR_COUNT_W; ai++)
+    for (size_t ai = 0; ai < INVALID_PTR_COUNT; ai++)
     {
-        void *addr = (void *)INVALID_PTRS_W[ai];
+        void *addr = (void *)INVALID_PTRS[ai];
 
         int fd = open("/README.md", O_RDONLY);
         if (fd < 0)
@@ -2880,12 +2877,12 @@ void stacktest(char *s)
 // check that writes to invalid addresses fail
 void nowrite(char *s)
 {
-    for (size_t ai = 0; ai < INVALID_PTR_COUNT_W; ai++)
+    for (size_t ai = 0; ai < INVALID_PTR_COUNT; ai++)
     {
         pid_t pid = fork();
         if (pid == 0)
         {
-            volatile int *addr = (int *)INVALID_PTRS_W[ai];
+            volatile int *addr = (int *)INVALID_PTRS[ai];
             *addr = 10;
             printf("%s: write to %p did not fail!\n", s, addr);
             exit(1);

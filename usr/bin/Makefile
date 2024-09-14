@@ -58,6 +58,8 @@ UPROGS_NAME_HOST=\
 UPROGS=$(foreach a, $(UPROGS_NAME), $(B_DEPLOY_DIR)/$a)
 PROGS_HOST=$(foreach a, $(UPROGS_NAME_HOST), $(B_DEPLOY_DIR_HOST)/$a)
 
+LDFLAGS+=--defsym=USER_TEXT_START=$(USER_TEXT_START)
+
 .PHONY: all directories clean
 
 all: directories $(UPROGS) scripts

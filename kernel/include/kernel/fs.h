@@ -115,7 +115,7 @@ void inode_update(struct inode *ip);
 /// @param dst_addr_is_userspace If true, dst_addr is a user virtual address
 /// (kernel addr otherwise)
 /// @param dst_addr Destination address.
-/// @param off
+/// @param off Offset in file where to read from.
 /// @param n Maximum number of bytes to read.
 /// @return Number of bytes successfully read.
 ssize_t inode_read(struct inode *ip, bool dst_addr_is_userspace,

@@ -246,8 +246,8 @@ pagetable_t proc_pagetable(struct process *proc)
 /// physical memory it refers to.
 void proc_free_pagetable(pagetable_t pagetable, size_t sz)
 {
-    uvm_unmap(pagetable, TRAMPOLINE, 1, 0);
-    uvm_unmap(pagetable, TRAPFRAME, 1, 0);
+    uvm_unmap(pagetable, TRAMPOLINE, 1, false);
+    uvm_unmap(pagetable, TRAPFRAME, 1, false);
     uvm_free(pagetable, sz);
 }
 
@@ -259,18 +259,18 @@ void userspace_init()
     g_initial_user_process = proc;
 
     // Allocate one user page and load the user initcode into
-    // address 0 of pagetable
+    // address USER_TEXT_START of pagetable
     char *mem = kalloc();
     memset(mem, 0, PAGE_SIZE);
-    kvm_map(proc->pagetable, 0, (size_t)mem, PAGE_SIZE,
+    kvm_map(proc->pagetable, USER_TEXT_START, (size_t)mem, PAGE_SIZE,
             PTE_W | PTE_R | PTE_X | PTE_U);
     memmove(mem, g_initcode, sizeof(g_initcode));
 
     proc->sz = PAGE_SIZE;
 
     // prepare for the very first "return" from kernel to user.
-    trapframe_set_program_counter(proc->trapframe, 0);
-    trapframe_set_stack_pointer(proc->trapframe, PAGE_SIZE);
+    trapframe_set_program_counter(proc->trapframe, USER_TEXT_START);
+    trapframe_set_stack_pointer(proc->trapframe, USER_TEXT_START + PAGE_SIZE);
 
     safestrcpy(proc->name, "initcode", sizeof(proc->name));
     proc->cwd = inode_from_path("/");

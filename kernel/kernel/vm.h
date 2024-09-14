@@ -2,6 +2,7 @@
 #pragma once
 
 #include <kernel/kernel.h>
+#include <mm/mm.h>
 #include <mm/vm.h>
 
 /// kalloc returns one page of 4KB, so a page used as a pagetable_t
@@ -84,8 +85,9 @@ void uvm_free(pagetable_t pagetable, size_t sz);
 void uvm_unmap(pagetable_t pagetable, size_t va, size_t npages, bool do_free);
 
 /// @brief mark a PTE invalid for user access.
+/// @param va Virtual address of the page to prevent user access to.
 /// Used by execv for the user stack guard page.
-void uvm_clear(pagetable_t pagetable, size_t va);
+void uvm_clear_user_access_bit(pagetable_t pagetable, size_t va);
 
 /// Return the address of the PTE in page table pagetable
 /// that corresponds to virtual address va.  If alloc!=0,
@@ -137,3 +139,20 @@ int32_t uvm_copy_in(pagetable_t pagetable, char *dst_pa, size_t src_va,
 /// @return 0 on success, -1 on failure.
 int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
                         size_t max);
+
+static inline void debug_vm_print_pte_flags(size_t flags)
+{
+    printk("%c%c%c%c%c%c%c%c", (flags & PTE_V) ? 'v' : '_',
+           (flags & PTE_R) ? 'r' : '_', (flags & PTE_W) ? 'w' : '_',
+           (flags & PTE_X) ? 'x' : '_', (flags & PTE_U) ? 'u' : '_',
+           (flags & PTE_G) ? 'g' : '_', (flags & PTE_A) ? 'a' : '_',
+           (flags & PTE_D) ? 'd' : '_');
+}
+
+#if defined(DEBUG)
+/// @brief Debug print of the pagetable.
+/// @param pagetable Table to print.
+void debug_vm_print_page_table(pagetable_t pagetable);
+#else
+static inline void debug_vm_print_page_table(pagetable_t) {}
+#endif  // DEBUG

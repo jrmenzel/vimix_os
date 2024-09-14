@@ -13,6 +13,7 @@
 #include <kernel/proc.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
+#include <kernel/vm.h>
 #include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
@@ -98,19 +99,65 @@ void dump_scause()
         scause == SCAUSE_LOAD_PAGE_FAULT ||
         scause == SCAUSE_STORE_AMO_PAGE_FAULT)
     {
-        // stval is set to the offending memory address
-        if (stval == 0)
+        printk("Tried to ");
+        if (scause == SCAUSE_INSTRUCTION_PAGE_FAULT)
         {
-            printk("Dereferenced NULL pointer\n");
+            printk("execute from");
         }
-        else
+        else if (scause == SCAUSE_LOAD_PAGE_FAULT)
         {
-            size_t offset = stval % PAGE_SIZE;
-            size_t page_start = stval - offset;
-            printk("Tried to access address 0x%p (offset 0x%p in page 0x%p)\n",
-                   stval, offset, page_start);
+            printk("read from");
+        }
+        else if (scause == SCAUSE_STORE_AMO_PAGE_FAULT)
+        {
+            printk("write to");
+        }
+        // stval is set to the offending memory address
+        printk(" address 0x%x%s\n", stval,
+               (stval ? "" : " (dereferenced NULL pointer)"));
+
+        struct process *proc = get_current();
+        if (proc)
+        {
+#if defined(_arch_is_64bit)
+            if (stval >= MAXVA)
+            {
+                printk("Address 0x%x larger than supported\n", stval);
+                return;
+            }
+#endif
+
+            pte_t *pte = vm_walk(proc->pagetable, stval, false);
+            if (!pte)
+            {
+                printk("Page of address 0x%x is not mapped\n", stval);
+            }
+            else
+            {
+                printk("Page of address 0x%x access: ", stval);
+                debug_vm_print_pte_flags(*pte);
+                printk("\n");
+            }
         }
     }
+}
+
+void dump_process_info(struct process *proc)
+{
+    struct trapframe *tf = proc->trapframe;
+    printk("Process: %s\n", proc->name);
+    // clang-format off
+    printk("ra:  0x%x; s0: 0x%x; a0: 0x%x; t0: 0x%x\n", tf->ra,  tf->s0, tf->a0, tf->t0);
+    printk("sp:  0x%x; s1: 0x%x; a1: 0x%x; t1: 0x%x\n", tf->sp,  tf->s1, tf->a1, tf->t1);
+    printk("gp:  0x%x; s2: 0x%x; a2: 0x%x; t2: 0x%x\n", tf->gp,  tf->s2, tf->a2, tf->t2);
+    printk("tp:  0x%x; s3: 0x%x; a3: 0x%x; t3: 0x%x\n", tf->tp,  tf->s3, tf->a3, tf->t3);
+    printk("s8:  0x%x; s4: 0x%x; a4: 0x%x; t4: 0x%x\n", tf->s8,  tf->s4, tf->a4, tf->t4);
+    printk("s9:  0x%x; s5: 0x%x; a5: 0x%x; t5: 0x%x\n", tf->s9,  tf->s5, tf->a5, tf->t5);
+    printk("s10: 0x%x; s6: 0x%x; a6: 0x%x; t6: 0x%x\n", tf->s10, tf->s6, tf->a6, tf->t6);
+    printk("s11: 0x%x; s7: 0x%x; a7: 0x%x\n",           tf->s11, tf->s7, tf->a7);
+    // clang-format on
+
+    debug_vm_print_page_table(proc->pagetable);
 }
 
 /// @brief Dump kernel thread state from before the interrupt.
@@ -178,9 +225,13 @@ void user_mode_interrupt_handler()
     }
     else
     {
-        printk("user_mode_interrupt_handler(): unexpected scause for pid=%d\n",
-               proc->pid);
+        printk(
+            "\nFatal: unexpected scause/exception for pid=%d - killing "
+            "process\n",
+            proc->pid);
         dump_scause();
+        dump_process_info(proc);
+        printk("\n");
         proc_set_killed(proc);
     }
 

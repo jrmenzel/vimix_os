@@ -17,7 +17,8 @@
                 "__riscv_xlen=64",
                 "__ENABLE_SBI__",
                 "DEBUG",
-                "VIRTIO_DISK"
+                "VIRTIO_DISK",
+                "USER_TEXT_START=0x1000"
             ],
             "compilerArgs": [
                 "-nostdinc"
@@ -39,7 +40,8 @@
             "defines": [
                 "__riscv_xlen=32",
                 "DEBUG",
-                "VIRTIO_DISK"
+                "VIRTIO_DISK",
+                "USER_TEXT_START=0x1000"
             ],
             "compilerArgs": [
                 "-nostdinc"

@@ -6,15 +6,45 @@
 #include <kernel/unistd.h>
 #include <syscalls/syscall.h>
 
+bool addr_is_proc_owned(struct process *proc, size_t addr)
+{
+    const size_t app_start = USER_TEXT_START;
+    const size_t heap_end =
+        app_start + proc->sz - (STACK_PAGES_PER_PROCESS * PAGE_SIZE);
+
+    const size_t stack_start = heap_end;
+    const size_t stack_end =
+        stack_start + (STACK_PAGES_PER_PROCESS * PAGE_SIZE);
+
+    if (addr >= app_start && addr < heap_end)
+    {
+        return true;
+    }
+    if (addr >= stack_start && addr < stack_end)
+    {
+        return true;
+    }
+    return false;
+}
+
 int32_t fetchaddr(size_t addr, size_t *ip)
 {
     struct process *proc = get_current();
-    if (addr >= proc->sz ||
-        addr + sizeof(size_t) >
-            proc->sz)  // both tests needed, in case of overflow
+
+    if (!addr_is_proc_owned(proc, addr) ||
+        !addr_is_proc_owned(proc, addr + sizeof(size_t)))
     {
+        // both tests needed, in case of overflow
         return -1;
     }
+    /*
+        if (addr >= proc->sz ||
+            addr + sizeof(size_t) >
+                proc->sz)  // both tests needed, in case of overflow
+        {
+            return -1;
+        }
+    */
     if (uvm_copy_in(proc->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
     {
         return -1;

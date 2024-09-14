@@ -45,6 +45,10 @@ CPUS=4
 # Start automated tests and shutdown OS afterwards. Will also shutdown on panic.
 #EXTRA_DEBUG_FLAGS=-DDEBUG_AUTOSTART_USERTESTS
 
+# First page of the user space apps. Needed by user.ld and the kernel source
+# so defined here. Don't place at 0 to make NULL pointer dereferences illegal.
+USER_TEXT_START="0x1000"
+
 #####
 # e.g. riscv64-unknown-elf-
 # perhaps in /opt/riscv/bin

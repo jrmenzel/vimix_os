@@ -4,22 +4,20 @@ ENTRY( _start )
 
 SECTIONS
 {
- . = 0x0;
+ . = USER_TEXT_START;
  
   .text : {
     *(.text .text.*)
   }
 
-  .rodata : ALIGN(CONSTANT(MAXPAGESIZE)) {
+  .rodata : {
     . = ALIGN(16);
     *(.srodata .srodata.*) /* do not need to distinguish this from .rodata */
     . = ALIGN(16);
     *(.rodata .rodata.*)
-    . = ALIGN(0x1000);
   }
 
   .data : ALIGN(CONSTANT(MAXPAGESIZE)) {
-    . = ALIGN(16);
     *(.sdata .sdata.*) /* do not need to distinguish this from .data */
     . = ALIGN(16);
     *(.data .data.*)

@@ -40,7 +40,7 @@ size_t sys_sbrk()
     size_t increment;
     argaddr(0, &increment);
 
-    size_t addr = get_current()->sz;
+    size_t addr = get_current()->sz + USER_TEXT_START;
     if (proc_grow_memory(increment) < 0)
     {
         return -1;
@@ -102,15 +102,18 @@ size_t sys_execv()
     size_t uargv, uarg;
     argaddr(1, &uargv);
 
+    bool fatal_error = false;
     for (size_t i = 0;; i++)
     {
         if (i >= NELEM(argv))
         {
-            goto bad;
+            fatal_error = true;
+            break;
         }
         if (fetchaddr(uargv + sizeof(size_t) * i, (size_t *)&uarg) < 0)
         {
-            goto bad;
+            fatal_error = true;
+            break;
         }
         if (uarg == 0)
         {
@@ -118,22 +121,27 @@ size_t sys_execv()
             break;
         }
         argv[i] = kalloc();
-        if (argv[i] == NULL) goto bad;
-        if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0) goto bad;
+        if (argv[i] == NULL)
+        {
+            fatal_error = true;
+            break;
+        }
+        if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0)
+        {
+            fatal_error = true;
+            break;
+        }
     }
 
-    size_t ret = execv(path, argv);
-
+    size_t ret = -1;
+    if (!fatal_error)
+    {
+        ret = execv(path, argv);
+    }
+    // cleanup on error and success:
     for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     {
         kfree(argv[i]);
     }
     return ret;
-
-bad:
-    for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
-    {
-        kfree(argv[i]);
-    }
-    return -1;
 }

@@ -179,9 +179,16 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
 int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
                 int32_t perm)
 {
-    // printk("mapping (physical 0x%x) to 0x%x - 0x%x (size: %d pages)\n", pa,
-    // va, va + size - 1,
-    //        size / PAGE_SIZE);
+    perm |= PTE_V | PTE_A | PTE_D;
+
+    /*
+    // useful debug prints
+    printk("mapping (physical 0x%x) to 0x%x - 0x%x (size: %d pages) (", pa, va,
+           va + size - 1, size / PAGE_SIZE);
+    debug_vm_print_pte_flags(perm);
+    printk(")\n");
+    */
+
     if ((va % PAGE_SIZE) != 0)
     {
         panic("kvm_map: va not aligned");
@@ -210,7 +217,7 @@ int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
         {
             panic("kvm_map: remap");
         }
-        *pte = PA2PTE(pa) | perm | PTE_V | PTE_A | PTE_D;
+        *pte = PA2PTE(pa) | perm;
         if (current_va == last_va)
         {
             break;
@@ -283,7 +290,8 @@ size_t uvm_alloc(pagetable_t pagetable, size_t oldsz, size_t newsz,
             return 0;
         }
         memset(mem, 0, PAGE_SIZE);
-        if (kvm_map(pagetable, a, (size_t)mem, PAGE_SIZE,
+        size_t va = a + USER_TEXT_START;
+        if (kvm_map(pagetable, va, (size_t)mem, PAGE_SIZE,
                     PTE_R | PTE_U | xperm) != 0)
         {
             kfree(mem);
@@ -305,7 +313,8 @@ size_t uvm_dealloc(pagetable_t pagetable, size_t oldsz, size_t newsz)
     {
         size_t npages =
             (PAGE_ROUND_UP(oldsz) - PAGE_ROUND_UP(newsz)) / PAGE_SIZE;
-        uvm_unmap(pagetable, PAGE_ROUND_UP(newsz), npages, 1);
+        size_t new_va = PAGE_ROUND_UP(newsz) + USER_TEXT_START;
+        uvm_unmap(pagetable, new_va, npages, true);
     }
 
     return newsz;
@@ -339,21 +348,22 @@ void uvm_free(pagetable_t pagetable, size_t sz)
 {
     if (sz > 0)
     {
-        uvm_unmap(pagetable, 0, PAGE_ROUND_UP(sz) / PAGE_SIZE, 1);
+        size_t number_of_pages = PAGE_ROUND_UP(sz) / PAGE_SIZE;
+        uvm_unmap(pagetable, USER_TEXT_START, number_of_pages, true);
     }
     freewalk(pagetable);
 }
 
 int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
 {
-    pte_t *pte;
     size_t i;
 
     bool fatal_error_happened = false;
 
     for (i = 0; i < sz; i += PAGE_SIZE)
     {
-        pte = vm_walk(old, i, false);
+        size_t va = i + USER_TEXT_START;
+        pte_t *pte = vm_walk(old, va, false);
         if (pte == NULL)
         {
             panic("uvm_copy: pte should exist");
@@ -373,7 +383,7 @@ int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
         }
 
         memmove(mem, (char *)pa, PAGE_SIZE);
-        if (kvm_map(new, i, (size_t)mem, PAGE_SIZE, flags) != 0)
+        if (kvm_map(new, va, (size_t)mem, PAGE_SIZE, flags) != 0)
         {
             kfree(mem);
             fatal_error_happened = true;
@@ -381,25 +391,25 @@ int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
         }
     }
 
+    if (fatal_error_happened)
+    {
+        uvm_unmap(new, USER_TEXT_START, i / PAGE_SIZE, true);
+        return -1;
+    }
+
     // might have copied paged with executable code, in that case flush the
     // instruction caches
     instruction_memory_barrier();
 
-    if (fatal_error_happened)
-    {
-        uvm_unmap(new, 0, i / PAGE_SIZE, 1);
-        return -1;
-    }
-
     return 0;
 }
 
-void uvm_clear(pagetable_t pagetable, size_t va)
+void uvm_clear_user_access_bit(pagetable_t pagetable, size_t va)
 {
     pte_t *pte = vm_walk(pagetable, va, false);
     if (pte == NULL)
     {
-        panic("uvm_clear");
+        panic("uvm_clear_user_access_bit");
     }
     *pte &= ~PTE_U;
 }
@@ -519,3 +529,46 @@ int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
         return -1;
     }
 }
+
+#if defined(DEBUG)
+void debug_print_pt_level(pagetable_t pagetable, size_t level,
+                          size_t partial_va)
+{
+    for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
+    {
+        pte_t pte = pagetable[i];
+        if (pte & PTE_V)
+        {
+            for (size_t j = 0; j < PAGE_TABLE_MAX_LEVELS - level; ++j)
+            {
+                printk("-");
+            }
+            printk(" %d: pa: 0x%x ", i, PTE2PA(pte));
+            debug_vm_print_pte_flags(pte);
+
+            size_t va = partial_va | VA_FROM_PAGE_TABLE_INDEX(level, i);
+            if (level > 0)
+            {
+                printk("\n");
+
+                pagetable_t sub_pagetable = (pagetable_t)PTE2PA(pte);
+                debug_print_pt_level(sub_pagetable, level - 1, va);
+            }
+            else
+            {
+                printk(" - va: 0x%x\n", va);
+            }
+        }
+        else
+        {
+            continue;
+        }
+    }
+}
+
+void debug_vm_print_page_table(pagetable_t pagetable)
+{
+    printk("page table 0x%x\n", pagetable);
+    debug_print_pt_level(pagetable, PAGE_TABLE_MAX_LEVELS - 1, 0);
+}
+#endif  // DEBUG
