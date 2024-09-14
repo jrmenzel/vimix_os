@@ -115,6 +115,7 @@ else
 SPIKE_ISA = rv64gc
 endif
 
+MEMORY_SIZE_BYTES = $(shell echo $$(( $(MEMORY_SIZE) * 1024 * 1024 )))
 SPIKE_OPTIONS = -m0x80000000:$(MEMORY_SIZE_BYTES) -p$(CPUS) --isa=$(SPIKE_ISA)
 SPIKE_OPTIONS += --initrd=$(BUILD_DIR)/filesystem.img --kernel=$(KERNEL_FILE) $(KERNEL_FILE)
 

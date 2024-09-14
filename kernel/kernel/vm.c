@@ -37,29 +37,7 @@ pagetable_t kvm_make_kernel_pagetable(char *end_of_memory)
     pagetable_t kpage_table = (pagetable_t)kalloc();
     memset(kpage_table, 0, PAGE_SIZE);
 
-    // virtio mmio disk interface
-    kvm_map_mmio(kpage_table, VIRTIO0, PAGE_SIZE);
-
-    // uart registers
-    kvm_map_mmio(kpage_table, UART0, PAGE_SIZE);
-
-    // PLIC
-    kvm_map_mmio(kpage_table, PLIC_BASE, PLIC_SIZE);
-
-    // CLINT
-    kvm_map_mmio(kpage_table, CLINT_BASE, CLINT_SIZE);
-
-#ifdef RTC_GOLDFISH
-    // RTC
-    kvm_map_mmio(kpage_table, RTC_GOLDFISH, PAGE_SIZE);
-#endif
-
-#ifdef VIRT_TEST_BASE
-    // shutdown qemu
-    kvm_map_mmio(kpage_table, VIRT_TEST_BASE, PAGE_SIZE);
-#endif
-
-    // map kernel text executable and read-only.
+    // map kernel text as executable and read-only.
     kvm_map_or_panic(kpage_table, KERNBASE, KERNBASE,
                      (size_t)end_of_text - KERNBASE, PTE_R | PTE_X);
 
@@ -73,12 +51,32 @@ pagetable_t kvm_make_kernel_pagetable(char *end_of_memory)
     kvm_map_or_panic(kpage_table, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
                      PTE_R | PTE_X);
 
-    // map the ramdisk
-    // kvm_map_or_panic(kpage_table, 0x82200000, 0x82200000,
-    //                 0x82400000 - 0x82200000, PTE_R | PTE_W);
-
     // allocate and map a kernel stack for each process.
     init_per_process_kernel_stack(kpage_table);
+
+    // CLINT
+    kvm_map_mmio(kpage_table, CLINT_BASE, CLINT_SIZE);
+
+    // PLIC
+    kvm_map_mmio(kpage_table, PLIC_BASE, PLIC_SIZE);
+
+    // uart registers
+    kvm_map_mmio(kpage_table, UART0, PAGE_SIZE);
+
+#ifdef VIRTIO0_BASE
+    // virtio mmio disk interface
+    kvm_map_mmio(kpage_table, VIRTIO0_BASE, PAGE_SIZE);
+#endif
+
+#ifdef RTC_GOLDFISH
+    // RTC
+    kvm_map_mmio(kpage_table, RTC_GOLDFISH, PAGE_SIZE);
+#endif
+
+#ifdef VIRT_TEST_BASE
+    // shutdown qemu
+    kvm_map_mmio(kpage_table, VIRT_TEST_BASE, PAGE_SIZE);
+#endif
 
     return kpage_table;
 }

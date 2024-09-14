@@ -19,7 +19,7 @@
 #include <mm/memlayout.h>
 
 /// the address of virtio mmio register r.
-#define R(r) ((volatile uint32_t *)(VIRTIO0 + (r)))
+#define R(r) ((volatile uint32_t *)(VIRTIO0_BASE + (r)))
 
 struct virtio_disk g_virtio_disk;
 

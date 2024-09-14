@@ -20,7 +20,7 @@ Run in qemu waiting for a debugger:
 
 ## Build options
 
-In `MakefileCommon.mk` some options can get selected, e.g. debug vs. release build, 32 vs 64-bit etc.
+In `MakefileCommon.mk` some options can get selected, e.g. debug vs. release build, 32 vs 64-bit etc. Some configs are select-able via the `PLATFORM` variable, e.g. to build for [qemu](run_on_qemu.md).
 
 
 ### 32- vs 64-bit

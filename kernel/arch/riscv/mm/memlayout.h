@@ -5,6 +5,8 @@
 
 // Physical memory layout
 
+#if defined(_PLATFORM_QEMU)
+
 // qemu -machine virt is set up like this,
 // based on qemu's hw/riscv/virt.c:
 //
@@ -26,12 +28,11 @@
 #define UART0 0x10000000L
 #define UART0_IRQ 10
 
-// On Spike (instead of qemu):
-// #define UART0_IRQ 1
-
+#ifdef VIRTIO_DISK
 /// virtio mmio interface
-#define VIRTIO0 0x10001000
+#define VIRTIO0_BASE 0x10001000
 #define VIRTIO0_IRQ 1
+#endif
 
 /// one page where writing to the first int can trigger a qemu shutdown or
 /// reboot
@@ -51,6 +52,16 @@
 
 /// qemu puts platform-level interrupt controller (PLIC) here.
 #define PLIC_BASE 0x0c000000L
+
+#elif defined(_PLATFORM_SPIKE)
+
+#define UART0 0x10000000L
+#define UART0_IRQ 1
+
+#define CLINT_BASE 0x02000000L
+#define PLIC_BASE 0x0c000000L
+
+#endif  // _PLATFORM_*
 
 /// the kernel expects there to be RAM
 /// for use by the kernel and user pages

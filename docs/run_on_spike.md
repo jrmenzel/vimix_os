@@ -1,20 +1,23 @@
 # How to run on Spike
 
+**Pre-requirement:** 
 1. Install Spike (https://github.com/riscv-software-src/riscv-isa-sim).
 	1. Note that Spike can be build with [SBI](riscv/SBI.md) support, see https://github.com/riscv-software-src/opensbi/blob/master/docs/platform/spike.md . This requires to build OpenSBI (e.g. `make CROSS_COMPILE=riscv64-linux-gnu- PLATFORM=generic`) from https://github.com/riscv-software-src/opensbi/tree/master . Configure [VIMIX](build_instructions.md) accordingly.
 	2. Set the correct Spike binary in the Makefile.
-2. Install OpenOCD
+2. Optional: Install OpenOCD (for debugging)
 3. Configure VIMIX:
-	1. to use an embedded [ramdisk](kernel/devices/ramdisk.md)
-	2. Only 32-bit runs on Spike. (64-bit defaults to a SV57 MMU, VIMIX needs a SV39 MMU. Spike can be modified to support SV39: Look for SV57 in `riscv/dts.cc` and `riscv/processor.cc`).
-	3. UART IRQ is 1, not 10 like in [qemu](run_on_qemu.md), edit `memlyout.h`!
+	1. Set `PLATFORM` in `MakefileCommon.mk` to `spike`. This will set:
+		1. to use an embedded [ramdisk](kernel/devices/ramdisk.md)
+		2. 32-bit build (64-bit defaults to a SV57 MMU, VIMIX needs a SV39 MMU. Spike can be modified to support SV39: Look for SV57 in `riscv/dts.cc` and `riscv/processor.cc`).
+		3. UART IRQ to 1 (not 10 like in [qemu](run_on_qemu.md))
+	2. Clean and rebuild after switching the `PLATFORM`!
 
 
 Run
 > make spike
 
 
-## Debug on Spike with VSCode
+## Debugging on Spike with VSCode
 
 1. Run Spike
 > make spike-gdb

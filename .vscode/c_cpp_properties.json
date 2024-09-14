@@ -18,7 +18,8 @@
                 "__ENABLE_SBI__",
                 "DEBUG",
                 "VIRTIO_DISK",
-                "USER_TEXT_START=0x1000"
+                "USER_TEXT_START=0x1000",
+                "_PLATFORM_QEMU"
             ],
             "compilerArgs": [
                 "-nostdinc"
@@ -41,7 +42,8 @@
                 "__riscv_xlen=32",
                 "DEBUG",
                 "VIRTIO_DISK",
-                "USER_TEXT_START=0x1000"
+                "USER_TEXT_START=0x1000",
+                "_PLATFORM_SPIKE"
             ],
             "compilerArgs": [
                 "-nostdinc"
