@@ -4,6 +4,7 @@ Halts or shuts down the OS.
 
 Both halt:
 > shutdown
+
 > shutdown -h
 
 Reboots:

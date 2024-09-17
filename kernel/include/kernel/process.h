@@ -43,8 +43,13 @@ struct process
     struct process *parent;  ///< Parent process
 
     // these are private to the process, so process->lock need not be held.
-    size_t kstack;                ///< Virtual address of kernel stack
-    size_t sz;                    ///< Size of process memory (bytes)
+    size_t kstack;  ///< Virtual address of kernel stack
+
+    // Process memory starts at USER_TEXT_START with the binary, data, bss etc.
+    size_t heap_begin;  ///< at runtime allocated data (by sbrk()) starts here
+    size_t heap_end;    ///< heap_end
+    size_t stack_low;   ///< First/lowest stack page address. Stack goes to
+                       ///< USER_STACK_HIGH - 1 and sp starts at USER_STACK_HIGH
     pagetable_t pagetable;        ///< User page table
     struct trapframe *trapframe;  ///< data page for u_mode_trap_vector.S
     struct context context;       ///< context_switch() here to run process

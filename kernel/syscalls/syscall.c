@@ -4,17 +4,17 @@
 #include <kernel/proc.h>
 #include <kernel/string.h>
 #include <kernel/unistd.h>
+#include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
 bool addr_is_proc_owned(struct process *proc, size_t addr)
 {
+    // the heap starts right after the apps binary and data
     const size_t app_start = USER_TEXT_START;
-    const size_t heap_end =
-        app_start + proc->sz - (STACK_PAGES_PER_PROCESS * PAGE_SIZE);
+    const size_t heap_end = proc->heap_end;
 
-    const size_t stack_start = heap_end;
-    const size_t stack_end =
-        stack_start + (STACK_PAGES_PER_PROCESS * PAGE_SIZE);
+    const size_t stack_start = proc->stack_low;
+    const size_t stack_end = USER_STACK_HIGH;
 
     if (addr >= app_start && addr < heap_end)
     {
@@ -37,14 +37,7 @@ int32_t fetchaddr(size_t addr, size_t *ip)
         // both tests needed, in case of overflow
         return -1;
     }
-    /*
-        if (addr >= proc->sz ||
-            addr + sizeof(size_t) >
-                proc->sz)  // both tests needed, in case of overflow
-        {
-            return -1;
-        }
-    */
+
     if (uvm_copy_in(proc->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
     {
         return -1;

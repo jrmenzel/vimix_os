@@ -40,7 +40,7 @@ size_t sys_sbrk()
     size_t increment;
     argaddr(0, &increment);
 
-    size_t addr = get_current()->sz + USER_TEXT_START;
+    size_t addr = get_current()->heap_end;
     if (proc_grow_memory(increment) < 0)
     {
         return -1;

@@ -44,38 +44,62 @@ int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
 /// @return new pagetable or NULL if out of memory.
 pagetable_t uvm_create();
 
-/// @brief Allocate PTEs and physical memory to grow process from oldsz to
-/// newsz, which need not be page aligned.
+/// @brief Allocate PTEs and physical memory to grow the process heap (and text,
+/// data, bss segments at load/execv).
+/// [round_up(start_va) to end_va] gets mapped. start_va is round up to the next
+/// page (no change if it was page aligned).
 /// @param pagetable page table
-/// @param oldsz old size in bytes
-/// @param newsz new size in bytes
-/// @param xperm access permission
-/// @return Returns new size or 0 on error.
-size_t uvm_alloc(pagetable_t pagetable, size_t oldsz, size_t newsz,
-                 int32_t perm);
+/// @param start_va start of new allocation
+/// @param alloc_size size of allocation in bytes
+/// @param perm access permission
+/// @return Returns allocated bytes or 0 on error.
+size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
+                      int32_t perm);
 
-/// @brief Deallocate user pages to bring the process size from oldsz to
-/// newsz.  oldsz and newsz need not be page-aligned, nor does newsz
+/// @brief Deallocate user pages to bring the process heap down.
+///  oldsz and newsz need not be page-aligned, nor does newsz
 /// need to be less than oldsz.  oldsz can be larger than the actual
 /// process size.
-/// @param pagetable Table to dealloc
-/// @param oldsz old size in bytes
-/// @param newsz new size in bytes
-/// @return Returns the new process size.
-size_t uvm_dealloc(pagetable_t pagetable, size_t oldsz, size_t newsz);
+/// @param pagetable Table to dealloc from
+/// @param end_va current end of heap
+/// @param dealloc_size number of bytes to dealloc
+/// @return Returns bytes deallocated
+size_t uvm_dealloc_heap(pagetable_t pagetable, size_t end_va,
+                        size_t dealloc_size);
+
+/// @brief Create a new user stack and fill it with argv as required by execv.
+/// @param pagetable The pagetable to add the stack pages to.
+/// @param argv NULL or argv from execv (NULL terminated array of strings)
+/// @param stack_low_out Returns where the stack ends, lowest page address
+/// @param sp_out Returns the stack pointer
+/// @return argc (argv length) on success, -1 on failure
+int32_t uvm_create_stack(pagetable_t pagetable, char **argv,
+                         size_t *stack_low_out, size_t *sp_out);
+
+/// @brief Grows a user stack by one page
+/// @param pagetable The pagetable to add the stack page to.
+/// @param stack_low Currently lowest stack page address, new page will get
+/// allocated just below.
+/// @return now lowest stack address, 0 on failure
+size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low);
 
 /// @brief Given a parent process's page table, copy
 /// its memory into a child's page table.
 /// Copies both the page table and the
-/// physical memory.
-/// @param old page table to copy from
-/// @param new page table to copy to
-/// @param sz size in bytes
+/// physical memory. Copies whole pages.
+/// @param src_page page table to copy from
+/// @param dst_page page table to copy to
+/// @param va_start First address to copy
+/// @param va_end Last address to copy
 /// @return 0 on success, -1 on failure. Frees any allocated pages on failure.
-int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz);
+int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
+                 size_t va_end);
 
 /// @brief Free user memory pages, then free page-table pages.
-void uvm_free(pagetable_t pagetable, size_t sz);
+// void uvm_free(pagetable_t pagetable, size_t sz);
+
+/// @brief Free user memory pages, then free page-table pages.
+void uvm_free_pagetable(pagetable_t pagetable);
 
 /// @brief Remove npages of mappings starting from va. The mappings must exist.
 /// @param pagetable Pagetable for address translation.

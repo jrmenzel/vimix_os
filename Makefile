@@ -133,6 +133,8 @@ spike-gdb: spike-requirements
 spike-sbi: spike-requirements
 	$(SPIKE) $(SPIKE_SBI_FW) $(SPIKE_OPTIONS)
 
+$(KERNEL_FILE).bin: kernel
+	$(OBJCOPY) $(KERNEL_FILE) -O binary $(BUILD_DIR)/$(KERNEL_NAME).bin
 
 clean: # clean up
 	$(MAKE) -C kernel clean;

@@ -45,7 +45,7 @@ function main {
     then
         # disassemble at address
         ADDRESS=$2
-        RANGE=0x10
+        RANGE=0x20
         disasm_addr $ADDRESS $RANGE
     elif [ "$1" = "-f" ]
     then

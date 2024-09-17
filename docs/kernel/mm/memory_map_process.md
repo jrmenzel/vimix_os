@@ -9,29 +9,35 @@ See [memory_map_kernel](memory_map_kernel.md) for the [kernel](kernel.md) memory
 
 Processes inherit the memory map of their parent process in [fork](../syscalls/fork.md). 
 See memory map of the init code / first process (see [init_userspace](../processes/init_userspace.md)) below.
-Note that all the init code does is call [execv](../syscalls/execv.md) for the [init](../../userspace/bin/init.md) ELF file. So it does not have a stack!
+Note that all the init code does is call [execv](../syscalls/execv.md) for the [init](../../userspace/bin/init.md) ELF file. So it does not need a stack, but is still set up like any other process with one.
 
-| VA start  | VA end    | alias      | mapped from                   | Permissions |
-| --------- | --------- | ---------- | ----------------------------- | ----------- |
-| FFFF E000 | FFFF EFFF | TRAMPOLINE | char trampoline[]             | R, X        |
-| FFFF D000 | FFFF DFFF | TRAPFRAME  | proc->trapframe               | R, W        |
-| 0000 0000 | 0000 1000 | init code  | kalloc() & g_initcode memcopy | R, W, X, U  |
+| VA start  | VA end    | alias            | mapped from                   | Permissions |
+| --------- | --------- | ---------------- | ----------------------------- | ----------- |
+| FFFF F000 | FFFF FFFF | TRAMPOLINE       | char trampoline[]             | R, X        |
+| FFFF E000 | FFFF EFFF | TRAPFRAME        | proc->trapframe               | R, W        |
+| FFFF 0000 | FFFF 0FFF | USER_STACK_HIGH | kalloc()                      | R, W        |
+|           |           |                  |                               |             |
+| 0000 1000 | 0000 1FFF | init code        | kalloc() & g_initcode memcopy | R, W, X, U  |
+| 0000 0000 | 0000 0FFF |                  | NOT MAPPED!                   |             |
+- USER_STACK_HIGH could be just below the TRAPFRAME, but is in fact even lower to make the address more recognizable during debugging.
+- The lowest page is not mapped to allow NULL pointer exceptions on access both for read and write accesses.
 
-[execv](../syscalls/execv.md) will load the new binary to the locations read from the ELF file. These will be code, data and uninitialized variables in bss starting at location 0x0000.0000. See `user.ld`.
+
+[execv](../syscalls/execv.md) will load the new binary to the locations read from the ELF file. These will be code, data and uninitialized variables in bss starting at location `USER_TEXT_START`. It's set in the Makefiles to export the same value to the kernel and the user space linker script.
 Afterwards the memory map looks like this:
 
-| VA start  | VA end    | alias      | mapped from                 | Permissions |
-| --------- | --------- | ---------- | --------------------------- | ----------- |
-| FFFF E000 | FFFF EFFF | TRAMPOLINE | char trampoline[]           | R, X        |
-| FFFF D000 | FFFF DFFF | TRAPFRAME  | proc->trapframe             | R, W        |
-|           |           |            |                             |             |
-|           |           | heap       | set via sbrk(), grows up    | R, W, U     |
-| AS + 2P   |           | stack      | kalloc()                    | R, W, U     |
-| AS + 1P   |           | (guard)    |                             | W           |
-| ...       | App size  | bss        | kalloc()                    | from ELF    |
-| ...       | ...       | data       | kalloc() & memcopy from ELF | from ELF    |
-| 0000 0000 | text size | code       | kalloc() & memcopy from ELF | from ELF    |
-- `AS + 1P`: App size (including bss) + 1 page (at next page boundry)
+| VA start   | VA end    | alias            | mapped from                 | Permissions |
+| ---------- | --------- | ---------------- | --------------------------- | ----------- |
+| FFFF F000  | FFFF FFFF | TRAMPOLINE       | char trampoline[]           | R, X        |
+| FFFF E000  | FFFF EFFF | TRAPFRAME        | proc->trapframe             | R, W        |
+| FFFF 0000  | FFFF 0FFF | USER_STACK_HIGH | kalloc()                    | R, W        |
+|            |           |                  |                             |             |
+| heap_begin | heap_end  | heap             | set via sbrk(), grows up    | R, W, U     |
+| ...        | App size  | bss              | kalloc()                    | from ELF    |
+| ...        | ...       | data             | kalloc() & memcopy from ELF | from ELF    |
+| 0000 1000  | text size | code             | kalloc() & memcopy from ELF | from ELF    |
+| 0000 0000  | 0000 0FFF |                  | NOT MAPPED!                 |             |
+- heap_begin / heap_end are members of `struct process` ([processes](../processes/processes.md)).
 
 
 ### User Space 64-bit

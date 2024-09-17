@@ -2,7 +2,6 @@
 #pragma once
 
 #define MAX_PROCS 64                 ///< maximum number of processes
-#define STACK_PAGES_PER_PROCESS 1    ///< pages of user space stack
 #define MAX_CPUS 8                   ///< maximum number of CPUs
 #define MAX_FILES_PER_PROCESS 16     ///< open files per process
 #define MAX_FILES_SUPPORTED 100      ///< open files per system

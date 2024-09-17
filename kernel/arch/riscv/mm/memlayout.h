@@ -84,10 +84,8 @@
 
 /// map the trampoline page to the (second) highest address,
 /// in both user and kernel space.
-/// Second highest in 32-bit mode as the highest results in strange issues
-/// during unmap.
 #if (__riscv_xlen == 32)
-#define TRAMPOLINE (0xFFFFE000)
+#define TRAMPOLINE (0xFFFFF000)
 #else
 #define TRAMPOLINE (MAXVA - PAGE_SIZE)
 #endif
@@ -106,3 +104,10 @@
 ///   TRAPFRAME (p->trapframe, used by the trampoline)
 ///   TRAMPOLINE (the same page as in the kernel)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
+
+/// Highest address of the user stack.
+/// Could be placed anywhere. The highest position possible is just below the
+/// TRAPFRAME (setting USER_STACK_HIGH to TRAPFRAME - remember the stack grows
+/// down!). But moving it a bit lower gives nicer stack addresses during
+/// debugging :-)
+#define USER_STACK_HIGH (TRAPFRAME - 13 * PAGE_SIZE)

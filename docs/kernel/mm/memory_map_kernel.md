@@ -60,7 +60,7 @@ On [SBI](../../riscv/SBI.md) enabled qemu the usable RAM starts at 0x8020.0000:
 
 ### Kernel 64-bit
 
-Same as 32-bit, except that virtual memory goes up to 0x40.0000.0000 so all special pages are moved up.
+Same as 32-bit, except that virtual memory goes up to 0x40.0000.0000 so all special pages are moved up. sv39 supports a max virtual memory address of 2^39 which is 0x80.0000.0000, but VIMIX does not use the highest bit to avoid bit extending addresses.
 
 
 ---

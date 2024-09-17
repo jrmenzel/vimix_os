@@ -233,8 +233,9 @@ void uvm_unmap(pagetable_t pagetable, size_t va, size_t npages, bool do_free)
         panic("uvm_unmap: not aligned");
     }
 
-    for (size_t a = va; a < va + npages * PAGE_SIZE; a += PAGE_SIZE)
+    for (size_t page = 0; page < npages; ++page)
     {
+        size_t a = va + page * PAGE_SIZE;
         pte_t *pte = vm_walk(pagetable, a, false);
         if (pte == NULL)
         {
@@ -268,54 +269,131 @@ pagetable_t uvm_create()
     return pagetable;
 }
 
-/// Allocate PTEs and physical memory to grow process from oldsz to
-/// newsz, which need not be page aligned.  Returns new size or 0 on error.
-size_t uvm_alloc(pagetable_t pagetable, size_t oldsz, size_t newsz,
-                 int32_t xperm)
+size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
+                      int32_t perm)
 {
-    if (newsz < oldsz)
-    {
-        return oldsz;
-    }
-
-    oldsz = PAGE_ROUND_UP(oldsz);
-    for (size_t a = oldsz; a < newsz; a += PAGE_SIZE)
+    size_t end_va = start_va + alloc_size;
+    start_va = PAGE_ROUND_UP(start_va);
+    size_t n = 0;
+    for (size_t va = start_va; va < end_va; va += PAGE_SIZE)
     {
         char *mem = kalloc();
         if (mem == 0)
         {
-            uvm_dealloc(pagetable, a, oldsz);
+            uvm_dealloc_heap(pagetable, va, va - start_va);
             return 0;
         }
+        n++;
         memset(mem, 0, PAGE_SIZE);
-        size_t va = a + USER_TEXT_START;
         if (kvm_map(pagetable, va, (size_t)mem, PAGE_SIZE,
-                    PTE_R | PTE_U | xperm) != 0)
+                    PTE_R | PTE_U | perm) != 0)
         {
             kfree(mem);
-            uvm_dealloc(pagetable, a, oldsz);
+            uvm_dealloc_heap(pagetable, va, va - start_va);
             return 0;
         }
     }
-    return newsz;
+    return alloc_size;
 }
 
-size_t uvm_dealloc(pagetable_t pagetable, size_t oldsz, size_t newsz)
+size_t uvm_dealloc_heap(pagetable_t pagetable, size_t end_va,
+                        size_t dealloc_size)
 {
-    if (newsz >= oldsz)
+    size_t new_end_va = end_va - dealloc_size;
+    struct process *proc = get_current();
+    if (new_end_va < proc->heap_begin)
     {
-        return oldsz;
+        return 0;
+    }
+    // start deallocating one page up if the page of the first address to clear
+    // is still partially used
+    size_t start_dealloc_va = PAGE_ROUND_UP(new_end_va);
+
+    size_t npages = (PAGE_ROUND_UP(end_va) - start_dealloc_va) / PAGE_SIZE;
+
+    // note: unmap of 0 pages is fine!
+    uvm_unmap(pagetable, start_dealloc_va, npages, true);
+
+    return dealloc_size;
+}
+
+int32_t uvm_create_stack(pagetable_t pagetable, char **argv,
+                         size_t *stack_low_out, size_t *sp_out)
+{
+    size_t sp = USER_STACK_HIGH;
+    size_t stack_low = uvm_grow_stack(pagetable, USER_STACK_HIGH);
+    if (stack_low == 0)
+    {
+        return -1;
     }
 
-    if (PAGE_ROUND_UP(newsz) < PAGE_ROUND_UP(oldsz))
+    size_t argc = 0;
+    if (argv != NULL)
     {
-        size_t npages =
-            (PAGE_ROUND_UP(oldsz) - PAGE_ROUND_UP(newsz)) / PAGE_SIZE;
-        size_t new_va = PAGE_ROUND_UP(newsz) + USER_TEXT_START;
-        uvm_unmap(pagetable, new_va, npages, true);
+        // Push argument strings, prepare rest of stack in ustack.
+        size_t ustack[MAX_EXEC_ARGS];
+        for (argc = 0; argv[argc] && argc < MAX_EXEC_ARGS; argc++)
+        {
+            // 16-byte aligned space on the stack for the string
+            // (sp alignement is a RISC V requirement)
+            sp -= strlen(argv[argc]) + 1;
+            sp -= sp % 16;
+            if (sp < stack_low)
+            {
+                // stack overflow
+                return -1;
+            }
+
+            if (uvm_copy_out(pagetable, sp, argv[argc],
+                             strlen(argv[argc]) + 1) < 0)
+            {
+                return -1;
+            }
+            ustack[argc] = sp;
+        }
+        if (argc >= MAX_EXEC_ARGS)
+        {
+            return -1;
+        }
+        ustack[argc] = 0;
+
+        // push the array of argv[] pointers.
+        sp -= (argc + 1) * sizeof(size_t);
+        sp -= sp % 16;
+        if (sp < stack_low)
+        {
+            return -1;
+        }
+        if (uvm_copy_out(pagetable, sp, (char *)ustack,
+                         (argc + 1) * sizeof(size_t)) < 0)
+        {
+            return -1;
+        }
     }
 
-    return newsz;
+    *sp_out = sp;
+    *stack_low_out = stack_low;
+    return argc;
+}
+
+size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low)
+{
+    char *mem = kalloc();
+    if (mem == NULL)
+    {
+        return 0;
+    }
+
+    memset(mem, 0, PAGE_SIZE);
+    size_t new_stack_low = stack_low - PAGE_SIZE;
+    if (kvm_map(pagetable, new_stack_low, (size_t)mem, PAGE_SIZE,
+                PTE_R | PTE_W | PTE_U) != 0)
+    {
+        kfree(mem);
+        return 0;
+    }
+
+    return new_stack_low;
 }
 
 /// Recursively free page-table pages.
@@ -342,26 +420,43 @@ void freewalk(pagetable_t pagetable)
     kfree((void *)pagetable);
 }
 
-void uvm_free(pagetable_t pagetable, size_t sz)
+void uvm_free_pagetable(pagetable_t pagetable)
 {
-    if (sz > 0)
+    // there are 2^9 => 512 PTEs in a page table on 64 bit
+    // there are 2^10 => 1024 PTEs in a page table on 32 bit
+    for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
     {
-        size_t number_of_pages = PAGE_ROUND_UP(sz) / PAGE_SIZE;
-        uvm_unmap(pagetable, USER_TEXT_START, number_of_pages, true);
+        pte_t pte = pagetable[i];
+        size_t child = PTE2PA(pte);
+
+        if (pte & PTE_V)
+        {
+            if ((pte & (PTE_R | PTE_W | PTE_X)) == 0)
+            {
+                // no RWX flag -> this PTE points to a lower-level page table.
+                uvm_free_pagetable((pagetable_t)child);
+            }
+            else
+            {
+                // a leaf pointing to a mapped page
+                kfree((void *)child);
+            }
+        }
+        pagetable[i] = 0;
     }
-    freewalk(pagetable);
+    kfree((void *)pagetable);
 }
 
-int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
+int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
+                 size_t va_end)
 {
-    size_t i;
-
     bool fatal_error_happened = false;
+    va_start = PAGE_ROUND_DOWN(va_start);
 
-    for (i = 0; i < sz; i += PAGE_SIZE)
+    size_t pages_allocated = 0;
+    for (size_t va = va_start; va < va_end; va += PAGE_SIZE)
     {
-        size_t va = i + USER_TEXT_START;
-        pte_t *pte = vm_walk(old, va, false);
+        pte_t *pte = vm_walk(src_page, va, false);
         if (pte == NULL)
         {
             panic("uvm_copy: pte should exist");
@@ -379,9 +474,10 @@ int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
             fatal_error_happened = true;
             break;
         }
+        pages_allocated++;
 
         memmove(mem, (char *)pa, PAGE_SIZE);
-        if (kvm_map(new, va, (size_t)mem, PAGE_SIZE, flags) != 0)
+        if (kvm_map(dst_page, va, (size_t)mem, PAGE_SIZE, flags) != 0)
         {
             kfree(mem);
             fatal_error_happened = true;
@@ -391,7 +487,8 @@ int32_t uvm_copy(pagetable_t old, pagetable_t new, size_t sz)
 
     if (fatal_error_happened)
     {
-        uvm_unmap(new, USER_TEXT_START, i / PAGE_SIZE, true);
+        // unmap and free the partial copy
+        uvm_unmap(dst_page, va_start, pages_allocated, true);
         return -1;
     }
 

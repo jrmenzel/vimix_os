@@ -157,7 +157,7 @@ void dump_process_info(struct process *proc)
     printk("s11: 0x%x; s7: 0x%x; a7: 0x%x\n",           tf->s11, tf->s7, tf->a7);
     // clang-format on
 
-    debug_vm_print_page_table(proc->pagetable);
+    // debug_vm_print_page_table(proc->pagetable);
 }
 
 /// @brief Dump kernel thread state from before the interrupt.

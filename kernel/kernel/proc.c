@@ -193,11 +193,13 @@ static void free_process(struct process *proc)
 
     if (proc->pagetable)
     {
-        proc_free_pagetable(proc->pagetable, proc->sz);
+        proc_free_pagetable(proc->pagetable);
     }
     proc->pagetable = INVALID_PAGETABLE_T;
 
-    proc->sz = 0;
+    proc->heap_begin = 0;
+    proc->heap_end = 0;
+    proc->stack_low = 0;
     proc->pid = 0;
     proc->parent = NULL;
     proc->name[0] = 0;
@@ -225,7 +227,7 @@ pagetable_t proc_pagetable(struct process *proc)
     if (kvm_map(pagetable, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
                 PTE_R | PTE_X) < 0)
     {
-        uvm_free(pagetable, 0);
+        uvm_free_pagetable(pagetable);
         return INVALID_PAGETABLE_T;
     }
 
@@ -235,20 +237,21 @@ pagetable_t proc_pagetable(struct process *proc)
                 PTE_R | PTE_W) < 0)
     {
         uvm_unmap(pagetable, TRAMPOLINE, 1, 0);
-        uvm_free(pagetable, 0);
+        uvm_free_pagetable(pagetable);
         return INVALID_PAGETABLE_T;
     }
 
     return pagetable;
 }
 
-/// Free a process's page table, and free the
-/// physical memory it refers to.
-void proc_free_pagetable(pagetable_t pagetable, size_t sz)
+void proc_free_pagetable(pagetable_t pagetable)
 {
+    // unmap pages not owned by this process
     uvm_unmap(pagetable, TRAMPOLINE, 1, false);
     uvm_unmap(pagetable, TRAPFRAME, 1, false);
-    uvm_free(pagetable, sz);
+
+    // everything left mapped is owned by the process, free everything
+    uvm_free_pagetable(pagetable);
 }
 
 /// Set up first user process.
@@ -266,11 +269,15 @@ void userspace_init()
             PTE_W | PTE_R | PTE_X | PTE_U);
     memmove(mem, g_initcode, sizeof(g_initcode));
 
-    proc->sz = PAGE_SIZE;
+    proc->heap_begin = USER_TEXT_START + PAGE_SIZE;
+    proc->heap_end = proc->heap_begin;
+
+    size_t sp;
+    uvm_create_stack(proc->pagetable, NULL, &(proc->stack_low), &sp);
 
     // prepare for the very first "return" from kernel to user.
     trapframe_set_program_counter(proc->trapframe, USER_TEXT_START);
-    trapframe_set_stack_pointer(proc->trapframe, USER_TEXT_START + PAGE_SIZE);
+    trapframe_set_stack_pointer(proc->trapframe, sp);
 
     safestrcpy(proc->name, "initcode", sizeof(proc->name));
     proc->cwd = inode_from_path("/");
@@ -285,70 +292,99 @@ void userspace_init()
 int32_t proc_grow_memory(ssize_t n)
 {
     struct process *proc = get_current();
-    size_t sz = proc->sz;
 
     if (n > 0)
     {
         // grow
-        if ((sz = uvm_alloc(proc->pagetable, sz, sz + n, PTE_W)) == 0)
+        if (uvm_alloc_heap(proc->pagetable, proc->heap_end, n, PTE_W) != n)
         {
             return -1;
         }
+        proc->heap_end += n;
     }
     else if (n < 0)
     {
         // shrink
-        sz = uvm_dealloc(proc->pagetable, sz, sz + n);
+        n *= -1;
+        size_t proc_size = proc->heap_end - proc->heap_begin;
+        if (n > proc_size)
+        {
+            return -1;
+        }
+        size_t dealloc = uvm_dealloc_heap(proc->pagetable, proc->heap_end, n);
+        proc->heap_end -= dealloc;
     }
 
-    proc->sz = sz;
+    return 0;
+}
+
+int32_t proc_copy_memory(struct process *src, struct process *dst)
+{
+    // Copy app code and heap
+    if (uvm_copy(src->pagetable, dst->pagetable, USER_TEXT_START,
+                 src->heap_end) < 0)
+    {
+        return -1;
+    }
+    dst->heap_begin = src->heap_begin;
+    dst->heap_end = src->heap_end;
+
+    // Copy user stack
+    if (uvm_copy(src->pagetable, dst->pagetable, src->stack_low,
+                 USER_STACK_HIGH - 1) < 0)
+    {
+        return -1;
+    }
+    dst->stack_low = src->stack_low;
+
     return 0;
 }
 
 int32_t fork()
 {
-    // Allocate process.
+    // Allocate new process.
     struct process *np = alloc_process();
     if (np == NULL)
     {
         return -1;
     }
 
-    struct process *proc = get_current();
+    struct process *parent = get_current();
 
-    // Copy user memory from parent to child.
-    if (uvm_copy(proc->pagetable, np->pagetable, proc->sz) < 0)
+    // Copy memory
+    if (proc_copy_memory(parent, np) == -1)
     {
         free_process(np);
         spin_unlock(&np->lock);
         return -1;
     }
-    np->sz = proc->sz;
 
-    // copy saved user registers.
-    *(np->trapframe) = *(proc->trapframe);
-
+    // Copy registers
+    *(np->trapframe) = *(parent->trapframe);
     // Cause fork to return 0 in the child.
     np->trapframe->a0 = 0;
 
-    // increment reference counts on open file descriptors.
+    // Copy open files:
+    // Increment reference counts on open file descriptors including the curent
+    // working directory
     for (size_t i = 0; i < MAX_FILES_PER_PROCESS; i++)
     {
-        if (proc->files[i])
+        if (parent->files[i])
         {
-            np->files[i] = file_dup(proc->files[i]);
+            np->files[i] = file_dup(parent->files[i]);
         }
     }
-    np->cwd = inode_dup(proc->cwd);
+    np->cwd = inode_dup(parent->cwd);
 
-    safestrcpy(np->name, proc->name, sizeof(proc->name));
+    // Copy name
+    safestrcpy(np->name, parent->name, sizeof(parent->name));
 
     pid_t pid = np->pid;
 
     spin_unlock(&np->lock);
 
     spin_lock(&g_wait_lock);
-    np->parent = proc;
+    np->parent = parent;
     spin_unlock(&g_wait_lock);
 
     spin_lock(&np->lock);

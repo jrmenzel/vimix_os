@@ -24,6 +24,7 @@ struct
     struct free_page *list_of_free_pages;
 #ifdef CONFIG_DEBUG_KALLOC
     size_t pages_allocated;
+    size_t pages_allocated_total;
 #endif  // CONFIG_DEBUG_KALLOC
 } g_kernel_memory;
 
@@ -50,6 +51,7 @@ void kalloc_init(char *pa_start, char *pa_end)
 #ifdef CONFIG_DEBUG_KALLOC
     // reset *after* kfree_range (as kfree decrements the counter)
     g_kernel_memory.pages_allocated = 0;
+    g_kernel_memory.pages_allocated_total = 0;
 #endif  // CONFIG_DEBUG_KALLOC
 }
 
@@ -91,6 +93,7 @@ void *kalloc()
         g_kernel_memory.list_of_free_pages = page->next;
 #ifdef CONFIG_DEBUG_KALLOC
         g_kernel_memory.pages_allocated++;
+        g_kernel_memory.pages_allocated_total++;
 #endif  // CONFIG_DEBUG_KALLOC
     }
     spin_unlock(&g_kernel_memory.lock);
@@ -101,6 +104,9 @@ void *kalloc()
         memset((char *)page, 5, PAGE_SIZE);  // fill with junk
     }
 #endif  // CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
+    // printk("allocated a page 0x%x - used %d - total: %d\n", page,
+    //        g_kernel_memory.pages_allocated,
+    //        g_kernel_memory.pages_allocated_total);
     return (void *)page;
 }
 

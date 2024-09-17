@@ -42,7 +42,9 @@ void init_per_process_kernel_stack(pagetable_t kpage_table);
 
 pagetable_t proc_pagetable(struct process *proc);
 
-void proc_free_pagetable(pagetable_t pagetable, size_t sz);
+/// @brief Free a process's page table, and free the
+/// physical memory it refers to.
+void proc_free_pagetable(pagetable_t pagetable);
 
 /// @brief Sends a signal to a process, basically kill syscall
 /// @param pid The PID of the process

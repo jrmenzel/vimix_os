@@ -25,6 +25,48 @@ int32_t flags2perm(int32_t flags)
     return perm;
 }
 
+bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
+                            pagetable_t pagetable, size_t *last_va)
+{
+    for (int32_t i = 0; i < elf->phnum; i++)
+    {
+        // read program header i
+        struct proghdr ph;
+        int32_t off = elf->phoff + i * sizeof(struct proghdr);
+        if (inode_read(ip, false, (size_t)&ph, off, sizeof(ph)) != sizeof(ph))
+        {
+            return false;
+        }
+
+        // ignore if not intended to be loaded
+        if (ph.type != ELF_PROG_LOAD) continue;
+
+        // error checks
+        if ((ph.memsz < ph.filesz) || (ph.vaddr + ph.memsz < ph.vaddr) ||
+            (ph.vaddr % PAGE_SIZE != 0))
+        {
+            return false;
+        }
+
+        // allocate pages and update last_va
+        size_t alloc_size = (ph.vaddr + ph.memsz) - *last_va;
+        size_t sz = uvm_alloc_heap(pagetable, *last_va, alloc_size,
+                                   flags2perm(ph.flags));
+        if (sz != alloc_size)
+        {
+            return false;
+        }
+        *last_va += alloc_size;
+
+        // load actual data
+        if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 int32_t execv(char *path, char **argv)
 {
     log_begin_fs_transaction();
@@ -56,51 +98,11 @@ int32_t execv(char *path, char **argv)
         return -1;
     }
 
-    // process size
-    size_t sz = 0;
-
     // Load program into memory.
-    bool fatal_error = false;
-    for (int32_t i = 0; i < elf.phnum; i++)
-    {
-        // read program header i
-        struct proghdr ph;
-        int32_t off = elf.phoff + i * sizeof(struct proghdr);
-        if (inode_read(ip, false, (size_t)&ph, off, sizeof(ph)) != sizeof(ph))
-        {
-            fatal_error = true;
-            break;
-        }
-
-        // ignore if not intended to be loaded
-        if (ph.type != ELF_PROG_LOAD) continue;
-
-        // error checks
-        if ((ph.memsz < ph.filesz) || (ph.vaddr + ph.memsz < ph.vaddr) ||
-            (ph.vaddr % PAGE_SIZE != 0))
-        {
-            fatal_error = true;
-            break;
-        }
-
-        // allocate pages and update sz
-        size_t sz1 =
-            uvm_alloc(pagetable, sz, ph.vaddr + ph.memsz - USER_TEXT_START,
-                      flags2perm(ph.flags));
-        if (sz1 == 0)
-        {
-            fatal_error = true;
-            break;
-        }
-        sz = sz1;
-
-        // load actual data
-        if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
-        {
-            fatal_error = true;
-            break;
-        }
-    }
+    size_t heap_begin = USER_TEXT_START;  // last virtual address used for
+                                          // loading binary and data
+    bool fatal_error =
+        !load_program_to_memory(ip, &elf, pagetable, &heap_begin);
     inode_unlock_put(ip);
     log_end_fs_transaction();
     ip = NULL;
@@ -109,7 +111,7 @@ int32_t execv(char *path, char **argv)
     // anyways
     if (fatal_error)
     {
-        proc_free_pagetable(pagetable, sz);
+        proc_free_pagetable(pagetable);
         return -1;
     }
 
@@ -119,66 +121,12 @@ int32_t execv(char *path, char **argv)
     // Todo: this should happen on all cores that want to run this process.
     instruction_memory_barrier();
 
-    size_t oldsz = proc->sz;
-
-    // Allocate some pages at the next page boundary:
-    // Make the first inaccessible as a stack guard.
-    // Use the second (or more) as the user stack.
-    sz = PAGE_ROUND_UP(sz);
-    size_t alloc_size = (STACK_PAGES_PER_PROCESS + 1) * PAGE_SIZE;
-    size_t sz1 = uvm_alloc(pagetable, sz, sz + alloc_size, PTE_W);
-    if (sz1 == 0)
+    size_t stack_low;
+    size_t sp;
+    size_t argc = uvm_create_stack(pagetable, argv, &stack_low, &sp);
+    if (argc == -1)
     {
-        proc_free_pagetable(pagetable, sz);
-        return -1;
-    }
-    sz = sz1;
-
-    size_t sp = sz + USER_TEXT_START;
-    uvm_clear_user_access_bit(pagetable, sp - alloc_size);
-    size_t stackbase = sp - STACK_PAGES_PER_PROCESS * PAGE_SIZE;
-
-    // Push argument strings, prepare rest of stack in ustack.
-    size_t argc, ustack[MAX_EXEC_ARGS];
-    for (argc = 0; argv[argc] && argc < MAX_EXEC_ARGS; argc++)
-    {
-        // 16-byte aligned space on the stack for the string
-        // (sp alignement is a RISC V requirement)
-        sp -= strlen(argv[argc]) + 1;
-        sp -= sp % 16;
-        if (sp < stackbase)
-        {
-            // stack overflow
-            fatal_error = true;
-            break;
-        }
-
-        if (uvm_copy_out(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
-        {
-            fatal_error = true;
-            break;
-        }
-        ustack[argc] = sp;
-    }
-    if (fatal_error || argc >= MAX_EXEC_ARGS)
-    {
-        proc_free_pagetable(pagetable, sz);
-        return -1;
-    }
-    ustack[argc] = 0;
-
-    // push the array of argv[] pointers.
-    sp -= (argc + 1) * sizeof(size_t);
-    sp -= sp % 16;
-    if (sp < stackbase)
-    {
-        proc_free_pagetable(pagetable, sz);
-        return -1;
-    }
-    if (uvm_copy_out(pagetable, sp, (char *)ustack,
-                     (argc + 1) * sizeof(size_t)) < 0)
-    {
-        proc_free_pagetable(pagetable, sz);
+        proc_free_pagetable(pagetable);
         return -1;
     }
 
@@ -202,11 +150,13 @@ int32_t execv(char *path, char **argv)
     // Commit to the user image.
     pagetable_t oldpagetable = proc->pagetable;
     proc->pagetable = pagetable;
-    proc->sz = sz;
+    proc->heap_begin = heap_begin;
+    proc->heap_end = proc->heap_begin;
+    proc->stack_low = stack_low;
 
     trapframe_set_program_counter(proc->trapframe, elf.entry);
     trapframe_set_stack_pointer(proc->trapframe, sp);
-    proc_free_pagetable(oldpagetable, oldsz);
+    proc_free_pagetable(oldpagetable);
 
     return argc;  // this ends up in a0, the first argument to main(argc, argv)
 }

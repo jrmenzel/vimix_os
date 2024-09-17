@@ -308,14 +308,15 @@ void rwsbrk()
 {
     long page_size = sysconf(_SC_PAGE_SIZE);
     size_t a = (size_t)sbrk(2 * page_size);
+    const size_t SYSCALL_ERROR = TEST_PTR_MAX_ADDRESS;
 
-    if (a == TEST_PTR_MAX_ADDRESS)
+    if (a == SYSCALL_ERROR)
     {
         printf("sbrk(rwsbrk) failed\n");
         exit(1);
     }
 
-    if ((size_t)sbrk(-(2 * page_size)) == TEST_PTR_MAX_ADDRESS)
+    if ((size_t)sbrk(-(2 * page_size)) == SYSCALL_ERROR)
     {
         printf("sbrk(rwsbrk) shrink failed\n");
         exit(1);
@@ -794,25 +795,34 @@ void exectest(char *s)
         printf("%s: fork failed\n", s);
         exit(1);
     }
+
+    size_t error = 0xFF;  // index into the array below, if invalid = no error
+    const char *error_str[3] = {"file create failed", "wrong fd",
+                                "execv echo failed"};
+
     if (pid == 0)
     {
         close(1);
         int fd = open("echo-ok", O_CREATE | O_WRONLY, 0755);
         if (fd < 0)
         {
-            printf("%s: create failed\n", s);
-            exit(1);
+            error = 0;
         }
-        if (fd != 1)
+        else if (fd != 1)
         {
-            printf("%s: wrong fd\n", s);
-            exit(1);
+            error = 1;
         }
-        if (execv(bin_echo, echoargv) < 0)
+        else if (execv(bin_echo, echoargv) < 0)
         {
-            printf("%s: execv echo failed\n", s);
-            exit(1);
+            error = 2;
         }
+
+        if (error < 0xFF)
+        {
+            printf("%s: %s\n", s, error_str[error]);
+            exit(error);
+        }
+
         // won't get to here
     }
 
@@ -824,7 +834,10 @@ void exectest(char *s)
     xstatus = WEXITSTATUS(xstatus);
     if (xstatus != 0)
     {
-        exit(xstatus);
+        // repeat error message as opening a fd as stdout can prevent the error
+        // messages above
+        printf("%s: child error: %s\n", s, error_str[xstatus]);
+        exit(1);
     }
 
     int fd = open("echo-ok", O_RDONLY);
@@ -2594,7 +2607,7 @@ void sbrkfail(char *s)
         if ((pids[i] = fork()) == 0)
         {
             // allocate a lot of memory
-            sbrk(BIG - (size_t)sbrk(0));
+            sbrk(BIG);
             write(fds[1], "x", 1);
             // sit around until killed
             while (true)
@@ -2843,16 +2856,47 @@ static inline size_t read_stack_pointer()
 
 // check that there's an invalid page beneath
 // the user stack, to catch stack overflow.
-void stacktest(char *s)
+void stack_overflow(char *s)
 {
     pid_t pid = fork();
     long page_size = sysconf(_SC_PAGE_SIZE);
     if (pid == 0)
     {
         char *sp = (char *)read_stack_pointer();
-        sp -= STACK_PAGES_PER_PROCESS * page_size;
+        sp -= page_size;
         // the *sp should cause a trap.
-        printf("%s: stacktest: read below stack %p\n", s, *sp);
+        printf("%s: stack_overflow: read below stack %p\n", s, *sp);
+        exit(1);
+    }
+    else if (pid < 0)
+    {
+        printf("%s: fork failed\n", s);
+        exit(1);
+    }
+
+    int32_t xstatus;
+    wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
+    if (xstatus == -1)  // kernel killed child?
+    {
+        exit(0);
+    }
+    else
+    {
+        exit(xstatus);
+    }
+}
+
+void stack_underflow(char *s)
+{
+    pid_t pid = fork();
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    if (pid == 0)
+    {
+        char *sp = (char *)read_stack_pointer();
+        sp += page_size;
+        // the *sp should cause a trap.
+        printf("%s: stack_underflow: read above stack %p\n", s, *sp);
         exit(1);
     }
     else if (pid < 0)
@@ -3022,8 +3066,16 @@ void sbrklast(char *s)
 // negative arguments?
 void sbrk8000(char *s)
 {
-    sbrk(0x80000004);
+    sbrk(0x80000000);
     volatile char *top = sbrk(0);
+    *(top - 1) = *(top - 1) + 1;
+
+    sbrk(0x80000004);
+    top = sbrk(0);
+    *(top - 1) = *(top - 1) + 1;
+
+    sbrk(-4);
+    top = sbrk(0);
     *(top - 1) = *(top - 1) + 1;
 }
 
@@ -3181,7 +3233,8 @@ struct test
     {bsstest, "bsstest"},
     {bigargtest, "bigargtest"},
     {argptest, "argptest"},
-    {stacktest, "stacktest"},
+    {stack_overflow, "stack_overflow"},
+    {stack_underflow, "stack_underflow"},
     {nowrite, "nowrite"},
     {pgbug, "pgbug"},
     {sbrkbugs, "sbrkbugs"},

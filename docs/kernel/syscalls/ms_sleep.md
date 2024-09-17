@@ -10,6 +10,10 @@ extern int32_t ms_sleep(int32_t milliseconds);
 
 Lets the process sleep for a given amount of seconds (`sleep`) or milli seconds (`ms_sleep`). The actual time slept can be longer due to larger scheduler intervals ([timer interrupts](../interrupts/timer_interrupt.md) could dictate a time granularity of 10 to 100 milliseconds).
 
+## User Apps
+
+The app [sleep](../../userspace/bin/sleep.md) exposes this syscall.
+
 ## Kernel Mode
 
 Implemented in `sys_process.c` as `sys_ms_sleep()`. 
