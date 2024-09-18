@@ -396,30 +396,6 @@ size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low)
     return new_stack_low;
 }
 
-/// Recursively free page-table pages.
-/// All leaf mappings must already have been removed.
-void freewalk(pagetable_t pagetable)
-{
-    // there are 2^9 => 512 PTEs in a page table on 64 bit
-    // there are 2^10 => 1024 PTEs in a page table on 32 bit
-    for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
-    {
-        pte_t pte = pagetable[i];
-        if ((pte & PTE_V) && (pte & (PTE_R | PTE_W | PTE_X)) == 0)
-        {
-            // this PTE points to a lower-level page table.
-            size_t child = PTE2PA(pte);
-            freewalk((pagetable_t)child);
-            pagetable[i] = 0;
-        }
-        else if (pte & PTE_V)
-        {
-            panic("freewalk: leaf");
-        }
-    }
-    kfree((void *)pagetable);
-}
-
 void uvm_free_pagetable(pagetable_t pagetable)
 {
     // there are 2^9 => 512 PTEs in a page table on 64 bit

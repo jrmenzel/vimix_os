@@ -82,6 +82,19 @@ void dump_pre_int_kthread_state(size_t *stack)
 void handle_timer_interrupt();
 void handle_plic_device_interrupt();
 
+void dump_scause_and_kill_proc(struct process *proc)
+{
+    printk(
+        "\nFatal: unexpected scause/exception in "
+        "user_mode_interrupt_handler()\n"
+        "Killing process with pid=%d\n",
+        proc->pid);
+    dump_scause();
+    dump_process_info(proc);
+    printk("\n");
+    proc_set_killed(proc);
+}
+
 /// Handle an interrupt, exception, or system call from user space.
 /// called from u_mode_trap_vector.S, first C function after storing the
 /// CPU state / registers in assembly.
@@ -129,17 +142,33 @@ void user_mode_interrupt_handler()
     {
         handle_plic_device_interrupt();
     }
+    else if (scause == SCAUSE_STORE_AMO_PAGE_FAULT)
+    {
+        xlen_t stval = rv_read_csr_stval();
+        size_t sp = proc->trapframe->sp;
+
+        // If the app tried to write between the stack pointer and its stack
+        // -> stack overflow. Also test if the sp isn't more than one page away
+        // from the current stack as we will provide only one additional page.
+        if ((sp <= stval && stval < proc->stack_low) &&
+            (sp >= (proc->stack_low - PAGE_SIZE)))
+        {
+            if (!proc_grow_stack(proc))
+            {
+                // growing the stack failed
+                dump_scause_and_kill_proc(proc);
+            }
+        }
+        else
+        {
+            // some other page fault
+            dump_scause_and_kill_proc(proc);
+        }
+    }
     else
     {
-        printk(
-            "\nFatal: unexpected scause/exception in "
-            "user_mode_interrupt_handler()\n"
-            "Killing process with pid=%d\n",
-            proc->pid);
-        dump_scause();
-        dump_process_info(proc);
-        printk("\n");
-        proc_set_killed(proc);
+        // some other scause
+        dump_scause_and_kill_proc(proc);
     }
 
     if (proc_is_killed(proc))

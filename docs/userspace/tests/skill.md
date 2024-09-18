@@ -1,12 +1,12 @@
 # Stack Kill
 
-Calls a recursive function to grow the stack. Eventually the app will crash with a stack overflow.
+Calls a recursive function to grow the stack. Eventually the app will crash with a stack overflow if the loop goes too long. Can test if the apps stack grows as intended by printing a rough stack size.
 
 Run
-> skill
+> skill `LOOPS`
 
 **Returns:**
-- Intended not to return
+- 0
 
 ---
 **Up:** [user space](../userspace.md)

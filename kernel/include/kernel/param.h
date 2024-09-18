@@ -15,6 +15,9 @@
 
 #define PAGE_SIZE 4096  ///< bytes per page
 
+/// all stacks start at one page and can grow to this
+#define USER_MAX_STACK_SIZE (16 * PAGE_SIZE)
+
 #if defined(DEBUG)
 #define CONFIG_DEBUG
 #endif  // DEBUG

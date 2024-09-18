@@ -57,6 +57,13 @@ bool proc_is_killed(struct process *proc);
 /// kill the process
 void proc_set_killed(struct process *proc);
 
+/// @brief Grow procs stack by one page.
+/// @return true on success
+bool proc_grow_stack(struct process *proc);
+
+/// @brief Tries to shrink the stack if pages are unused to free them
+void proc_shrink_stack(struct process *proc);
+
 struct cpu *get_cpu();
 
 /// get currently running process

@@ -40,6 +40,15 @@ Afterwards the memory map looks like this:
 - heap_begin / heap_end are members of `struct process` ([processes](../processes/processes.md)).
 
 
+### Stack growing
+
+The stack can grow dynamically: if the app tries to access an invalid page between its stack pointer and its stack, the kernel will grow the stack. This is detected in the `user_mode_interrupt_handler()`  which calls `proc_grow_stack()`.
+
+During [scheduling](../processes/scheduling.md) before switching to the process it is checked based on the stack pointer and the current stack size if pages can be freed again. If so `proc_shrink_stack()` gets called.
+
+**Note:** The kernel stack is still limited to one page.
+
+
 ### User Space 64-bit
 
 

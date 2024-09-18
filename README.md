@@ -67,6 +67,7 @@ $
 - Cleanups: Reorganized code, separate headers, renamed many functions and variables, using stdint types, general refactoring, reduced number of GOTOs, ...
 - Support 32-bit RISC V (in addition to 64-bit), both "bare metal" and running in a [SBI](docs/riscv/SBI.md) environment. Inspired by a 32-bit xv6 port by Michael Schröder (https://github.com/x653/xv6-riscv-fpga/tree/main/xv6-riscv).
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
+- Changed [memory map](docs/kernel/mm/memory_map_process.md) and app stacks grow dynamically.
 - Added applications:
 	- [stat](docs/userspace/bin/stat.md)
 	- [shutdown](docs/userspace/bin/shutdown.md)

@@ -682,6 +682,38 @@ bool proc_is_killed(struct process *proc)
     return is_killed;
 }
 
+bool proc_grow_stack(struct process *proc)
+{
+    size_t stack_size = USER_STACK_HIGH - proc->stack_low;
+    if (stack_size >= USER_MAX_STACK_SIZE)
+    {
+        printk("proc_grow_stack: don't want to grow stack anymore\n");
+        return false;
+    }
+    size_t low = uvm_grow_stack(proc->pagetable, proc->stack_low);
+    if (low == 0)
+    {
+        printk("proc_grow_stack: can't grow stack anymore\n");
+        return false;
+    }
+    proc->stack_low = low;
+    return true;
+}
+
+void proc_shrink_stack(struct process *proc)
+{
+    // always keep 1 page:
+    if (proc->stack_low >= (USER_STACK_HIGH - PAGE_SIZE)) return;
+
+    size_t lowest_stack_page_used = PAGE_ROUND_DOWN(proc->trapframe->sp);
+    if (lowest_stack_page_used <= proc->stack_low) return;  // all pages in use
+
+    size_t npages = (lowest_stack_page_used - proc->stack_low) / PAGE_SIZE;
+
+    uvm_unmap(proc->pagetable, proc->stack_low, npages, true);
+    proc->stack_low = lowest_stack_page_used;
+}
+
 int either_copyout(bool addr_is_userspace, size_t dst, void *src, size_t len)
 {
     struct process *proc = get_current();

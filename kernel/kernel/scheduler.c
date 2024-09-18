@@ -26,6 +26,8 @@ void scheduler()
             {
                 struct cpu *this_cpu = get_cpu();
 
+                proc_shrink_stack(proc);
+
                 // Switch to chosen process.  It is the process's job
                 // to release its lock and then reacquire it
                 // before jumping back to us.
