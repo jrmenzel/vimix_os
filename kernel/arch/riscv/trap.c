@@ -4,6 +4,7 @@
 #include <arch/interrupts.h>
 #include <arch/riscv/asm/registers.h>
 #include <arch/riscv/sbi.h>
+#include <arch/riscv/scause.h>
 #include <arch/trap.h>
 #include <drivers/device.h>
 #include <drivers/uart16550.h>
@@ -26,15 +27,6 @@ extern char trampoline[], u_mode_trap_vector[], return_to_user_mode_asm[];
 /// in s_mode_trap_vector.S, calls kernel_mode_interrupt_handler().
 extern void s_mode_trap_vector();
 
-enum interrupt_source
-{
-    INTERRUPT_SOURCE_NOT_RECOGNIZED = 0,
-    INTERRUPT_SOURCE_OTHER_DEVICE = 1,
-    INTERRUPT_SOURCE_TIMER = 2,
-    INTERRUPT_SOURCE_SYSCALL = 3
-};
-enum interrupt_source interrupt_handler();
-
 void trap_init()
 {
     g_ticks = 0;
@@ -44,102 +36,6 @@ void trap_init()
 void set_s_mode_trap_vector()
 {
     cpu_set_s_mode_trap_vector(s_mode_trap_vector);
-}
-
-#define SCAUSE_INSTRUCTION_ADDR_MISALIGN 0
-#define SCAUSE_INSTRUCTION_ACCESS_FAULT 1
-#define SCAUSE_ILLEGAL_INSTRUCTION 2
-#define SCAUSE_BREAKPOINT 3
-#define SCAUSE_LOAD_ADDR_MISALIGNED 4
-#define SCAUSE_LOAD_ACCESS_FAULT 5
-#define SCAUSE_STORE_AMO_ADDR_MISALIGN 6
-#define SCAUSE_STORE_AMO_ACCESS_FAULT 7
-#define SCAUSE_ECALL_FROM_U_MODE 8
-#define SCAUSE_ECALL_FROM_S_MODE 9
-#define SCAUSE_INSTRUCTION_PAGE_FAULT 12
-#define SCAUSE_LOAD_PAGE_FAULT 13
-#define SCAUSE_STORE_AMO_PAGE_FAULT 15
-
-const char *scause_exception_code_to_string(xlen_t scause)
-{
-    switch (scause)
-    {
-        case SCAUSE_INSTRUCTION_ADDR_MISALIGN:
-            return "instuction address misaligned";
-        case SCAUSE_INSTRUCTION_ACCESS_FAULT: return "instruction access fault";
-        case SCAUSE_ILLEGAL_INSTRUCTION: return "illegal instruction";
-        case SCAUSE_BREAKPOINT: return "breakpoint";
-        case SCAUSE_LOAD_ADDR_MISALIGNED: return "load address misaligned";
-        case SCAUSE_LOAD_ACCESS_FAULT: return "load access fault";
-        case SCAUSE_STORE_AMO_ADDR_MISALIGN:
-            return "store/AMO address misaligned";
-        case SCAUSE_STORE_AMO_ACCESS_FAULT: return "store/AMO access fault";
-        case SCAUSE_ECALL_FROM_U_MODE: return "environment call from U-mode";
-        case SCAUSE_ECALL_FROM_S_MODE: return "environment call from S-mode";
-        case 10: return "reserved";
-        case 11: return "reserved";
-        case SCAUSE_INSTRUCTION_PAGE_FAULT: return "instruction page fault";
-        case SCAUSE_LOAD_PAGE_FAULT: return "load page fault";
-        case 14: return "reserved";
-        case SCAUSE_STORE_AMO_PAGE_FAULT: return "store/AMO page fault";
-        default: return "unknown scause";
-    };
-}
-
-void dump_scause()
-{
-    xlen_t scause = rv_read_csr_scause();
-    xlen_t stval = rv_read_csr_stval();
-
-    printk("scause (0x%p): %s\n", scause,
-           scause_exception_code_to_string(scause));
-    printk("sepc=0x%p stval=0x%p\n", rv_read_csr_sepc(), stval);
-
-    if (scause == SCAUSE_INSTRUCTION_PAGE_FAULT ||
-        scause == SCAUSE_LOAD_PAGE_FAULT ||
-        scause == SCAUSE_STORE_AMO_PAGE_FAULT)
-    {
-        printk("Tried to ");
-        if (scause == SCAUSE_INSTRUCTION_PAGE_FAULT)
-        {
-            printk("execute from");
-        }
-        else if (scause == SCAUSE_LOAD_PAGE_FAULT)
-        {
-            printk("read from");
-        }
-        else if (scause == SCAUSE_STORE_AMO_PAGE_FAULT)
-        {
-            printk("write to");
-        }
-        // stval is set to the offending memory address
-        printk(" address 0x%x%s\n", stval,
-               (stval ? "" : " (dereferenced NULL pointer)"));
-
-        struct process *proc = get_current();
-        if (proc)
-        {
-#if defined(_arch_is_64bit)
-            if (stval >= MAXVA)
-            {
-                printk("Address 0x%x larger than supported\n", stval);
-                return;
-            }
-#endif
-
-            pte_t *pte = vm_walk(proc->pagetable, stval, false);
-            if (!pte)
-            {
-                printk("Page of address 0x%x is not mapped\n", stval);
-            }
-            else
-            {
-                printk("Page of address 0x%x access: ", stval);
-                debug_vm_print_pte_flags(*pte);
-                printk("\n");
-            }
-        }
-    }
 }
 
 void dump_process_info(struct process *proc)
@@ -183,6 +79,9 @@ void dump_pre_int_kthread_state(size_t *stack)
     printk("a7  = 0x%x\n", stack[IDX_A7]);
 }
 
+void handle_timer_interrupt();
+void handle_plic_device_interrupt();
+
 /// Handle an interrupt, exception, or system call from user space.
 /// called from u_mode_trap_vector.S, first C function after storing the
 /// CPU state / registers in assembly.
@@ -197,16 +96,17 @@ void user_mode_interrupt_handler()
     // since we're now in the kernel.
     set_s_mode_trap_vector();
 
-    struct process *proc = get_current();
-
     // save user program counter.
+    struct process *proc = get_current();
     trapframe_set_program_counter(proc->trapframe, rv_read_csr_sepc());
 
-    enum interrupt_source int_src = interrupt_handler();
-    if (rv_read_csr_scause() == 8)
+    // exception / interrupt cause
+    xlen_t scause = rv_read_csr_scause();
+    bool yield_process = false;
+
+    if (scause == SCAUSE_ECALL_FROM_U_MODE)
     {
         // system call
-
         if (proc_is_killed(proc)) exit(-1);
 
         // sepc points to the ecall instruction,
@@ -219,15 +119,22 @@ void user_mode_interrupt_handler()
 
         syscall(proc);
     }
-    else if (int_src != INTERRUPT_SOURCE_NOT_RECOGNIZED)
+    else if (scause == SCAUSE_SUPERVISOR_SOFTWARE_INTERRUPT ||
+             scause == SCAUSE_SUPERVISOR_TIMER_INTERRUPT)
     {
-        // ok
+        handle_timer_interrupt();
+        yield_process = true;
+    }
+    else if (scause == SCAUSE_SUPERVISOR_EXTERNAL_INTERRUPT)
+    {
+        handle_plic_device_interrupt();
     }
     else
     {
         printk(
-            "\nFatal: unexpected scause/exception for pid=%d - killing "
-            "process\n",
+            "\nFatal: unexpected scause/exception in "
+            "user_mode_interrupt_handler()\n"
+            "Killing process with pid=%d\n",
             proc->pid);
         dump_scause();
         dump_process_info(proc);
@@ -240,8 +147,7 @@ void user_mode_interrupt_handler()
         exit(-1);
     }
 
-    // give up the CPU if this is a timer interrupt.
-    if (int_src == INTERRUPT_SOURCE_TIMER)
+    if (yield_process)
     {
         yield();
     }
@@ -308,16 +214,28 @@ void kernel_mode_interrupt_handler(size_t *stack)
     if ((sstatus & SSTATUS_SPP) == 0)
     {
         panic(
-            "kernel_mode_interrupt_handler called *not* from supervisor mode");
+            "kernel_mode_interrupt_handler was *not* called from supervisor "
+            "mode");
     }
     if (cpu_is_device_interrupts_enabled())
     {
         panic("kernel_mode_interrupt_handler: interrupts are still enabled");
     }
 
-    enum interrupt_source int_src = interrupt_handler();
+    xlen_t scause = rv_read_csr_scause();
+    bool yield_process = false;
 
-    if (int_src == INTERRUPT_SOURCE_NOT_RECOGNIZED)
+    if (scause == SCAUSE_SUPERVISOR_SOFTWARE_INTERRUPT ||
+        scause == SCAUSE_SUPERVISOR_TIMER_INTERRUPT)
+    {
+        handle_timer_interrupt();
+        yield_process = true;
+    }
+    else if (scause == SCAUSE_SUPERVISOR_EXTERNAL_INTERRUPT)
+    {
+        handle_plic_device_interrupt();
+    }
+    else
     {
         printk(
             "\nFatal: unhandled interrupt in "
@@ -327,9 +245,9 @@ void kernel_mode_interrupt_handler(size_t *stack)
         panic("kernel_mode_interrupt_handler");
     }
 
-    if (int_src == INTERRUPT_SOURCE_TIMER)
+    if (yield_process)
     {
-        // give up the CPU
+        // give up the CPU if a process is running
         struct process *proc = get_current();
         if (proc != NULL && proc->state == RUNNING)
         {
@@ -342,16 +260,6 @@ void kernel_mode_interrupt_handler(size_t *stack)
     // instruction.
     rv_write_csr_sepc(sepc);
     rv_write_csr_sstatus(sstatus);
-}
-
-void update_kernel_ticks()
-{
-    if (smp_processor_id() != 0) return;
-
-    spin_lock(&g_tickslock);
-    g_ticks++;
-    wakeup(&g_ticks);
-    spin_unlock(&g_tickslock);
 }
 
 void handle_plic_device_interrupt()
@@ -388,48 +296,27 @@ void handle_plic_device_interrupt()
     }
 }
 
-#if defined(_arch_is_32bit)
-const size_t SCAUSE_OTHER_DEVICE = 0x80000000L;
-const size_t SCAUSE_TIMER_DEVICE = 0x80000001L;
-const size_t SCAUSE_TIMER_EVENT = 0x80000005L;  // timer from SBI
-#else
-const size_t SCAUSE_OTHER_DEVICE = 0x8000000000000000L;
-const size_t SCAUSE_TIMER_DEVICE = 0x8000000000000001L;  // timer from M-Mode
-const size_t SCAUSE_TIMER_EVENT = 0x8000000000000005L;   // timer from SBI
-#endif
-
-/// check if it's an external interrupt or software interrupt,
-/// and handle it.
-enum interrupt_source interrupt_handler()
+void handle_timer_interrupt()
 {
-    xlen_t scause = rv_read_csr_scause();
-
-    if ((scause & SCAUSE_OTHER_DEVICE) && (scause & 0xff) == 9)
-    {
-        handle_plic_device_interrupt();
-        return INTERRUPT_SOURCE_OTHER_DEVICE;
-    }
-    else if (scause == SCAUSE_TIMER_DEVICE || scause == SCAUSE_TIMER_EVENT)
-    {
 #ifdef __ENABLE_SBI__
-        // if the kernel runs in an SBI environment, the timer for the next
-        // interrupt needs to be set here from S-Mode. If the kernel runs
-        // bare-metal the M-Mode interrupt handler has already reset the timer
-        // before triggering the S-Mode interrupt we are currently in (see
-        // m_mode_trap_vector.S).
-        sbi_set_timer();
+    // if the kernel runs in an SBI environment, the timer for the next
+    // interrupt needs to be set here from S-Mode. If the kernel runs
+    // bare-metal the M-Mode interrupt handler has already reset the timer
+    // before triggering the S-Mode interrupt we are currently in (see
+    // m_mode_trap_vector.S).
+    sbi_set_timer();
 #endif  // __ENABLE_SBI__
-        if (smp_processor_id() == 0)
-        {
-            update_kernel_ticks();
-        }
 
-        // acknowledge the software interrupt by clearing
-        // the SSIP bit in sip.
-        rv_write_csr_sip(rv_read_csr_sip() & ~2);
-
-        return INTERRUPT_SOURCE_TIMER;
+    // will only update on CPU 0
+    if (smp_processor_id() == 0)
+    {
+        spin_lock(&g_tickslock);
+        g_ticks++;
+        wakeup(&g_ticks);
+        spin_unlock(&g_tickslock);
     }
 
-    return INTERRUPT_SOURCE_NOT_RECOGNIZED;
+    // acknowledge the software interrupt by clearing
+    // the SSIP bit in sip.
+    rv_write_csr_sip(rv_read_csr_sip() & ~2);
 }

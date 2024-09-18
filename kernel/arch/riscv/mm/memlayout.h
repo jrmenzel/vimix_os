@@ -82,7 +82,7 @@
 #define PHYSTOP (KERNBASE + RAM_SIZE_IN_MB * 1024 * 1024)
 #endif  // __ENABLE_SBI__
 
-/// map the trampoline page to the (second) highest address,
+/// map the trampoline page to the highest address,
 /// in both user and kernel space.
 #if (__riscv_xlen == 32)
 #define TRAMPOLINE (0xFFFFF000)

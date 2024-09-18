@@ -21,6 +21,7 @@ OBJS = $(ARCH)/asm/entry.o \
 	$(ARCH)/plic.o \
 	$(ARCH)/context.o \
 	$(ARCH)/trap.o \
+	$(ARCH)/scause.o \
 	$(ARCH)/sbi.o \
 	$(ARCH)/reset.o \
 	drivers/device.o \
