@@ -9,16 +9,16 @@ For the [user space](../../userspace/userspace.md) [processes](../processes/proc
 
 ### Special pages mapped to fixed high locations
 
-| VA start  | VA end    | alias                | mapped from       | Permissions |
-| --------- | --------- | -------------------- | ----------------- | ----------- |
-| FFFF E000 | FFFF EFFF | TRAMPOLINE           | char trampoline[] | R, X        |
-| FFFF D000 | FFFF DFFF |                      |                   |             |
-| FFFF C000 | FFFF CFFF | proc 0 kernel stack  | kalloc()          | R, W        |
-| FFFF B000 | FFFF BFFF | (empty guard)        |                   |             |
-| FFFF A000 | FFFF AFFF | proc 1 kernel stack  | kalloc()          | R, W        |
-|           |           |                      |                   |             |
-| FFFB F000 | FFFB FFFF | proc 63 kernel stack | kalloc()          | R, W        |
-| FFFB E000 | FFFB EFFF | (empty guard)        |                   |             |
+| VA start  | VA end    | alias               | mapped from       | Permissions |
+| --------- | --------- | ------------------- | ----------------- | ----------- |
+| FFFF F000 | FFFF FFFF | TRAMPOLINE          | char trampoline[] | R, X        |
+| FFFF E000 | FFFF EFFF |                     |                   |             |
+| FFFF D000 | FFFF DFFF | proc 0 kernel stack | kalloc()          | R, W        |
+| FFFF C000 | FFFF CFFF | (empty guard)       |                   |             |
+| FFFF B000 | FFFF BFFF | proc 1 kernel stack | kalloc()          | R, W        |
+| FFFF A000 | FFFF AFFF | (empty guard)       |                   |             |
+| FFFF 9000 | FFFF 9FFF | proc 2 kernel stack | kalloc()          | R, W        |
+|           |           | ... to proc max     |                   |             |
 
 ### RAM (bare metal)
 
