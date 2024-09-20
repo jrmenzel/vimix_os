@@ -7,11 +7,7 @@
 // xlen_t is used where data is load/stored to registers
 // it has the same size as size_t
 //
-#if defined(_arch_is_32bit)
-typedef uint32_t xlen_t;
-#else
-typedef uint64_t xlen_t;
-#endif
+typedef size_t xlen_t;
 
 // Supervisor Status Register, sstatus
 #define SSTATUS_SPP (1L << 8)   // Previous mode, 1=Supervisor, 0=User

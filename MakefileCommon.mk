@@ -180,6 +180,10 @@ USER_SPACE_INC  = ../../usr/include     # /usr/include : general purpose C heade
 USER_SPACE_INC += ../../kernel/include  # OS public API, required for stdlib
 USER_SPACE_INC_PARAMS=$(foreach d, $(USER_SPACE_INC), -I$d)
 
+USER_SPACE_INC_HOST  = /usr/include
+USER_SPACE_INC_HOST_PARAMS=$(foreach d, $(USER_SPACE_INC_HOST), -I$d)
+
+
 TASK_COLOR  = \033[0;34m
 YELLOW      = \033[93m
 NO_COLOR    = \033[m

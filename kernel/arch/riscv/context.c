@@ -16,7 +16,7 @@ size_t trapframe_get_argument_register(struct trapframe *frame,
         case 5: return frame->a5;
     }
 
-    printk("unexpected register index: %d\n", register_index);
+    printk("unexpected register index: %zx\n", register_index);
     panic("trapframe_get_argument_register() called with wrong value");
     return 0xDEAD;
 }

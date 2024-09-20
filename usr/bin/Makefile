@@ -64,9 +64,10 @@ LDFLAGS+=--defsym=USER_TEXT_START=$(USER_TEXT_START)
 
 all: directories $(UPROGS) scripts
 
+# compiling apps for VIMIX
 $(B_BUILD_DIR)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) -c $< -o $@
+	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 $(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
@@ -107,6 +108,7 @@ clean: # delete build dir
 # binaries will end up in build/root_host/PATH_IN_VIMIX
 host: directories $(PROGS_HOST) # build supported apps for the host OS / architecture
 
+# compiling apps for the host
 $(B_DEPLOY_DIR_HOST)/%: %.c
 	@printf "$(TASK_COLOR)Compile for host: $(@)\n$(NO_COLOR)"
-	@$(CC_HOST) $(CFLAGS_HOST) -I/usr/include $< -o $@
+	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_HOST_PARAMS) $< -o $@

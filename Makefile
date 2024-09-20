@@ -6,9 +6,9 @@
 #
 include MakefileCommon.mk
 
-.PHONY: all directories kernel tools userspace_lib userspace userspace_host
+.PHONY: all directories kernel tools userspace_lib userspace host
 
-all: directories kernel tools userspace_lib userspace userspace_host $(BUILD_DIR)/filesystem.img
+all: directories kernel tools userspace_lib userspace host $(BUILD_DIR)/filesystem.img
 
 directories: # make build output directory
 	mkdir -p $(BUILD_DIR);
@@ -25,7 +25,7 @@ userspace_lib: # user space clib
 userspace: userspace_lib # user space apps and libs
 	$(MAKE) -C usr/bin all;
 
-userspace_host: # some user space apps for the host (Linux)
+host: # some user space apps for the host (Linux)
 	$(MAKE) -C usr/bin host; 
 
 # filesystem in a file containing userspace to run with qemu (kernel is set manually)

@@ -35,10 +35,10 @@ volatile size_t g_global_init_done = GLOBAL_INIT_NOT_STARTED;
 /// @brief print some debug info during boot
 void print_kernel_info()
 {
-    printk("%dKB of Kernel code\n", (size_t)(size_of_text) / 1024);
-    printk("%dKB of read only data\n", (size_t)(size_of_rodata) / 1024);
-    printk("%dKB of data\n", (size_t)(size_of_data) / 1024);
-    printk("%dKB of bss / uninitialized data\n", (size_t)(size_of_bss) / 1024);
+    printk("%zdKB of Kernel code\n", (size_t)(size_of_text) / 1024);
+    printk("%zdKB of read only data\n", (size_t)(size_of_rodata) / 1024);
+    printk("%zdKB of data\n", (size_t)(size_of_data) / 1024);
+    printk("%zdKB of bss / uninitialized data\n", (size_t)(size_of_bss) / 1024);
 }
 
 #ifdef __ENABLE_SBI__
@@ -113,11 +113,11 @@ void init_by_first_thread()
     userspace_init();  // first user process
 
 #ifdef CONFIG_DEBUG_KALLOC
-    printk("Memory used: %dkb - %dkb free\n",
+    printk("Memory used: %zdkb - %zdkb free\n",
            kalloc_debug_get_allocation_count() * 4,
            kalloc_get_free_memory() / 1024);
 #else
-    printk("%dkb free\n", kalloc_get_free_memory() / 1024);
+    printk("%zdkb free\n", kalloc_get_free_memory() / 1024);
 #endif  // CONFIG_DEBUG_KALLOC
 
     // full memory barrier (gcc buildin):
@@ -139,7 +139,7 @@ void main(void *device_tree, size_t is_first_thread)
             __sync_synchronize();
         }
     }
-    printk("hart %d starting %s\n", smp_processor_id(),
+    printk("hart %zd starting %s\n", smp_processor_id(),
            (is_first_thread ? "(init hart)" : ""));
 
     kvm_init_per_cpu();        // turn on paging

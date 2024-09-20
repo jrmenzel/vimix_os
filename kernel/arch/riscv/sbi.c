@@ -98,7 +98,7 @@ void init_sbi()
     long major =
         (version >> SBI_SPEC_VERSION_MAJOR_SHIFT) & SBI_SPEC_VERSION_MAJOR_MASK;
     long minor = version & SBI_SPEC_VERSION_MINOR_MASK;
-    printk("SBI specification v%d.%d detected\n", major, minor);
+    printk("SBI specification v%ld.%ld detected\n", major, minor);
 
     if (sbi_probe_extension(SBI_EXT_ID_TIME) > 0)
     {

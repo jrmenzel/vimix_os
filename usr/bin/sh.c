@@ -67,7 +67,7 @@ struct backcmd
 };
 
 int fork1();  // Fork but panics on failure.
-void panic(char *);
+void sh_panic(char *);
 struct cmd *parsecmd(char *);
 void runcmd(struct cmd *) __attribute__((noreturn));
 
@@ -129,7 +129,7 @@ void runcmd(struct cmd *cmd)
 
     switch (cmd->type)
     {
-        default: panic("runcmd");
+        default: sh_panic("runcmd");
 
         case EXEC: execute_command((struct execcmd *)cmd); break;
 
@@ -157,7 +157,7 @@ void runcmd(struct cmd *cmd)
 
         case PIPE:
             pcmd = (struct pipecmd *)cmd;
-            if (pipe(p) < 0) panic("pipe");
+            if (pipe(p) < 0) sh_panic("pipe");
             if (fork1() == 0)
             {
                 close(1);
@@ -280,7 +280,7 @@ int main(int argc, const char *argv[])
     return 0;
 }
 
-void panic(char *s)
+void sh_panic(char *s)
 {
     fprintf(stderr, "%s\n", s);
     exit(1);
@@ -289,7 +289,7 @@ void panic(char *s)
 int fork1()
 {
     pid_t pid = fork();
-    if (pid == -1) panic("fork");
+    if (pid == -1) sh_panic("fork");
     return pid;
 }
 
@@ -422,7 +422,7 @@ struct cmd *parsecmd(char *s)
     if (s != es)
     {
         fprintf(stderr, "leftovers: %s\n", s);
-        panic("syntax");
+        sh_panic("syntax");
     }
     nulterminate(cmd);
     return cmd;
@@ -468,7 +468,7 @@ struct cmd *parseredirs(struct cmd *cmd, char **ps, char *es)
     {
         tok = gettoken(ps, es, 0, 0);
         if (gettoken(ps, es, &q, &eq) != 'a')
-            panic("missing file for redirection");
+            sh_panic("missing file for redirection");
         switch (tok)
         {
             case '<': cmd = redircmd(cmd, q, eq, O_RDONLY, 0); break;
@@ -487,10 +487,10 @@ struct cmd *parseblock(char **ps, char *es)
 {
     struct cmd *cmd;
 
-    if (!peek(ps, es, "(")) panic("parseblock");
+    if (!peek(ps, es, "(")) sh_panic("parseblock");
     gettoken(ps, es, 0, 0);
     cmd = parseline(ps, es);
-    if (!peek(ps, es, ")")) panic("syntax - missing )");
+    if (!peek(ps, es, ")")) sh_panic("syntax - missing )");
     gettoken(ps, es, 0, 0);
     cmd = parseredirs(cmd, ps, es);
     return cmd;
@@ -513,11 +513,11 @@ struct cmd *parseexec(char **ps, char *es)
     while (!peek(ps, es, "|)&;"))
     {
         if ((tok = gettoken(ps, es, &q, &eq)) == 0) break;
-        if (tok != 'a') panic("syntax");
+        if (tok != 'a') sh_panic("syntax");
         cmd->argv[argc] = q;
         cmd->eargv[argc] = eq;
         argc++;
-        if (argc >= MAX_EXEC_ARGSS) panic("too many args");
+        if (argc >= MAX_EXEC_ARGSS) sh_panic("too many args");
         ret = parseredirs(ret, ps, es);
     }
     cmd->argv[argc] = 0;

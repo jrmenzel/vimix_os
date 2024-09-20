@@ -614,7 +614,7 @@ void debug_print_pt_level(pagetable_t pagetable, size_t level,
             {
                 printk("-");
             }
-            printk(" %d: pa: 0x%x ", i, PTE2PA(pte));
+            printk(" %zd: pa: 0x%zx ", i, PTE2PA(pte));
             debug_vm_print_pte_flags(pte);
 
             size_t va = partial_va | VA_FROM_PAGE_TABLE_INDEX(level, i);
@@ -627,7 +627,7 @@ void debug_print_pt_level(pagetable_t pagetable, size_t level,
             }
             else
             {
-                printk(" - va: 0x%x\n", va);
+                printk(" - va: 0x%zx\n", va);
             }
         }
         else
@@ -639,7 +639,7 @@ void debug_print_pt_level(pagetable_t pagetable, size_t level,
 
 void debug_vm_print_page_table(pagetable_t pagetable)
 {
-    printk("page table 0x%x\n", pagetable);
+    printk("page table 0x%p\n", pagetable);
     debug_print_pt_level(pagetable, PAGE_TABLE_MAX_LEVELS - 1, 0);
 }
 #endif  // DEBUG

@@ -11,6 +11,7 @@
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include "libasm.h"
 
 // usertests has access to the internal kernel API:
 #include <kernel/fs.h>
@@ -81,7 +82,7 @@ void copyin(char *s)
         ssize_t n = write(fd, (void *)addr, 8192);
         if (n >= 0)
         {
-            printf("write(fd, %p, 8192) returned %d, not -1\n", addr, n);
+            printf("write(fd, %p, 8192) returned %zd, not -1\n", addr, n);
             exit(1);
         }
         close(fd);
@@ -90,7 +91,7 @@ void copyin(char *s)
         n = write(1, (char *)addr, 8192);
         if (n > 0)
         {
-            printf("write(1, %p, 8192) returned %d, not -1 or 0\n", addr, n);
+            printf("write(1, %p, 8192) returned %zd, not -1 or 0\n", addr, n);
             exit(1);
         }
 
@@ -103,7 +104,8 @@ void copyin(char *s)
         n = write(fds[1], (char *)addr, 8192);
         if (n > 0)
         {
-            printf("write(pipe, %p, 8192) returned %d, not -1 or 0\n", addr, n);
+            printf("write(pipe, %p, 8192) returned %zd, not -1 or 0\n", addr,
+                   n);
             exit(1);
         }
         close(fds[0]);
@@ -128,7 +130,7 @@ void copyout(char *s)
         ssize_t n = read(fd, (void *)addr, 8192);
         if (n > 0)
         {
-            printf("read(fd, %p, 8192) returned %d, not -1 or 0\n", addr, n);
+            printf("read(fd, %p, 8192) returned %zd, not -1 or 0\n", addr, n);
             exit(1);
         }
         close(fd);
@@ -148,7 +150,7 @@ void copyout(char *s)
         n = read(fds[0], (void *)addr, 8192);
         if (n > 0)
         {
-            printf("read(pipe, %p, 8192) returned %d, not -1 or 0\n", addr, n);
+            printf("read(pipe, %p, 8192) returned %zd, not -1 or 0\n", addr, n);
             exit(1);
         }
         close(fds[0]);
@@ -306,7 +308,7 @@ void copyinstr3(char *s)
 // application doesn't have anymore, because it returned it.
 void rwsbrk()
 {
-    long page_size = sysconf(_SC_PAGE_SIZE);
+    size_t page_size = (size_t)sysconf(_SC_PAGE_SIZE);
     size_t a = (size_t)sbrk(2 * page_size);
     const size_t SYSCALL_ERROR = TEST_PTR_MAX_ADDRESS;
 
@@ -332,7 +334,7 @@ void rwsbrk()
     ssize_t n = write(fd, (void *)(a + page_size), 1024);
     if (n >= 0)
     {
-        printf("write(fd, %p, 1024) returned %d, not -1\n", a + page_size, n);
+        printf("write(fd, %zx, 1024) returned %zd, not -1\n", a + page_size, n);
         exit(1);
     }
     close(fd);
@@ -347,7 +349,7 @@ void rwsbrk()
     n = read(fd, (void *)(a + page_size), 10);
     if (n >= 0)
     {
-        printf("read(fd, %p, 10) returned %d, not -1\n", a + page_size, n);
+        printf("read(fd, %zx, 10) returned %zd, not -1\n", a + page_size, n);
         exit(1);
     }
     close(fd);
@@ -369,7 +371,7 @@ void truncate1(char *s)
     ssize_t n = read(fd2, buf, sizeof(buf));
     if (n != 4)
     {
-        printf("%s: read %ld bytes, wanted 4\n", s, n);
+        printf("%s: read %zd bytes, wanted 4\n", s, n);
         exit(1);
     }
 
@@ -380,7 +382,7 @@ void truncate1(char *s)
     if (n != 0)
     {
         printf("aaa fd3=%d\n", fd3);
-        printf("%s: read %ld bytes, wanted 0\n", s, n);
+        printf("%s: read %zd bytes, wanted 0\n", s, n);
         exit(1);
     }
 
@@ -388,7 +390,7 @@ void truncate1(char *s)
     if (n != 0)
     {
         printf("bbb fd2=%d\n", fd2);
-        printf("%s: read %ld bytes, wanted 0\n", s, n);
+        printf("%s: read %zd bytes, wanted 0\n", s, n);
         exit(1);
     }
 
@@ -397,14 +399,14 @@ void truncate1(char *s)
     n = read(fd3, buf, sizeof(buf));
     if (n != 6)
     {
-        printf("%s: read %ld bytes, wanted 6\n", s, n);
+        printf("%s: read %zd bytes, wanted 6\n", s, n);
         exit(1);
     }
 
     n = read(fd2, buf, sizeof(buf));
     if (n != 2)
     {
-        printf("%s: read %ld bytes, wanted 2\n", s, n);
+        printf("%s: read %zd bytes, wanted 2\n", s, n);
         exit(1);
     }
 
@@ -431,7 +433,7 @@ void truncate2(char *s)
     ssize_t n = write(fd1, "x", 1);
     if (n != -1)
     {
-        printf("%s: write returned %ld, expected -1\n", s, n);
+        printf("%s: write returned %zd, expected -1\n", s, n);
         exit(1);
     }
 
@@ -465,7 +467,7 @@ void truncate3(char *s)
             ssize_t n = write(fd, "1234567890", 10);
             if (n != 10)
             {
-                printf("%s: write got %ld, expected 10\n", s, n);
+                printf("%s: write got %zd, expected 10\n", s, n);
                 exit(1);
             }
             close(fd);
@@ -487,7 +489,7 @@ void truncate3(char *s)
         ssize_t n = write(fd, "xxx", 3);
         if (n != 3)
         {
-            printf("%s: write got %ld, expected 3\n", s, n);
+            printf("%s: write got %zd, expected 3\n", s, n);
             exit(1);
         }
         close(fd);
@@ -641,12 +643,12 @@ void writetest(char *s)
     {
         if (write(fd, "aaaaaaaaaa", SZ) != SZ)
         {
-            printf("%s: error: write aa %ld new file failed\n", s, i);
+            printf("%s: error: write aa %zd new file failed\n", s, i);
             exit(1);
         }
         if (write(fd, "bbbbbbbbbb", SZ) != SZ)
         {
-            printf("%s: error: write bb %ld new file failed\n", s, i);
+            printf("%s: error: write bb %zd new file failed\n", s, i);
             exit(1);
         }
     }
@@ -686,7 +688,7 @@ void writebig(char *s)
         ((int *)buf)[0] = i;
         if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
         {
-            printf("%s: error: write big file failed\n", s, i);
+            printf("%s: error: write big file failed in loop %zd\n", s, i);
             exit(1);
         }
     }
@@ -708,19 +710,19 @@ void writebig(char *s)
         {
             if (blocks_read != MAXFILE)
             {
-                printf("%s: read only %d blocks from big", s, blocks_read);
+                printf("%s: read only %zd blocks from big", s, blocks_read);
                 exit(1);
             }
             break;
         }
         else if (i != BLOCK_SIZE)
         {
-            printf("%s: read failed %d\n", s, i);
+            printf("%s: read failed %zd\n", s, i);
             exit(1);
         }
         if (((int *)buf)[0] != blocks_read)
         {
-            printf("%s: read content of block %d is %d\n", s, blocks_read,
+            printf("%s: read content of block %zd is %d\n", s, blocks_read,
                    ((int *)buf)[0]);
             exit(1);
         }
@@ -926,7 +928,7 @@ void pipe1(char *s)
 
         if (total != N * SZ)
         {
-            printf("%s: pipe1 oops 3 total %d\n", total);
+            printf("%s: pipe1 oops 3 total %zd\n", s, total);
             exit(1);
         }
         close(fds[0]);
@@ -1395,7 +1397,7 @@ void fourfiles(char *s)
         pid_t pid = fork();
         if (pid < 0)
         {
-            printf("fork failed\n", s);
+            printf("%s: fork failed\n", s);
             exit(1);
         }
 
@@ -1414,7 +1416,7 @@ void fourfiles(char *s)
                 ssize_t n = write(fd, buf, SZ);
                 if (n != SZ)
                 {
-                    printf("write failed %d\n", n);
+                    printf("write failed %zd\n", n);
                     exit(1);
                 }
             }
@@ -1442,7 +1444,7 @@ void fourfiles(char *s)
             {
                 if (buf[j] != '0' + i)
                 {
-                    printf("wrong char\n", s);
+                    printf("%s: wrong char\n", s);
                     exit(1);
                 }
             }
@@ -1880,7 +1882,7 @@ void subdir(char *s)
 
     if (link("dd/dd/ff", "dd/dd/ffff") != 0)
     {
-        printf("link dd/dd/ff dd/dd/ffff failed\n", s);
+        printf("%s: link dd/dd/ff dd/dd/ffff failed\n", s);
         exit(1);
     }
 
@@ -2056,7 +2058,7 @@ void bigwrite(char *s)
             ssize_t cc = write(fd, buf, sz);
             if (cc != sz)
             {
-                printf("%s: write(%ld) ret %ld\n", s, sz, cc);
+                printf("%s: write(%zd) ret %zd\n", s, sz, cc);
                 exit(1);
             }
         }
@@ -2428,7 +2430,8 @@ void sbrkbasic(char *s)
         b = sbrk(1);
         if (b != a)
         {
-            printf("%s: sbrk test failed %d %x %x\n", s, i, a, b);
+            printf("%s: sbrk test failed %zd %p %p\n", s, i, (void *)a,
+                   (void *)b);
             exit(1);
         }
         *b = 1;
@@ -2498,8 +2501,8 @@ void sbrkmuch(char *s)
     c = sbrk(0);
     if (c != a - page_size)
     {
-        printf("%s: sbrk deallocation produced wrong address, a %x c %x\n", s,
-               a, c);
+        printf("%s: sbrk deallocation produced wrong address, a %p c %p\n", s,
+               (void *)a, (void *)c);
         exit(1);
     }
 
@@ -2508,7 +2511,8 @@ void sbrkmuch(char *s)
     c = sbrk(page_size);
     if (c != a || sbrk(0) != a + page_size)
     {
-        printf("%s: sbrk re-allocation failed, a %x c %x\n", s, a, c);
+        printf("%s: sbrk re-allocation failed, a %p c %p\n", s, (void *)a,
+               (void *)c);
         exit(1);
     }
     if (*lastaddr == 99)
@@ -2522,7 +2526,8 @@ void sbrkmuch(char *s)
     c = sbrk(-((char *)sbrk(0) - oldbrk));
     if (c != a)
     {
-        printf("%s: sbrk downsize failed, a %x c %x\n", s, a, c);
+        printf("%s: sbrk downsize failed, a %p c %p\n", s, (void *)a,
+               (void *)c);
         exit(1);
     }
 }
@@ -2541,7 +2546,7 @@ void kernmem(char *s)
         }
         if (pid == 0)
         {
-            printf("%s: oops could read %x = %x\n", s, a, *a);
+            printf("%s: oops could read %p = %c\n", s, (void *)a, *a);
             exit(1);
         }
         int32_t xstatus;
@@ -2847,13 +2852,6 @@ void argptest(char *s)
     close(fd);
 }
 
-static inline size_t read_stack_pointer()
-{
-    size_t x;
-    asm volatile("mv %0, sp" : "=r"(x));
-    return x;
-}
-
 // check that there's an invalid page beneath
 // the user stack, to catch stack overflow.
 void stack_overflow(char *s)
@@ -2862,10 +2860,10 @@ void stack_overflow(char *s)
     long page_size = sysconf(_SC_PAGE_SIZE);
     if (pid == 0)
     {
-        char *sp = (char *)read_stack_pointer();
+        char *sp = (char *)asm_read_stack_pointer();
         sp -= page_size;
         // the *sp should cause a trap.
-        printf("%s: stack_overflow: read below stack %p\n", s, *sp);
+        printf("%s: stack_overflow: read below stack %c\n", s, *sp);
         exit(1);
     }
     else if (pid < 0)
@@ -2893,10 +2891,10 @@ void stack_underflow(char *s)
     long page_size = sysconf(_SC_PAGE_SIZE);
     if (pid == 0)
     {
-        char *sp = (char *)read_stack_pointer();
+        char *sp = (char *)asm_read_stack_pointer();
         sp += page_size;
         // the *sp should cause a trap.
-        printf("%s: stack_underflow: read above stack %p\n", s, *sp);
+        printf("%s: stack_underflow: read above stack %c\n", s, *sp);
         exit(1);
     }
     else if (pid < 0)
@@ -3166,7 +3164,7 @@ void dev_zero(char *s)
         {
             if (buf[j] != 0)
             {
-                printf("%s: read of /dev/zero did not return 0 at pos %ld\n", s,
+                printf("%s: read of /dev/zero did not return 0 at pos %zd\n", s,
                        j);
                 exit(1);
             }
@@ -3334,7 +3332,7 @@ void manywrites(char *s)
                     ssize_t cc = write(fd, buf, sz);
                     if (cc != sz)
                     {
-                        printf("%s: write(%ld) ret %ld\n", s, sz, cc);
+                        printf("%s: write(%zd) ret %zd\n", s, sz, cc);
                         exit(1);
                     }
                     close(fd);
@@ -3599,21 +3597,19 @@ int run(void f(char *), char *s)
         f(s);
         exit(0);
     }
+
+    int32_t xstatus;
+    wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
+    if (xstatus != 0)
+    {
+        printf("FAILED\n");
+    }
     else
     {
-        int32_t xstatus;
-        wait(&xstatus);
-        xstatus = WEXITSTATUS(xstatus);
-        if (xstatus != 0)
-        {
-            printf("FAILED\n");
-        }
-        else
-        {
-            printf("OK\n");
-        }
-        return xstatus == 0;
+        printf("OK\n");
     }
+    return xstatus == 0;
 }
 
 int runtests(struct test *tests, char *justone)

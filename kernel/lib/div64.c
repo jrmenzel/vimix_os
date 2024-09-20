@@ -6,7 +6,7 @@
 
 /// @brief unsigned 64-bit division on 32-bit platforms
 /// See https://en.wikipedia.org/wiki/Division_algorithm
-long long div_u64(long long n, long long d, long long *r)
+long long div_u64(unsigned long long n, unsigned long long d, long long *r)
 {
     long long quot = 0;
     long long rem = 0;
@@ -77,4 +77,17 @@ long long __moddi3(long long n, long long d)
     long long r;
     div_64(n, d, &r);
     return r;
+}
+
+unsigned long long __udivdi3(unsigned long long n, unsigned long long d)
+{
+    long long r;
+    return div_u64(n, d, &r);
+}
+
+unsigned long long __umoddi3(unsigned long long n, unsigned long long d)
+{
+    long long r;
+    div_u64(n, d, &r);
+    return (unsigned long long)r;
 }

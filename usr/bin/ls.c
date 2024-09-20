@@ -113,7 +113,7 @@ void print_padded(size_t value, size_t min_chars_wide, bool min_one_space)
         }
     }
 
-    printf("%ld", value);
+    printf("%zd", value);
 }
 
 int print_file(const char *file_name, const char *full_path,

@@ -425,7 +425,7 @@ void exit(int32_t status)
             panic("initcode.S could not load /usr/bin/init - check filesystem");
         }
 
-        printk("/usr/bin/init returned: %d\n", return_value);
+        printk("/usr/bin/init returned: %zd\n", return_value);
         panic("/usr/bin/init should not have returned");
     }
 

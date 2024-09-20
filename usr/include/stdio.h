@@ -19,10 +19,11 @@ extern FILE *stderr;
 /// @brief print formatted
 /// @param format
 /// @return
-int printf(const char *format, ...);
+int printf(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
 /// print to file
-int fprintf(FILE *stream, const char *format, ...);
+int fprintf(FILE *stream, const char *format, ...)
+    __attribute__((format(printf, 2, 3)));
 
 /// @brief Gets the file descriptor as an int.
 /// @param stream file to get the descriptor from

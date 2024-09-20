@@ -11,9 +11,9 @@ void dump_scause()
     xlen_t scause = rv_read_csr_scause();
     xlen_t stval = rv_read_csr_stval();
 
-    printk("scause (0x%p): %s\n", scause,
+    printk("scause (0x%zx): %s\n", scause,
            scause_exception_code_to_string(scause));
-    printk("sepc=0x%p stval=0x%p\n", rv_read_csr_sepc(), stval);
+    printk("sepc: 0x%zx stval: 0x%zx\n", rv_read_csr_sepc(), stval);
 
     if (scause == SCAUSE_INSTRUCTION_PAGE_FAULT ||
         scause == SCAUSE_LOAD_PAGE_FAULT ||
@@ -33,8 +33,8 @@ void dump_scause()
             printk("write to");
         }
         // stval is set to the offending memory address
-        printk(" address 0x%x%s\n", stval,
-               (stval ? "" : " (dereferenced NULL pointer)"));
+        printk(" address 0x%zx %s\n", stval,
+               (stval ? "" : "(dereferenced NULL pointer)"));
 
         struct process *proc = get_current();
         if (proc)
@@ -42,7 +42,7 @@ void dump_scause()
 #if defined(_arch_is_64bit)
             if (stval >= MAXVA)
             {
-                printk("Address 0x%x larger than supported\n", stval);
+                printk("Address 0x%zx larger than supported\n", stval);
                 return;
             }
 #endif
@@ -50,11 +50,11 @@ void dump_scause()
             pte_t *pte = vm_walk(proc->pagetable, stval, false);
             if (!pte)
             {
-                printk("Page of address 0x%x is not mapped\n", stval);
+                printk("Page of address 0x%zx is not mapped\n", stval);
             }
             else
             {
-                printk("Page of address 0x%x access: ", stval);
+                printk("Page of address 0x%zx access: ", stval);
                 debug_vm_print_pte_flags(*pte);
                 printk("\n");
             }

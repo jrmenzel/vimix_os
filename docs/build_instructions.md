@@ -47,7 +47,7 @@ The file `param.h` sets various system values like the maximum supported CPUs or
 
 Some [user space](userspace/userspace.md) apps compile on the host (tested on Linux).
 
-> make userspace_host
+> make host
 
 The binaries end up in `build/root_host`. See `.vscode/launch.json` on how to debug them running on the host.
 

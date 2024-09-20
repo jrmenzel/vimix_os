@@ -8,21 +8,18 @@
 
 #if defined(_arch_is_32bit)
 // 32 bit
-typedef int32_t _printIntType;
-typedef uint32_t _printUIntType;
 #define _MAX_PRINT_INT_DEC_VALUE 1000000000
 #define _MAX_PRINT_UINT_DEC_VALUE 1000000000
 #define _MAX_PRINT_UINT_HEX_VALUE 0x10000000
 #else
 // 64 bit
-typedef int64_t _printIntType;
-typedef uint64_t _printUIntType;
 #define _MAX_PRINT_INT_DEC_VALUE 1000000000000000000
 #define _MAX_PRINT_UINT_DEC_VALUE 1000000000000000000
 #define _MAX_PRINT_UINT_HEX_VALUE 0x1000000000000000
 #endif
 
-int32_t print_signed_int(_PUT_CHAR_FP func, size_t payload, _printIntType value)
+int32_t print_signed_long_long(_PUT_CHAR_FP func, size_t payload,
+                               long long value)
 {
     // 64bit:
     // -9,223,372,036,854,775,808..9,223,372,036,854,775,807
@@ -38,15 +35,15 @@ int32_t print_signed_int(_PUT_CHAR_FP func, size_t payload, _printIntType value)
     }
 
     bool print = false;
-    for (_printIntType i = _MAX_PRINT_INT_DEC_VALUE; i > 0; i /= 10)
+    for (size_t i = _MAX_PRINT_INT_DEC_VALUE; i > 0; i /= 10)
     {
         if (i == 1)
         {
             print = true;
         }
 
-        _printIntType tmp = value / i;
-        _printIntType rem = tmp % 10;
+        long long tmp = value / i;
+        long long rem = tmp % 10;
         if (rem < 0)
         {
             rem *= -1;
@@ -62,21 +59,33 @@ int32_t print_signed_int(_PUT_CHAR_FP func, size_t payload, _printIntType value)
     return charsWritten;
 }
 
-int32_t print_unsigned_int(_PUT_CHAR_FP func, size_t payload,
-                           _printUIntType value)
+static const inline int32_t print_signed_int(_PUT_CHAR_FP func, size_t payload,
+                                             int value)
+{
+    return print_signed_long_long(func, payload, (long long)value);
+}
+
+static const inline int32_t print_signed_long(_PUT_CHAR_FP func, size_t payload,
+                                              long value)
+{
+    return print_signed_long_long(func, payload, (long long)value);
+}
+
+int32_t print_unsigned_long_long(_PUT_CHAR_FP func, size_t payload,
+                                 unsigned long long value)
 {
     int32_t charsWritten = 0;
 
     bool print = false;
-    for (_printUIntType i = _MAX_PRINT_UINT_DEC_VALUE; i > 0; i /= 10)
+    for (size_t i = _MAX_PRINT_UINT_DEC_VALUE; i > 0; i /= 10)
     {
         if (i == 1)
         {
             print = true;
         }
 
-        _printUIntType tmp = value / i;
-        _printUIntType rem = tmp % 10;
+        unsigned long long tmp = value / i;
+        unsigned long long rem = tmp % 10;
         if (rem > 0 || print)
         {
             print = true;
@@ -88,23 +97,37 @@ int32_t print_unsigned_int(_PUT_CHAR_FP func, size_t payload,
     return charsWritten;
 }
 
-int32_t print_unsigned_hex(_PUT_CHAR_FP func, size_t payload,
-                           _printUIntType value, bool upperCase)
+static const inline int32_t print_unsigned_int(_PUT_CHAR_FP func,
+                                               size_t payload,
+                                               unsigned int value)
+{
+    return print_unsigned_long_long(func, payload, (unsigned long long)value);
+}
+
+static const inline int32_t print_unsigned_long(_PUT_CHAR_FP func,
+                                                size_t payload,
+                                                unsigned long value)
+{
+    return print_unsigned_long_long(func, payload, (unsigned long long)value);
+}
+
+int32_t print_unsigned_hex(_PUT_CHAR_FP func, size_t payload, size_t value,
+                           bool upperCase)
 {
     int32_t charsWritten = 0;
 
     int32_t asciiOffset = upperCase ? 'A' : 'a';
 
     bool print = false;
-    for (_printUIntType i = _MAX_PRINT_UINT_HEX_VALUE; i > 0; i /= 16)
+    for (size_t i = _MAX_PRINT_UINT_HEX_VALUE; i > 0; i /= 16)
     {
         if (i == 1)
         {
             print = true;
         }
 
-        _printUIntType tmp = value / i;
-        _printUIntType rem = tmp % 16;
+        size_t tmp = value / i;
+        size_t rem = tmp % 16;
         if (rem > 0 || print)
         {
             print = true;
@@ -157,37 +180,75 @@ int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char *format,
             {
                 break;
             }
-            else if ((*format == 'd') || (*format == 'i'))
+
+            // can be l or ll
+            int32_t length_mod = 0;
+            for (size_t i = 0; i < 2; ++i)
             {
-                _printIntType value = va_arg(vl, _printIntType);
-                charsWritten += print_signed_int(func, payload, value);
+                if (*format == 'l')
+                {
+                    format++;
+                    length_mod++;
+                }
             }
-            else if ((*format == 'l') && (*(format + 1) == 'd'))
+            if (*format == 'L')
             {
-                long int value = va_arg(vl, long int);
-                charsWritten +=
-                    print_signed_int(func, payload, (_printIntType)value);
                 format++;
+                length_mod = 2;  // L = ll
+            }
+            if (*format == 'z')
+            {
+                format++;
+                length_mod = 1;  // size_t = unsigned long int, 32 or 64 bit
+            }
+
+            if ((*format == 'd') || (*format == 'i'))
+            {
+                switch (length_mod)
+                {
+                    case 0:
+                        charsWritten +=
+                            print_signed_int(func, payload, va_arg(vl, int));
+                        break;
+                    case 1:
+                        charsWritten +=
+                            print_signed_long(func, payload, va_arg(vl, long));
+                        break;
+                    case 2:
+                    default:
+                        charsWritten += print_signed_long_long(
+                            func, payload, va_arg(vl, long long));
+                }
             }
             else if (*format == 'u')
             {
-                _printUIntType value = va_arg(vl, _printUIntType);
-                charsWritten += print_unsigned_int(func, payload, value);
+                switch (length_mod)
+                {
+                    case 0:
+                        charsWritten += print_unsigned_int(
+                            func, payload, va_arg(vl, unsigned int));
+                        break;
+                    case 1:
+                        charsWritten += print_unsigned_long(
+                            func, payload, va_arg(vl, unsigned long));
+                        break;
+                    case 2:
+                    default:
+                        charsWritten += print_unsigned_long_long(
+                            func, payload, va_arg(vl, unsigned long long));
+                }
             }
-            else if (*format == 'x')
+            else if ((*format == 'x') || (*format == 'X'))
             {
-                _printUIntType value = va_arg(vl, _printUIntType);
-                charsWritten += print_unsigned_hex(func, payload, value, false);
-            }
-            else if (*format == 'X')
-            {
-                _printUIntType value = va_arg(vl, _printUIntType);
-                charsWritten += print_unsigned_hex(func, payload, value, true);
+                unsigned int value = va_arg(vl, unsigned int);
+                charsWritten +=
+                    print_unsigned_hex(func, payload, (size_t)value, false);
             }
             else if (*format == 'p')
             {
-                _printUIntType value = va_arg(vl, _printUIntType);
-                charsWritten += print_unsigned_hex(func, payload, value, false);
+                void *value = va_arg(vl, void *);
+                charsWritten +=
+                    print_unsigned_hex(func, payload, (size_t)value, false);
             }
             else if (*format == 's')
             {

@@ -43,14 +43,14 @@ void dump_process_info(struct process *proc)
     struct trapframe *tf = proc->trapframe;
     printk("Process: %s\n", proc->name);
     // clang-format off
-    printk("ra:  0x%x; s0: 0x%x; a0: 0x%x; t0: 0x%x\n", tf->ra,  tf->s0, tf->a0, tf->t0);
-    printk("sp:  0x%x; s1: 0x%x; a1: 0x%x; t1: 0x%x\n", tf->sp,  tf->s1, tf->a1, tf->t1);
-    printk("gp:  0x%x; s2: 0x%x; a2: 0x%x; t2: 0x%x\n", tf->gp,  tf->s2, tf->a2, tf->t2);
-    printk("tp:  0x%x; s3: 0x%x; a3: 0x%x; t3: 0x%x\n", tf->tp,  tf->s3, tf->a3, tf->t3);
-    printk("s8:  0x%x; s4: 0x%x; a4: 0x%x; t4: 0x%x\n", tf->s8,  tf->s4, tf->a4, tf->t4);
-    printk("s9:  0x%x; s5: 0x%x; a5: 0x%x; t5: 0x%x\n", tf->s9,  tf->s5, tf->a5, tf->t5);
-    printk("s10: 0x%x; s6: 0x%x; a6: 0x%x; t6: 0x%x\n", tf->s10, tf->s6, tf->a6, tf->t6);
-    printk("s11: 0x%x; s7: 0x%x; a7: 0x%x\n",           tf->s11, tf->s7, tf->a7);
+    printk("ra:  0x%zx; s0: 0x%zx; a0: 0x%zx; t0: 0x%zx\n", tf->ra,  tf->s0, tf->a0, tf->t0);
+    printk("sp:  0x%zx; s1: 0x%zx; a1: 0x%zx; t1: 0x%zx\n", tf->sp,  tf->s1, tf->a1, tf->t1);
+    printk("gp:  0x%zx; s2: 0x%zx; a2: 0x%zx; t2: 0x%zx\n", tf->gp,  tf->s2, tf->a2, tf->t2);
+    printk("tp:  0x%zx; s3: 0x%zx; a3: 0x%zx; t3: 0x%zx\n", tf->tp,  tf->s3, tf->a3, tf->t3);
+    printk("s8:  0x%zx; s4: 0x%zx; a4: 0x%zx; t4: 0x%zx\n", tf->s8,  tf->s4, tf->a4, tf->t4);
+    printk("s9:  0x%zx; s5: 0x%zx; a5: 0x%zx; t5: 0x%zx\n", tf->s9,  tf->s5, tf->a5, tf->t5);
+    printk("s10: 0x%zx; s6: 0x%zx; a6: 0x%zx; t6: 0x%zx\n", tf->s10, tf->s6, tf->a6, tf->t6);
+    printk("s11: 0x%zx; s7: 0x%zx; a7: 0x%zx\n",            tf->s11, tf->s7, tf->a7);
     // clang-format on
 
     // debug_vm_print_page_table(proc->pagetable);
@@ -64,19 +64,19 @@ void dump_pre_int_kthread_state(size_t *stack)
     // in the stack.
     if (stack == NULL) return;
 
-    printk("stack: 0x%x | CPU ID (tp): %d\n", (size_t)stack, stack[IDX_TP]);
-    printk("ra  = 0x%x\n", stack[IDX_RA]);
-    printk("sp  = 0x%x\n", stack[IDX_SP]);
-    printk("gp  = 0x%x\n", stack[IDX_GP]);
+    printk("stack: 0x%zx | CPU ID (tp): %zd\n", (size_t)stack, stack[IDX_TP]);
+    printk("ra  = 0x%zx\n", stack[IDX_RA]);
+    printk("sp  = 0x%zx\n", stack[IDX_SP]);
+    printk("gp  = 0x%zx\n", stack[IDX_GP]);
 
-    printk("a0  = 0x%x\n", stack[IDX_A0]);
-    printk("a1  = 0x%x\n", stack[IDX_A1]);
-    printk("a2  = 0x%x\n", stack[IDX_A2]);
-    printk("a3  = 0x%x\n", stack[IDX_A3]);
-    printk("a4  = 0x%x\n", stack[IDX_A4]);
-    printk("a5  = 0x%x\n", stack[IDX_A5]);
-    printk("a6  = 0x%x\n", stack[IDX_A6]);
-    printk("a7  = 0x%x\n", stack[IDX_A7]);
+    printk("a0  = 0x%zx\n", stack[IDX_A0]);
+    printk("a1  = 0x%zx\n", stack[IDX_A1]);
+    printk("a2  = 0x%zx\n", stack[IDX_A2]);
+    printk("a3  = 0x%zx\n", stack[IDX_A3]);
+    printk("a4  = 0x%zx\n", stack[IDX_A4]);
+    printk("a5  = 0x%zx\n", stack[IDX_A5]);
+    printk("a6  = 0x%zx\n", stack[IDX_A6]);
+    printk("a7  = 0x%zx\n", stack[IDX_A7]);
 }
 
 void handle_timer_interrupt();

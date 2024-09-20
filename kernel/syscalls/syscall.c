@@ -162,7 +162,7 @@ void syscall(struct process *proc)
     }
     else
     {
-        printk("%d %s: unknown sys call %d\n", proc->pid, proc->name, num);
+        printk("%d %s: unknown sys call %zd\n", proc->pid, proc->name, num);
         trapframe_set_return_register(proc->trapframe, -1);
     }
 }

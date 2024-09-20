@@ -15,13 +15,15 @@ typedef          short      int16_t;
 typedef          int        int32_t;
 typedef          long long  int64_t;
 
+
 #if defined(_arch_is_32bit)
-typedef uint32_t size_t;
-typedef int32_t ssize_t;
+typedef unsigned int  size_t;
+typedef          int ssize_t;
 #else
-typedef uint64_t size_t;
-typedef int64_t ssize_t;
+typedef unsigned long int  size_t;
+typedef          long int ssize_t;
 #endif
+
 
 typedef size_t intptr_t;
 
