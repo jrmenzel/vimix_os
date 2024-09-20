@@ -7,6 +7,7 @@ PLATFORM=qemu
 
 BUILD_TYPE=debug
 #BUILD_TYPE=release
+#REL_WITH_DEBUG=yes
 
 # RAM in MB
 # Note:
@@ -136,6 +137,11 @@ CFLAGS_COMMON += -g # native format for debug info
 CFLAGS_COMMON += -MD
 else
 CFLAGS_COMMON += -O2
+ifeq ($(REL_WITH_DEBUG), yes)
+# release with debug symbols
+CFLAGS_COMMON += -ggdb -gdwarf-2 -DDEBUG # debug info
+CFLAGS_COMMON += -g # native format for debug info
+endif
 endif
 
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)

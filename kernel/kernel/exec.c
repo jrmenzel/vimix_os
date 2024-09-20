@@ -147,6 +147,11 @@ int32_t execv(char *path, char **argv)
     }
     safestrcpy(proc->name, last, sizeof(proc->name));
 
+    // Align the heap to begin at a 16 byte boundry
+    // An unaligned heap can lead to unaligned acceses
+    // after sbrk/malloc. No change if already aligned.
+    heap_begin += (16 - heap_begin % 16) % 16;
+
     // Commit to the user image.
     pagetable_t oldpagetable = proc->pagetable;
     proc->pagetable = pagetable;
