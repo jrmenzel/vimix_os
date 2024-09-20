@@ -1,5 +1,8 @@
 set confirm off
-set architecture riscv:rv64
-symbol-file kernel/kernel
+set architecture _ARCHITECTURE
 set disassemble-next-line auto
 set riscv use-compressed-breakpoints yes
+symbol-file _KERNEL
+file _KERNEL
+target remote 127.0.0.1:_PORT
+source tools/gdbinit-gef.py
