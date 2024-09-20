@@ -3260,7 +3260,7 @@ void bigdir(char *s)
 
     unlink("bd");
 
-    fd = open("bd", O_CREATE);
+    fd = open("bd", O_CREATE, 0755);
     if (fd < 0)
     {
         printf("%s: bigdir create failed\n", s);
