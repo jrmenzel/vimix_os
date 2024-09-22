@@ -29,4 +29,4 @@ extern int mkdir(const char *path, mode_t mode);
 /// @param fd File descriptor of file to get stat from
 /// @param buffer buffer to copy stat into
 /// @return -1 on failure, 0 otherwise
-extern int fstat(FILE_DESCRIPTOR fd, struct stat *buffer);
+extern int fstat(int fd, struct stat *buffer);

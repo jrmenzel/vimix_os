@@ -1,14 +1,19 @@
 #!/bin/bash
 
 BINARY=build/kernel-vimix
+BINARY_SEARCH_PATH=build/root/usr/bin
+BINARY_SEARCH_PATH_HOST=build_host/root/usr/bin
 OBJDUMP=riscv64-elf-objdump
+OBJDUMP_HOST=objdump
 OBJDUMP_PARAM="--disassembler-color=color --visualize-jumps=color -l"
 
+
 function print_help {
-    echo "usage: disassemble.sh -a <address> <binary>"
-    echo "       disassemble.sh -f <function> <binary>"
+    echo "usage: disassemble.sh -a <address> <binary> <host>"
+    echo "       disassemble.sh -f <function> <binary> <host>"
     echo "<binary> is optional, default is the kernel"
     echo "<binary> can be a path or a file in /usr/bin"
+    echo "<host> is optional, if set user space apps for the host get disassembled"
     exit 1
 }
 
@@ -29,17 +34,25 @@ function main {
         print_help
     fi
 
+    if [ "$4" == "host" ]
+    then
+        # disassemble host binary
+        OBJDUMP=$OBJDUMP_HOST
+        BINARY_SEARCH_PATH=$BINARY_SEARCH_PATH_HOST
+    fi
+
     # set optional binary, defaults to the kernel
     if [ "$3" != "" ]
     then
         if [ -f $3 ] 
         then
             BINARY=$3
-        elif [ -f "build/root/usr/bin/"$3 ] 
+        elif [ -f $BINARY_SEARCH_PATH"/"$3 ] 
         then
-            BINARY="build/root/usr/bin/"$3
+            BINARY=$BINARY_SEARCH_PATH"/"$3
         fi
     fi
+
 
     if [ "$1" = "-a" ]
     then
@@ -57,4 +70,4 @@ function main {
     fi
 }
 
-main $1 $2 $3
+main $1 $2 $3 $4

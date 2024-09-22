@@ -245,3 +245,26 @@ size_t sys_get_dirent()
 
     return inode_get_dirent(f->ip, dir_entry_addr, true, seek_pos);
 }
+
+size_t sys_lseek()
+{
+    // parameter 0: int fd
+    FILE_DESCRIPTOR fd;
+    struct file *f;
+    if (argfd(0, &fd, &f) < 0)
+    {
+        return -1;
+    }
+
+    // parameter 1: off_t offset
+    ssize_t offset;
+    argssize_t(1, &offset);
+
+    // parameter 2: int whence
+    int32_t whence;
+    argint(2, &whence);
+
+    ssize_t ret = file_lseek(f, offset, whence);
+
+    return ret;
+}

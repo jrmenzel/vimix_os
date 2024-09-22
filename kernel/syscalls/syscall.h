@@ -90,6 +90,10 @@ size_t sys_fstat();
 /// seek_pos);" from dirent.h
 size_t sys_get_dirent();
 
+/// @brief Syscall "extern off_t lseek(int fd, off_t offset, int whence);" in
+/// ustd.h
+size_t sys_lseek();
+
 // ********************************************************
 // System information from sys_system.c
 //

@@ -76,30 +76,31 @@ FILE *fopen(const char *filename, const char *modes)
     int32_t flags = 0;
     mode_t mode = S_IFREG;
 
-    if (strcmp(modes, "r") == 0)
+    // Note: "b" is ignored on POSIX systems
+    if ((strcmp(modes, "r") == 0) || (strcmp(modes, "rb") == 0))
     {
         flags = O_RDONLY;
     }
-    else if (strcmp(modes, "w") == 0)
+    else if ((strcmp(modes, "w") == 0) || (strcmp(modes, "wb") == 0))
     {
         flags = O_WRONLY | O_CREAT | O_TRUNC;
         mode |= S_IWUSR;
     }
-    else if (strcmp(modes, "a") == 0)
+    else if ((strcmp(modes, "a") == 0) || (strcmp(modes, "ab") == 0))
     {
         flags = O_WRONLY | O_CREAT | O_APPEND;
         mode |= S_IWUSR;
     }
-    else if (strcmp(modes, "r+") == 0)
+    else if ((strcmp(modes, "r+") == 0) || (strcmp(modes, "rb+") == 0))
     {
         flags = O_RDWR;
     }
-    else if (strcmp(modes, "w+") == 0)
+    else if ((strcmp(modes, "w+") == 0) || (strcmp(modes, "wb+") == 0))
     {
         flags = O_RDWR | O_CREAT | O_TRUNC;
         mode = mode | S_IRUSR | S_IWUSR;
     }
-    else if (strcmp(modes, "a+") == 0)
+    else if ((strcmp(modes, "a+") == 0) || (strcmp(modes, "ab+") == 0))
     {
         flags = O_RDWR | O_CREAT | O_APPEND;
         mode = mode | S_IRUSR | S_IWUSR;
@@ -110,6 +111,7 @@ FILE *fopen(const char *filename, const char *modes)
     }
 
     FILE *file = malloc(sizeof(FILE));
+    memset(file, 0, sizeof(FILE));
     file->fd = open(filename, flags, mode);
 
     return file;
@@ -119,7 +121,7 @@ int fclose(FILE *stream)
 {
     if (stream == NULL)
     {
-        return -1;
+        return EOF;
     }
 
     int return_value = close(stream->fd);
@@ -137,3 +139,18 @@ char *fgets(char *s, size_t size, FILE *stream)
 
     return get_from_fd(s, size, stream->fd);
 }
+
+int fseek(FILE *stream, long offset, int whence)
+{
+    off_t off = lseek(stream->fd, offset, whence);
+    return (off < 0) ? -1 : 0;
+}
+
+long ftell(FILE *stream)
+{
+    if (stream == NULL) return -1;
+
+    return lseek(stream->fd, 0, SEEK_CUR);
+}
+
+void rewind(FILE *stream) { fseek(stream, 0L, SEEK_SET); }

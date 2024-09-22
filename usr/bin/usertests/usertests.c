@@ -11,6 +11,12 @@
 int run(void f(char *), char *s)
 {
     printf("test %s: ", s);
+
+    // need a flush, because if the print from above is in the processes "todo
+    // list" to print, it will be on the childs todo list as well after fork and
+    // both might print the same message
+    fflush(stdout);
+
     pid_t pid = fork();
     if (pid < 0)
     {
@@ -61,7 +67,8 @@ int drivetests(int quick, int continuous, char *justone)
     do {
         printf("usertests starting\n");
         int free0 = countfree();
-        if (runtests(quicktests, justone) || runtests(quicktests_host, justone))
+        if (runtests(quicktests_common, justone) ||
+            runtests(quicktests, justone))
         {
             if (continuous != 2)
             {
@@ -71,8 +78,8 @@ int drivetests(int quick, int continuous, char *justone)
         if (!quick)
         {
             if (justone == 0) printf("usertests slow tests starting\n");
-            if (runtests(slowtests, justone) ||
-                runtests(slowtests_host, justone))
+            if (runtests(slowtests_common, justone) ||
+                runtests(slowtests, justone))
             {
                 if (continuous != 2)
                 {

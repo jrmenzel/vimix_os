@@ -146,6 +146,7 @@ static size_t (*syscalls[])() = {
     [SYS_get_dirent] sys_get_dirent,
     [SYS_reboot] sys_reboot,
     [SYS_get_time] sys_get_time,
+    [SYS_lseek] sys_lseek,
 };
 // clang-format on
 

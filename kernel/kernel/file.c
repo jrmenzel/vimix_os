@@ -18,6 +18,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/stat.h>
 #include <kernel/string.h>
+#include <kernel/unistd.h>
 
 struct
 {
@@ -508,4 +509,28 @@ ssize_t file_unlink(char *path)
     log_end_fs_transaction();
 
     return 0;
+}
+
+ssize_t file_lseek(struct file *f, ssize_t offset, int whence)
+{
+    if (!S_ISREG(f->mode))
+    {
+        return -1;
+    }
+
+    ssize_t new_pos = 0;
+    switch (whence)
+    {
+        case SEEK_SET: new_pos = offset; break;
+        case SEEK_CUR: new_pos = f->off + offset; break;
+        case SEEK_END: new_pos = f->ip->size + offset; break;
+        default: return -1; break;
+    }
+
+    if (new_pos < 0) return -1;
+    if (new_pos > f->ip->size) return -1;  // todo: support
+
+    f->off = new_pos;
+
+    return f->off;
 }

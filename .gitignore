@@ -8,8 +8,10 @@ _*
 *.img
 build/*
 build_tests/*
+build_host/*
 tools/mkfs/mkfs
 tools/mkfs/fsck.xv6fs
+utests-tmp/*
 
 # auto generated:
 kernel/arch/riscv/asm/initcode.h

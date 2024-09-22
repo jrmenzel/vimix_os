@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <kernel/unistd.h>
 #include <sys/types.h>
 
 // normally not included here, but fcntl.h contains open() while
@@ -86,6 +87,13 @@ extern int32_t chdir(const char *path);
 
 // duplicate open file descriptor. Returns new file descriptor or -1 on error
 extern int dup(int fd);
+
+/// @brief Sets file offset.
+/// @param fd file descriptor
+/// @param offset offset relative to whence
+/// @param whence SEEK_SET, SEEK_CUR, or SEEK_END
+/// @return Offset from file beginning, -1 on error
+extern off_t lseek(int fd, off_t offset, int whence);
 
 ///////////////////////////////////////
 // 3. Device Management

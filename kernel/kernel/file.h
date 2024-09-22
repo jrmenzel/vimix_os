@@ -69,3 +69,10 @@ ssize_t file_link(char *path_from, char *path_to);
 /// @param path path name
 /// @return 0 on success, -1 on error
 ssize_t file_unlink(char *path);
+
+/// @brief Most of syscall lseek
+/// @param f File of which to change read pointer
+/// @param offset offset relative to a position
+/// @param whence position, SEEK_SET etc.
+/// @return 0 on success, -1 on error
+ssize_t file_lseek(struct file *f, ssize_t offset, int whence);

@@ -26,3 +26,8 @@
 #define SYS_get_dirent 22
 #define SYS_reboot 23
 #define SYS_get_time 24
+#define SYS_lseek 25
+
+#define SEEK_SET 0  //< Seek from beginning of file
+#define SEEK_CUR 1  //< Seek from current position
+#define SEEK_END 2  //< Seek from end of file

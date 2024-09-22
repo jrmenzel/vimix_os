@@ -78,6 +78,7 @@ $
 	- [get_dirent](docs/kernel/syscalls/get_dirent.md)
 	- [reboot](docs/kernel/syscalls/reboot.md)
 	- [get_time](docs/kernel/syscalls/get_time.md)
+	- [lseek](docs/kernel/syscalls/lseek.md)
 - Support multiple [devices](docs/kernel/devices/devices.md), not just two hard coded ones.
 - Added devices:
 	- [/dev/null](docs/userspace/dev/null.md), [/dev/zero](docs/userspace/dev/zero.md)

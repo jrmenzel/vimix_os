@@ -80,6 +80,25 @@
             ]
         },
         {
+            // debug a user space application
+            "name": "64 bit userspace: usertests",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "build/root/usr/bin/usertests",
+            "cwd": "${workspaceRoot}",
+            "miDebuggerPath": "riscv64-elf-gdb",
+            "miDebuggerServerAddress": "127.0.0.1:26002",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": false
+                }
+            ]
+        },
+        {
             // debug the kernel in 32 bit
             "name": "32 bit kernel",
             "type": "cppdbg",
@@ -138,9 +157,11 @@
         },
         {
             // debug a user space application on the host
-            "name": "host userspace: cat",
-            "program": "${workspaceRoot}/build/root_host/cat",
-            "args": ["README.md"],
+            // note: fork only follows the first child, so set a specific test
+            // when debuggign the usertests
+            "name": "host: usertests",
+            "program": "${workspaceRoot}/build_host/root/usr/bin/usertests",
+            "args": ["lseek_test"],
             "cwd": "${workspaceRoot}",
             "type": "cppdbg",
             "request": "launch",

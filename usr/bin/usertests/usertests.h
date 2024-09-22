@@ -33,8 +33,26 @@ extern struct test quicktests[];
 extern struct test slowtests[];
 
 // host tests run on the host and VIMIX
-extern struct test quicktests_host[];
-extern struct test slowtests_host[];
+extern struct test quicktests_common[];
+extern struct test slowtests_common[];
 
 // get free memory to check for leaks
 int countfree();
+
+// all helpers below call exit(1) on failure of testing
+
+// test if fd is not 0
+void assert_open_ok(const char *test_name, int fd, const char *file_name);
+
+// test if a signed value is 0
+void assert_null_s(const char *test_name, ssize_t value);
+
+// write the NULL-terminated string to the file, but without the 0-terminator!
+void assert_write_to_file(const char *test_name, int fd, const char *string);
+
+#define assert_same_value(val_a, val_b)             \
+    if (val_a != val_b)                             \
+    {                                               \
+        printf("%s: error: values mismatch!\n", s); \
+        exit(1);                                    \
+    }

@@ -24,7 +24,8 @@ See also: [calling_syscall](calling_syscall.md).
 - [close](close.md) - close file
 - [read](read.md) - read from file
 - [write](write.md) - write to file
-- [dup](dup.md) - duplicate file handle 
+- [lseek](lseek.md) - get / set file read position
+- [dup](dup.md) - duplicate file handle
 - [link](link.md) - create hard link
 - [unlink](unlink.md) - remove a hard link, also used to delete files
 

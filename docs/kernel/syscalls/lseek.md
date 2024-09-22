@@ -1,21 +1,18 @@
-# Syscall unlink
+# Syscall lseek
 
 ## User Mode
 
 ```C
 #include <unistd.h>
-int32_t unlink(const char *pathname);
+off_t lseek(int fd, off_t offset, int whence);
 ```
 
-Remove a link from a file, the last `unlink()` will also delete the [file](../file_system/file.md).
+Get/set read position of a [file](../file_system/file.md).
 
-## User Apps
-
-The app [rm](../../userspace/bin/rm.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_unlink()`. 
+Implemented in `sys_file.c` as `sys_lseek()`. 
 
 ## See also
 
