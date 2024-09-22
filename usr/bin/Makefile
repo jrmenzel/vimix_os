@@ -1,13 +1,9 @@
 #
 # Build all userspace apps
 #
-include ../../MakefileCommon.mk
-BUILD_DIR_ROOT=../../$(BUILD_DIR)
-B_BUILD_DIR=$(BUILD_DIR_ROOT)/usr/bin
-B_DEPLOY_DIR=$(BUILD_DIR_ROOT)/root/usr/bin
-B_DEPLOY_DIR_HOST=$(BUILD_DIR_ROOT)/root_host/usr/bin
-
-LIB_PATH=$(BUILD_DIR_ROOT)/usr/lib
+ROOT=../..
+include $(ROOT)/MakefileCommon.mk
+include $(ROOT)/usr/MakefileCommonUser.mk
 
 UPROGS_NAME=\
 	init\
@@ -21,7 +17,6 @@ UPROGS_NAME=\
 	mkdir\
 	rm\
 	sh\
-	usertests\
 	grind\
 	wc\
 	zombie\
@@ -58,12 +53,17 @@ UPROGS_NAME_HOST=\
 UPROGS=$(foreach a, $(UPROGS_NAME), $(B_DEPLOY_DIR)/$a)
 PROGS_HOST=$(foreach a, $(UPROGS_NAME_HOST), $(B_DEPLOY_DIR_HOST)/$a)
 
-LDFLAGS+=--defsym=USER_TEXT_START=$(USER_TEXT_START)
+# keep intermediate .o files
+.PRECIOUS: $(B_BUILD_DIR)/%.o $(B_BUILD_DIR_HOST)/%.o 
 
-.PHONY: all directories clean
+.PHONY: all directories clean usertests host
 
-all: directories $(UPROGS) scripts
+all: directories $(UPROGS) usertests scripts
 
+# binaries will end up in build/root_host/PATH_IN_VIMIX
+host: directories $(PROGS_HOST) usertests_host scripts_host # build supported apps for the host OS / architecture
+
+###########################################################
 # compiling apps for VIMIX
 $(B_BUILD_DIR)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
@@ -73,42 +73,44 @@ $(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) -T user.ld $(LIB_PATH)/stdlib.a -o $@ $^
 
+###########################################################
+# compiling apps for the host
+$(B_DEPLOY_DIR_HOST)/%: $(B_BUILD_DIR_HOST)/%.o
+	@printf "$(TASK_COLOR)Link for host: $(@)\n$(NO_COLOR)"
+	@$(CC_HOST) $(CFLAGS_HOST) $< -o $@
+
+$(B_BUILD_DIR_HOST)/%.o: %.c
+	@printf "$(TASK_COLOR)Compile for host: $(@)\n$(NO_COLOR)"
+	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_HOST_PARAMS) -c $< -o $@
+
 $(LIB_PATH)/stdlib.a: 
 	$(MAKE) -C ../lib all;
 
-# special case:
-# usertest includes internal kernel API and needs more include search paths
-#
-# Include paths for the kernel: 
-# !!! note the include path prefix ../kernel/ compared to the paths for the kernel build - those are internal kernel API !!!
-#
-KERNEL_SPACE_INC = ./arch/riscv # selected architecture
-KERNEL_SPACE_INC += ./include # public kernel API
-KERNEL_SPACE_INC += ../lib/std # mini C lib
-KERNEL_SPACE_INC += ./
-KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I../../kernel/$d)
-#
-$(B_BUILD_DIR)/usertests.o: usertests.c 
-	@printf "$(TASK_COLOR)Compile with extra flags: $(@)\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -DMEMORY_SIZE=$(MEMORY_SIZE) -I. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
-
+###########################################################
 scripts: # copy shell scripts
 	cp *.sh $(B_DEPLOY_DIR)
 
+scripts_host: # copy shell scripts host
+	cp *.sh $(B_DEPLOY_DIR_HOST)
+
 directories: # make temp build directories
 	mkdir -p $(B_BUILD_DIR)
+	mkdir -p $(B_BUILD_DIR_HOST)
 	mkdir -p $(B_DEPLOY_DIR)
 	mkdir -p $(B_DEPLOY_DIR_HOST)
 
 clean: # delete build dir
+	$(MAKE) -C usertests clean;
 	-@rm -rf $(B_BUILD_DIR)
+	-@rm -rf $(B_BUILD_DIR_HOST)
 	-@rm -rf $(B_DEPLOY_DIR)
 	-@rm -rf $(B_DEPLOY_DIR_HOST)
 
-# binaries will end up in build/root_host/PATH_IN_VIMIX
-host: directories $(PROGS_HOST) # build supported apps for the host OS / architecture
+###########################################################
+# programs in sub dirs
+#
+usertests:
+	$(MAKE) -C usertests vimix;
 
-# compiling apps for the host
-$(B_DEPLOY_DIR_HOST)/%: %.c
-	@printf "$(TASK_COLOR)Compile for host: $(@)\n$(NO_COLOR)"
-	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_HOST_PARAMS) $< -o $@
+usertests_host:
+	$(MAKE) -C usertests host;

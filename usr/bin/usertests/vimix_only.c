@@ -1,22 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <fcntl.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/signal.h>
-#include <sys/stat.h>
-#include <sys/syscall.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include "libasm.h"
-
-// usertests has access to the internal kernel API:
-#include <kernel/fs.h>
 #include <mm/memlayout.h>
-#include <riscv.h>
+#include "usertests.h"
 
 //
 // Tests VIMIX system calls.  usertests without arguments runs them all
@@ -30,10 +15,6 @@
 #define FORK_FORK_FORK_DURATION_MS 2000
 #define FORK_FORK_FORK_SLEEP_MS 1000
 #define SHORT_SLEEP_MS 100
-
-#define BUFSZ ((MAX_OP_BLOCKS + 2) * BLOCK_SIZE)
-
-char buf[BUFSZ];
 
 const size_t TEST_PTR_RAM_BEGIN = 0x80000000LL;
 #ifdef _ARCH_32BIT
@@ -58,6 +39,82 @@ const size_t INVALID_PTR_COUNT = sizeof(INVALID_PTRS) / sizeof(INVALID_PTRS[0]);
 
 const char *bin_echo = "/usr/bin/echo";
 const char *bin_init = "/usr/bin/init";
+
+//
+// use sbrk() to count how many free physical memory pages there are.
+// touches the pages to force allocation.
+// because out of memory with lazy allocation results in the process
+// taking a fault and being killed, fork and report back.
+//
+int countfree()
+{
+    int fds[2];
+
+    if (pipe(fds) < 0)
+    {
+        printf("pipe() failed in countfree()\n");
+        exit(1);
+    }
+
+    pid_t pid = fork();
+
+    if (pid < 0)
+    {
+        printf("fork failed in countfree()\n");
+        exit(1);
+    }
+
+    if (pid == 0)
+    {
+        close(fds[0]);
+        long page_size = sysconf(_SC_PAGE_SIZE);
+
+        while (true)
+        {
+            void *a = sbrk(page_size);
+            if (a == ((void *)-1))
+            {
+                break;
+            }
+
+            // modify the memory to make sure it's really allocated.
+            *(char *)(a + page_size - 1) = 1;
+
+            // report back one more page.
+            if (write(fds[1], "x", 1) != 1)
+            {
+                printf("write() failed in countfree()\n");
+                exit(1);
+            }
+        }
+
+        exit(0);
+    }
+
+    close(fds[1]);
+
+    int32_t n = 0;
+    while (true)
+    {
+        char c;
+        ssize_t cc = read(fds[0], &c, 1);
+        if (cc < 0)
+        {
+            printf("read() failed in countfree()\n");
+            exit(1);
+        }
+        if (cc == 0)
+        {
+            break;
+        }
+        n += 1;
+    }
+
+    close(fds[0]);
+    wait(NULL);
+
+    return n;
+}
 
 //
 // Section with tests that run fairly quickly.  Use -q if you want to
@@ -324,7 +381,7 @@ void rwsbrk()
         exit(1);
     }
 
-    FILE_DESCRIPTOR fd = open("rwsbrk", O_CREATE | O_WRONLY, 0755);
+    int fd = open("rwsbrk", O_CREATE | O_WRONLY, 0755);
     if (fd < 0)
     {
         printf("open(rwsbrk) failed\n");
@@ -613,10 +670,10 @@ void openiputtest(char *s)
 
 void opentest(char *s)
 {
-    int fd = open("/usr/bin/echo", O_RDONLY);
+    int fd = open(bin_echo, O_RDONLY);
     if (fd < 0)
     {
-        printf("%s: open /usr/bin/echo failed!\n", s);
+        printf("%s: open %s failed!\n", s, bin_echo);
         exit(1);
     }
     close(fd);
@@ -2133,7 +2190,7 @@ void bigfile(char *s)
 
 void fourteen(char *s)
 {
-    FILE_DESCRIPTOR fd;
+    int fd;
 
     // XV6_NAME_MAX is 14.
 
@@ -3093,158 +3150,6 @@ void badarg(char *s)
     exit(0);
 }
 
-/// @brief Reads from /dev/null should return 0, writes to it should return the
-/// length of the written string.
-/// @param s test name
-void dev_null(char *s)
-{
-    const size_t N = 3;
-    int fd = open("/dev/null", O_RDWR);
-    if (fd < 0)
-    {
-        printf("%s: error: could not open /dev/null\n", s);
-        exit(1);
-    }
-    for (size_t i = 0; i < N; i++)
-    {
-        size_t len = 1 + i;
-        ssize_t r = write(fd, "aaaaaaaaaa", len);
-        if (r != len)
-        {
-            printf("%s: error: write to /dev/null failed\n", s);
-            exit(1);
-        }
-        r = read(fd, buf, len);
-        if (r != 0)
-        {
-            printf("%s: read of /dev/null should return 0\n", s);
-            exit(1);
-        }
-    }
-    close(fd);
-}
-
-/// @brief Reads from /dev/zero should fill the buffer with '0', writes to it
-/// should return the length of the written string.
-/// @param s test name
-void dev_zero(char *s)
-{
-    const size_t N = 4;
-    int fd = open("/dev/zero", O_RDWR);
-    if (fd < 0)
-    {
-        printf("%s: error: could not open /dev/zero\n", s);
-        exit(1);
-    }
-    for (size_t i = 0; i < N; i++)
-    {
-        size_t len = 1 + i;
-        ssize_t r = write(fd, "aaaaaaaaaa", len);
-        if (r != len)
-        {
-            printf("%s: error: write to /dev/zero failed\n", s);
-            exit(1);
-        }
-
-        if (i == N - 1)
-        {
-            len = 5000;  // > 1 PAGE_SIZE
-        }
-        for (size_t j = 0; j < len; ++j)
-        {
-            buf[j] = 0xFF;
-        }
-        r = read(fd, buf, len);
-        if (r != len)
-        {
-            printf("%s: read of /dev/zero failed\n", s);
-            exit(1);
-        }
-        for (size_t j = 0; j < len; ++j)
-        {
-            if (buf[j] != 0)
-            {
-                printf("%s: read of /dev/zero did not return 0 at pos %zd\n", s,
-                       j);
-                exit(1);
-            }
-        }
-    }
-    close(fd);
-}
-
-struct test
-{
-    void (*f)(char *);
-    char *s;
-} quicktests[] = {
-    {copyin, "copyin"},
-    {copyout, "copyout"},
-    {copyinstr1, "copyinstr1"},
-    {copyinstr2, "copyinstr2"},
-    {copyinstr3, "copyinstr3"},
-    {rwsbrk, "rwsbrk"},
-    {truncate1, "truncate1"},
-    {truncate2, "truncate2"},
-    {truncate3, "truncate3"},
-    {openiputtest, "openiput"},
-    {exitiputtest, "exitiput"},
-    {iputtest, "iput"},
-    {opentest, "opentest"},
-    {writetest, "writetest"},
-    {writebig, "writebig"},
-    {createtest, "createtest"},
-    {dirtest, "dirtest"},
-    {exectest, "exectest"},
-    {pipe1, "pipe1"},
-    {killstatus, "killstatus"},
-    {preempt, "preempt"},
-    {exitwait, "exitwait"},
-    {reparent, "reparent"},
-    {twochildren, "twochildren"},
-    {forkfork, "forkfork"},
-    {forkforkfork, "forkforkfork"},
-    {reparent2, "reparent2"},
-    {mem, "mem"},
-    {sharedfd, "sharedfd"},
-    {fourfiles, "fourfiles"},
-    {createdelete, "createdelete"},
-    {unlinkread, "unlinkread"},
-    {linktest, "linktest"},
-    {concreate, "concreate"},
-    {linkunlink, "linkunlink"},
-    {subdir, "subdir"},
-    {bigwrite, "bigwrite"},
-    {bigfile, "bigfile"},
-    {fourteen, "fourteen"},
-    {rmdot, "rmdot"},
-    {dirfile, "dirfile"},
-    {iref, "iref"},
-    {forktest, "forktest"},
-    {sbrkbasic, "sbrkbasic"},
-    {sbrkmuch, "sbrkmuch"},
-    {kernmem, "kernmem"},
-    {MAXVAplus, "MAXVAplus"},
-    {sbrkfail, "sbrkfail"},
-    {sbrkarg, "sbrkarg"},
-    {validatetest, "validatetest"},
-    {bsstest, "bsstest"},
-    {bigargtest, "bigargtest"},
-    {argptest, "argptest"},
-    {stack_overflow, "stack_overflow"},
-    {stack_underflow, "stack_underflow"},
-    {nowrite, "nowrite"},
-    {pgbug, "pgbug"},
-    {sbrkbugs, "sbrkbugs"},
-    {sbrklast, "sbrklast"},
-    {sbrk8000, "sbrk8000"},
-    {badarg, "badarg"},
-    {dev_null, "dev_null"},
-    {dev_zero, "dev_zero"},
-
-    {0, 0},
-};
-
 //
 // Section with tests that take a fair bit of time
 //
@@ -3566,6 +3471,72 @@ void outofinodes(char *s)
     }
 }
 
+struct test quicktests[] = {
+    {copyin, "copyin"},
+    {copyout, "copyout"},
+    {copyinstr1, "copyinstr1"},
+    {copyinstr2, "copyinstr2"},
+    {copyinstr3, "copyinstr3"},
+    {rwsbrk, "rwsbrk"},
+    {truncate1, "truncate1"},
+    {truncate2, "truncate2"},
+    {truncate3, "truncate3"},
+    {openiputtest, "openiput"},
+    {exitiputtest, "exitiput"},
+    {iputtest, "iput"},
+    {opentest, "opentest"},
+    {writetest, "writetest"},
+    {writebig, "writebig"},
+    {createtest, "createtest"},
+    {dirtest, "dirtest"},
+    {exectest, "exectest"},
+    {pipe1, "pipe1"},
+    {killstatus, "killstatus"},
+    {preempt, "preempt"},
+    {exitwait, "exitwait"},
+    {reparent, "reparent"},
+    {twochildren, "twochildren"},
+    {forkfork, "forkfork"},
+    {forkforkfork, "forkforkfork"},
+    {reparent2, "reparent2"},
+    {mem, "mem"},
+    {sharedfd, "sharedfd"},
+    {fourfiles, "fourfiles"},
+    {createdelete, "createdelete"},
+    {unlinkread, "unlinkread"},
+    {linktest, "linktest"},
+    {concreate, "concreate"},
+    {linkunlink, "linkunlink"},
+    {subdir, "subdir"},
+    {bigwrite, "bigwrite"},
+    {bigfile, "bigfile"},
+    {fourteen, "fourteen"},
+    {rmdot, "rmdot"},
+    {dirfile, "dirfile"},
+    {iref, "iref"},
+    {forktest, "forktest"},
+    {sbrkbasic, "sbrkbasic"},
+    {sbrkmuch, "sbrkmuch"},
+    {kernmem, "kernmem"},
+    {MAXVAplus, "MAXVAplus"},
+    {sbrkfail, "sbrkfail"},
+    {sbrkarg, "sbrkarg"},
+    {validatetest, "validatetest"},
+    {bsstest, "bsstest"},
+    {bigargtest, "bigargtest"},
+    {argptest, "argptest"},
+    {stack_overflow, "stack_overflow"},
+    {stack_underflow, "stack_underflow"},
+    {nowrite, "nowrite"},
+    {pgbug, "pgbug"},
+    {sbrkbugs, "sbrkbugs"},
+    {sbrklast, "sbrklast"},
+    {sbrk8000, "sbrk8000"},
+    {badarg, "badarg"},
+
+    {0, 0},
+};
+
 struct test slowtests[] = {
     {bigdir, "bigdir"},
     {manywrites, "manywrites"},
@@ -3576,211 +3547,3 @@ struct test slowtests[] = {
 
     {0, 0},
 };
-
-//
-// drive tests
-//
-
-// run each test in its own process. run returns 1 if child's exit()
-// indicates success.
-int run(void f(char *), char *s)
-{
-    printf("test %s: ", s);
-    pid_t pid = fork();
-    if (pid < 0)
-    {
-        printf("runtest: fork error\n");
-        exit(1);
-    }
-    if (pid == 0)
-    {
-        f(s);
-        exit(0);
-    }
-
-    int32_t xstatus;
-    wait(&xstatus);
-    xstatus = WEXITSTATUS(xstatus);
-    if (xstatus != 0)
-    {
-        printf("FAILED\n");
-    }
-    else
-    {
-        printf("OK\n");
-    }
-    return xstatus == 0;
-}
-
-int runtests(struct test *tests, char *justone)
-{
-    for (struct test *t = tests; t->s != 0; t++)
-    {
-        if ((justone == 0) || strcmp(t->s, justone) == 0)
-        {
-            if (!run(t->f, t->s))
-            {
-                printf("SOME TESTS FAILED\n");
-                return 1;
-            }
-        }
-    }
-    return 0;
-}
-
-//
-// use sbrk() to count how many free physical memory pages there are.
-// touches the pages to force allocation.
-// because out of memory with lazy allocation results in the process
-// taking a fault and being killed, fork and report back.
-//
-int countfree()
-{
-    int fds[2];
-
-    if (pipe(fds) < 0)
-    {
-        printf("pipe() failed in countfree()\n");
-        exit(1);
-    }
-
-    pid_t pid = fork();
-
-    if (pid < 0)
-    {
-        printf("fork failed in countfree()\n");
-        exit(1);
-    }
-
-    if (pid == 0)
-    {
-        close(fds[0]);
-        long page_size = sysconf(_SC_PAGE_SIZE);
-
-        while (true)
-        {
-            void *a = sbrk(page_size);
-            if (a == ((void *)-1))
-            {
-                break;
-            }
-
-            // modify the memory to make sure it's really allocated.
-            *(char *)(a + page_size - 1) = 1;
-
-            // report back one more page.
-            if (write(fds[1], "x", 1) != 1)
-            {
-                printf("write() failed in countfree()\n");
-                exit(1);
-            }
-        }
-
-        exit(0);
-    }
-
-    close(fds[1]);
-
-    int32_t n = 0;
-    while (true)
-    {
-        char c;
-        ssize_t cc = read(fds[0], &c, 1);
-        if (cc < 0)
-        {
-            printf("read() failed in countfree()\n");
-            exit(1);
-        }
-        if (cc == 0)
-        {
-            break;
-        }
-        n += 1;
-    }
-
-    close(fds[0]);
-    wait(NULL);
-
-    return n;
-}
-
-int drivetests(int quick, int continuous, char *justone)
-{
-    mkdir("/utests-tmp", 0755);
-    if (chdir("/utests-tmp") < 0) return -1;
-
-    do {
-        printf("usertests starting\n");
-        int free0 = countfree();
-        if (runtests(quicktests, justone))
-        {
-            if (continuous != 2)
-            {
-                return 1;
-            }
-        }
-        if (!quick)
-        {
-            if (justone == 0) printf("usertests slow tests starting\n");
-            if (runtests(slowtests, justone))
-            {
-                if (continuous != 2)
-                {
-                    return 1;
-                }
-            }
-        }
-        int free1 = countfree();
-        if (free1 < free0)
-        {
-            printf("FAILED -- lost some free pages %d (out of %d)\n", free1,
-                   free0);
-            printf("badarg is a candidate for leaked memory\n");
-            if (continuous != 2)
-            {
-                return 1;
-            }
-        }
-    } while (continuous);
-
-    if (chdir("..") < 0) return -1;
-    unlink("utests-tmp");
-    return 0;
-}
-
-int main(int argc, char *argv[])
-{
-    int continuous = 0;
-    bool quick_tests_only = false;
-    char *justone = NULL;
-
-    if (argc == 2 && strcmp(argv[1], "-q") == 0)
-    {
-        quick_tests_only = true;
-    }
-    else if (argc == 2 && strcmp(argv[1], "-c") == 0)
-    {
-        continuous = 1;
-    }
-    else if (argc == 2 && strcmp(argv[1], "-C") == 0)
-    {
-        continuous = 2;
-    }
-    else if (argc == 2 && argv[1][0] != '-')
-    {
-        justone = argv[1];
-    }
-    else if (argc > 1)
-    {
-        printf("Usage: usertests [-c] [-C] [-q] [testname]\n");
-        return 1;
-    }
-    if (drivetests(quick_tests_only, continuous, justone))
-    {
-        return 1;
-    }
-
-    printf("ALL TESTS PASSED\n");
-
-    return 0;
-}

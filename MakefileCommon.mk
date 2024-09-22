@@ -189,6 +189,7 @@ USER_SPACE_INC_PARAMS=$(foreach d, $(USER_SPACE_INC), -I$d)
 USER_SPACE_INC_HOST  = /usr/include
 USER_SPACE_INC_HOST_PARAMS=$(foreach d, $(USER_SPACE_INC_HOST), -I$d)
 
+BUILD_DIR_HOST=build_host
 
 TASK_COLOR  = \033[0;34m
 YELLOW      = \033[93m

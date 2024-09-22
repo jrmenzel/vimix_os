@@ -105,9 +105,9 @@ qemu-gdb: kernel .gdbinit $(BUILD_DIR)/filesystem.img # run VIMIX in qemu waitin
 # Note: see docs on how to build VIMIX for Spike
 
 # spike binary, edit to use e.g. a self compiled version
-SPIKE=spike
-#SPIKE_BUILD=../riscv-simulator/riscv-isa-sim/build
-#SPIKE=$(SPIKE_BUILD)/spike
+#SPIKE=spike
+SPIKE_BUILD=../riscv-simulator/riscv-isa-sim/build
+SPIKE=$(SPIKE_BUILD)/spike
 #SPIKE_SBI_FW=../opensbi/build/platform/generic/firmware/fw_payload.elf
 ifeq ($(BITWIDTH), 32)
 SPIKE_ISA = rv32gc
@@ -142,3 +142,4 @@ clean: # clean up
 	$(MAKE) -C usr/lib clean;
 	$(MAKE) -C usr/bin clean;
 	-@rm -r $(BUILD_DIR)/root/*
+	-@rm -r $(BUILD_DIR_HOST)/root/*

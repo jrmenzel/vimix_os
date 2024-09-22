@@ -50,6 +50,24 @@
             ]
         },
         {
+            "name": "64 bit userspace",
+            "intelliSenseMode": "linux-gcc-x64",
+            "cStandard": "c17",
+            "compilerPath": "/usr/bin/riscv64-linux-gnu-gcc",
+            "includePath": [
+                "${workspaceFolder}/kernel/include",
+                "${workspaceFolder}/usr/lib/libc",
+                "${workspaceFolder}/usr/include"
+            ],
+            "defines": [
+                "__riscv_xlen=64",
+                "DEBUG"
+            ],
+            "compilerArgs": [
+                "-nostdinc"
+            ]
+        },
+        {
             "name": "userspace host",
             "intelliSenseMode": "linux-gcc-x64",
             "cStandard": "c17",

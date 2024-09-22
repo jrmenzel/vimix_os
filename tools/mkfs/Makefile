@@ -14,11 +14,11 @@ CFLAGS_HOST += -Wno-stringop-truncation -D__USE_REAL_STDC__ # __USE_REAL_STDC__ 
 
 mkfs: mkfs.c $(KERNEL_INCLUDE_PATH)/kernel/fs.h $(KERNEL_INCLUDE_PATH)/kernel/param.h # make file system and copy in files
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
-	@gcc $(CFLAGS_HOST) -I$(KERNEL_INCLUDE_PATH) -I$(KERNEL_INCLUDE_PATH)/../ -o mkfs mkfs.c
+	@$(CC_HOST) $(CFLAGS_HOST) -I$(KERNEL_INCLUDE_PATH) -I$(KERNEL_INCLUDE_PATH)/../ -o mkfs mkfs.c
 
 fsck.xv6fs: fsck.xv6fs.c $(KERNEL_INCLUDE_PATH)/kernel/fs.h $(KERNEL_INCLUDE_PATH)/kernel/param.h
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
-	@gcc $(CFLAGS_HOST) -I$(KERNEL_INCLUDE_PATH) -I$(KERNEL_INCLUDE_PATH)/../ -o fsck.xv6fs fsck.xv6fs.c
+	@$(CC_HOST) $(CFLAGS_HOST) -I$(KERNEL_INCLUDE_PATH) -I$(KERNEL_INCLUDE_PATH)/../ -o fsck.xv6fs fsck.xv6fs.c
 
 clean: # delete binary
 	-@rm mkfs fsck.xv6fs
