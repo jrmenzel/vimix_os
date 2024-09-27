@@ -9,4 +9,4 @@ The device tree gets parsed early in the boot process in [main()](../kernel/over
 
 
 ---
-[kernel](kernel/kernel.md) | [user space](userspace/userspace.md)
+[kernel](../kernel/kernel.md) | [userspace](../userspace/userspace.md)
