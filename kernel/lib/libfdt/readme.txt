@@ -1,0 +1,1 @@
+LibFDT for Device Tree parsing from https://github.com/dgibson/dtc.git commit 99031e3a4a6e479466ae795790b44727434ca27d (v1.7.1).
