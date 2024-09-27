@@ -63,17 +63,17 @@ void ramdisk_block_device_write(struct Block_Device *bd, struct buf *b)
     spin_unlock(&g_ramdisk.m[minor].vdisk_lock);
 }
 
-dev_t ramdisk_init(void *start_address, size_t size)
+dev_t ramdisk_init(struct Device_Memory_Map *mapping)
 {
-    if (start_address == NULL || size == 0)
+    if (mapping->mem_start == 0 || mapping->mem_size == 0)
     {
         panic("invalid ramdisk_init parameters");
     }
     size_t minor = g_next_free_ramdisk++;
     // printk("create ram disk %d\n", minor);
 
-    g_ramdisk.m[minor].start = start_address;
-    g_ramdisk.m[minor].size = size;
+    g_ramdisk.m[minor].start = (void *)mapping->mem_start;
+    g_ramdisk.m[minor].size = mapping->mem_size;
 
     // init device and register it in the system, but only once
     if (minor == 0)

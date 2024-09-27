@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <drivers/devices_list.h>
 #include <kernel/types.h>
 
 /// init console and console hardware (e.g. UART)
-void console_init();
+dev_t console_init(struct Device_Memory_Map *dev_map);
 
 /// @brief Called by the interrupt when new input is available
 /// @param c input key

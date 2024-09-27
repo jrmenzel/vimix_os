@@ -32,18 +32,20 @@ void kvm_map_mmio(pagetable_t k_pagetable, size_t address, size_t size)
 /// Make a direct-map page table for the kernel.
 /// Here the "memory mapped devices" are mapped into kernel memory space
 /// (once the created pagetable is used).
-pagetable_t kvm_make_kernel_pagetable(char *end_of_memory)
+pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
+                                      struct Devices_List *dev_list)
 {
     pagetable_t kpage_table = (pagetable_t)kalloc();
     memset(kpage_table, 0, PAGE_SIZE);
 
     // map kernel text as executable and read-only.
-    kvm_map_or_panic(kpage_table, KERNBASE, KERNBASE,
-                     (size_t)end_of_text - KERNBASE, PTE_R | PTE_X);
+    kvm_map_or_panic(
+        kpage_table, memory_map->kernel_start, memory_map->kernel_start,
+        (size_t)end_of_text - memory_map->kernel_start, PTE_R | PTE_X);
 
     // map kernel data and the physical RAM we'll make use of.
     kvm_map_or_panic(kpage_table, (size_t)end_of_text, (size_t)end_of_text,
-                     (size_t)end_of_memory - (size_t)end_of_text,
+                     (size_t)memory_map->ram_end - (size_t)end_of_text,
                      PTE_R | PTE_W);
 
     // map the trampoline for trap entry/exit to
@@ -54,36 +56,27 @@ pagetable_t kvm_make_kernel_pagetable(char *end_of_memory)
     // allocate and map a kernel stack for each process.
     init_per_process_kernel_stack(kpage_table);
 
-    // CLINT
-    kvm_map_mmio(kpage_table, CLINT_BASE, CLINT_SIZE);
-
-    // PLIC
-    kvm_map_mmio(kpage_table, PLIC_BASE, PLIC_SIZE);
-
-    // uart registers
-    kvm_map_mmio(kpage_table, UART0, PAGE_SIZE);
-
-#ifdef VIRTIO0_BASE
-    // virtio mmio disk interface
-    kvm_map_mmio(kpage_table, VIRTIO0_BASE, PAGE_SIZE);
-#endif
-
-#ifdef RTC_GOLDFISH
-    // RTC
-    kvm_map_mmio(kpage_table, RTC_GOLDFISH, PAGE_SIZE);
-#endif
-
-#ifdef VIRT_TEST_BASE
-    // shutdown qemu
-    kvm_map_mmio(kpage_table, VIRT_TEST_BASE, PAGE_SIZE);
-#endif
+    // map all found MMIO devices
+    for (size_t i = 0; i < dev_list->dev_array_length; ++i)
+    {
+        struct Supported_Device *dev = &(dev_list->dev[i]);
+        if (dev->found && dev->map_memory)
+        {
+            // printk("mapping found device %s at 0x%zx size: 0x%zx\n",
+            //        dev->dtb_name, dev->mapping.mem_start,
+            //        dev->mapping.mem_size);
+            kvm_map_mmio(kpage_table, dev->mapping.mem_start,
+                         PAGE_ROUND_UP(dev->mapping.mem_size));
+        }
+    }
 
     return kpage_table;
 }
 
-void kvm_init(char *end_of_memory)
+void kvm_init(struct Minimal_Memory_Map *memory_map,
+              struct Devices_List *dev_list)
 {
-    g_kernel_pagetable = kvm_make_kernel_pagetable(end_of_memory);
+    g_kernel_pagetable = kvm_make_kernel_pagetable(memory_map, dev_list);
 }
 
 #if defined(_arch_is_32bit)

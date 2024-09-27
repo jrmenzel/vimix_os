@@ -7,9 +7,8 @@
 2. Optional: Install OpenOCD (for debugging)
 3. Configure VIMIX:
 	1. Set `PLATFORM` in `MakefileCommon.mk` to `spike`. This will set:
-		1. to use an embedded [ramdisk](kernel/devices/ramdisk.md)
-		2. 32-bit build (64-bit defaults to a SV57 MMU, VIMIX needs a SV39 MMU. Spike can be modified to support SV39: Look for SV57 in `riscv/dts.cc` and `riscv/processor.cc`).
-		3. UART IRQ to 1 (not 10 like in [qemu](run_on_qemu.md))
+		1. to use a [ramdisk](kernel/devices/ramdisk.md) (initrd or embedded)
+		2. 32-bit build (64-bit defaults to a SV57 MMU, VIMIX needs a SV39 MMU. Spike can be modified to support SV39: Look for SV57 in `riscv/dts.cc` and `riscv/processor.cc`)
 	2. Clean and rebuild after switching the `PLATFORM`!
 
 

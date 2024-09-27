@@ -2,6 +2,7 @@
 # Just builds the kernel.
 #
 include ../MakefileCommon.mk
+include lib/libfdt/Makefile.libfdt
 K_BUILD_DIR=../$(BUILD_DIR)/kernel
 KERNEL_PATH=../$(KERNEL_FILE)
 INIT_BUILD_DIR=$(K_BUILD_DIR)/$(ARCH)/asm
@@ -29,11 +30,15 @@ OBJS = $(ARCH)/asm/entry.o \
 	drivers/uart16550.o \
 	drivers/dev_null.o \
 	drivers/dev_zero.o \
+	drivers/devices_list.o \
 	drivers/ramdisk.o \
 	drivers/rtc.o \
+	drivers/syscon.o \
+	drivers/virtio_disk.o \
 	fs/fs.o \
 	fs/xv6fs/log.o \
 	fs/xv6fs/xv6fs.o \
+	init/dtb.o \
 	init/main.o \
 	ipc/pipe.o \
 	kernel/cpu.o \
@@ -64,9 +69,8 @@ OBJS += ramdisk_fs.o
 RAMDISC_C = $(K_BUILD_DIR)/ramdisk_fs.c
 endif
 
-ifeq ($(VIRTIO_DISK), yes)
-OBJS += drivers/virtio_disk.o
-endif
+# add libfdt for Device Tree parsing
+OBJS += $(addprefix lib/libfdt/, $(LIBFDT_OBJS))
 
 SUB_DIRS = \
   kernel \
@@ -76,6 +80,7 @@ SUB_DIRS = \
   ipc \
   drivers \
   lib \
+  lib/libfdt \
   syscalls \
   $(ARCH) \
   $(ARCH)/mm \
@@ -89,6 +94,7 @@ SUB_DIRS_TO_MAKE=$(addprefix $(K_BUILD_DIR)/, $(SUB_DIRS))
 #
 KERNEL_SPACE_INC = ./arch/riscv # selected architecture
 KERNEL_SPACE_INC += ./include   # public kernel API
+KERNEL_SPACE_INC += ./lib/libfdt   # libfdt
 KERNEL_SPACE_INC += $(K_BUILD_DIR)/ # for initcode.h
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I$d)
 
@@ -98,14 +104,8 @@ endif
 CFLAGS += -DMEMORY_SIZE=$(MEMORY_SIZE)
 CFLAGS += -DUSER_TEXT_START=$(USER_TEXT_START)
 
-ifeq ($(VIRTIO_DISK), yes)
-CFLAGS += -DVIRTIO_DISK
-endif
 ifeq ($(RAMDISK_EMBEDDED), yes)
 CFLAGS += -DRAMDISK_EMBEDDED
-endif
-ifeq ($(RAMDISK_BOOTLOADER), yes)
-CFLAGS += -DRAMDISK_BOOTLOADER
 endif
 
 .PHONY: all directories clean
@@ -145,14 +145,16 @@ $(K_BUILD_DIR)/ramdisk_fs.h:
 	echo "#pragma once" > $(K_BUILD_DIR)/ramdisk_fs.h
 	echo "#include <kernel/kernel.h>" >> $(K_BUILD_DIR)/ramdisk_fs.h
 	echo "extern unsigned char ramdisk_fs[];" >> $(K_BUILD_DIR)/ramdisk_fs.h
-	echo "extern const size_t ramdisk_fs_size;" >> $(K_BUILD_DIR)/ramdisk_fs.h
+	echo -n "#define ramdisk_fs_size " >> $(K_BUILD_DIR)/ramdisk_fs.h
+	stat -c %s ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.h
+	#echo "extern const size_t ramdisk_fs_size;" >> $(K_BUILD_DIR)/ramdisk_fs.h
 
 $(K_BUILD_DIR)/ramdisk_fs.c:
 	echo "#include \"ramdisk_fs.h\"" > $(K_BUILD_DIR)/ramdisk_fs.c
 	echo "unsigned char ramdisk_fs[] = {" >> $(K_BUILD_DIR)/ramdisk_fs.c
 	xxd -i < ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.c
 	echo "};" >> $(K_BUILD_DIR)/ramdisk_fs.c
-	echo "const size_t ramdisk_fs_size = sizeof(ramdisk_fs);" >> $(K_BUILD_DIR)/ramdisk_fs.c
+#	echo "size_t const ramdisk_fs_size = sizeof(ramdisk_fs);" >> $(K_BUILD_DIR)/ramdisk_fs.c
 
 $(K_BUILD_DIR)/ramdisk_fs.o: $(K_BUILD_DIR)/ramdisk_fs.c
 	$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(K_BUILD_DIR)/ramdisk_fs.c -o $(K_BUILD_DIR)/ramdisk_fs.o

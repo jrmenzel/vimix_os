@@ -2,6 +2,7 @@
 #pragma once
 
 #include <kernel/kernel.h>
+#include <kernel/vm.h>
 
 /// @brief Allocate one 4096-byte page of physical memory.
 /// Returns a pointer that the kernel can use.
@@ -17,9 +18,8 @@ void kfree(void* pa);
 
 /// @brief Free the RAM after the kernel loaded, called once at
 /// boot.
-/// @param pa_start physical address of the start to use for kernel allocations
-/// @param pa_end physical address of the end
-void kalloc_init(char* pa_start, char* pa_end);
+/// @param memory_map physical addresses of the memory to use
+void kalloc_init(struct Minimal_Memory_Map* memory_map);
 
 #ifdef CONFIG_DEBUG_KALLOC
 /// Returns the number of 4K allocations currently used.

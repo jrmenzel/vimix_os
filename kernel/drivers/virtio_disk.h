@@ -2,6 +2,7 @@
 #pragma once
 
 #include <drivers/device.h>
+#include <drivers/devices_list.h>
 #include <drivers/generic_disc.h>
 #include <drivers/virtio.h>
 #include <kernel/buf.h>
@@ -48,9 +49,12 @@ struct virtio_disk
     struct virtio_blk_req ops[VIRTIO_DESCRIPTORS];
 
     struct spinlock vdisk_lock;
+
+    // base address for memory mapped IO:
+    size_t mmio_base;
 };
 
 /// @brief Inits the virtio disk driver (for qemu) and inits the hardware.
 /// Creates a virtio_disk object and adds it to the devices list.
 /// @return device number of the created device
-dev_t virtio_disk_init();
+dev_t virtio_disk_init(struct Device_Memory_Map *mapping);

@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <drivers/devices_list.h>
 #include <kernel/spinlock.h>
 #include <kernel/types.h>
 
 /// @brief Inits the hardware, creates a uart_16550 object
 /// and adds it to the devices list.
-void uart_init();
+void uart_init(struct Device_Memory_Map *dev_map);
 
 /// @brief Console Character Device will set this up
 void uart_interrupt_handler();

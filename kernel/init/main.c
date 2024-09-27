@@ -6,10 +6,10 @@
 #include <arch/platform.h>
 #include <arch/trap.h>
 #include <drivers/console.h>
-#include <drivers/dev_null.h>
-#include <drivers/dev_zero.h>
+#include <drivers/devices_list.h>
 #include <drivers/ramdisk.h>
 #include <drivers/virtio_disk.h>
+#include <init/dtb.h>
 #include <kernel/bio.h>
 #include <kernel/cpu.h>
 #include <kernel/file.h>
@@ -47,40 +47,59 @@ void print_kernel_info()
 #define FEATURE_STRING "(bare metal)"
 #endif
 
-/// some init that only one thread should perform while all others wait
-void init_by_first_thread()
+void print_memory_map(struct Minimal_Memory_Map *memory_map)
 {
+    printk("    RAM S: 0x%zx\n", memory_map->ram_start);
+    printk(" KERNEL S: 0x%zx\n", memory_map->kernel_start);
+#ifdef RAMDISK_EMBEDDED
+    printk("RAMDISK S: 0x%zx\n", (size_t)ramdisk_fs);
+    printk("RAMDISK E: 0x%zx\n", (size_t)ramdisk_fs + ramdisk_fs_size);
+#endif
+    printk(" KERNEL E: 0x%zx\n", memory_map->kernel_end);
+    if (memory_map->dtb_file_start != 0)
+    {
+        printk("    DTB S: 0x%zx\n", memory_map->dtb_file_start);
+        printk("    DTB E: 0x%zx\n", memory_map->dtb_file_end);
+    }
+    if (memory_map->initrd_begin != 0)
+    {
+        printk(" INITRD S: 0x%zx\n", memory_map->initrd_begin);
+        printk(" INITRD E: 0x%zx\n", memory_map->initrd_end);
+    }
+    printk("    RAM E: 0x%zx\n", memory_map->ram_end);
+}
+
+/// some init that only one thread should perform while all others wait
+void init_by_first_thread(void *dtb)
+{
+    // get list of available devices from the device tree:
+    struct Devices_List *dev_list = get_devices_list();
+    dtb_get_devices(dtb, dev_list);
+
     // init a way to print, also starts uart:
-    console_init();
+    init_device(&(dev_list->dev[0]));  ///< device 0 is the console
     printk_init();
     printk("\n");
     printk("VIMIX OS " _arch_bits_string " bit " FEATURE_STRING
            " kernel version " str_from_define(GIT_HASH) " is booting\n");
     print_kernel_info();
     printk("\n");
-
-    // e.g. boots other harts in SBI mode:
-    init_platform();
+    // print_found_devices();
+    // printk("\n");
 
     // init memory management:
     printk("init memory management...\n");
-#ifdef RAMDISK_BOOTLOADER
-    // TODO: memory locations should not be hardcoded -> read from boot loader /
-    // device tree file
-    const size_t RAMDISK_START_ADDR = 0x82200000;
-    const size_t RAMDISC_END_ADDR = 0x82400000;
-    kalloc_init((char *)RAMDISC_END_ADDR,
-                (char *)PHYSTOP);  // physical page allocator
-#else
-    kalloc_init(end_of_kernel, (char *)PHYSTOP);  // physical page allocator
-#endif
-    kvm_init((char *)PHYSTOP);  // create kernel page table
+    struct Minimal_Memory_Map memory_map;
+    dtb_get_memory(dtb, &memory_map);
+    print_memory_map(&memory_map);
+    kalloc_init(&memory_map);  // physical page allocator
+    kvm_init(&memory_map,
+             dev_list);  // create kernel page table, memory map found devices
 
     // init processes, syscalls and interrupts:
     printk("init process and syscall support...\n");
     proc_init();  // process table
     trap_init();  // trap vectors
-    init_interrupt_controller();
 
     // init filesystem:
     printk("init filesystem...\n");
@@ -88,25 +107,49 @@ void init_by_first_thread()
     inode_init();  // inode table
     file_init();   // file table
 
-#ifdef RAMDISK_BOOTLOADER
-    ROOT_DEVICE_NUMBER = ramdisk_init((void *)RAMDISK_START_ADDR,
-                                      RAMDISC_END_ADDR - RAMDISK_START_ADDR);
-#endif
-
+    printk("init remaining devices...\n");
+    // if a virtio device was found, init the one with the lowest address
+    // this is the first device in qemu and the one the FS image is loaded
+    ssize_t device_of_root_fs = -1;
+    ssize_t i = get_first_virtio(dev_list);
+    if (i >= 0)
+    {
+        dev_list->dev[i].init_func = virtio_disk_init;
+        device_of_root_fs = i;
+    }
+    if (memory_map.initrd_begin != 0)
+    {
+        dev_list->dev[1].mapping.mem_start = memory_map.initrd_begin;
+        dev_list->dev[1].mapping.mem_size =
+            memory_map.initrd_end - memory_map.initrd_begin;
+        dev_list->dev[1].found = true;
+        device_of_root_fs = 1;
+    }
 #ifdef RAMDISK_EMBEDDED
-    ROOT_DEVICE_NUMBER = ramdisk_init((void *)ramdisk_fs, ramdisk_fs_size);
+    // a ram disk has preference over a previously found virtio disk
+    device_of_root_fs = 2;
 #endif
 
-#ifdef VIRTIO_DISK
-    ROOT_DEVICE_NUMBER = virtio_disk_init();  // emulated hard disk
-#endif
+    // device 0 is the console and was done already, now the rest:
+    for (size_t i = 1; i < dev_list->dev_array_length; ++i)
+    {
+        init_device(&(dev_list->dev[i]));
+    }
 
-    // file system init will happen when the first process gets forked below
-    // in userspace init.
-
-    // init additional devices
-    dev_null_init();
-    dev_zero_init();
+    // store the device number of root:
+    if (device_of_root_fs != -1)
+    {
+        ROOT_DEVICE_NUMBER = dev_list->dev[device_of_root_fs].dev_num;
+        printk("fs root device: %s (%d,%d)\n",
+               dev_list->dev[device_of_root_fs].dtb_name,
+               MAJOR(ROOT_DEVICE_NUMBER), MINOR(ROOT_DEVICE_NUMBER));
+    }
+    else
+    {
+        panic("NO ROOT FILESYSTEM FOUND");
+    }
+    // e.g. boots other harts in SBI mode:
+    init_platform();
 
     // process 0:
     printk("init userspace...\n");
@@ -130,7 +173,7 @@ void main(void *device_tree, size_t is_first_thread)
 {
     if (is_first_thread)
     {
-        init_by_first_thread();
+        init_by_first_thread(device_tree);
     }
     else
     {

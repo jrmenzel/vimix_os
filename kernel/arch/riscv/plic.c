@@ -10,6 +10,50 @@
 //
 // the riscv Platform Level Interrupt Controller (PLIC).
 //
+// It supports 1023 interrupts (as int 0 is reserved).
+// Each has a 32 bit priority and a pending bit.
+
+/// 32 bit priority per interrupt, int 0 is reserved -> 1023 IRQs
+#define PLIC_PRIORITY (PLIC_BASE + 0x00)
+
+/// 32x 32 bit ints encoding 1024 interrupt pending bits
+#define PLIC_PENDING (PLIC_BASE + 0x1000)
+
+//
+// Interrupts can be organized in Contexts, each enabling their own
+// IRQ subset. One Context per CPU Hart and privilege mode is common.
+//
+
+/// address of one 32 bit int encoding 32 interrupt enable bits
+#define PLIC_ENABLE(context, block) \
+    (PLIC_BASE + 0x2000 + (context) * 0x80 + (block) * 4)
+
+/// if set prio of context is > prio of interrupt, then it is ignored
+#define PLIC_PRIORITY_THRESHOLD(context) \
+    (PLIC_BASE + 0x200000 + (context) * 0x1000)
+
+/// address contains IRQ number of latext interrupt of context
+/// write IRQ back to clear IRQ.
+#define PLIC_CLAIM(context) (PLIC_BASE + 0x200004 + (context) * 0x1000)
+
+/// Size and addess of the memory map
+size_t PLIC_BASE = 0xc000000L;
+bool plic_is_initialized = false;
+
+//
+// the riscv Platform Level Interrupt Controller (PLIC).
+//
+
+dev_t plic_init(struct Device_Memory_Map *mapping)
+{
+    if (plic_is_initialized)
+    {
+        return 0;
+    }
+    PLIC_BASE = mapping->mem_start;
+    plic_is_initialized = true;
+    return MKDEV(PLIC_MAJOR, 0);
+}
 
 void plic_set_interrupt_priority(uint32_t irq, uint32_t priority)
 {

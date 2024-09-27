@@ -117,7 +117,10 @@ endif
 
 MEMORY_SIZE_BYTES = $(shell echo $$(( $(MEMORY_SIZE) * 1024 * 1024 )))
 SPIKE_OPTIONS = -m0x80000000:$(MEMORY_SIZE_BYTES) -p$(CPUS) --isa=$(SPIKE_ISA)
-SPIKE_OPTIONS += --initrd=$(BUILD_DIR)/filesystem.img --kernel=$(KERNEL_FILE) $(KERNEL_FILE)
+ifeq ($(RAMDISK_BOOTLOADER), yes)
+SPIKE_OPTIONS += --initrd=$(BUILD_DIR)/filesystem.img
+endif
+SPIKE_OPTIONS += --kernel=$(KERNEL_FILE) $(KERNEL_FILE)
 
 spike-requirements: kernel $(BUILD_DIR)/filesystem.img
 

@@ -2589,6 +2589,12 @@ void sbrkmuch(char *s)
     }
 }
 
+#ifdef __ENABLE_SBI__
+#define KERNBASE 0x80200000L
+#else
+#define KERNBASE 0x80000000L
+#endif  // __ENABLE_SBI__
+
 // can we read the kernel's memory?
 void kernmem(char *s)
 {

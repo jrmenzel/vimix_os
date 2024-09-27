@@ -16,7 +16,8 @@
 /// the UART control registers are memory-mapped
 /// at address UART0. this macro returns the
 /// address of one of the registers.
-#define Reg(reg) ((volatile unsigned char *)(UART0 + (reg)))
+size_t uart_base = 0;
+#define Reg(reg) ((volatile unsigned char *)(uart_base + (reg)))
 
 /// the UART control registers.
 /// some have different meanings for
@@ -47,8 +48,10 @@ extern volatile bool g_kernel_panicked;  // from printk.c
 
 void uartstart();
 
-void uart_init()
+void uart_init(struct Device_Memory_Map *dev_map)
 {
+    uart_base = dev_map->mem_start;
+
     // disable interrupts.
     WriteReg(IER, 0x00);
 

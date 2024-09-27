@@ -42,15 +42,14 @@ int main()
 
     if (open("/dev/console", O_RDWR) < 0)
     {
-        mknod("/dev/console", S_IFCHR | 0666,
-              MKDEV(CONSOLE_DEVICE_MAJOR, CONSOLE_DEVICE_MINOR));
+        mknod("/dev/console", S_IFCHR | 0666, MKDEV(CONSOLE_DEVICE_MAJOR, 0));
         open("/dev/console", O_RDWR);
     }
     dup(0);  // stdout
     dup(0);  // stderr
 
-    make_dev("/dev/null", S_IFCHR, MKDEV(DEV_NULL_MAJOR, DEV_NULL_MINOR));
-    make_dev("/dev/zero", S_IFCHR, MKDEV(DEV_ZERO_MAJOR, DEV_ZERO_MINOR));
+    make_dev("/dev/null", S_IFCHR, MKDEV(DEV_NULL_MAJOR, 0));
+    make_dev("/dev/zero", S_IFCHR, MKDEV(DEV_ZERO_MAJOR, 0));
 
     while (true)
     {

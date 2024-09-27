@@ -42,11 +42,47 @@ void kfree_range(void *pa_start, void *pa_end)
     }
 }
 
-void kalloc_init(char *pa_start, char *pa_end)
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
+void kalloc_init(struct Minimal_Memory_Map *memory_map)
 {
     spin_lock_init(&g_kernel_memory.lock, "kmem");
-    g_kernel_memory.end_of_physical_memory = pa_end;
-    kfree_range(pa_start, pa_end);
+    g_kernel_memory.end_of_physical_memory = (char *)memory_map->ram_end;
+
+    // The available memory after kernel_end can have up to two holes:
+    // the dtb file and a initrd ramdisk, both are optional.
+    // The dtb could also be outside of the RAM area (e.g. in flash).
+
+    size_t region_start = memory_map->kernel_end;
+    while (true)
+    {
+        size_t region_end = memory_map->ram_end;
+        size_t next_region_start = 0;
+
+        if (memory_map->dtb_file_start != 0)
+        {
+            if (region_start < memory_map->dtb_file_start)
+            {
+                region_end = min(region_end, memory_map->dtb_file_start);
+                next_region_start = PAGE_ROUND_UP(memory_map->dtb_file_end);
+            }
+        }
+        if (memory_map->initrd_begin != 0)
+        {
+            if (region_start < memory_map->initrd_begin)
+            {
+                region_end = min(region_end, memory_map->initrd_begin);
+                next_region_start = PAGE_ROUND_UP(memory_map->initrd_end);
+            }
+        }
+
+        // printk("kalloc memory range: 0x%zx - 0x%zx\n", region_start,
+        //        region_end);
+        kfree_range((void *)region_start, (void *)region_end);
+        if (region_end == memory_map->ram_end) break;
+
+        region_start = next_region_start;
+    }
 
 #ifdef CONFIG_DEBUG_KALLOC
     // reset *after* kfree_range (as kfree decrements the counter)

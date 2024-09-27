@@ -14,49 +14,48 @@ Compile and try out:
 - The [kernel](docs/kernel/kernel.md).
 - The [user space](docs/userspace/userspace.md).
 
-How it looks like:
+How it looks like (text mode via UART only) running on [qemu](docs/run_on_qemu.md):
 ```
-VIMIX OS 64 bit (bare metal) kernel version 5d6b215 is booting
-35KB of Kernel code
-4KB of read only data
-0KB of data
-75KB of bss / uninitialized data
+init device ns16550a... OK (1,0)
+
+VIMIX OS 64 bit (bare metal) kernel version 2c539f9 is booting
+95KB of Kernel code
+8KB of read only data
+1KB of data
+76KB of bss / uninitialized data
 
 init memory management...
+    RAM S: 0x80000000
+ KERNEL S: 0x80000000
+ KERNEL E: 0x8003d000
+    DTB S: 0x83e00000
+    DTB E: 0x83e01c20
+    RAM E: 0x84000000
 init process and syscall support...
 init filesystem...
+init remaining devices...
+init device virtio,mmio... OK (2,0)
+init device google,goldfish-rtc... OK (6,0)
+init device syscon... OK (7,0)
+init device riscv,plic0... OK (8,0)
+init device riscv,clint0... OK (9,0)
+init device /dev/null... OK (3,0)
+init device /dev/zero... OK (4,0)
+fs root device: virtio,mmio (2,0)
 init userspace...
-Memory used: 584kb
-hart 0 starting 
+Memory used: 472kb - 64812kb free
+hart 3 starting 
 hart 2 starting 
-hart 3 starting (init hart)
 hart 1 starting 
+hart 0 starting (init hart)
 init: starting /usr/bin/sh
 $ ls
 drwxr-xr-x      48 B usr
-.rwxr-xr-x    1183 B README.md
-drwxr-xr-x      48 B dev
+.rwxr-xr-x    3078 B README.md
+drwxr-xr-x      80 B dev
 drwxr-xr-x      32 B home
-$ ls /usr/bin
-/usr/bin:
-.rwxr-xr-x   36984 B init
-.rwxr-xr-x   37208 B cat
-.rwxr-xr-x   26416 B echo
-.rwxr-xr-x   36496 B forktest
-.rwxr-xr-x   38816 B grep
-.rwxr-xr-x   38680 B kill
-.rwxr-xr-x   47992 B ls
-.rwxr-xr-x   36368 B ln
-.rwxr-xr-x   52184 B sh
-.rwxr-xr-x   36440 B rm
-.rwxr-xr-x   36504 B mkdir
-.rwxr-xr-x   46208 B grind
-.rwxr-xr-x   37328 B wc
-.rwxr-xr-x   26480 B zombie
-.rwxr-xr-x   38288 B stat
-.rwxr-xr-x  130264 B usertests
 $ cat README.md | grep RISC | wc
-2 58 463 
+3 66 496 
 $ 
 ```
 
@@ -67,7 +66,7 @@ $
 - Cleanups: Reorganized code, separate headers, renamed many functions and variables, using stdint types, general refactoring, reduced number of GOTOs, ...
 - Support 32-bit RISC V (in addition to 64-bit), both "bare metal" and running in a [SBI](docs/riscv/SBI.md) environment. Inspired by a 32-bit xv6 port by Michael Schröder (https://github.com/x653/xv6-riscv-fpga/tree/main/xv6-riscv).
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
-- Changed [memory map](docs/kernel/mm/memory_map_process.md) and app stacks grow dynamically.
+- Changed [memory map](docs/kernel/mm/memory_map_process.md); app stacks grow dynamically.
 - Added applications:
 	- [stat](docs/userspace/bin/stat.md)
 	- [shutdown](docs/userspace/bin/shutdown.md)
@@ -84,3 +83,4 @@ $
 	- [/dev/null](docs/userspace/dev/null.md), [/dev/zero](docs/userspace/dev/zero.md)
 	- [ramdisk](docs/kernel/devices/ramdisk.md)
 - [xv6 file system](docs/kernel/file_system/xv6fs.md) was changed to differentiate between character and block devices.
+- Parse the [device tree](docs/misc/device_tree.md) at boot.

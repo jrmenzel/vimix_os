@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <drivers/devices_list.h>
 #include <kernel/kernel.h>
 #include <mm/mm.h>
 #include <mm/vm.h>
@@ -14,8 +15,22 @@ typedef size_t pte_t;
 typedef pte_t *pagetable_t;
 static const pagetable_t INVALID_PAGETABLE_T = NULL;
 
+// Memory map filled in main from a device tree and used to init the free memory
+struct Minimal_Memory_Map
+{
+    size_t ram_start;  // RAM could contain SBI before the kernel code starts
+    size_t kernel_start;
+    size_t kernel_end;  // after the kernel and its data incl BSS
+    size_t ram_end;
+    size_t initrd_begin;  // 0 if there is no initrd
+    size_t initrd_end;    // 0 if there is no initrd
+    size_t dtb_file_start;
+    size_t dtb_file_end;
+};
+
 /// Initialize the one g_kernel_pagetable
-void kvm_init(char *end_of_memory);
+void kvm_init(struct Minimal_Memory_Map *memory_map,
+              struct Devices_List *dev_list);
 
 /// @brief add a mapping to the page table.
 /// only used when booting, does not flush TLB or enable paging. Kernel panic if

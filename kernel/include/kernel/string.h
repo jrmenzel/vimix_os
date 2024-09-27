@@ -58,6 +58,13 @@ char *strcpy(char *dst, const char *src);
 /// @return Length of the string in bytes (EXCLUDING NULL-terminate).
 size_t strlen(const char *str);
 
+/// @brief Calculate the length of a string (excluding NUL terminator)
+/// @param str (Hopefully) NULL-terminated string.
+/// @param maxlen Max chars to check
+/// @return Length of the string in bytes (EXCLUDING NULL-terminate), max
+/// maxlen.
+size_t strnlen(const char *str, size_t maxlen);
+
 /// @brief Compare strings up to their NULL-terminators or N.
 /// @param s1 String s1.
 /// @param s2 String s2.
@@ -72,3 +79,16 @@ int strncmp(const char *s1, const char *s2, size_t unsigned_n);
 /// @param n Max chars to copy.
 /// @return Pointer to src.
 char *strncpy(char *dst, const char *src, size_t n);
+
+/// @brief Scan the string for char c, stops after n bytes.
+/// @param s The string.
+/// @param c Char to scan for.
+/// @param n Bytes to scan.
+/// @return Pointer to the found location or NULL.
+void *memchr(const void *s, int c, size_t n);
+
+/// @brief Scan a string in reverse to find the last occurance of c.
+/// @param s NUL terminated string
+/// @param c Char to find
+/// @return Pointer to the found location or NULL.
+char *strrchr(const char *s, int c);

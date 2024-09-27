@@ -11,17 +11,15 @@
  */
 #define QEMU_VIRT_IO_DISK_MAJOR 2
 #define CONSOLE_DEVICE_MAJOR 1
-#define CONSOLE_DEVICE_MINOR 0
-
 #define DEV_NULL_MAJOR 3
-#define DEV_NULL_MINOR 0
-
 #define DEV_ZERO_MAJOR 4
-#define DEV_ZERO_MINOR 0
-
 #define RAMDISK_MAJOR 5
+#define RTC_MAJOR 6
+#define SYSCON_MAJOR 7
+#define PLIC_MAJOR 8
+#define CLINT_MAJOR 9
 
-// NOTE: highest mayor value can be MAX_DEVICES-1
+// NOTE: highest major value can be MAX_DEVICES-1
 
 // no uart device for now, the console device embedds the UART
 // #define UART_16550_MAJOR         3
@@ -34,7 +32,7 @@
 #define MAJOR(dev) ((unsigned int)((dev) >> MINORBITS))
 
 /// get the minor device ID
-#define MINOR(dev) ((unsigned int)((dev)&MINORMASK))
+#define MINOR(dev) ((unsigned int)((dev) & MINORMASK))
 
 /// make a dev_t from major and minor device ID
 #define MKDEV(ma, mi) (((ma) << MINORBITS) | (mi))

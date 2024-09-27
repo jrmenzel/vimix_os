@@ -11,9 +11,9 @@ Converts the `filesystem.img` into an array and embeds it into the kernel binary
 See `RAMDISK_EMBEDDED` in `MakefileCommon.mk`.
 
 
-## Loaded by a Boot Loader
+## Loaded by a Boot Loader: initrd
 
-Boot loaders and qemu can load a file into RAM and provide the location to the [kernel](../kernel.md) via the device tree file. 
+Boot loaders and qemu can load a file into RAM and provide the location to the [kernel](../kernel.md) via the [device tree file](../../misc/device_tree.md). 
 
 
 ---

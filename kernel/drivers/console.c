@@ -48,6 +48,7 @@ void console_putc(int32_t c)
 struct
 {
     struct Character_Device cdev;  ///< derived from a character device
+    struct Device_Memory_Map mapping;
 
     struct spinlock lock;
 
@@ -187,18 +188,20 @@ void console_interrupt_handler(int32_t c)
     spin_unlock(&g_console.lock);
 }
 
-void console_init()
+dev_t console_init(struct Device_Memory_Map *dev_map)
 {
     spin_lock_init(&g_console.lock, "cons");
 
-    uart_init();
+    uart_init(dev_map);
 
     // init device and register it in the system
     g_console.cdev.dev.type = CHAR;
-    g_console.cdev.dev.device_number =
-        MKDEV(CONSOLE_DEVICE_MAJOR, CONSOLE_DEVICE_MINOR);
+    g_console.cdev.dev.device_number = MKDEV(CONSOLE_DEVICE_MAJOR, 0);
     g_console.cdev.ops.read = console_read;
     g_console.cdev.ops.write = console_write;
-    dev_set_irq(&g_console.cdev.dev, UART0_IRQ, uart_interrupt_handler);
+    dev_set_irq(&g_console.cdev.dev, dev_map->interrupt,
+                uart_interrupt_handler);
     register_device(&g_console.cdev.dev);
+
+    return g_console.cdev.dev.device_number;
 }

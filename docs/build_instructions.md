@@ -28,6 +28,11 @@ In `MakefileCommon.mk` some options can get selected, e.g. debug vs. release bui
 For RISC V either 32-bit or 64-bit target can get selected in `MakefileCommon.mk`. 64-bit [kernel](kernel/kernel.md) can only run 64-bit [applications](userspace/userspace.md). Both versions have the same features. `make qemu` will automatically run the right variant of qemu, but in VSCode the matching debug targets must get selected manually. For VSCode two settings for syntax highlighting are provided: one per bit width. They set the correct defines which are defined by the Makefiles.
 
 
+### RISC V Extensions
+
+The use of the RISC V compressed instruction extension can be disabled by setting `RV_ENABLE_EXT_C=no`.
+
+
 ### SBI
 
 VIMIX can run bare-metal (booting in [M-mode](riscv/M-mode.md)) or via a [SBI](riscv/SBI.md) compatible environment in [S-mode](riscv/S-mode.md). See `SBI_SUPPORT` in `MakefileCommon.mk`.
@@ -35,7 +40,7 @@ VIMIX can run bare-metal (booting in [M-mode](riscv/M-mode.md)) or via a [SBI](r
 
 ### Root Filesystem
 
-The root [file_system](kernel/file_system/file_system.md) can be on a [ramdisk](kernel/devices/ramdisk.md), either embedded in the kernel binary or loaded by the boot loader from a file.
+The root [file_system](kernel/file_system/file_system.md) can be on a [ramdisk](kernel/devices/ramdisk.md), either embedded in the kernel binary or loaded by the boot loader from a file. On [qemu](run_on_qemu.md) it can also be a virtio [device](kernel/devices/devices.md).
 
 
 ### Kernel parameters

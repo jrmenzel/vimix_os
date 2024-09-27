@@ -3,7 +3,38 @@
 
 #include <arch/cpu.h>
 #include <kernel/kernel.h>
+#include <kernel/major.h>
 #include <mm/memlayout.h>
+
+bool clint_is_initialized = false;
+size_t CLINT_BASE = 0x02000000L;
+
+/// Compare value for the timer. Always 64 bit!
+#define CLINT_MTIMECMP(hartid) (CLINT_BASE + 0x4000 + 8 * (hartid))
+
+/// Cycles since boot. This register is always 64 bit!
+#define CLINT_MTIME (CLINT_BASE + 0xBFF8)
+
+dev_t clint_init(struct Device_Memory_Map *mapping)
+{
+// TODO: clint_init_timer_interrupt() is called before this as
+// it has to run in M-Mode, this only works if the base address
+// is the same.
+#ifndef __ENABLE_SBI__
+    if (CLINT_BASE != mapping->mem_start)
+    {
+        panic("Unexpected CLINT address\n");
+    }
+#endif
+
+    if (clint_is_initialized)
+    {
+        return 0;
+    }
+    CLINT_BASE = mapping->mem_start;
+    clint_is_initialized = true;
+    return MKDEV(CLINT_MAJOR, 0);
+}
 
 #ifndef __ENABLE_SBI__
 

@@ -1,9 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <drivers/devices_list.h>
 #include <kernel/time.h>
 
 // real-time clock drivers
+
+dev_t rtc_init(struct Device_Memory_Map *mapping);
 
 /// @brief Get time in UNIX epoch
 /// @return seconds since 01-01-1970

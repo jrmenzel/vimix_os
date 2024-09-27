@@ -11,10 +11,10 @@ BUILD_TYPE=debug
 
 # RAM in MB
 # Note:
-# - OpenSBI uses the lowest 2MB for itself
-# - if RAMDISK_BOOTLOADER is set, the ram disk can use up a few MB
-# (the boot loader might reserve more than is needed)
-MEMORY_SIZE=16
+# - Used as a fallback if no device tree file is provided by the boot loader
+# - Used by the usertests app as long as there is no API to query the available memory
+# - Of course used to set up the emulators with the same amount of memory
+MEMORY_SIZE=64
 
 # for qemu and Spike
 CPUS=4
@@ -27,29 +27,25 @@ ifeq ($(PLATFORM), qemu)
 # 32 and 64 supported
 BITWIDTH=64
 # with and without SBI supported
-SBI_SUPPORT=yes
+#SBI_SUPPORT=yes
 RV_ENABLE_EXT_C=yes
 # use this or a ramdisk
 VIRTIO_DISK=yes
 #RAMDISK_EMBEDDED=yes
 #RAMDISK_BOOTLOADER=yes
-PLATFORM_DEFINE = -D_PLATFORM_QEMU
 else ifeq ($(PLATFORM), spike)
 # 64 fails if Spike defaults to a Sv48 MMU
 BITWIDTH=32
 RV_ENABLE_EXT_C=yes
-RAMDISK_EMBEDDED=yes
-PLATFORM_DEFINE = -D_PLATFORM_SPIKE
+#RAMDISK_EMBEDDED=yes
+RAMDISK_BOOTLOADER=yes
 else
 $(error PLATFORM not set)
 endif
 
-
 # compile with C extension for compressed instructions
 #RV_ENABLE_EXT_C=yes
-# assume root partition on virtio disk
-#VIRTIO_DISK=yes
-# statically added to the kernel binary, low flexibility but no need fo boot loader support
+# statically added to the kernel binary, low flexibility but no need for boot loader support
 #RAMDISK_EMBEDDED=yes
 # let qemu or a boot loader load the file from a filesystem and load it for us in memory
 #RAMDISK_BOOTLOADER=yes
@@ -171,7 +167,7 @@ CFLAGS_TARGET_ONLY += -nostdinc
 CFLAGS_TARGET_ONLY += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
 # c flags for the kernel and user space apps on the target OS:
-CFLAGS = $(CFLAGS_TARGET_ONLY) $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS) $(PLATFORM_DEFINE)
+CFLAGS = $(CFLAGS_TARGET_ONLY) $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS)
 # c flags for the user space apps on the host OS (with host stdlib):
 CFLAGS_HOST = $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS) -DBUILD_ON_HOST
 

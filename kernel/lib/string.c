@@ -136,9 +136,85 @@ size_t strlen(const char *str)
 {
     size_t n;
 
-    for (n = 0; str[n]; n++)
+    for (n = 0; str[n]; ++n)
     {
     };
 
+    return n;
+}
+
+size_t strnlen(const char *str, size_t maxlen)
+{
+    size_t n;
+
+    for (n = 0; maxlen != 0 && str[n]; ++n, --maxlen)
+    {
+    };
+
+    return n;
+}
+
+void *memchr(const void *s, int c, size_t n)
+{
+    // string and char are treated as unsigned char according to the specs
+    unsigned char target = (unsigned char)c;
+    unsigned char *string = (unsigned char *)s;
+
+    for (size_t i = 0; i < n; ++i)
+    {
+        if (*string == target) return string;
+        string++;
+    }
+    return NULL;
+}
+
+char *strrchr(const char *s, int c)
+{
+    size_t len = strlen(s);
+
+    // start at len as finding the 0 terminator is valid if c == 0
+    for (ssize_t i = len; i >= 0; --i)
+    {
+        if (s[i] == (char)c) return (char *)&(s[i]);
+    }
+    return NULL;
+}
+
+int _is_whitespace(char c)
+{
+    // \t = 9, \n = 10, \v = 11, \f = 12, \r = 13
+    return (('\t' <= c && c <= '\r') || (c == ' '));
+}
+
+// from stdlib for libfdt:
+unsigned long strtoul(const char *string, char **end, int base)
+{
+    if (base != 10) return 0;
+
+    while (_is_whitespace(*string++))
+    {
+    }
+
+    char sign = '+';
+    if (*string == '-' || *string == '+')
+    {
+        sign = *string++;
+    }
+
+    unsigned long n = 0;
+    while ('0' <= *string && *string <= '9')
+    {
+        n = n * 10 + *string++ - '0';
+    }
+
+    if (end)
+    {
+        *end = (char *)string;
+    }
+
+    if (sign == '-')
+    {
+        n = n * (-1);
+    }
     return n;
 }
