@@ -2,6 +2,7 @@
 #include "clint.h"
 
 #include <arch/cpu.h>
+#include <arch/riscv/timer.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <mm/memlayout.h>
@@ -20,7 +21,7 @@ dev_t clint_init(struct Device_Memory_Map *mapping)
 // TODO: clint_init_timer_interrupt() is called before this as
 // it has to run in M-Mode, this only works if the base address
 // is the same.
-#ifndef __ENABLE_SBI__
+#ifdef __TIMER_SOURCE_CLINT
     if (CLINT_BASE != mapping->mem_start)
     {
         panic("Unexpected CLINT address\n");
@@ -36,7 +37,7 @@ dev_t clint_init(struct Device_Memory_Map *mapping)
     return MKDEV(CLINT_MAJOR, 0);
 }
 
-#ifndef __ENABLE_SBI__
+#ifdef __TIMER_SOURCE_CLINT
 
 /// a scratch area per CPU for machine-mode timer interrupts.
 size_t m_mode_interrupt_handler_scratchpads[MAX_CPUS][6];
@@ -50,7 +51,7 @@ void clint_init_timer_interrupt()
     xlen_t id = rv_read_csr_mhartid();
 
     // ask the CLINT for a timer interrupt: also 64 bit on 32bit CPU!
-    size_t timer_interrupt_interval =
+    uint64_t timer_interrupt_interval =
         timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
 
     // 64bit even on 32bit systems!
@@ -74,18 +75,4 @@ void clint_init_timer_interrupt()
     cpu_enable_m_mode_timer_interrupt();
 }
 
-#endif  // __ENABLE_SBI__
-
-#if (__riscv_xlen == 32)
-uint64_t rv_get_time()
-{
-    uint32_t time_low = rv_read_csr_time();
-    uint32_t time_high = rv_read_csr_timeh();
-
-    return ((uint64_t)time_high << 32) + (uint64_t)time_low;
-}
-
-#else
-
-uint64_t rv_get_time() { return rv_read_csr_time(); }
-#endif
+#endif  // __TIMER_SOURCE_CLINT

@@ -50,7 +50,7 @@ static inline long sbi_get_spec_version()
 /// See https://www.scs.stanford.edu/~zyedidia/docs/riscv/riscv-sbi.pdf
 /// @param extid Extension ID from the SBI spec
 /// @return 1 if the extension is available, 0 otherwise
-static inline long sbi_probe_extension(int32_t extid)
+long sbi_probe_extension(int32_t extid)
 {
     struct sbiret ret;
 
@@ -78,12 +78,8 @@ static inline long sbi_hart_start(size_t hartid, size_t saddr, size_t priv)
     return ret.value;
 }
 
-void sbi_set_timer()
+void sbi_set_timer(uint64_t stime_value)
 {
-    uint64_t timer_interrupt_interval =
-        timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
-    uint64_t now = rv_get_time();
-    uint64_t stime_value = now + timer_interrupt_interval;
 #if (__riscv_xlen == 32)
     sbi_ecall(SBI_EXT_ID_TIME, SBI_TIME_SET_TIMER, stime_value,
               stime_value >> 32, 0, 0, 0, 0);
@@ -99,29 +95,25 @@ void init_sbi()
         (version >> SBI_SPEC_VERSION_MAJOR_SHIFT) & SBI_SPEC_VERSION_MAJOR_MASK;
     long minor = version & SBI_SPEC_VERSION_MINOR_MASK;
     printk("SBI specification v%ld.%ld detected\n", major, minor);
+    /*
+        if (sbi_probe_extension(SBI_EXT_ID_TIME) > 0)
+        {
+            // timer extension
+            printk("SBI TIME extension detected\n");
+        }
 
-    if (sbi_probe_extension(SBI_EXT_ID_TIME) > 0)
-    {
-        // timer extension
-        printk("SBI TIME extension detected\n");
-    }
-    else
-    {
-        panic("SBI error: Can't work without the timer extension");
-    }
+        if (sbi_probe_extension(SBI_EXT_ID_IPI) > 0)
+        {
+            // inter processor interrupts
+            printk("SBI IPI extension detected\n");
+        }
 
-    if (sbi_probe_extension(SBI_EXT_ID_IPI) > 0)
-    {
-        // inter processor interrupts
-        printk("SBI IPI extension detected\n");
-    }
-
-    if (sbi_probe_extension(SBI_EXT_ID_RFNC) > 0)
-    {
-        // remote fences
-        printk("SBI RFNC extension detected\n");
-    }
-
+        if (sbi_probe_extension(SBI_EXT_ID_RFNC) > 0)
+        {
+            // remote fences
+            printk("SBI RFNC extension detected\n");
+        }
+    */
     if (sbi_probe_extension(SBI_EXT_ID_HSM) > 0)
     {
         // hart state management
@@ -146,25 +138,23 @@ void init_sbi()
             hartid++;
         }
     }
+    /*
+        if (sbi_probe_extension(SBI_EXT_ID_SRST) > 0)
+        {
+            printk("SBI SRST extension detected\n");
+        }
 
-    if (sbi_probe_extension(SBI_EXT_ID_SRST) > 0)
-    {
-        printk("SBI SRST extension detected\n");
-    }
-
-    if (sbi_probe_extension(SBI_EXT_ID_PMU) > 0)
-    {
-        // https://github.com/riscv-software-src/opensbi/blob/master/docs/pmu_support.md
-        // "SBI PMU extension supports allow supervisor software to
-        // configure/start/stop any performance counter at anytime."
-        printk("SBI PMU extension detected\n");
-    }
+        if (sbi_probe_extension(SBI_EXT_ID_PMU) > 0)
+        {
+            //
+       https://github.com/riscv-software-src/opensbi/blob/master/docs/pmu_support.md
+            // "SBI PMU extension supports allow supervisor software to
+            // configure/start/stop any performance counter at anytime."
+            printk("SBI PMU extension detected\n");
+        }
+        */
 
     printk("\n");
 }
 
-void init_platform() { init_sbi(); }
-
-#else
-void init_platform() {}
 #endif  // __ENABLE_SBI__

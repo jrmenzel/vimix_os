@@ -27,8 +27,9 @@ ifeq ($(PLATFORM), qemu)
 # 32 and 64 supported
 BITWIDTH=64
 # with and without SBI supported
-#SBI_SUPPORT=yes
+SBI_SUPPORT=yes
 RV_ENABLE_EXT_C=yes
+RV_ENABLE_EXT_SSTC=yes
 # use this or a ramdisk
 VIRTIO_DISK=yes
 #RAMDISK_EMBEDDED=yes
@@ -43,12 +44,19 @@ else
 $(error PLATFORM not set)
 endif
 
-# compile with C extension for compressed instructions
-#RV_ENABLE_EXT_C=yes
-# statically added to the kernel binary, low flexibility but no need for boot loader support
-#RAMDISK_EMBEDDED=yes
-# let qemu or a boot loader load the file from a filesystem and load it for us in memory
-#RAMDISK_BOOTLOADER=yes
+# pick timer source
+ifeq ($(SBI_SUPPORT), yes)
+TIMER_SOURCE := TIMER_SOURCE_SBI
+BOOT_MODE = BOOT_S_MODE
+else
+TIMER_SOURCE := TIMER_SOURCE_CLINT
+BOOT_MODE = BOOT_M_MODE
+endif
+# preferred timer source
+ifeq ($(RV_ENABLE_EXT_SSTC), yes)
+TIMER_SOURCE := TIMER_SOURCE_SSTC
+endif
+
 
 # "build" is used as the foldername outside of the Makefiles as well.
 # So if this gets changed, the Makefiles should be fine, but externel
@@ -140,27 +148,37 @@ CFLAGS_COMMON += -g # native format for debug info
 endif
 endif
 
-# Disable PIE when possible (for Ubuntu 16.10 toolchain)
-ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
-CFLAGS_COMMON += -fno-pie -no-pie
-endif
-ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
-CFLAGS_COMMON += -fno-pie -nopie
+# target instruction set and bit width
+MARCH = rv$(BITWIDTH)ima
+# optional: compressed instructions
+ifeq ($(RV_ENABLE_EXT_C), yes)
+MARCH := $(MARCH)c
 endif
 
-ifeq ($(BITWIDTH), 64)
-ifeq ($(RV_ENABLE_EXT_C), yes)
-CFLAGS_TARGET_ONLY = -march=rv64gc -D_ARCH_64BIT
-else
-CFLAGS_TARGET_ONLY = -march=rv64g -D_ARCH_64BIT
-endif
-else
-ifeq ($(RV_ENABLE_EXT_C), yes)
-CFLAGS_TARGET_ONLY = -march=rv32gc -D_ARCH_32BIT
-else
-CFLAGS_TARGET_ONLY = -march=rv32g -D_ARCH_32BIT
+# prior to gcc 12 the extensions zicsr and zifencei were implicit in the base ISA
+GCC_VERSION_AT_LEAST_12 := $(shell expr `$(CC) -dumpversion | cut -f1 -d.` \>= 12)
+ifeq "$(GCC_VERSION_AT_LEAST_12)" "1"
+# mandatory: CSRs and fence instructions
+MARCH := $(MARCH)_zicsr_zifencei
+# optional: s-mode timer extension
+ifeq ($(RV_ENABLE_EXT_SSTC), yes)
+MARCH := $(MARCH)_sstc
 endif
 endif
+
+ifeq ($(RV_ENABLE_EXT_SSTC), yes)
+EXT_DEFINES = -D__RISCV_EXT_SSTC
+endif
+
+# calling convention
+ifeq ($(BITWIDTH), 32)
+MABI = ilp32
+else
+MABI = lp64
+endif
+
+CFLAGS_TARGET_ONLY = -march=$(MARCH) -mabi=$(MABI) -D_ARCH_$(BITWIDTH)BIT $(EXT_DEFINES)
+
 CFLAGS_TARGET_ONLY += -mcmodel=medany
 CFLAGS_TARGET_ONLY += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS_TARGET_ONLY += -nostdinc

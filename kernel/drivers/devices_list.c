@@ -45,7 +45,9 @@ struct Supported_Device g_supported_devices[] = {
     {"google,goldfish-rtc", false, rtc_init,      0, true,  {0x101000L,   PAGE_SIZE, 11}},
     {"syscon",              false, syscon_init,   0, true,  {0x100000L,   PAGE_SIZE, -1}},
     {"riscv,plic0",         false, plic_init,     0, true,  {0xc000000L,  0x600000L, -1}},
+#if defined(__TIMER_SOURCE_CLINT)
     {"riscv,clint0",        false, clint_init,    0, true,  {0x2000000L,  PAGE_SIZE, -1}},
+#endif
     {"/dev/null",           true,  dev_null_init, 0, false, {0,0,-1}},
     {"/dev/zero",           true,  dev_zero_init, 0, false, {0,0,-1}}
 };

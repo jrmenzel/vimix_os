@@ -3,8 +3,8 @@
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
 #include <arch/riscv/asm/registers.h>
-#include <arch/riscv/sbi.h>
 #include <arch/riscv/scause.h>
+#include <arch/riscv/timer.h>
 #include <arch/trap.h>
 #include <drivers/device.h>
 #include <drivers/uart16550.h>
@@ -327,14 +327,10 @@ void handle_plic_device_interrupt()
 
 void handle_timer_interrupt()
 {
-#ifdef __ENABLE_SBI__
-    // if the kernel runs in an SBI environment, the timer for the next
-    // interrupt needs to be set here from S-Mode. If the kernel runs
-    // bare-metal the M-Mode interrupt handler has already reset the timer
-    // before triggering the S-Mode interrupt we are currently in (see
-    // m_mode_trap_vector.S).
-    sbi_set_timer();
-#endif  // __ENABLE_SBI__
+    uint64_t timer_interrupt_interval =
+        timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
+    uint64_t now = rv_get_time();
+    timer_schedule_interrupt(now + timer_interrupt_interval);
 
     // will only update on CPU 0
     if (smp_processor_id() == 0)

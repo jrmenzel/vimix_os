@@ -13,17 +13,15 @@ INIT_BUILD_DIR=$(K_BUILD_DIR)/$(ARCH)/asm
 #
 OBJS = $(ARCH)/asm/entry.o \
 	$(ARCH)/asm/s_mode_trap_vector.o \
-	$(ARCH)/asm/m_mode_trap_vector.o \
 	$(ARCH)/asm/u_mode_trap_vector.o \
 	$(ARCH)/asm/context_switch.o \
 	$(ARCH)/mm/vm.o \
 	$(ARCH)/start.o \
-	$(ARCH)/clint.o \
 	$(ARCH)/plic.o \
 	$(ARCH)/context.o \
 	$(ARCH)/trap.o \
+	$(ARCH)/timer.o \
 	$(ARCH)/scause.o \
-	$(ARCH)/sbi.o \
 	$(ARCH)/reset.o \
 	drivers/device.o \
 	drivers/console.o \
@@ -59,6 +57,15 @@ OBJS = $(ARCH)/asm/entry.o \
 	lib/spinlock.o \
 	lib/print_impl.o \
 	lib/printk.o
+
+ifeq ($(BOOT_MODE), BOOT_M_MODE)
+OBJS += $(ARCH)/asm/m_mode_trap_vector.o
+OBJS += $(ARCH)/clint.o
+endif
+
+ifeq ($(SBI_SUPPORT), yes)
+OBJS += $(ARCH)/sbi.o
+endif
 
 ifeq ($(BITWIDTH), 32)
 OBJS += lib/div64.o
@@ -103,6 +110,8 @@ CFLAGS += -D__ENABLE_SBI__
 endif
 CFLAGS += -DMEMORY_SIZE=$(MEMORY_SIZE)
 CFLAGS += -DUSER_TEXT_START=$(USER_TEXT_START)
+CFLAGS += -D__$(TIMER_SOURCE)
+CFLAGS += -D__$(BOOT_MODE)
 
 ifeq ($(RAMDISK_EMBEDDED), yes)
 CFLAGS += -DRAMDISK_EMBEDDED

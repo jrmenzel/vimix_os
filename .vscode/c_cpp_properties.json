@@ -17,10 +17,12 @@
             "defines": [
                 "__riscv_xlen=64",
                 "__ENABLE_SBI__",
+                "__RISCV_EXT_SSTC",
+                "__BOOT_S_MODE",
+                "__TIMER_SOURCE_SSTC",
                 "DEBUG",
                 "USER_TEXT_START=0x1000",
-                "MEMORY_SIZE=64",
-                "_PLATFORM_QEMU"
+                "MEMORY_SIZE=64"
             ],
             "compilerArgs": [
                 "-nostdinc"
@@ -42,10 +44,12 @@
             ],
             "defines": [
                 "__riscv_xlen=32",
+                "__RISCV_EXT_SSTC",
+                "__BOOT_M_MODE",
+                "__TIMER_SOURCE_CLINT",
                 "DEBUG",
                 "MEMORY_SIZE=64",
-                "USER_TEXT_START=0x1000",
-                "_PLATFORM_SPIKE"
+                "USER_TEXT_START=0x1000"
             ],
             "compilerArgs": [
                 "-nostdinc"

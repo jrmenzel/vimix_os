@@ -8,7 +8,7 @@
 void init_sbi();
 
 /// @brief Sets the per CPU timer to trigger an interrupt.
-void sbi_set_timer();
+void sbi_set_timer(uint64_t stime_value);
 
 // SBI Base Extension
 #define SBI_EXT_ID_BASE 0x10
@@ -82,5 +82,11 @@ struct sbiret
     long error;
     long value;
 };
+
+/// @brief Tests if a SBI extension is available.
+/// See https://www.scs.stanford.edu/~zyedidia/docs/riscv/riscv-sbi.pdf
+/// @param extid Extension ID from the SBI spec
+/// @return 1 if the extension is available, 0 otherwise
+long sbi_probe_extension(int32_t extid);
 
 #endif  // __ENABLE_SBI__

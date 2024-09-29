@@ -39,6 +39,14 @@ void print_kernel_info()
     printk("%zdKB of read only data\n", (size_t)(size_of_rodata) / 1024);
     printk("%zdKB of data\n", (size_t)(size_of_data) / 1024);
     printk("%zdKB of bss / uninitialized data\n", (size_t)(size_of_bss) / 1024);
+
+#if defined(__TIMER_SOURCE_CLINT)
+    printk("Timer source: CLINT\n");
+#elif defined(__TIMER_SOURCE_SSTC)
+    printk("Timer source: Sstc extension\n");
+#elif defined(__TIMER_SOURCE_SBI)
+    printk("Timer source: SBI\n");
+#endif
 }
 
 #ifdef __ENABLE_SBI__

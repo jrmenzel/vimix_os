@@ -29,6 +29,8 @@ _entry:
 #ifndef __ENABLE_SBI__
     csrr a0, mhartid     # only works in Machine Mode
 #endif // __ENABLE_SBI__
+    // keep each CPU's hartid in its tp register, for smp_processor_id().
+    mv tp, a0
 
     # CPU ID >= MAX_CPU -> infinite loop for you
     li t0, MAX_CPUS

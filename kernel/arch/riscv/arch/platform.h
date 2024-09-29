@@ -3,4 +3,8 @@
 
 #include <sbi.h>
 
-void init_platform();
+#ifdef __ENABLE_SBI__
+static inline void init_platform() { init_sbi(); }
+#else
+static inline void init_platform() {}
+#endif

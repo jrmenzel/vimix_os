@@ -34,7 +34,7 @@ static inline bool cpu_is_device_interrupts_enabled()
     return (x & SSTATUS_SIE) != 0;
 }
 
-#ifndef __ENABLE_SBI__
+#if defined(__BOOT_M_MODE)
 /// returns the Hart ID (~CPU/thread ID). CPU must be in Machine Mode to
 /// execute.
 static inline xlen_t cpu_read_hart_id_mhartid()
@@ -59,7 +59,7 @@ static inline void cpu_set_m_mode_trap_vector(void *machine_mode_trap_vector)
 {
     rv_write_csr_mtvec((xlen_t)machine_mode_trap_vector);
 }
-#endif  // __ENABLE_SBI__
+#endif  // __BOOT_M_MODE
 
 /// Set the Supervisor-mode trap vector (interrupt handler) function
 static inline void cpu_set_s_mode_trap_vector(void *supervisor_mode_trap_vector)

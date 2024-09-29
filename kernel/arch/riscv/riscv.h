@@ -9,6 +9,10 @@
 //
 typedef size_t xlen_t;
 
+// mandatory extensions
+#define __RISCV_EXT_ZICSR
+#define __RISCV_EXT_ZIFENCEI
+
 // Supervisor Status Register, sstatus
 #define SSTATUS_SPP (1L << 8)   // Previous mode, 1=Supervisor, 0=User
 #define SSTATUS_SPIE (1L << 5)  // Supervisor Previous Interrupt Enable
@@ -21,7 +25,7 @@ typedef size_t xlen_t;
 #define SIE_STIE (1L << 5)  // timer
 #define SIE_SSIE (1L << 1)  // software
 
-#ifndef __ENABLE_SBI__
+#ifdef __BOOT_M_MODE
 // (When running in an SBI environment the kernel has no
 // direct access to M-Mode. Hide all M-Mode defines to prevent accidental
 // usage as it will result in runtime issues.)
@@ -37,7 +41,8 @@ typedef size_t xlen_t;
 #define MIE_MEIE (1L << 11)  // external
 #define MIE_MTIE (1L << 7)   // timer
 #define MIE_MSIE (1L << 3)   // software
-#endif                       // __ENABLE_SBI__
+#define MIE_STIE (1L << 5)   // supervisor timer
+#endif                       // __BOOT_M_MODE
 
 #if defined(_arch_is_32bit)
 // use riscv's sv32 page table scheme.
@@ -75,7 +80,7 @@ typedef size_t xlen_t;
         asm volatile("csrw " #name ", %0" : : "r"(x)); \
     }
 
-#ifndef __ENABLE_SBI__
+#ifdef __BOOT_M_MODE
 // machine mode CSR read / write functions
 
 rv_read_csr_(mhartid);  // hard-id
@@ -116,7 +121,15 @@ rv_write_csr_(mcounteren);
 // physical memory protection register 0
 rv_write_csr_(pmpaddr0);
 
-#endif  // __ENABLE_SBI__
+// environment config register
+rv_read_csr_(menvcfg);
+rv_write_csr_(menvcfg);
+#if (__riscv_xlen == 32)
+rv_read_csr_(menvcfgh);
+rv_write_csr_(menvcfgh);
+#endif
+
+#endif  // __BOOT_M_MODE
 
 //
 // supervisor mode (OS mode)
@@ -158,6 +171,18 @@ rv_read_csr_(time);
 rv_read_csr_(timeh);
 #endif
 
+#if (__riscv_xlen == 32)
+static inline uint64_t rv_get_time()
+{
+    uint32_t time_low = rv_read_csr_time();
+    uint32_t time_high = rv_read_csr_timeh();
+
+    return ((uint64_t)time_high << 32) + (uint64_t)time_low;
+}
+#else
+static inline uint64_t rv_get_time() { return rv_read_csr_time(); }
+#endif
+
 // read cycle counter
 rv_read_csr_(cycle);
 #if (__riscv_xlen == 32)
@@ -196,12 +221,58 @@ static inline uint64_t rv_get_instret()
 static inline uint64_t rv_get_instret() { return rv_read_csr_instret(); }
 #endif
 
+//
+// Sstc Extension
+//
+#if defined(__RISCV_EXT_SSTC)
+
+/// @brief stime compare register for extension Sstc
+rv_read_csr_(stimecmp);
+rv_write_csr_(stimecmp);
+#if (__riscv_xlen == 32)
+rv_read_csr_(stimecmph);
+rv_write_csr_(stimecmph);
+#endif
+
+#if (__riscv_xlen == 32)
+/// @brief get Sstc stimecmp register
+static inline uint64_t rv_get_stimecmp()
+{
+    uint32_t low = rv_read_csr_stimecmp();
+    uint32_t high = rv_read_csr_stimecmph();
+    return ((uint64_t)high << 32) + (uint64_t)low;
+}
+/// @brief set Sstc stimecmp register
+static inline void rv_set_stimecmp(uint64_t new_value)
+{
+    uint32_t low = new_value & 0xFFFFFFFF;
+    uint32_t high = new_value >> 32;
+    rv_write_csr_stimecmp(low);
+    rv_write_csr_stimecmph(high);
+}
+#else
+/// @brief get Sstc stimecmp register
+static inline uint64_t rv_get_stimecmp() { return rv_read_csr_stimecmp(); }
+/// @brief set Sstc stimecmp register
+static inline void rv_set_stimecmp(uint64_t new_value)
+{
+    return rv_write_csr_stimecmp(new_value);
+}
+#endif
+
+#endif
+
+//
+// zifencei Extension
+//
+#if defined(__RISCV_EXT_ZIFENCEI)
 // flush the TLB.
 static inline void rv_sfence_vma()
 {
     // the zero, zero means flush all TLB entries.
     asm volatile("sfence.vma zero, zero");
 }
+#endif
 
 static inline void cpu_set_page_table(xlen_t addr)
 {
@@ -211,5 +282,3 @@ static inline void cpu_set_page_table(xlen_t addr)
 }
 
 static inline xlen_t cpu_get_page_table() { return rv_read_csr_satp(); }
-
-static inline void w_tp(xlen_t x) { asm volatile("mv tp, %0" : : "r"(x)); }
