@@ -202,6 +202,7 @@ int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
         pte_t *pte = vm_walk(pagetable, current_va, true);
         if (pte == NULL)
         {
+            // out of memory
             return -1;
         }
         if (*pte & PTE_V)
@@ -422,7 +423,7 @@ int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
     bool fatal_error_happened = false;
     va_start = PAGE_ROUND_DOWN(va_start);
 
-    size_t pages_allocated = 0;
+    size_t pages_mapped = 0;
     for (size_t va = va_start; va < va_end; va += PAGE_SIZE)
     {
         pte_t *pte = vm_walk(src_page, va, false);
@@ -443,7 +444,6 @@ int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
             fatal_error_happened = true;
             break;
         }
-        pages_allocated++;
 
         memmove(mem, (char *)pa, PAGE_SIZE);
         if (kvm_map(dst_page, va, (size_t)mem, PAGE_SIZE, flags) != 0)
@@ -452,12 +452,14 @@ int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
             fatal_error_happened = true;
             break;
         }
+
+        pages_mapped++;
     }
 
     if (fatal_error_happened)
     {
         // unmap and free the partial copy
-        uvm_unmap(dst_page, va_start, pages_allocated, true);
+        uvm_unmap(dst_page, va_start, pages_mapped, true);
         return -1;
     }
 
