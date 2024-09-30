@@ -2659,8 +2659,12 @@ void MAXVAplus(char *s)
 // failed allocation?
 void sbrkfail(char *s)
 {
-    _Static_assert(MEMORY_SIZE > 4);
+#if (MEMORY_SIZE > 4)
     const size_t BIG = (MEMORY_SIZE - 4) * 1024 * 1024;
+#else
+    _Static_assert(MEMORY_SIZE >= 2);
+    const size_t BIG = (MEMORY_SIZE - 1) * 1024 * 1024;
+#endif
 
     pid_t pids[10];
 

@@ -192,6 +192,12 @@ static inline void debug_vm_print_pte_flags(size_t flags)
 /// @brief Debug print of the pagetable.
 /// @param pagetable Table to print.
 void debug_vm_print_page_table(pagetable_t pagetable);
+
+/// @brief Get the size of the pagetable in pages.
+/// @param pagetable The page table.
+/// @return Number of allocations, size in byte = return value * PAGE_SIZE
+size_t debug_vm_get_size(pagetable_t pagetable);
 #else
 static inline void debug_vm_print_page_table(pagetable_t) {}
+static inline size_t debug_vm_get_size(pagetable_t pagetable) { return 0; }
 #endif  // DEBUG

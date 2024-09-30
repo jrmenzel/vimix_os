@@ -643,4 +643,33 @@ void debug_vm_print_page_table(pagetable_t pagetable)
     printk("page table 0x%p\n", pagetable);
     debug_print_pt_level(pagetable, PAGE_TABLE_MAX_LEVELS - 1, 0);
 }
+
+size_t debug_vm_get_size_level(pagetable_t pagetable, size_t level)
+{
+    size_t size = 0;
+    for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
+    {
+        pte_t pte = pagetable[i];
+        if (pte & PTE_V)
+        {
+            size++;  // count the page this pte points to
+
+            // don't descent into level 0 as it does not point
+            // to additional allocations
+            if (level > 1)
+            {
+                pagetable_t sub_pagetable = (pagetable_t)PTE2PA(pte);
+                size += debug_vm_get_size_level(sub_pagetable, level - 1);
+            }
+        }
+    }
+    return size;
+}
+
+size_t debug_vm_get_size(pagetable_t pagetable)
+{
+    // +1 to count the page pagetable points to itself.
+    return 1 + debug_vm_get_size_level(pagetable, PAGE_TABLE_MAX_LEVELS - 1);
+}
+
 #endif  // DEBUG

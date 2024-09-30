@@ -351,6 +351,10 @@ int32_t fork()
 
     struct process *parent = get_current();
 
+    // printk("fork() Memory used: %zdkb - %zdkb free\n",
+    //        kalloc_debug_get_allocation_count() * 4,
+    //        kalloc_get_free_memory() / 1024);
+
     // Copy memory
     if (proc_copy_memory(parent, np) == -1)
     {
@@ -358,6 +362,10 @@ int32_t fork()
         spin_unlock(&np->lock);
         return -1;
     }
+
+    // printk(" fork() Memory used: %zdkb - %zdkb free\n",
+    //        kalloc_debug_get_allocation_count() * 4,
+    //        kalloc_get_free_memory() / 1024);
 
     // Copy registers
     *(np->trapframe) = *(parent->trapframe);

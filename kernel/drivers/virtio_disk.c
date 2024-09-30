@@ -151,6 +151,8 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     disk->disk.bdev.ops.read = virtio_block_device_read;
     disk->disk.bdev.ops.write = virtio_block_device_write;
 
+    // only register the first instance, the callbacks will destinquish
+    // between the instances by minor device numbers.
     if (disk_index == 0)
     {
         // plic.c and trap.c arrange for interrupts
