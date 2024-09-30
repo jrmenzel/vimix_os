@@ -182,7 +182,7 @@ CFLAGS_TARGET_ONLY = -march=$(MARCH) -mabi=$(MABI) -D_ARCH_$(BITWIDTH)BIT $(EXT_
 CFLAGS_TARGET_ONLY += -mcmodel=medany
 CFLAGS_TARGET_ONLY += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS_TARGET_ONLY += -nostdinc
-CFLAGS_TARGET_ONLY += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+CFLAGS_TARGET_ONLY += -fno-stack-protector
 
 # c flags for the kernel and user space apps on the target OS:
 CFLAGS = $(CFLAGS_TARGET_ONLY) $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS)

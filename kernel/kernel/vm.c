@@ -278,6 +278,12 @@ size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
             return 0;
         }
         n++;
+        // All memory that the kernel makes availabe to user apps gets
+        // cleared. In a real OS this is a security feature to prevent apps
+        // from reading private data previously owned by another app.
+        // It is also required for the apps BSS section. As we don't
+        // handle BSS sections in a special way, it only works rigth by clearing
+        // all memory.
         memset(mem, 0, PAGE_SIZE);
         if (kvm_map(pagetable, va, (size_t)mem, PAGE_SIZE,
                     PTE_R | PTE_U | perm) != 0)

@@ -100,9 +100,9 @@ void init_by_first_thread(void *dtb)
     struct Minimal_Memory_Map memory_map;
     dtb_get_memory(dtb, &memory_map);
     print_memory_map(&memory_map);
-    kalloc_init(&memory_map);  // physical page allocator
-    kvm_init(&memory_map,
-             dev_list);  // create kernel page table, memory map found devices
+    kalloc_init(&memory_map);         // physical page allocator
+    kvm_init(&memory_map, dev_list);  // create kernel page table,
+                                      // memory map found devices
 
     // init processes, syscalls and interrupts:
     printk("init process and syscall support...\n");
@@ -116,13 +116,18 @@ void init_by_first_thread(void *dtb)
     file_init();   // file table
 
     printk("init remaining devices...\n");
+    // device 0 is the console and was done already, now the rest:
+    for (size_t i = 1; i < dev_list->dev_array_length; ++i)
+    {
+        init_device(&(dev_list->dev[i]));
+    }
+
     // if a virtio device was found, init the one with the lowest address
     // this is the first device in qemu and the one the FS image is loaded
     ssize_t device_of_root_fs = -1;
     ssize_t i = get_first_virtio(dev_list);
     if (i >= 0)
     {
-        dev_list->dev[i].init_func = virtio_disk_init;
         device_of_root_fs = i;
     }
     if (memory_map.initrd_begin != 0)
@@ -137,12 +142,6 @@ void init_by_first_thread(void *dtb)
     // a ram disk has preference over a previously found virtio disk
     device_of_root_fs = 2;
 #endif
-
-    // device 0 is the console and was done already, now the rest:
-    for (size_t i = 1; i < dev_list->dev_array_length; ++i)
-    {
-        init_device(&(dev_list->dev[i]));
-    }
 
     // store the device number of root:
     if (device_of_root_fs != -1)

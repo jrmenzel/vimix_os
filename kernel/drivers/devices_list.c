@@ -34,14 +34,14 @@ struct Supported_Device g_supported_devices[] = {
     // must be index 2 if present
     {"Embedded RAM disk",    true, ramdisk_init,  0, false, {(size_t)ramdisk_fs,  ramdisk_fs_size, -1}},
 #endif                                                                    
-    {"virtio,mmio",         false, NULL,          0, true,  {0x10001000L, PAGE_SIZE, 1}},
-    {"virtio,mmio",         false, NULL,          0, true,  {0x10002000L, PAGE_SIZE, 2}},
-    {"virtio,mmio",         false, NULL,          0, true,  {0x10003000L, PAGE_SIZE, 3}},
-    {"virtio,mmio",         false, NULL,          0, true,  {0x10004000L, PAGE_SIZE, 4}},
-    {"virtio,mmio",         false, NULL,          0, true,  {0x10005000L, PAGE_SIZE, 5}},
-    {"virtio,mmio",         false, NULL,          0, true,  {0x10006000L, PAGE_SIZE, 6}},
-    {"virtio,mmio",         false, NULL,          0, true,  {0x10007000L, PAGE_SIZE, 7}},
-    {"virtio,mmio",         false, NULL,          0, true,  {0x10008000L, PAGE_SIZE, 8}},
+    {"virtio,mmio",         false, virtio_disk_init, 0, true,  {0x10001000L, PAGE_SIZE, 1}},
+    {"virtio,mmio",         false, virtio_disk_init, 0, true,  {0x10002000L, PAGE_SIZE, 2}},
+    {"virtio,mmio",         false, virtio_disk_init, 0, true,  {0x10003000L, PAGE_SIZE, 3}},
+    {"virtio,mmio",         false, virtio_disk_init, 0, true,  {0x10004000L, PAGE_SIZE, 4}},
+    {"virtio,mmio",         false, virtio_disk_init, 0, true,  {0x10005000L, PAGE_SIZE, 5}},
+    {"virtio,mmio",         false, virtio_disk_init, 0, true,  {0x10006000L, PAGE_SIZE, 6}},
+    {"virtio,mmio",         false, virtio_disk_init, 0, true,  {0x10007000L, PAGE_SIZE, 7}},
+    {"virtio,mmio",         false, virtio_disk_init, 0, true,  {0x10008000L, PAGE_SIZE, 8}},
     {"google,goldfish-rtc", false, rtc_init,      0, true,  {0x101000L,   PAGE_SIZE, 11}},
     {"syscon",              false, syscon_init,   0, true,  {0x100000L,   PAGE_SIZE, -1}},
     {"riscv,plic0",         false, plic_init,     0, true,  {0xc000000L,  0x600000L, -1}},
@@ -86,7 +86,8 @@ ssize_t get_first_virtio(struct Devices_List *dev_list)
     for (size_t i = 0; i < dev_list->dev_array_length; ++i)
     {
         struct Supported_Device *dev = &(dev_list->dev[i]);
-        if (dev->found && (strcmp(dev->dtb_name, "virtio,mmio") == 0))
+        if (dev->found && (dev->dev_num != INVALID_DEVICE) &&
+            (strcmp(dev->dtb_name, "virtio,mmio") == 0))
         {
             if (dev->mapping.mem_start < addr_fist)
             {

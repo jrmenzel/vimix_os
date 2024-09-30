@@ -305,7 +305,7 @@ void handle_plic_device_interrupt()
         struct Device *dev = g_devices[i];
         if (dev && irq == dev->irq_number)
         {
-            dev->dev_ops.interrupt_handler();
+            dev->dev_ops.interrupt_handler(dev->device_number);
             irq_handled = true;
             break;
         }

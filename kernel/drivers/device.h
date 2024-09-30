@@ -6,7 +6,8 @@
 #include <kernel/types.h>
 
 /// @brief Interrupt handler function pointer
-typedef void (*interrupt_handler_p)();
+/// @param dev The device to call (minor number)
+typedef void (*interrupt_handler_p)(dev_t dev);
 
 /// @brief Device operations / functions that all devices have to implement.
 struct general_device_ops

@@ -173,7 +173,7 @@ int32_t uart_getc()
 /// @brief Handle a uart interrupt, raised because input has
 /// arrived, or the uart is ready for more output, or
 /// both. called from interrupt_handler().
-void uart_interrupt_handler()
+void uart_interrupt_handler(dev_t dev)
 {
     // read and process incoming characters.
     while (true)

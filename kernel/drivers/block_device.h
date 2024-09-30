@@ -12,10 +12,12 @@
 struct Block_Device;
 
 /// @brief What a block device driver needs to implement:
-///        read/write one block of data into the buffer.
 struct block_device_ops
 {
+    /// read one block of data from the buffer.
     void (*read)(struct Block_Device *bd, struct buf *b);
+
+    /// write one block of data into the buffer.
     void (*write)(struct Block_Device *bd, struct buf *b);
 };
 
