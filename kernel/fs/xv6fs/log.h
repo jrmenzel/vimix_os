@@ -25,6 +25,7 @@
 // Log appends are synchronous.
 
 #include <kernel/buf.h>
+#include <kernel/xv6fs.h>
 
 void log_init(dev_t dev, struct xv6fs_superblock *sb);
 

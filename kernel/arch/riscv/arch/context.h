@@ -25,6 +25,17 @@ struct context
     xlen_t s11;
 };
 
+static inline void context_set_return_register(struct context *ctx,
+                                               size_t value)
+{
+    ctx->ra = value;
+}
+
+static inline void context_set_stack_pointer(struct context *ctx, size_t value)
+{
+    ctx->sp = value;
+}
+
 /// @brief Stores the current register values and restores the ones from
 /// src_of_register. As the ra register holds the functions return address,
 /// and the sp register holds its stack pointer, the function return in
@@ -109,6 +120,11 @@ static inline void trapframe_set_return_register(struct trapframe *frame,
     frame->a0 = value;
 }
 
+static inline xlen_t trapframe_get_return_register(struct trapframe *frame)
+{
+    return frame->a0;
+}
+
 static inline size_t trapframe_get_sys_call_number(struct trapframe *frame)
 {
     // by ABI definition is the syscall number in a7 - just like on Linux :-)
@@ -118,3 +134,6 @@ static inline size_t trapframe_get_sys_call_number(struct trapframe *frame)
 // register_index 0 = register a0 etc
 size_t trapframe_get_argument_register(struct trapframe *frame,
                                        size_t register_index);
+
+void trapframe_set_argument_register(struct trapframe *frame,
+                                     size_t register_index, xlen_t value);

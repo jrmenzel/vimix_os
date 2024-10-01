@@ -3,6 +3,7 @@
 #include <drivers/device.h>
 #include <drivers/devices_list.h>
 #include <init/dtb.h>
+#include <init/main.h>
 #include <libfdt.h>
 
 bool is_compatible_device(const char *dtb_dev, const char *dev)

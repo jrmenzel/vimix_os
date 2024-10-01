@@ -19,7 +19,7 @@
 /// a user program that calls execv("/usr/bin/init")
 /// assembled from initcode.S
 /// od -t xC initcode
-#include <arch/riscv/asm/initcode.h>
+#include <asm/initcode.h>
 _Static_assert((sizeof(g_initcode) <= PAGE_SIZE),
                "Initcode must fit into one page");
 
@@ -60,7 +60,8 @@ void init_per_process_kernel_stack(pagetable_t kpage_table)
             panic("kalloc: physical address == NULL");
         }
         size_t va = KSTACK((size_t)(proc - g_process_list));
-        kvm_map_or_panic(kpage_table, va, (size_t)pa, PAGE_SIZE, PTE_R | PTE_W);
+        kvm_map_or_panic(kpage_table, va, (size_t)pa, PAGE_SIZE,
+                         PTE_KERNEL_STACK);
     }
 }
 
@@ -171,8 +172,8 @@ static struct process *alloc_process()
     // Set up new context to start executing at forkret,
     // which returns to user space.
     memset(&proc->context, 0, sizeof(proc->context));
-    proc->context.ra = (xlen_t)forkret;
-    proc->context.sp = proc->kstack + PAGE_SIZE;
+    context_set_return_register(&proc->context, (xlen_t)forkret);
+    context_set_stack_pointer(&proc->context, proc->kstack + PAGE_SIZE);
 
     DEBUG_ASSERT_CPU_HOLDS_LOCK(&proc->lock);
     return proc;
@@ -225,7 +226,7 @@ pagetable_t proc_pagetable(struct process *proc)
     // only the supervisor uses it, on the way
     // to/from user space, so not PTE_U.
     if (kvm_map(pagetable, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
-                PTE_R | PTE_X) < 0)
+                PTE_RO_TEXT) < 0)
     {
         uvm_free_pagetable(pagetable);
         return INVALID_PAGETABLE_T;
@@ -234,7 +235,7 @@ pagetable_t proc_pagetable(struct process *proc)
     // map the trapframe page just below the trampoline page, for
     // u_mode_trap_vector.S.
     if (kvm_map(pagetable, TRAPFRAME, (size_t)(proc->trapframe), PAGE_SIZE,
-                PTE_R | PTE_W) < 0)
+                PTE_RW_RAM) < 0)
     {
         uvm_unmap(pagetable, TRAMPOLINE, 1, 0);
         uvm_free_pagetable(pagetable);
@@ -266,7 +267,7 @@ void userspace_init()
     char *mem = kalloc();
     memset(mem, 0, PAGE_SIZE);
     kvm_map(proc->pagetable, USER_TEXT_START, (size_t)mem, PAGE_SIZE,
-            PTE_W | PTE_R | PTE_X | PTE_U);
+            PTE_INITCODE);
     memmove(mem, g_initcode, sizeof(g_initcode));
 
     proc->heap_begin = USER_TEXT_START + PAGE_SIZE;
@@ -296,7 +297,8 @@ int32_t proc_grow_memory(ssize_t n)
     if (n > 0)
     {
         // grow
-        if (uvm_alloc_heap(proc->pagetable, proc->heap_end, n, PTE_W) != n)
+        if (uvm_alloc_heap(proc->pagetable, proc->heap_end, n, PTE_USER_RAM) !=
+            n)
         {
             return -1;
         }
@@ -370,7 +372,7 @@ int32_t fork()
     // Copy registers
     *(np->trapframe) = *(parent->trapframe);
     // Cause fork to return 0 in the child.
-    np->trapframe->a0 = 0;
+    trapframe_set_return_register(np->trapframe, 0);
 
     // Copy open files:
     // Increment reference counts on open file descriptors including the curent
@@ -427,7 +429,7 @@ void exit(int32_t status)
     // special case: "/usr/bin/init" or even initcode.S returned
     if (proc == g_initial_user_process)
     {
-        size_t return_value = proc->trapframe->a0;
+        size_t return_value = trapframe_get_return_register(proc->trapframe);
         if (return_value == -0xDEAD)
         {
             panic("initcode.S could not load /usr/bin/init - check filesystem");

@@ -1,9 +1,11 @@
 #
 # Build all userspace apps
 #
-ROOT=../..
-include $(ROOT)/MakefileCommon.mk
+ROOT := ../..
 include $(ROOT)/usr/MakefileCommonUser.mk
+
+USER_SPACE_INC_PARAMS=$(foreach d, $(USER_SPACE_INC), -I$(ROOT)/$d)
+USER_SPACE_INC_HOST_PARAMS=$(foreach d, $(USER_SPACE_INC_HOST), -I$d)
 
 UPROGS_NAME=\
 	init\
@@ -71,7 +73,7 @@ $(B_BUILD_DIR)/%.o: %.c
 
 $(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
-	@$(LD) $(LDFLAGS) -T user.ld $(LIB_PATH)/stdlib.a -o $@ $^
+	@$(LD) $(LDFLAGS) -T user-$(ARCH).ld $(LIB_PATH)/stdlib.a -o $@ $^
 
 ###########################################################
 # compiling apps for the host

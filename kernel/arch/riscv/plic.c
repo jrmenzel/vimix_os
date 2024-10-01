@@ -5,7 +5,6 @@
 #include <drivers/device.h>
 #include <kernel/kernel.h>
 #include <kernel/smp.h>
-#include <mm/memlayout.h>
 
 //
 // the riscv Platform Level Interrupt Controller (PLIC).

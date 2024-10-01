@@ -374,9 +374,9 @@ void inode_unlock_put(struct inode *ip)
 // Inode content
 //
 // The content (data) associated with each inode is stored
-// in blocks on the disk. The first NDIRECT block numbers
-// are listed in ip->addrs[].  The next NINDIRECT blocks are
-// listed in block ip->addrs[NDIRECT].
+// in blocks on the disk. The first XV6FS_N_DIRECT_BLOCKS block numbers
+// are listed in ip->addrs[].  The next XV6FS_N_INDIRECT_BLOCKS blocks are
+// listed in block ip->addrs[XV6FS_N_DIRECT_BLOCKS].
 
 /// Truncate inode (discard contents).
 /// Caller must hold ip->lock.
@@ -441,7 +441,7 @@ ssize_t inode_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
     {
         return -1;
     }
-    if (off + n > MAXFILE * BLOCK_SIZE)
+    if (off + n > XV6FS_MAX_FILE_SIZE_BLOCKS * BLOCK_SIZE)
     {
         return -1;
     }

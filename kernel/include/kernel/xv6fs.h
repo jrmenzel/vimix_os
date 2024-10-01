@@ -10,11 +10,18 @@
 
 #define ROOT_INODE 1  // root i-number
 
+/// Magic number to identify a xv6 filesystem
 #define XV6FS_MAGIC 0x10203040
 
-#define NDIRECT 12
-#define NINDIRECT (BLOCK_SIZE / sizeof(uint32_t))
-#define MAXFILE (NDIRECT + NINDIRECT)
+/// Number of blocks a file points to directly
+#define XV6FS_N_DIRECT_BLOCKS 12
+
+/// Number of blocks a file points to indirectly
+#define XV6FS_N_INDIRECT_BLOCKS (BLOCK_SIZE / sizeof(uint32_t))
+
+/// Max file size in blocks (== kb)
+#define XV6FS_MAX_FILE_SIZE_BLOCKS \
+    (XV6FS_N_DIRECT_BLOCKS + XV6FS_N_INDIRECT_BLOCKS)
 
 // dublicate for mkfs
 #ifndef BLOCK_SIZE
@@ -81,7 +88,7 @@ struct xv6fs_dinode
     int16_t minor;         ///< Minor device number (XV6_FT_*_DEVICE only)
     int16_t nlink;         ///< Number of links to inode in file system
     uint32_t size;         ///< Size of file (bytes)
-    uint32_t addrs[NDIRECT + 1];  ///< Data block addresses
+    uint32_t addrs[XV6FS_N_DIRECT_BLOCKS + 1];  ///< Data block addresses
 };
 _Static_assert((BLOCK_SIZE % sizeof(struct xv6fs_dinode)) == 0,
                "Size of one block (1024 bytes) must be a multiple of the size "

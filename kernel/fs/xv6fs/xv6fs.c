@@ -113,7 +113,7 @@ int xv6fs_iops_read_in(struct inode *ip)
 
 int xv6fs_iops_trunc(struct inode *ip)
 {
-    for (size_t i = 0; i < NDIRECT; i++)
+    for (size_t i = 0; i < XV6FS_N_DIRECT_BLOCKS; i++)
     {
         if (ip->addrs[i])
         {
@@ -122,11 +122,11 @@ int xv6fs_iops_trunc(struct inode *ip)
         }
     }
 
-    if (ip->addrs[NDIRECT])
+    if (ip->addrs[XV6FS_N_DIRECT_BLOCKS])
     {
-        struct buf *bp = bio_read(ip->dev, ip->addrs[NDIRECT]);
+        struct buf *bp = bio_read(ip->dev, ip->addrs[XV6FS_N_DIRECT_BLOCKS]);
         uint32_t *a = (uint32_t *)bp->data;
-        for (size_t j = 0; j < NINDIRECT; j++)
+        for (size_t j = 0; j < XV6FS_N_INDIRECT_BLOCKS; j++)
         {
             if (a[j])
             {
@@ -134,8 +134,8 @@ int xv6fs_iops_trunc(struct inode *ip)
             }
         }
         bio_release(bp);
-        bfree(ip->dev, ip->addrs[NDIRECT]);
-        ip->addrs[NDIRECT] = 0;
+        bfree(ip->dev, ip->addrs[XV6FS_N_DIRECT_BLOCKS]);
+        ip->addrs[XV6FS_N_DIRECT_BLOCKS] = 0;
     }
 
     return 0;
@@ -193,7 +193,7 @@ void bfree(dev_t dev, uint32_t b)
 
 size_t bmap(struct inode *ip, uint32_t bn)
 {
-    if (bn < NDIRECT)
+    if (bn < XV6FS_N_DIRECT_BLOCKS)
     {
         size_t addr = ip->addrs[bn];
         if (addr == 0)
@@ -207,12 +207,12 @@ size_t bmap(struct inode *ip, uint32_t bn)
         }
         return addr;
     }
-    bn -= NDIRECT;
+    bn -= XV6FS_N_DIRECT_BLOCKS;
 
-    if (bn < NINDIRECT)
+    if (bn < XV6FS_N_INDIRECT_BLOCKS)
     {
         // Load indirect block, allocating if necessary.
-        size_t addr = ip->addrs[NDIRECT];
+        size_t addr = ip->addrs[XV6FS_N_DIRECT_BLOCKS];
         if (addr == 0)
         {
             addr = balloc(ip->dev);
@@ -220,7 +220,7 @@ size_t bmap(struct inode *ip, uint32_t bn)
             {
                 return 0;
             }
-            ip->addrs[NDIRECT] = addr;
+            ip->addrs[XV6FS_N_DIRECT_BLOCKS] = addr;
         }
         struct buf *bp = bio_read(ip->dev, addr);
         uint32_t *a = (uint32_t *)bp->data;

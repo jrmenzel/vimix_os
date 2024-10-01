@@ -21,7 +21,6 @@
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
-#include <mm/memlayout.h>
 
 #define BACKSPACE 0x100
 #define DELETE_KEY '\x7f'

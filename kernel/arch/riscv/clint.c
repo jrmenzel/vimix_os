@@ -5,7 +5,6 @@
 #include <arch/riscv/timer.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
-#include <mm/memlayout.h>
 
 bool clint_is_initialized = false;
 size_t CLINT_BASE = 0x02000000L;

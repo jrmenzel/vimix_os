@@ -38,21 +38,9 @@ $(BUILD_DIR)/filesystem.img: tools README.md userspace
 
 ###
 # qemu
-ifeq ($(BITWIDTH), 64)
-QEMU = qemu-system-riscv64
-else
-QEMU = qemu-system-riscv32
-endif
-GDB_PORT = 26002
+GDB_PORT := 26002
 
-ifeq ($(SBI_SUPPORT), yes)
-QEMU_BIOS=default
-else
-QEMU_BIOS=none
-endif
-
-QEMU_OPTS = -machine virt -bios $(QEMU_BIOS) -kernel $(KERNEL_FILE) -m $(MEMORY_SIZE)M -smp $(CPUS) -nographic
-QEMU_OPTS += -global virtio-mmio.force-legacy=false
+QEMU_OPTS := $(QEMU_OPTS_ARCH) -kernel $(KERNEL_FILE) -m $(MEMORY_SIZE)M -smp $(CPUS) -nographic
 
 ifeq ($(VIRTIO_DISK), yes)
 QEMU_OPTS += -drive file=$(BUILD_DIR)/filesystem.img,if=none,format=raw,id=x0
@@ -68,7 +56,7 @@ endif
 
 # -S = do not start CPUs, wait for 'c' in monitor (VSCode sends this on attach)
 # -s = alias for "-gdb tcp:localhost:1234"
-QEMU_DEBUG_OPTS = -S -gdb tcp:localhost:$(GDB_PORT)
+QEMU_DEBUG_OPTS := -S -gdb tcp:localhost:$(GDB_PORT)
 
 # run in qemu
 qemu: kernel $(BUILD_DIR)/filesystem.img # run VIMIX in qemu
@@ -77,14 +65,8 @@ qemu: kernel $(BUILD_DIR)/filesystem.img # run VIMIX in qemu
 
 # dump device tree
 qemu-dump-tree: kernel $(BUILD_DIR)/filesystem.img
-	$(QEMU) $(QEMU_OPTS) -M dumpdtb=qemu-riscv.dtb
-	dtc -o qemu-riscv.dts -O dts -I dtb qemu-riscv.dtb
-
-ifeq ($(BITWIDTH), 32)
-GDB_ARCHITECTURE = riscv:rv32
-else
-GDB_ARCHITECTURE = riscv:rv64
-endif
+	$(QEMU) $(QEMU_OPTS) -M dumpdtb=tree.dtb
+	dtc -o tree.dts -O dts -I dtb tree.dtb
 
 .gdbinit: tools/gdbinit Makefile MakefileCommon.mk
 	cp tools/gdbinit .gdbinit
@@ -105,18 +87,18 @@ qemu-gdb: kernel .gdbinit $(BUILD_DIR)/filesystem.img # run VIMIX in qemu waitin
 # Note: see docs on how to build VIMIX for Spike
 
 # spike binary, edit to use e.g. a self compiled version
-#SPIKE=spike
-SPIKE_BUILD=../riscv-simulator/riscv-isa-sim/build
-SPIKE=$(SPIKE_BUILD)/spike
+SPIKE=spike
+#SPIKE_BUILD := ../riscv-simulator/riscv-isa-sim/build
+#SPIKE := $(SPIKE_BUILD)/spike
 #SPIKE_SBI_FW=../opensbi/build/platform/generic/firmware/fw_payload.elf
 ifeq ($(BITWIDTH), 32)
-SPIKE_ISA = rv32gc
+SPIKE_ISA := rv32gc
 else
-SPIKE_ISA = rv64gc
+SPIKE_ISA := rv64gc
 endif
 
-MEMORY_SIZE_BYTES = $(shell echo $$(( $(MEMORY_SIZE) * 1024 * 1024 )))
-SPIKE_OPTIONS = -m0x80000000:$(MEMORY_SIZE_BYTES) -p$(CPUS) --isa=$(SPIKE_ISA)
+MEMORY_SIZE_BYTES := $(shell echo $$(( $(MEMORY_SIZE) * 1024 * 1024 )))
+SPIKE_OPTIONS := -m0x80000000:$(MEMORY_SIZE_BYTES) -p$(CPUS) --isa=$(SPIKE_ISA)
 ifeq ($(RAMDISK_BOOTLOADER), yes)
 SPIKE_OPTIONS += --initrd=$(BUILD_DIR)/filesystem.img
 endif

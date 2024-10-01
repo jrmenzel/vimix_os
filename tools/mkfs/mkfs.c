@@ -210,7 +210,7 @@ void copy_file_to_filesystem(const char *path_on_host, const char *new_name,
     int fd = open(path_on_host, O_RDONLY);
     if (fd < 0) die(path_on_host);
 
-    size_t max_file_size = MAXFILE * BLOCK_SIZE;
+    size_t max_file_size = XV6FS_MAX_FILE_SIZE_BLOCKS * BLOCK_SIZE;
     struct stat st;
     if (fstat(fd, &st) < 0) return;
     if (st.st_size > max_file_size)
@@ -300,8 +300,8 @@ size_t read_inode(struct xv6fs_dinode *din, void *buffer, size_t off,
         size = inode_size - off;
     }
 
-    uint32_t indirect[NINDIRECT];
-    size_t sector_of_indirect_blocks = xint(din->addrs[NDIRECT]);
+    uint32_t indirect[XV6FS_N_INDIRECT_BLOCKS];
+    size_t sector_of_indirect_blocks = xint(din->addrs[XV6FS_N_DIRECT_BLOCKS]);
     if (sector_of_indirect_blocks != 0)
     {
         read_sector(sector_of_indirect_blocks, (void *)indirect);
@@ -317,13 +317,13 @@ size_t read_inode(struct xv6fs_dinode *din, void *buffer, size_t off,
         size_t read_from_sector = BLOCK_SIZE - off_in_block;
         if (read_from_sector > size) read_from_sector = size;
         size_t sector;
-        if (block < NDIRECT)
+        if (block < XV6FS_N_DIRECT_BLOCKS)
         {
             sector = xint(din->addrs[block]);
         }
         else
         {
-            sector = xint(indirect[block - NDIRECT]);
+            sector = xint(indirect[block - XV6FS_N_DIRECT_BLOCKS]);
         }
 
         read_sector(sector, buf);
@@ -566,7 +566,7 @@ void iappend(uint32_t inum, void *xp, int n)
     uint32_t fbn, off, n1;
     struct xv6fs_dinode din;
     char buf[BLOCK_SIZE];
-    uint32_t indirect[NINDIRECT];
+    uint32_t indirect[XV6FS_N_INDIRECT_BLOCKS];
     uint32_t x;
 
     read_dinode(inum, &din);
@@ -575,8 +575,8 @@ void iappend(uint32_t inum, void *xp, int n)
     while (n > 0)
     {
         fbn = off / BLOCK_SIZE;
-        assert(fbn < MAXFILE);
-        if (fbn < NDIRECT)
+        assert(fbn < XV6FS_MAX_FILE_SIZE_BLOCKS);
+        if (fbn < XV6FS_N_DIRECT_BLOCKS)
         {
             if (xint(din.addrs[fbn]) == 0)
             {
@@ -586,17 +586,19 @@ void iappend(uint32_t inum, void *xp, int n)
         }
         else
         {
-            if (xint(din.addrs[NDIRECT]) == 0)
+            if (xint(din.addrs[XV6FS_N_DIRECT_BLOCKS]) == 0)
             {
-                din.addrs[NDIRECT] = xint(freeblock++);
+                din.addrs[XV6FS_N_DIRECT_BLOCKS] = xint(freeblock++);
             }
-            read_sector(xint(din.addrs[NDIRECT]), (char *)indirect);
-            if (indirect[fbn - NDIRECT] == 0)
+            read_sector(xint(din.addrs[XV6FS_N_DIRECT_BLOCKS]),
+                        (char *)indirect);
+            if (indirect[fbn - XV6FS_N_DIRECT_BLOCKS] == 0)
             {
-                indirect[fbn - NDIRECT] = xint(freeblock++);
-                write_sector(xint(din.addrs[NDIRECT]), (char *)indirect);
+                indirect[fbn - XV6FS_N_DIRECT_BLOCKS] = xint(freeblock++);
+                write_sector(xint(din.addrs[XV6FS_N_DIRECT_BLOCKS]),
+                             (char *)indirect);
             }
-            x = xint(indirect[fbn - NDIRECT]);
+            x = xint(indirect[fbn - XV6FS_N_DIRECT_BLOCKS]);
         }
         n1 = min(n, (fbn + 1) * BLOCK_SIZE - off);
         read_sector(x, buf);

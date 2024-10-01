@@ -3,7 +3,6 @@
 #include <drivers/rtc.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
-#include <mm/memlayout.h>
 
 struct Device_Memory_Map goldfish_mapping = {0};
 bool rtc_is_initialized = false;

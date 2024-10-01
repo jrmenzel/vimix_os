@@ -3,15 +3,13 @@
 
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
-#include <mm/mm.h>
+#include <mm/pte.h>
 #include <mm/vm.h>
 
-/// kalloc returns one page of 4KB, so a page used as a pagetable_t
-/// will have 4KB/sizeof(size_t) = 512 entries in 64bit / 1024 entries in 32bit
-typedef size_t pte_t;
-
-/// @brief in the end a pagetable_t is a "size_t tagetable[512]" (64 bit)
-/// / "size_t tagetable[1024]" (32 bit)
+/// @brief in the end a pagetable_t is a:
+///  "size_t tagetable[512]" (64 bit RISC V)
+///  "size_t tagetable[1024]" (32 bit RISC V)
+/// Each entry encodes (access) flags and a pointer to the lower level page.
 typedef pte_t *pagetable_t;
 static const pagetable_t INVALID_PAGETABLE_T = NULL;
 
@@ -41,7 +39,7 @@ void kvm_init(struct Minimal_Memory_Map *memory_map,
 /// @param size size in bytes
 /// @param perm access permission
 int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
-                         size_t size, int32_t perm);
+                         size_t size, pte_t perm);
 
 /// @brief Create PTEs for virtual addresses starting at va that refer to
 /// physical addresses starting at pa. va and size might not
@@ -53,7 +51,7 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
 /// @param size size in bytes
 /// @param perm access permission
 int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
-                int32_t perm);
+                pte_t perm);
 
 /// @brief create an empty user page table.
 /// @return new pagetable or NULL if out of memory.
@@ -69,7 +67,7 @@ pagetable_t uvm_create();
 /// @param perm access permission
 /// @return Returns allocated bytes or 0 on error.
 size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
-                      int32_t perm);
+                      pte_t perm);
 
 /// @brief Deallocate user pages to bring the process heap down.
 ///  oldsz and newsz need not be page-aligned, nor does newsz
@@ -179,14 +177,10 @@ int32_t uvm_copy_in(pagetable_t pagetable, char *dst_pa, size_t src_va,
 int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
                         size_t max);
 
-static inline void debug_vm_print_pte_flags(size_t flags)
-{
-    printk("%c%c%c%c%c%c%c%c", (flags & PTE_V) ? 'v' : '_',
-           (flags & PTE_R) ? 'r' : '_', (flags & PTE_W) ? 'w' : '_',
-           (flags & PTE_X) ? 'x' : '_', (flags & PTE_U) ? 'u' : '_',
-           (flags & PTE_G) ? 'g' : '_', (flags & PTE_A) ? 'a' : '_',
-           (flags & PTE_D) ? 'd' : '_');
-}
+/// @brief Converts access flags from an ELF file to VM access permissions.
+/// @param flags Flags from an ELF file
+/// @return A pte with matching access flags
+pte_t elf_flags_to_perm(int32_t flags);
 
 #if defined(DEBUG)
 /// @brief Debug print of the pagetable.

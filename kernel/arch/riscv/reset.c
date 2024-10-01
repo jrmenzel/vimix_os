@@ -3,7 +3,6 @@
 #include <arch/reset.h>
 #include <drivers/syscon.h>
 #include <kernel/kernel.h>
-#include <mm/memlayout.h>
 
 void machine_restart()
 {

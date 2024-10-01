@@ -16,7 +16,6 @@
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
-#include <mm/memlayout.h>
 
 // size_t virtio_base = VIRTIO0_BASE;
 /// the address of virtio mmio register r.

@@ -11,7 +11,6 @@
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
-#include <mm/memlayout.h>
 
 /// the UART control registers are memory-mapped
 /// at address UART0. this macro returns the

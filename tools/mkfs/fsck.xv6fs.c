@@ -187,7 +187,7 @@ int check_dinode(struct xv6fs_in_file *file, struct xv6fs_dinode *dinode,
 
     if (dinode->type == XV6_FT_DIR || dinode->type == XV6_FT_FILE)
     {
-        for (size_t i = 0; i < NDIRECT; ++i)
+        for (size_t i = 0; i < XV6FS_N_DIRECT_BLOCKS; ++i)
         {
             if (dinode->addrs[i] != 0)
             {
@@ -196,11 +196,11 @@ int check_dinode(struct xv6fs_in_file *file, struct xv6fs_dinode *dinode,
                 if (verbose) printf(" [%d]", dinode->addrs[i]);
             }
         }
-        if (dinode->addrs[NDIRECT] != 0)
+        if (dinode->addrs[XV6FS_N_DIRECT_BLOCKS] != 0)
         {
-            mark_block_as_used(file, dinode->addrs[NDIRECT]);
+            mark_block_as_used(file, dinode->addrs[XV6FS_N_DIRECT_BLOCKS]);
             uint8_t *buffer = malloc(BLOCK_SIZE);
-            read_block(file, dinode->addrs[NDIRECT], buffer);
+            read_block(file, dinode->addrs[XV6FS_N_DIRECT_BLOCKS], buffer);
             uint32_t *addr = (uint32_t *)buffer;
             for (size_t i = 0; i < BLOCK_SIZE / sizeof(uint32_t); ++i)
             {

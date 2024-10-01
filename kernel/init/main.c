@@ -15,10 +15,10 @@
 #include <kernel/file.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
+#include <kernel/kticks.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
 #include <kernel/smp.h>
-#include <mm/memlayout.h>
 
 #ifdef RAMDISK_EMBEDDED
 #include <ramdisk_fs.h>
@@ -108,8 +108,8 @@ void init_by_first_thread(void *dtb)
 
     // init processes, syscalls and interrupts:
     printk("init process and syscall support...\n");
-    proc_init();  // process table
-    trap_init();  // trap vectors
+    proc_init();    // process table
+    kticks_init();  // counts ticks since boot/init
 
     // init filesystem:
     printk("init filesystem...\n");

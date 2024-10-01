@@ -15,6 +15,12 @@
 
 #define PAGE_SIZE 4096  ///< bytes per page
 
+/// rounds up an address to the next page address
+#define PAGE_ROUND_UP(sz) (((sz) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
+
+/// rounds down an address to the next lower page address
+#define PAGE_ROUND_DOWN(a) (((a)) & ~(PAGE_SIZE - 1))
+
 /// all stacks start at one page and can grow to this
 #define USER_MAX_STACK_SIZE (16 * PAGE_SIZE)
 

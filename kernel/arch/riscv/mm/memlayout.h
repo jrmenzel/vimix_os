@@ -1,6 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+//
+// WARNING: This file is included from assembly files,
+//          use asm compatible macros only.
+//
+
+#include <kernel/param.h>
 #include <mm/mm.h>
 
 /// map the trampoline page to the highest address,

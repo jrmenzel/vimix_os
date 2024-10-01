@@ -11,6 +11,7 @@
 #include <drivers/virtio_disk.h>
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
+#include <kernel/kticks.h>
 #include <kernel/proc.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
@@ -18,20 +19,10 @@
 #include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
-// each call to the timer interrupt is one tick
-struct spinlock g_tickslock;
-size_t g_ticks;
-
 extern char trampoline[], u_mode_trap_vector[], return_to_user_mode_asm[];
 
 /// in s_mode_trap_vector.S, calls kernel_mode_interrupt_handler().
 extern void s_mode_trap_vector();
-
-void trap_init()
-{
-    g_ticks = 0;
-    spin_lock_init(&g_tickslock, "time");
-}
 
 void set_s_mode_trap_vector()
 {
@@ -335,10 +326,7 @@ void handle_timer_interrupt()
     // will only update on CPU 0
     if (smp_processor_id() == 0)
     {
-        spin_lock(&g_tickslock);
-        g_ticks++;
-        wakeup(&g_ticks);
-        spin_unlock(&g_tickslock);
+        kticks_inc_ticks();
     }
 
     // acknowledge the software interrupt by clearing

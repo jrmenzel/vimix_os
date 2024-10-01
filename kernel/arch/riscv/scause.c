@@ -4,7 +4,7 @@
 
 #include <kernel/proc.h>
 #include <kernel/vm.h>
-#include <mm/memlayout.h>
+#include <mm/mm.h>
 
 void dump_scause()
 {

@@ -3,7 +3,6 @@
 
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
-#include <mm/memlayout.h>
 
 dev_t clint_init(struct Device_Memory_Map *mapping);
 

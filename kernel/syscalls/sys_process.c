@@ -5,11 +5,11 @@
 #include <kernel/exec.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
+#include <kernel/kticks.h>
 #include <kernel/limits.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
-#include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
 size_t sys_exit()

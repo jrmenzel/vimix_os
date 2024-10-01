@@ -11,6 +11,7 @@
 #include <kernel/string.h>
 #include <kernel/vm.h>
 #include <mm/memlayout.h>
+#include <mm/mm.h>
 
 //
 // The kernel's page table: all memory is mapped to its real location.
@@ -26,7 +27,7 @@ extern char trampoline[];  // u_mode_trap_vector.S
 /// @param size Size of mapping in bytes.
 void kvm_map_mmio(pagetable_t k_pagetable, size_t address, size_t size)
 {
-    kvm_map_or_panic(k_pagetable, address, address, size, PTE_R | PTE_W);
+    kvm_map_or_panic(k_pagetable, address, address, size, PTE_MMIO_FLAGS);
 }
 
 /// Make a direct-map page table for the kernel.
@@ -41,17 +42,17 @@ pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
     // map kernel text as executable and read-only.
     kvm_map_or_panic(
         kpage_table, memory_map->kernel_start, memory_map->kernel_start,
-        (size_t)end_of_text - memory_map->kernel_start, PTE_R | PTE_X);
+        (size_t)end_of_text - memory_map->kernel_start, PTE_RO_TEXT);
 
     // map kernel data and the physical RAM we'll make use of.
     kvm_map_or_panic(kpage_table, (size_t)end_of_text, (size_t)end_of_text,
                      (size_t)memory_map->ram_end - (size_t)end_of_text,
-                     PTE_R | PTE_W);
+                     PTE_RW_RAM);
 
     // map the trampoline for trap entry/exit to
     // the highest virtual address in the kernel.
     kvm_map_or_panic(kpage_table, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
-                     PTE_R | PTE_X);
+                     PTE_RO_TEXT);
 
     // allocate and map a kernel stack for each process.
     init_per_process_kernel_stack(kpage_table);
@@ -151,14 +152,14 @@ size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va,
     if ((*pte & PTE_U) == 0) return 0;
 
     // optionally pass out if the page can be written to
-    if (is_writeable) *is_writeable = (*pte & PTE_W);
+    if (is_writeable) *is_writeable = PTE_IS_WRITEABLE(*pte);
 
     size_t pa = PTE2PA(*pte);
     return pa;
 }
 
 int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
-                         size_t size, int32_t perm)
+                         size_t size, pte_t perm)
 {
     if (kvm_map(k_pagetable, va, pa, size, perm) != 0)
     {
@@ -168,9 +169,9 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
 }
 
 int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
-                int32_t perm)
+                pte_t perm)
 {
-    perm |= PTE_V | PTE_A | PTE_D;
+    perm |= PTE_MAP_DEFAULT_FLAGS;
 
     /*
     // useful debug prints
@@ -205,7 +206,7 @@ int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
             // out of memory
             return -1;
         }
-        if (*pte & PTE_V)
+        if (PTE_IS_IN_USE(*pte) & PTE_V)
         {
             panic("kvm_map: remap");
         }
@@ -264,7 +265,7 @@ pagetable_t uvm_create()
 }
 
 size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
-                      int32_t perm)
+                      pte_t perm)
 {
     size_t end_va = start_va + alloc_size;
     start_va = PAGE_ROUND_UP(start_va);
@@ -286,7 +287,7 @@ size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
         // all memory.
         memset(mem, 0, PAGE_SIZE);
         if (kvm_map(pagetable, va, (size_t)mem, PAGE_SIZE,
-                    PTE_R | PTE_U | perm) != 0)
+                    PTE_USER_RAM | perm) != 0)
         {
             kfree(mem);
             uvm_dealloc_heap(pagetable, va, va - start_va);
@@ -387,7 +388,7 @@ size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low)
     memset(mem, 0, PAGE_SIZE);
     size_t new_stack_low = stack_low - PAGE_SIZE;
     if (kvm_map(pagetable, new_stack_low, (size_t)mem, PAGE_SIZE,
-                PTE_R | PTE_W | PTE_U) != 0)
+                PTE_RW | PTE_U) != 0)
     {
         kfree(mem);
         return 0;
@@ -398,24 +399,24 @@ size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low)
 
 void uvm_free_pagetable(pagetable_t pagetable)
 {
-    // there are 2^9 => 512 PTEs in a page table on 64 bit
-    // there are 2^10 => 1024 PTEs in a page table on 32 bit
+    // there are 2^9 => 512 PTEs in a page table on 64 bit RISC V
+    // there are 2^10 => 1024 PTEs in a page table on 32 bit RISC V
     for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
     {
         pte_t pte = pagetable[i];
         size_t child = PTE2PA(pte);
 
-        if (pte & PTE_V)
+        if (PTE_IS_VALID_NODE(pte))
         {
-            if ((pte & (PTE_R | PTE_W | PTE_X)) == 0)
-            {
-                // no RWX flag -> this PTE points to a lower-level page table.
-                uvm_free_pagetable((pagetable_t)child);
-            }
-            else
+            if (PTE_IS_LEAF(pte))
             {
                 // a leaf pointing to a mapped page
                 kfree((void *)child);
+            }
+            else
+            {
+                // this PTE points to a lower-level page table
+                uvm_free_pagetable((pagetable_t)child);
             }
         }
         pagetable[i] = 0;

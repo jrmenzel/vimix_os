@@ -16,3 +16,11 @@ void kvm_init_per_cpu()
     // flush stale entries from the TLB.
     rv_sfence_vma();
 }
+
+pte_t elf_flags_to_perm(int32_t flags)
+{
+    pte_t perm = 0;
+    if (flags & 0x1) perm = PTE_X;
+    if (flags & 0x2) perm |= PTE_W;
+    return perm;
+}

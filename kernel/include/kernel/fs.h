@@ -37,10 +37,10 @@ struct inode
     /// Inode content
     ///
     /// The content (data) associated with each inode is stored
-    /// in blocks on the disk. The first NDIRECT block numbers
-    /// are listed in ip->addrs[].  The next NINDIRECT blocks are
-    /// listed in block ip->addrs[NDIRECT].
-    uint32_t addrs[NDIRECT + 1];
+    /// in blocks on the disk. The first XV6FS_N_DIRECT_BLOCKS block numbers
+    /// are listed in ip->addrs[].  The next XV6FS_N_INDIRECT_BLOCKS blocks are
+    /// listed in block ip->addrs[XV6FS_N_DIRECT_BLOCKS].
+    uint32_t addrs[XV6FS_N_DIRECT_BLOCKS + 1];
 
 #if defined(CONFIG_DEBUG_INODE_PATH_NAME)
     char path[PATH_MAX];

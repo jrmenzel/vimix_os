@@ -8,18 +8,13 @@
 #include <arch/trap.h>
 #include <drivers/rtc.h>
 #include <kernel/kernel.h>
+#include <kernel/kticks.h>
 #include <kernel/reboot.h>
 #include <kernel/spinlock.h>
 #include <kernel/time.h>
 #include <syscalls/syscall.h>
 
-size_t sys_uptime()
-{
-    spin_lock(&g_tickslock);
-    size_t xticks = g_ticks;
-    spin_unlock(&g_tickslock);
-    return xticks;
-}
+size_t sys_uptime() { return kticks_get_ticks(); }
 
 size_t sys_reboot()
 {

@@ -9,11 +9,14 @@ print "#include <kernel/unistd.h>\n";
 
 sub entry {
     my $name = shift;
-    print ".global $name\n";
-    print "${name}:\n";
-    print " li a7, SYS_${name}\n";
-    print " ecall\n";
-    print " ret\n";
+    if ($ARGV[0] eq "-riscv")
+    {
+        print ".global $name\n";
+        print "${name}:\n";
+        print " li a7, SYS_${name}\n";
+        print " ecall\n";
+        print " ret\n";
+    }
 }
 	
 entry("fork");

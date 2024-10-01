@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <mm/memlayout.h>
 #include "usertests.h"
+
+#include <kernel/xv6fs.h>
+#include <mm/mm.h>  // for MAXVA
 
 //
 // Tests VIMIX system calls.  usertests without arguments runs them all
@@ -740,7 +742,7 @@ void writebig(char *s)
         exit(1);
     }
 
-    for (size_t i = 0; i < MAXFILE; i++)
+    for (size_t i = 0; i < XV6FS_MAX_FILE_SIZE_BLOCKS; i++)
     {
         ((int *)buf)[0] = i;
         if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
@@ -765,7 +767,7 @@ void writebig(char *s)
         ssize_t i = read(fd, buf, BLOCK_SIZE);
         if (i == 0)
         {
-            if (blocks_read != MAXFILE)
+            if (blocks_read != XV6FS_MAX_FILE_SIZE_BLOCKS)
             {
                 printf("%s: read only %zd blocks from big", s, blocks_read);
                 exit(1);
@@ -3385,7 +3387,7 @@ void diskfull(char *s)
             done = true;
             break;
         }
-        for (size_t i = 0; i < MAXFILE; i++)
+        for (size_t i = 0; i < XV6FS_MAX_FILE_SIZE_BLOCKS; i++)
         {
             char buf[BLOCK_SIZE];
             if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)

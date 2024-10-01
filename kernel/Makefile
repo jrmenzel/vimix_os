@@ -3,27 +3,19 @@
 #
 include ../MakefileCommon.mk
 include lib/libfdt/Makefile.libfdt
-K_BUILD_DIR=../$(BUILD_DIR)/kernel
-KERNEL_PATH=../$(KERNEL_FILE)
-INIT_BUILD_DIR=$(K_BUILD_DIR)/$(ARCH)/asm
+K_BUILD_DIR := ../$(BUILD_DIR)/kernel
+KERNEL_PATH := ../$(KERNEL_FILE)
+ARCH_DIR    := arch/$(ARCH)
+INIT_BUILD_DIR := $(K_BUILD_DIR)/$(ARCH_DIR)/asm
 
 #
 # Entry code must be located at the beginning of the binary.
 # This is set in the kernel linker script.
 #
-OBJS = $(ARCH)/asm/entry.o \
-	$(ARCH)/asm/s_mode_trap_vector.o \
-	$(ARCH)/asm/u_mode_trap_vector.o \
-	$(ARCH)/asm/context_switch.o \
-	$(ARCH)/mm/vm.o \
-	$(ARCH)/start.o \
-	$(ARCH)/plic.o \
-	$(ARCH)/context.o \
-	$(ARCH)/trap.o \
-	$(ARCH)/timer.o \
-	$(ARCH)/scause.o \
-	$(ARCH)/reset.o \
-	drivers/device.o \
+OBJS := $(OBJS_ARCH)
+OBJS +=	$(ARCH_DIR)/context.o \
+	$(ARCH_DIR)/mm/vm.o \
+    drivers/device.o \
 	drivers/console.o \
 	drivers/uart16550.o \
 	drivers/dev_null.o \
@@ -47,6 +39,7 @@ OBJS = $(ARCH)/asm/entry.o \
 	kernel/file.o \
 	kernel/exec.o \
 	kernel/scheduler.o \
+	kernel/kticks.o \
 	syscalls/sys_file.o \
 	syscalls/sys_ipc.o \
 	syscalls/sys_system.o \
@@ -58,28 +51,19 @@ OBJS = $(ARCH)/asm/entry.o \
 	lib/print_impl.o \
 	lib/printk.o
 
-ifeq ($(BOOT_MODE), BOOT_M_MODE)
-OBJS += $(ARCH)/asm/m_mode_trap_vector.o
-OBJS += $(ARCH)/clint.o
-endif
-
-ifeq ($(SBI_SUPPORT), yes)
-OBJS += $(ARCH)/sbi.o
-endif
-
 ifeq ($(BITWIDTH), 32)
 OBJS += lib/div64.o
 endif
 
 ifeq ($(RAMDISK_EMBEDDED), yes)
 OBJS += ramdisk_fs.o
-RAMDISC_C = $(K_BUILD_DIR)/ramdisk_fs.c
+RAMDISC_C := $(K_BUILD_DIR)/ramdisk_fs.c
 endif
 
 # add libfdt for Device Tree parsing
 OBJS += $(addprefix lib/libfdt/, $(LIBFDT_OBJS))
 
-SUB_DIRS = \
+SUB_DIRS := \
   kernel \
   fs \
   fs/xv6fs \
@@ -89,29 +73,26 @@ SUB_DIRS = \
   lib \
   lib/libfdt \
   syscalls \
-  $(ARCH) \
-  $(ARCH)/mm \
-  $(ARCH)/asm
+  $(ARCH_DIR) \
+  $(ARCH_DIR)/mm \
+  $(ARCH_DIR)/asm
 
-OBJECT_FILES=$(addprefix $(K_BUILD_DIR)/, $(OBJS))
-SUB_DIRS_TO_MAKE=$(addprefix $(K_BUILD_DIR)/, $(SUB_DIRS))
+OBJECT_FILES := $(addprefix $(K_BUILD_DIR)/, $(OBJS))
+SUB_DIRS_TO_MAKE := $(addprefix $(K_BUILD_DIR)/, $(SUB_DIRS))
 
 #
 # Include paths for the kernel
 #
-KERNEL_SPACE_INC = ./arch/riscv # selected architecture
+KERNEL_SPACE_INC := $(ARCH_DIR) # selected architecture
 KERNEL_SPACE_INC += ./include   # public kernel API
 KERNEL_SPACE_INC += ./lib/libfdt   # libfdt
-KERNEL_SPACE_INC += $(K_BUILD_DIR)/ # for initcode.h
+KERNEL_SPACE_INC += $(K_BUILD_DIR)/$(ARCH_DIR) # for initcode.h
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I$d)
 
-ifeq ($(SBI_SUPPORT), yes)
-CFLAGS += -D__ENABLE_SBI__
-endif
+CFLAGS += $(ARCH_KERNEL_CFLAGS)
 CFLAGS += -DMEMORY_SIZE=$(MEMORY_SIZE)
 CFLAGS += -DUSER_TEXT_START=$(USER_TEXT_START)
-CFLAGS += -D__$(TIMER_SOURCE)
-CFLAGS += -D__$(BOOT_MODE)
+CFLAGS += -D__ARCH_$(ARCH)
 
 ifeq ($(RAMDISK_EMBEDDED), yes)
 CFLAGS += -DRAMDISK_EMBEDDED
@@ -138,9 +119,9 @@ endif
 
 # special case: initcode
 # ld flag --no-warn-rwx-segments requres newer linker versions (2.39 or later)
-$(INIT_BUILD_DIR)/initcode.h: $(ARCH)/asm/initcode.S 
+$(INIT_BUILD_DIR)/initcode.h: $(ARCH_DIR)/asm/initcode.S 
 	@printf "$(TASK_COLOR)Compile initcode and dump it into initcode.h\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(ARCH)/asm/initcode.S -o $(INIT_BUILD_DIR)/initcode.o
+	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(ARCH_DIR)/asm/initcode.S -o $(INIT_BUILD_DIR)/initcode.o
 	@$(LD) $(LDFLAGS) -N -e start -Ttext $(USER_TEXT_START) -o $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode.o
 	@$(OBJCOPY) -S -O binary $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode
 	@echo "unsigned char g_initcode[] = {" > $(INIT_BUILD_DIR)/initcode.h
@@ -174,14 +155,9 @@ $(K_BUILD_DIR)/ramdisk_fs.h:
 endif
 
 
-ifeq ($(SBI_SUPPORT), yes)
-LD_DEFINES=--defsym=openbsi=1
-endif
-
-
-$(KERNEL_PATH): $(INIT_BUILD_DIR)/initcode.h $(K_BUILD_DIR)/ramdisk_fs.h $(OBJECT_FILES) $(ARCH)/kernel.ld # build kernel
+$(KERNEL_PATH): $(INIT_BUILD_DIR)/initcode.h $(K_BUILD_DIR)/ramdisk_fs.h $(OBJECT_FILES) $(ARCH_DIR)/kernel.ld # build kernel
 	@printf "$(TASK_COLOR)Link kernel: $(@)\n$(NO_COLOR)"
-	@$(LD) $(LDFLAGS) $(LD_DEFINES) -T $(ARCH)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
+	@$(LD) $(LDFLAGS) $(ARCH_LD_FLAGS) -T $(ARCH_DIR)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
 ifeq ($(CREATE_ASSEMBLY), yes)
 	@printf "$(TASK_COLOR)Disassemble kernel: $(K_BUILD_DIR)/$(KERNEL_NAME).asm\n$(NO_COLOR)"
 	@$(OBJDUMP) -S $(KERNEL_PATH) > $(K_BUILD_DIR)/$(KERNEL_NAME).asm
@@ -190,7 +166,7 @@ endif
 clean:
 	-@rm $(KERNEL_PATH)
 	-@rm -rf $(K_BUILD_DIR)
-	-@rm $(ARCH)/asm/initcode.h
+	-@rm $(ARCH_DIR)/asm/initcode.h
 	-@rm $(K_BUILD_DIR)/ramdisk_fs.h
 	-@rm $(RAMDISC_C)
 

@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <arch/riscv/riscv.h>
 #include <kernel/kernel.h>
-#include "riscv.h"
 
 /// read and write tp, the thread pointer, which VIMIX uses to hold
 /// this core's hartid (core number), the index into g_cpus[].

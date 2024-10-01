@@ -4,11 +4,11 @@
 // kernel stacks, page-table pages,
 // and pipe buffers. Allocates whole 4096-byte pages.
 
+#include <init/main.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
-#include <mm/memlayout.h>
 
 /// each free 4KB page will contain this struct to form a linked list
 struct free_page

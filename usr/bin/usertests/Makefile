@@ -1,9 +1,11 @@
 #
 # Build userspace test app "usertests"
 #
-ROOT=../../..
-include $(ROOT)/MakefileCommon.mk
+ROOT := ../../..
 include $(ROOT)/usr/MakefileCommonUser.mk
+
+USER_SPACE_INC_PARAMS := $(foreach d, $(USER_SPACE_INC), -I$(ROOT)/$d)
+USER_SPACE_INC_HOST_PARAMS := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
 
 # update build dir
 B_BUILD_DIR := $(B_BUILD_DIR)/usertests
@@ -12,16 +14,15 @@ B_BUILD_DIR_HOST := $(B_BUILD_DIR_HOST)/usertests
 .PHONY: all directories clean usertests
 
 # usertest includes internal kernel API and needs more include search paths
-KERNEL_SPACE_INC = ./arch/riscv # selected architecture
+KERNEL_SPACE_INC := ./arch/$(ARCH) # selected architecture, needed for MAXVA
 KERNEL_SPACE_INC += ./include # public kernel API
-KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I../../../kernel/$d)
+KERNEL_SPACE_INC_PARAMS := $(foreach d, $(KERNEL_SPACE_INC), -I../../../kernel/$d)
 
-USER_SPACE_INC_PARAMS=$(foreach d, $(USER_SPACE_INC), -I../$d)
 CFLAGS_HOST += -D__USE_REAL_STDC__ 
 
 $(B_DEPLOY_DIR)/usertests: $(B_BUILD_DIR)/usertests.o $(B_BUILD_DIR)/vimix_only.o $(B_BUILD_DIR)/common_tests.o $(LIB_PATH)/stdlib.a
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
-	@$(LD) $(LDFLAGS) -T ../user.ld $(LIB_PATH)/stdlib.a -o $@ $^
+	@$(LD) $(LDFLAGS) -T ../user-$(ARCH).ld $(LIB_PATH)/stdlib.a -o $@ $^
 
 $(B_BUILD_DIR)/%.o: %.c 
 	@printf "$(TASK_COLOR)Compile with extra flags: $(@)\n$(NO_COLOR)"

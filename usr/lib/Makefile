@@ -1,14 +1,15 @@
 #
 # Build all userspace libs
 #
-include ../../MakefileCommon.mk
+include ../MakefileCommonUser.mk
+USER_SPACE_INC_PARAMS := $(foreach d, $(USER_SPACE_INC), -I../../$d)
 
 # for all libs:
-LIB_BUILD_DIR=../../$(BUILD_DIR)/usr/lib
+LIB_BUILD_DIR := ../../$(BUILD_DIR)/usr/lib
 
-LIBC_BUILD_DIR=$(LIB_BUILD_DIR)/libc
+LIBC_BUILD_DIR := $(LIB_BUILD_DIR)/libc
 
-STD_LIBC=\
+STD_LIBC := \
 	$(LIBC_BUILD_DIR)/crt0.o \
 	$(LIBC_BUILD_DIR)/dirent_impl.o \
 	$(LIBC_BUILD_DIR)/stdio_impl.o \
@@ -40,7 +41,7 @@ $(LIB_BUILD_DIR)/%.o: %.c
 # automatically generated
 $(LIBC_BUILD_DIR)/usys.S : libc/usys.pl
 	@printf "$(TASK_COLOR)Generate $(@) from libc/usys.pl\n$(NO_COLOR)"
-	@perl libc/usys.pl > $(LIBC_BUILD_DIR)/usys.S
+	perl libc/usys.pl -$(ARCH) > $(LIBC_BUILD_DIR)/usys.S
 
 $(LIBC_BUILD_DIR)/usys.o : $(LIBC_BUILD_DIR)/usys.S
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
