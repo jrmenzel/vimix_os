@@ -77,7 +77,7 @@ CFLAGS_TARGET_ONLY += -nostdinc
 CFLAGS_TARGET_ONLY += -fno-stack-protector
 
 # c flags for the kernel and user space apps on the target OS:
-CFLAGS := $(CFLAGS_TARGET_ONLY) $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS)
+CFLAGS := $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS) $(CFLAGS_TARGET_ONLY)
 # c flags for the user space apps on the host OS (with host stdlib):
 CFLAGS_HOST := $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS) -DBUILD_ON_HOST
 

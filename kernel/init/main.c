@@ -95,8 +95,6 @@ void init_by_first_thread(void *dtb)
     // print_found_devices();
     // printk("\n");
 
-    printk("%zd\n", sizeof(struct Supported_Device));
-
     // init memory management:
     printk("init memory management...\n");
     struct Minimal_Memory_Map memory_map;
