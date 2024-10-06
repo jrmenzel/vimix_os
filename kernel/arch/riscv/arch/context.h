@@ -115,9 +115,9 @@ static inline void trapframe_set_stack_pointer(struct trapframe *frame,
 }
 
 static inline void trapframe_set_return_register(struct trapframe *frame,
-                                                 size_t value)
+                                                 ssize_t value)
 {
-    frame->a0 = value;
+    frame->a0 = (xlen_t)value;
 }
 
 static inline xlen_t trapframe_get_return_register(struct trapframe *frame)

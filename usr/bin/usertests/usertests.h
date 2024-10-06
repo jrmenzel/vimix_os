@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <errno.h>
 #include <fcntl.h>
 #include <kernel/xv6fs.h>
 #include <stdbool.h>
@@ -55,4 +56,19 @@ void assert_write_to_file(const char *test_name, int fd, const char *string);
     {                                               \
         printf("%s: error: values mismatch!\n", s); \
         exit(1);                                    \
+    }
+
+#define assert_errno(value)                                                  \
+    if (errno != value)                                                      \
+    {                                                                        \
+        printf("%s: error: errno value mismatch! (is: %d, should be: %d)\n", \
+               s, errno, value);                                             \
+        exit(1);                                                             \
+    }
+
+#define assert_no_error(value)                                    \
+    if (value < 0)                                                \
+    {                                                             \
+        printf("%s: error: -1 returned (errno: %d)\n", s, errno); \
+        exit(1);                                                  \
     }

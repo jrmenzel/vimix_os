@@ -10,16 +10,17 @@
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 
-size_t sys_pipe()
+ssize_t sys_pipe()
 {
     // parameter 0: int pipe_descriptors[]
     size_t fdarray;
     argaddr(0, &fdarray);
 
     struct file *rf, *wf;
-    if (pipe_alloc(&rf, &wf) < 0)
+    ssize_t ret = pipe_alloc(&rf, &wf);
+    if (ret < 0)
     {
-        return -1;
+        return ret;
     }
 
     struct process *proc = get_current();
@@ -33,7 +34,7 @@ size_t sys_pipe()
         }
         file_close(rf);
         file_close(wf);
-        return -1;
+        return -EMFILE;
     }
     if (uvm_copy_out(proc->pagetable, fdarray, (char *)&fd0, sizeof(fd0)) < 0 ||
         uvm_copy_out(proc->pagetable, fdarray + sizeof(fd0), (char *)&fd1,
@@ -43,7 +44,7 @@ size_t sys_pipe()
         proc->files[fd1] = NULL;
         file_close(rf);
         file_close(wf);
-        return -1;
+        return -EFAULT;
     }
     return 0;
 }

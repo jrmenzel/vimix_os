@@ -4,6 +4,7 @@
 #include <arch/fence.h>
 #include <fs/xv6fs/log.h>
 #include <kernel/elf.h>
+#include <kernel/errno.h>
 #include <kernel/exec.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
@@ -61,7 +62,7 @@ bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
     return true;
 }
 
-int32_t execv(char *path, char **argv)
+ssize_t execv(char *path, char **argv)
 {
     log_begin_fs_transaction();
 
@@ -69,7 +70,7 @@ int32_t execv(char *path, char **argv)
     if (ip == NULL)
     {
         log_end_fs_transaction();
-        return -1;
+        return -ENOENT;
     }
     inode_lock(ip);
 
@@ -80,7 +81,7 @@ int32_t execv(char *path, char **argv)
     {
         inode_unlock_put(ip);
         log_end_fs_transaction();
-        return -1;
+        return -ENOEXEC;
     }
 
     struct process *proc = get_current();
@@ -89,7 +90,7 @@ int32_t execv(char *path, char **argv)
     {
         inode_unlock_put(ip);
         log_end_fs_transaction();
-        return -1;
+        return -ENOMEM;
     }
 
     // Load program into memory.
@@ -106,7 +107,7 @@ int32_t execv(char *path, char **argv)
     if (fatal_error)
     {
         proc_free_pagetable(pagetable);
-        return -1;
+        return -ENOMEM;
     }
 
     // Depending on the cpu implementation a memory barrier might
@@ -121,7 +122,7 @@ int32_t execv(char *path, char **argv)
     if (argc == -1)
     {
         proc_free_pagetable(pagetable);
-        return -1;
+        return -ENOMEM;
     }
 
     // arguments to user main(argc, argv)
@@ -157,7 +158,9 @@ int32_t execv(char *path, char **argv)
     trapframe_set_stack_pointer(proc->trapframe, sp);
     proc_free_pagetable(oldpagetable);
 
-    return argc;  // this ends up in a0, the first argument to main(argc, argv)
+    // This ends up in a0, the first argument to main(argc, argv)
+    // not a return value of the syscall! It does not return!
+    return argc;
 }
 
 static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,

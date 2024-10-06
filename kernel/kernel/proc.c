@@ -4,6 +4,7 @@
 #include <arch/trap.h>
 #include <fs/xv6fs/log.h>
 #include <kernel/cpu.h>
+#include <kernel/errno.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
@@ -342,7 +343,7 @@ int32_t proc_copy_memory(struct process *src, struct process *dst)
     return 0;
 }
 
-int32_t fork()
+ssize_t fork()
 {
     // Allocate new process.
     struct process *np = alloc_process();
@@ -507,7 +508,7 @@ pid_t wait(int32_t *wstatus)
                     {
                         spin_unlock(&pp->lock);
                         spin_unlock(&g_wait_lock);
-                        return -1;
+                        return -EFAULT;
                     }
                     free_process(pp);
                     spin_unlock(&pp->lock);
@@ -522,7 +523,7 @@ pid_t wait(int32_t *wstatus)
         if (!havekids || proc_is_killed(proc))
         {
             spin_unlock(&g_wait_lock);
-            return -1;
+            return -ECHILD;
         }
 
         // Wait for a child to exit.
@@ -649,12 +650,12 @@ void wakeup(void *chan)
 /// Kill the process with the given pid.
 /// The victim won't exit until it tries to return
 /// to user space (see user_mode_interrupt_handler() in trap.c).
-int32_t proc_send_signal(pid_t pid, int32_t sig)
+ssize_t proc_send_signal(pid_t pid, int32_t sig)
 {
     if (sig != SIGKILL)
     {
         // no other signals are supported so far
-        return -1;
+        return -EINVAL;
     }
 
     for (struct process *proc = g_process_list;
@@ -674,7 +675,7 @@ int32_t proc_send_signal(pid_t pid, int32_t sig)
         }
         spin_unlock(&proc->lock);
     }
-    return -1;
+    return -ESRCH;
 }
 
 void proc_set_killed(struct process *proc)

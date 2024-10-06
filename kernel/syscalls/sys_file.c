@@ -16,32 +16,32 @@
 #include <kernel/string.h>
 #include <syscalls/syscall.h>
 
-size_t sys_dup()
+ssize_t sys_dup()
 {
     // parameter 0: int fd
     struct file *f;
     if (argfd(0, NULL, &f) < 0)
     {
-        return -1;
+        return -EBADF;
     }
 
     FILE_DESCRIPTOR fd = fd_alloc(f);
     if (fd < 0)
     {
-        return -1;
+        return -EMFILE;
     }
 
     file_dup(f);
     return fd;
 }
 
-size_t sys_read()
+ssize_t sys_read()
 {
     // parameter 0: int fd
     struct file *f;
     if (argfd(0, NULL, &f) < 0)
     {
-        return -1;
+        return -EBADF;
     }
 
     // parameter 1: void *buffer
@@ -56,13 +56,13 @@ size_t sys_read()
     return file_read(f, buffer, n);
 }
 
-size_t sys_write()
+ssize_t sys_write()
 {
     // parameter 0: int fd
     struct file *f;
     if (argfd(0, NULL, &f) < 0)
     {
-        return -1;
+        return -EBADF;
     }
 
     // parameter 1: void *buffer
@@ -76,14 +76,14 @@ size_t sys_write()
     return file_write(f, buffer, n);
 }
 
-size_t sys_close()
+ssize_t sys_close()
 {
     // parameter 0: int fd
     FILE_DESCRIPTOR fd;
     struct file *f;
     if (argfd(0, &fd, &f) < 0)
     {
-        return -1;
+        return -EBADF;
     }
 
     get_current()->files[fd] = NULL;
@@ -91,13 +91,13 @@ size_t sys_close()
     return 0;
 }
 
-size_t sys_fstat()
+ssize_t sys_fstat()
 {
     // parameter 0: int fd
     struct file *f;
     if (argfd(0, NULL, &f) < 0)
     {
-        return -1;
+        return -EBADF;
     }
 
     // parameter 1: stat *buffer
@@ -107,38 +107,38 @@ size_t sys_fstat()
     return file_stat(f, stat_buffer);
 }
 
-size_t sys_link()
+ssize_t sys_link()
 {
     // parameter 0 / 1: const char *from / *to
     char path_to[PATH_MAX], path_from[PATH_MAX];
     if (argstr(0, path_from, PATH_MAX) < 0 || argstr(1, path_to, PATH_MAX) < 0)
     {
-        return -1;
+        return -EFAULT;
     }
 
     return file_link(path_from, path_to);
 }
 
-size_t sys_unlink()
+ssize_t sys_unlink()
 {
     // parameter 0: const char *pathname
     char path[PATH_MAX];
     if (argstr(0, path, PATH_MAX) < 0)
     {
-        return -1;
+        return -EFAULT;
     }
 
     return file_unlink(path);
 }
 
-size_t sys_open()
+ssize_t sys_open()
 {
     // parameter 0: const char *pathname
     char pathname[PATH_MAX];
     int32_t n = argstr(0, pathname, PATH_MAX);
     if (n < 0)
     {
-        return -1;
+        return -EFAULT;
     }
 
     // parameter 1: int32_t flags
@@ -152,14 +152,14 @@ size_t sys_open()
     return file_open_or_create(pathname, flags, mode);
 }
 
-size_t sys_mkdir()
+ssize_t sys_mkdir()
 {
     // parameter 0: const char *path
     char path[PATH_MAX];
     uint32_t could_fetch_path = argstr(0, path, PATH_MAX);
     if (could_fetch_path < 0)
     {
-        return -1;
+        return -EFAULT;
     }
 
     // parameter 1: mode_t mode
@@ -167,20 +167,20 @@ size_t sys_mkdir()
     arguint(1, &mode);
     if (!check_and_adjust_mode(&mode, S_IFDIR) || !S_ISDIR(mode))
     {
-        return -1;
+        return -ENOTDIR;
     }
 
     return (size_t)inode_open_or_create2(path, mode, ROOT_DEVICE_NUMBER);
 }
 
-size_t sys_mknod()
+ssize_t sys_mknod()
 {
     // parameter 0: const char *path
     char path[PATH_MAX];
     uint32_t could_fetch_path = argstr(0, path, PATH_MAX);
     if (could_fetch_path < 0)
     {
-        return -1;
+        return -EFAULT;
     }
 
     // parameter 1: mode_t mode
@@ -188,7 +188,7 @@ size_t sys_mknod()
     arguint(1, &mode);
     if (!check_and_adjust_mode(&mode, S_IFREG))
     {
-        return -1;
+        return -EINVAL;
     }
 
     // parameter 2: dev_t device
@@ -198,7 +198,7 @@ size_t sys_mknod()
     return (size_t)inode_open_or_create2(path, mode, device);
 }
 
-size_t sys_chdir()
+ssize_t sys_chdir()
 {
     char pathname[PATH_MAX];
     struct inode *ip;
@@ -209,14 +209,14 @@ size_t sys_chdir()
         (ip = inode_from_path(pathname)) == NULL)
     {
         log_end_fs_transaction();
-        return -1;
+        return -ENOENT;
     }
     inode_lock(ip);
     if (!S_ISDIR(ip->i_mode))
     {
         inode_unlock_put(ip);
         log_end_fs_transaction();
-        return -1;
+        return -ENOTDIR;
     }
     inode_unlock(ip);
     inode_put(proc->cwd);
@@ -225,14 +225,14 @@ size_t sys_chdir()
     return 0;
 }
 
-size_t sys_get_dirent()
+ssize_t sys_get_dirent()
 {
     // size_t get_dirent(int fd, struct dirent *dirp, size_t seek_pos);
     // parameter 0: int fd
     struct file *f;
     if (argfd(0, NULL, &f) < 0)
     {
-        return -1;
+        return -EBADF;
     }
 
     // parameter 1: struct dirent *dirp
@@ -246,14 +246,14 @@ size_t sys_get_dirent()
     return inode_get_dirent(f->ip, dir_entry_addr, true, seek_pos);
 }
 
-size_t sys_lseek()
+ssize_t sys_lseek()
 {
     // parameter 0: int fd
     FILE_DESCRIPTOR fd;
     struct file *f;
     if (argfd(0, &fd, &f) < 0)
     {
-        return -1;
+        return -EBADF;
     }
 
     // parameter 1: off_t offset

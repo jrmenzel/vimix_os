@@ -15,6 +15,7 @@
 #include <fs/xv6fs/xv6fs.h>
 #include <kernel/bio.h>
 #include <kernel/buf.h>
+#include <kernel/errno.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
@@ -229,7 +230,7 @@ ssize_t inode_open_or_create2(const char *pathname, mode_t mode, dev_t device)
     if (ip == NULL)
     {
         log_end_fs_transaction();
-        return -1;
+        return -ENOENT;
     }
 
     inode_unlock_put(ip);
@@ -599,7 +600,7 @@ ssize_t inode_get_dirent(struct inode *dir, size_t dir_entry_addr,
 
     int32_t res = either_copyout(addr_is_userspace, dir_entry_addr,
                                  (void *)&dir_entry, sizeof(struct dirent));
-    if (res < 0) return -1;
+    if (res < 0) return -EFAULT;
 
     return new_seek_pos;
 }

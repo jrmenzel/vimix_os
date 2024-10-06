@@ -14,9 +14,9 @@
 #include <kernel/time.h>
 #include <syscalls/syscall.h>
 
-size_t sys_uptime() { return kticks_get_ticks(); }
+ssize_t sys_uptime() { return kticks_get_ticks(); }
 
-size_t sys_reboot()
+ssize_t sys_reboot()
 {
     // parameter 0: cmd
     int32_t cmd;
@@ -25,7 +25,7 @@ size_t sys_reboot()
     // validate input:
     if (cmd != VIMIX_REBOOT_CMD_POWER_OFF && cmd != VIMIX_REBOOT_CMD_RESTART)
     {
-        return -1;
+        return -EINVAL;
     }
 
     switch (cmd)
@@ -42,7 +42,7 @@ size_t sys_reboot()
     }
 
     panic("sys_reboot() failed\n");
-    return -1;
+    return -EOTHER;
 }
 
 ssize_t get_time_to_user(size_t tloc_va)
@@ -52,10 +52,10 @@ ssize_t get_time_to_user(size_t tloc_va)
 
     int32_t res =
         uvm_copy_out(proc->pagetable, tloc_va, (char *)&time, sizeof(time_t));
-    return res;
+    return (res < 0) ? -ENOMEM : res;
 }
 
-size_t sys_get_time()
+ssize_t sys_get_time()
 {
     // parameter 0: time_t *tloc
     size_t tloc_va;

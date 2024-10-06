@@ -8,6 +8,7 @@
 #include <drivers/character_device.h>
 #include <fs/xv6fs/log.h>
 #include <ipc/pipe.h>
+#include <kernel/errno.h>
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
@@ -93,7 +94,7 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
         if (!check_and_adjust_mode(&mode, S_IFREG) || !S_ISREG(mode))
         {
             log_end_fs_transaction();
-            return -1;
+            return -EPERM;
         }
 
         char name[NAME_MAX];
@@ -107,7 +108,7 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
         if (ip == NULL)
         {
             log_end_fs_transaction();
-            return -1;
+            return -ENOENT;
         }
     }
     else
@@ -116,14 +117,14 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
         if (ip == NULL)
         {
             log_end_fs_transaction();
-            return -1;
+            return -ENOENT;
         }
         inode_lock(ip);
         if (S_ISDIR(ip->i_mode) && flags != O_RDONLY)
         {
             inode_unlock_put(ip);
             log_end_fs_transaction();
-            return -1;
+            return -EACCES;
         }
     }
 
@@ -136,7 +137,7 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
             MAJOR(ip->dev), MINOR(ip->dev));
         inode_unlock_put(ip);
         log_end_fs_transaction();
-        return -1;
+        return -ENODEV;
     }
 
     struct file *f;
@@ -149,7 +150,7 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
         }
         inode_unlock_put(ip);
         log_end_fs_transaction();
-        return -1;
+        return -ENOMEM;
     }
 
     if (INODE_HAS_TYPE(ip->i_mode) == false)
@@ -234,11 +235,11 @@ int32_t file_stat(struct file *f, size_t addr)
         inode_unlock(f->ip);
         if (uvm_copy_out(proc->pagetable, addr, (char *)&st, sizeof(st)) < 0)
         {
-            return -1;
+            return -EFAULT;
         }
         return 0;
     }
-    return -1;
+    return -EBADF;
 }
 
 ssize_t file_read(struct file *f, size_t addr, size_t n)
@@ -247,7 +248,7 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
 
     if (f->flags & O_WRONLY)
     {
-        return -1;
+        return -EACCES;
     }
 
     if (S_ISFIFO(f->mode))
@@ -259,7 +260,7 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
         struct Character_Device *cdev = get_character_device(f->ip->dev);
         if (cdev == NULL)
         {
-            return -1;
+            return -ENODEV;
         }
         read_bytes = cdev->ops.read(true, addr, n);
     }
@@ -268,7 +269,7 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
         struct Block_Device *bdev = get_block_device(f->ip->dev);
         if (bdev == NULL)
         {
-            return -1;
+            return -ENODEV;
         }
         panic("add block device read");
     }
@@ -297,7 +298,7 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
 
     if (!((f->flags & O_WRONLY) || (f->flags & O_RDWR)))
     {
-        return -1;
+        return -EACCES;
     }
 
     if (S_ISFIFO(f->mode))
@@ -309,7 +310,7 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
         struct Character_Device *cdev = get_character_device(f->ip->dev);
         if (cdev == NULL)
         {
-            return -1;
+            return -ENODEV;
         }
         ret = cdev->ops.write(true, addr, n);
     }
@@ -318,7 +319,7 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
         struct Block_Device *bdev = get_block_device(f->ip->dev);
         if (bdev == NULL)
         {
-            return -1;
+            return -ENODEV;
         }
         panic("add block device write");
     }
@@ -376,7 +377,7 @@ ssize_t file_link(char *path_from, char *path_to)
     if (ip == NULL)
     {
         log_end_fs_transaction();
-        return -1;
+        return -ENOENT;
     }
 
     inode_lock(ip);
@@ -384,7 +385,7 @@ ssize_t file_link(char *path_from, char *path_to)
     {
         inode_unlock_put(ip);
         log_end_fs_transaction();
-        return -1;
+        return -EISDIR;
     }
 
     ip->nlink++;
@@ -400,7 +401,7 @@ ssize_t file_link(char *path_from, char *path_to)
         inode_update(ip);
         inode_unlock_put(ip);
         log_end_fs_transaction();
-        return -1;
+        return -ENOENT;
     }
 
     inode_lock(dir);
@@ -413,7 +414,7 @@ ssize_t file_link(char *path_from, char *path_to)
         inode_update(ip);
         inode_unlock_put(ip);
         log_end_fs_transaction();
-        return -1;
+        return -EOTHER;
     }
     inode_unlock_put(dir);
     inode_put(ip);
@@ -451,7 +452,7 @@ ssize_t file_unlink(char *path)
     if (dir == NULL)
     {
         log_end_fs_transaction();
-        return -1;
+        return -ENOENT;
     }
 
     inode_lock(dir);
@@ -461,7 +462,7 @@ ssize_t file_unlink(char *path)
     {
         inode_unlock_put(dir);
         log_end_fs_transaction();
-        return -1;
+        return -EPERM;
     }
 
     uint32_t off;
@@ -470,7 +471,7 @@ ssize_t file_unlink(char *path)
     {
         inode_unlock_put(dir);
         log_end_fs_transaction();
-        return -1;
+        return -ENOENT;
     }
     inode_lock(ip);
 
@@ -484,7 +485,7 @@ ssize_t file_unlink(char *path)
         inode_unlock_put(ip);
         inode_unlock_put(dir);
         log_end_fs_transaction();
-        return -1;
+        return -ENOTEMPTY;
     }
 
     // delete directory entry by over-writing it with zeros:
@@ -515,7 +516,8 @@ ssize_t file_lseek(struct file *f, ssize_t offset, int whence)
 {
     if (!S_ISREG(f->mode))
     {
-        return -1;
+        return -ESPIPE;  // only correct error for pipes, but use for all
+                         // non-regular filed for now
     }
 
     ssize_t new_pos = 0;
@@ -524,11 +526,11 @@ ssize_t file_lseek(struct file *f, ssize_t offset, int whence)
         case SEEK_SET: new_pos = offset; break;
         case SEEK_CUR: new_pos = f->off + offset; break;
         case SEEK_END: new_pos = f->ip->size + offset; break;
-        default: return -1; break;
+        default: return -EINVAL; break;
     }
 
-    if (new_pos < 0) return -1;
-    if (new_pos > f->ip->size) return -1;  // todo: support
+    if (new_pos < 0) return -EINVAL;
+    if (new_pos > f->ip->size) return -EINVAL;  // todo: support
 
     f->off = new_pos;
 

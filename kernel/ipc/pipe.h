@@ -26,7 +26,7 @@ _Static_assert(sizeof(struct pipe) <= PAGE_SIZE, "struct pipe too big");
 /// @param f0 read end
 /// @param f1 write end
 /// @return 0 on success
-int32_t pipe_alloc(struct file **f0, struct file **f1);
+ssize_t pipe_alloc(struct file **f0, struct file **f1);
 
 /// @brief Close the pipe, called from the files belonging
 /// to this pipe. After being called from both files it will

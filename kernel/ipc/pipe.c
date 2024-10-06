@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <ipc/pipe.h>
+#include <kernel/errno.h>
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/kalloc.h>
@@ -18,7 +19,7 @@ static inline bool pipe_is_full(struct pipe *pipe)
     return pipe->nwrite == pipe->nread + PIPE_SIZE;
 }
 
-int32_t pipe_alloc(struct file **f0, struct file **f1)
+ssize_t pipe_alloc(struct file **f0, struct file **f1)
 {
     // create two files
     *f0 = file_alloc();
@@ -27,7 +28,7 @@ int32_t pipe_alloc(struct file **f0, struct file **f1)
     {
         if (*f0) file_close(*f0);
         if (*f1) file_close(*f1);
-        return -1;
+        return -EMFILE;
     }
 
     // create the pipe
@@ -36,7 +37,7 @@ int32_t pipe_alloc(struct file **f0, struct file **f1)
     {
         file_close(*f0);
         file_close(*f1);
-        return -1;
+        return -ENOMEM;
     }
 
     // stay true till pipe_close() is called:

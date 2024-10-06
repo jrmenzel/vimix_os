@@ -12,7 +12,7 @@
 #include <kernel/string.h>
 #include <syscalls/syscall.h>
 
-size_t sys_exit()
+ssize_t sys_exit()
 {
     // parameter 0: int32_t status
     int32_t status;
@@ -22,11 +22,11 @@ size_t sys_exit()
     return 0;  // not reached
 }
 
-size_t sys_getpid() { return get_current()->pid; }
+ssize_t sys_getpid() { return get_current()->pid; }
 
-size_t sys_fork() { return fork(); }
+ssize_t sys_fork() { return fork(); }
 
-size_t sys_wait()
+ssize_t sys_wait()
 {
     // parameter 0: int32_t *wstatus
     size_t wstatus;
@@ -34,7 +34,7 @@ size_t sys_wait()
     return wait((int32_t *)wstatus);
 }
 
-size_t sys_sbrk()
+ssize_t sys_sbrk()
 {
     // parameter 0: intptr_t increment
     size_t increment;
@@ -43,12 +43,12 @@ size_t sys_sbrk()
     size_t addr = get_current()->heap_end;
     if (proc_grow_memory(increment) < 0)
     {
-        return -1;
+        return -ENOMEM;
     }
     return addr;
 }
 
-size_t sys_ms_sleep()
+ssize_t sys_ms_sleep()
 {
     // parameter 0: milli_seconds
     int32_t milli_seconds;
@@ -65,7 +65,7 @@ size_t sys_ms_sleep()
         if (proc_is_killed(get_current()))
         {
             spin_unlock(&g_tickslock);
-            return -1;
+            return -ESRCH;
         }
         sleep(&g_ticks, &g_tickslock);
     }
@@ -73,7 +73,7 @@ size_t sys_ms_sleep()
     return 0;
 }
 
-size_t sys_kill()
+ssize_t sys_kill()
 {
     // parameter 0: pid
     pid_t pid;
@@ -86,13 +86,13 @@ size_t sys_kill()
     return proc_send_signal(pid, signal);
 }
 
-size_t sys_execv()
+ssize_t sys_execv()
 {
     // parameter 0: char *pathname
     char path[PATH_MAX];
     if (argstr(0, path, PATH_MAX) < 0)
     {
-        return -1;
+        return -EFAULT;
     }
 
     // parameter 1: char *argv[]
@@ -102,17 +102,17 @@ size_t sys_execv()
     size_t uargv, uarg;
     argaddr(1, &uargv);
 
-    bool fatal_error = false;
+    ssize_t error_code = 0;
     for (size_t i = 0;; i++)
     {
         if (i >= NELEM(argv))
         {
-            fatal_error = true;
+            error_code = -E2BIG;
             break;
         }
         if (fetchaddr(uargv + sizeof(size_t) * i, (size_t *)&uarg) < 0)
         {
-            fatal_error = true;
+            error_code = -EFAULT;
             break;
         }
         if (uarg == 0)
@@ -123,25 +123,24 @@ size_t sys_execv()
         argv[i] = kalloc();
         if (argv[i] == NULL)
         {
-            fatal_error = true;
+            error_code = -ENOMEM;
             break;
         }
         if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0)
         {
-            fatal_error = true;
+            error_code = -EFAULT;
             break;
         }
     }
 
-    size_t ret = -1;
-    if (!fatal_error)
+    if (error_code == 0)
     {
-        ret = execv(path, argv);
+        error_code = execv(path, argv);
     }
     // cleanup on error and success:
     for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     {
         kfree(argv[i]);
     }
-    return ret;
+    return error_code;
 }

@@ -2,6 +2,7 @@
 
 #include "usertests.h"
 
+#include <kernel/param.h>
 #include <kernel/xv6fs.h>
 #include <mm/mm.h>  // for MAXVA
 
@@ -123,6 +124,25 @@ int countfree()
 // run just those.  Without -q usertests also runs the ones that take a
 // fair amount of time.
 //
+
+void duptest(char *s)
+{
+    int fd = dup(-1);
+    assert_same_value(fd, -1);
+    assert_errno(EBADF);
+
+    // already open files = stdin/out/err
+    for (size_t i = 3; i < MAX_FILES_PER_PROCESS; ++i)
+    {
+        // claim all FDs
+        int fd = dup(STDIN_FILENO);
+        assert_no_error(fd);
+    }
+    // next dup must fail:
+    fd = dup(STDIN_FILENO);
+    assert_same_value(fd, -1);
+    assert_errno(EMFILE);
+}
 
 // what if you pass ridiculous pointers to system calls
 // that read user memory with uvm_copy_in?
@@ -271,7 +291,7 @@ void copyinstr2(char *s)
     ret = execv(b, args);
     if (ret != -1)
     {
-        printf("execv(%s) returned %d, not -1\n", b, fd);
+        printf("execv(%s) returned %d, not -1\n", b, ret);
         exit(1);
     }
 
@@ -3484,6 +3504,7 @@ void outofinodes(char *s)
 }
 
 struct test quicktests[] = {
+    {duptest, "duptest"},
     {copyin, "copyin"},
     {copyout, "copyout"},
     {copyinstr1, "copyinstr1"},

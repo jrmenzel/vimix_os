@@ -30,7 +30,7 @@ void exit(int32_t status);
 
 /// @brief Create a new process, copying the parent.
 /// Sets up child kernel stack to return as if from fork() system call.
-int32_t fork();
+ssize_t fork();
 
 /// @brief Grow or shrink user memory by n bytes.
 /// @param n bytes to grow/shrink
@@ -49,7 +49,7 @@ void proc_free_pagetable(pagetable_t pagetable);
 /// @brief Sends a signal to a process, basically kill syscall
 /// @param pid The PID of the process
 /// @param sig The signal as defined in signal.h
-int32_t proc_send_signal(pid_t pid, int32_t sig);
+ssize_t proc_send_signal(pid_t pid, int32_t sig);
 
 /// true if the process has been killed
 bool proc_is_killed(struct process *proc);

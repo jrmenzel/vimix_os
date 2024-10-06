@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <kernel/errno.h>
 #include <kernel/file.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
@@ -17,82 +18,82 @@ void syscall(struct process *proc);
 
 /// @brief Syscall "pid_t fork()" from uinstd.h.
 /// @return Child PID to parent and 0 to child.
-size_t sys_fork();
+ssize_t sys_fork();
 
 /// @brief Syscall "int32_t execv(const char *pathname, char *argv[])" from
 /// uinstd.h.
-/// @return Does not return on success, -1 on error.
-size_t sys_execv();
+/// @return Does not return on success, -ERRNO on error.
+ssize_t sys_execv();
 
 /// @brief  Syscall "void exit(int32_t status)" from uinstd.h.
 /// @return Does not return.
-size_t sys_exit();
+ssize_t sys_exit();
 
 /// @brief Syscall "int32_t kill(pid_t pid, int sig)" from signal.h
-size_t sys_kill();
+ssize_t sys_kill();
 
 /// @brief Syscall "int32_t ms_sleep(int32_t mseconds)" from uinstd.h.
 /// Also int32_t sleep(seconds)
-size_t sys_ms_sleep();
+ssize_t sys_ms_sleep();
 
 /// @brief Syscall "pid_t wait(int *wstatus)" from wait.h
-size_t sys_wait();
+ssize_t sys_wait();
 
 /// @brief Syscall "int32_t chdir(const char *path)" from uinstd.h.
-size_t sys_chdir();
+ssize_t sys_chdir();
 
 /// @brief Syscall "void *sbrk(intptr_t increment)" from uinstd.h.
-size_t sys_sbrk();
+ssize_t sys_sbrk();
 
 /// @brief Syscall "pid_t getpid()" from uinstd.h.
-size_t sys_getpid();
+ssize_t sys_getpid();
 
 // ********************************************************
 // File management from sys_file.c
 //
 
 /// @brief Syscall "int32_t mkdir(const char *path, mode_t mode)" from stat.h.
-size_t sys_mkdir();
+ssize_t sys_mkdir();
 
 /// @brief Syscall "int32_t mknod(const char *path, mode_t mode, dev_t dev)"
 /// from stat.h.
-size_t sys_mknod();
+ssize_t sys_mknod();
 
 /// @brief Syscall "int open(const char *pathname, int32_t flags, ...)" from
 /// fcntl.h.
-size_t sys_open();
+ssize_t sys_open();
 
 /// @brief Syscall "int32_t close(int fd)" from uinstd.h.
-size_t sys_close();
+ssize_t sys_close();
 
 /// @brief Syscall "ssize_t read(int fd, void *buffer, size_t n)" from uinstd.h.
-size_t sys_read();
+ssize_t sys_read();
 
 /// @brief Syscall "ssize_t write(int fd, const void *buffer, size_t n)" from
 /// uinstd.h.
-size_t sys_write();
+ssize_t sys_write();
 
 /// @brief Syscall "int dup(int fd)" from uinstd.h.
-size_t sys_dup();
+ssize_t sys_dup();
 
 /// @brief Syscall "int32_t link(const char *from, const char *to)" from
 /// uinstd.h.
-size_t sys_link();
+ssize_t sys_link();
 
 /// @brief Syscall "int32_t unlink(const char *pathname)" from uinstd.h.
-size_t sys_unlink();
+ssize_t sys_unlink();
 
 /// @brief Syscall "int32_t fstat(FILE_DESCRIPTOR fd, struct stat *buffer)" from
 /// stat.h.
-size_t sys_fstat();
+ssize_t sys_fstat();
 
 /// @brief Syscall "ssize_t get_dirent(int fd, struct dirent *dirp, size_t
 /// seek_pos);" from dirent.h
-size_t sys_get_dirent();
+ssize_t sys_get_dirent();
 
 /// @brief Syscall "extern off_t lseek(int fd, off_t offset, int whence);" in
 /// ustd.h
-size_t sys_lseek();
+ssize_t sys_lseek();
 
 // ********************************************************
 // System information from sys_system.c
@@ -100,23 +101,23 @@ size_t sys_lseek();
 
 /// @brief Syscall "int32_t uptime()" from uinstd.h.
 /// @return how many clock tick interrupts have occurred
-size_t sys_uptime();
+ssize_t sys_uptime();
 
 /// @brief Syscall "ssize_t reboot(int32_t cmd)" from reboot.h
 /// @return ideally not...
-size_t sys_reboot();
+ssize_t sys_reboot();
 
 /// @brief Syscall "ssize_t get_time(time_t *tloc);" (exposed via time() in
 /// time.h)
 /// @return -1 on error
-size_t sys_get_time();
+ssize_t sys_get_time();
 
 // ********************************************************
 // IPC from sys_ipc.c
 //
 
 /// @brief Syscall "int32_t pipe(int pipe_descriptors[2])" from uinstd.h.
-size_t sys_pipe();
+ssize_t sys_pipe();
 
 // ********************************************************
 // Helper functions to get syscall parameters

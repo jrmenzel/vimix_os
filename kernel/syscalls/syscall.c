@@ -121,7 +121,7 @@ int argfd(int n, int *pfd, struct file **pf)
 // clang-format off
 /// An array mapping syscall numbers from syscall.h
 /// to the function that handles the system call.
-static size_t (*syscalls[])() = {
+static ssize_t (*syscalls[])() = {
     [SYS_fork] sys_fork,
     [SYS_exit] sys_exit,
     [SYS_wait] sys_wait,
@@ -158,12 +158,12 @@ void syscall(struct process *proc)
     {
         // Use num to lookup the system call function for num, call it,
         // and store its return value in proc->trapframe->a0
-        size_t syscall_return_value = syscalls[num]();
+        ssize_t syscall_return_value = syscalls[num]();
         trapframe_set_return_register(proc->trapframe, syscall_return_value);
     }
     else
     {
         printk("%d %s: unknown sys call %zd\n", proc->pid, proc->name, num);
-        trapframe_set_return_register(proc->trapframe, -1);
+        trapframe_set_return_register(proc->trapframe, -EINVALSCALL);
     }
 }
