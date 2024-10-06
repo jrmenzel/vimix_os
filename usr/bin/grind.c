@@ -116,7 +116,7 @@ void go(int which_child)
         {
             mkdir("/../b", 0755);
             close(open("grindir/../b/b", O_CREAT | O_RDWR, 0755));
-            unlink("b/b");
+            rmdir("b/b");
         }
         else if (what == 11)
         {
@@ -242,7 +242,7 @@ void go(int which_child)
                 unlink("a");
                 mkdir("a", 0755);
                 chdir("a");
-                unlink("../a");
+                rmdir("../a");
                 fd = open("x", O_CREAT | O_RDWR, 0755);
                 unlink("x");
                 exit(0);

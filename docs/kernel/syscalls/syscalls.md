@@ -28,6 +28,7 @@ See also: [calling_syscall](calling_syscall.md).
 - [dup](dup.md) - duplicate file handle
 - [link](link.md) - create hard link
 - [unlink](unlink.md) - remove a hard link, also used to delete files
+- [rmdir](rmdir.md) - remove empty directories
 
 **File Information**
 - [fstat](fstat.md) - get file metadata

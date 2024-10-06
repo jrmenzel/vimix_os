@@ -444,7 +444,7 @@ static int isdirempty(struct inode *dir)
     return 1;
 }
 
-ssize_t file_unlink(char *path)
+ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
 {
     log_begin_fs_transaction();
     char name[NAME_MAX];
@@ -480,12 +480,26 @@ ssize_t file_unlink(char *path)
         panic("unlink: nlink < 1");
     }
 
+    ssize_t error = 0;
+    if (S_ISDIR(ip->i_mode) && (!delete_directories))
+    {
+        error = -EISDIR;
+    }
+    if (!S_ISDIR(ip->i_mode) && (!delete_files))
+    {
+        error = -ENOTDIR;
+    }
     if (S_ISDIR(ip->i_mode) && !isdirempty(ip))
+    {
+        error = -ENOTEMPTY;
+    }
+
+    if (error != 0)
     {
         inode_unlock_put(ip);
         inode_unlock_put(dir);
         log_end_fs_transaction();
-        return -ENOTEMPTY;
+        return error;
     }
 
     // delete directory entry by over-writing it with zeros:

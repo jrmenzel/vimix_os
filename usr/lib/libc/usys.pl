@@ -54,3 +54,4 @@ entry("get_dirent");
 entry("reboot");
 entry("get_time");
 entry("lseek");
+entry("rmdir")

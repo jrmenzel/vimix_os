@@ -83,6 +83,9 @@ ssize_t sys_link();
 /// @brief Syscall "int32_t unlink(const char *pathname)" from uinstd.h.
 ssize_t sys_unlink();
 
+/// @brief Syscall "int rmdir(const char *path)" from uinstd.h.
+ssize_t sys_rmdir();
+
 /// @brief Syscall "int32_t fstat(FILE_DESCRIPTOR fd, struct stat *buffer)" from
 /// stat.h.
 ssize_t sys_fstat();

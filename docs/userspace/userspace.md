@@ -30,6 +30,7 @@ Stored in `/usr/bin`.
 - [mkdir](bin/mkdir.md) - make new directories
 - [mknod](bin/mknod.md) - make device files for character or block [devices](../kernel/devices/devices.md)
 - [rm](bin/rm.md) - remove files
+- [rmdir](bin/rmdir.md) - remove directories
 - [stat](bin/stat.md) - get file status
 
 **Misc:**

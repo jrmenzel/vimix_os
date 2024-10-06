@@ -73,11 +73,13 @@ $
 	- [mknod](docs/userspace/bin/mknod.md)
 	- [date](docs/userspace/bin/date.md)
 	- [sleep](docs/userspace/bin/sleep.md)
+	- [rmdir](docs/userspace/bin/rmdir.md)
 - Added syscalls:
 	- [get_dirent](docs/kernel/syscalls/get_dirent.md)
 	- [reboot](docs/kernel/syscalls/reboot.md)
 	- [get_time](docs/kernel/syscalls/get_time.md)
 	- [lseek](docs/kernel/syscalls/lseek.md)
+	- split unlink() into [unlink](docs/kernel/syscalls/unlink.md) and [rmdir](docs/kernel/syscalls/rmdir.md)
 - Support multiple [devices](docs/kernel/devices/devices.md), not just two hard coded ones.
 - Added devices:
 	- [/dev/null](docs/userspace/dev/null.md), [/dev/zero](docs/userspace/dev/zero.md)

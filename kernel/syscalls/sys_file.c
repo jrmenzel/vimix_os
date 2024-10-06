@@ -128,7 +128,19 @@ ssize_t sys_unlink()
         return -EFAULT;
     }
 
-    return file_unlink(path);
+    return file_unlink(path, true, false);
+}
+
+ssize_t sys_rmdir()
+{
+    // parameter 0: const char *path
+    char path[PATH_MAX];
+    if (argstr(0, path, PATH_MAX) < 0)
+    {
+        return -EFAULT;
+    }
+
+    return file_unlink(path, false, true);
 }
 
 ssize_t sys_open()

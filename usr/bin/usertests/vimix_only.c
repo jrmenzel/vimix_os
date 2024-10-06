@@ -594,9 +594,9 @@ void iputtest(char *s)
         printf("%s: chdir iputdir failed\n", s);
         exit(1);
     }
-    if (unlink("../iputdir") < 0)
+    if (rmdir("../iputdir") < 0)
     {
-        printf("%s: unlink ../iputdir failed\n", s);
+        printf("%s: rmdir ../iputdir failed\n", s);
         exit(1);
     }
     if (chdir("/utests-tmp") < 0)
@@ -627,9 +627,9 @@ void exitiputtest(char *s)
             printf("%s: child chdir failed\n", s);
             exit(1);
         }
-        if (unlink("../iputdir") < 0)
+        if (rmdir("../iputdir") < 0)
         {
-            printf("%s: unlink ../iputdir failed\n", s);
+            printf("%s: rmdir ../iputdir failed\n", s);
             exit(1);
         }
         exit(0);
@@ -676,9 +676,9 @@ void openiputtest(char *s)
         exit(0);
     }
     usleep(SHORT_SLEEP_MS * 1000);
-    if (unlink("oidir") != 0)
+    if (rmdir("oidir") != 0)
     {
-        printf("%s: unlink failed\n", s);
+        printf("%s: rmdir failed\n", s);
         exit(1);
     }
 
@@ -858,9 +858,9 @@ void dirtest(char *s)
         exit(1);
     }
 
-    if (unlink("dir0") < 0)
+    if (rmdir("dir0") < 0)
     {
-        printf("%s: unlink dir0 failed\n", s);
+        printf("%s: rmdir dir0 failed\n", s);
         exit(1);
     }
 }
@@ -1924,9 +1924,9 @@ void subdir(char *s)
     write(fd, "ff", 2);
     close(fd);
 
-    if (unlink("dd") >= 0)
+    if (rmdir("dd") >= 0)
     {
-        printf("%s: unlink dd (non-empty dir) succeeded!\n", s);
+        printf("%s: rmdir dd (non-empty dir) succeeded!\n", s);
         exit(1);
     }
 
@@ -2102,19 +2102,19 @@ void subdir(char *s)
         printf("%s: unlink dd/ff failed\n", s);
         exit(1);
     }
-    if (unlink("dd") == 0)
+    if (rmdir("dd") == 0)
     {
-        printf("%s: unlink non-empty dd succeeded!\n", s);
+        printf("%s: rmdir non-empty dd succeeded!\n", s);
         exit(1);
     }
-    if (unlink("dd/dd") < 0)
+    if (rmdir("dd/dd") < 0)
     {
-        printf("%s: unlink dd/dd failed\n", s);
+        printf("%s: rmdir dd/dd failed\n", s);
         exit(1);
     }
-    if (unlink("dd") < 0)
+    if (rmdir("dd") < 0)
     {
-        printf("%s: unlink dd failed\n", s);
+        printf("%s: rmdir dd failed\n", s);
         exit(1);
     }
 }
@@ -2259,12 +2259,12 @@ void fourteen(char *s)
     }
 
     // clean up
-    unlink("123456789012345/12345678901234");
-    unlink("12345678901234/12345678901234");
+    rmdir("123456789012345/12345678901234");
+    rmdir("12345678901234/12345678901234");
     unlink("12345678901234/12345678901234/12345678901234");
     unlink("123456789012345/123456789012345/123456789012345");
-    unlink("12345678901234/123456789012345");
-    unlink("12345678901234");
+    rmdir("12345678901234/123456789012345");
+    rmdir("12345678901234");
 }
 
 void rmdot(char *s)
@@ -2294,19 +2294,19 @@ void rmdot(char *s)
         printf("%s: chdir / failed\n", s);
         exit(1);
     }
-    if (unlink("dots/.") == 0)
+    if (rmdir("dots/.") == 0)
     {
-        printf("%s: unlink dots/. worked!\n", s);
+        printf("%s: rmdir dots/. worked!\n", s);
         exit(1);
     }
-    if (unlink("dots/..") == 0)
+    if (rmdir("dots/..") == 0)
     {
-        printf("%s: unlink dots/.. worked!\n", s);
+        printf("%s: rmdir dots/.. worked!\n", s);
         exit(1);
     }
-    if (unlink("dots") != 0)
+    if (rmdir("dots") != 0)
     {
-        printf("%s: unlink dots failed!\n", s);
+        printf("%s: rmdir dots failed!\n", s);
         exit(1);
     }
 }
@@ -2342,9 +2342,9 @@ void dirfile(char *s)
         printf("%s: mkdir dirfile/xx succeeded!\n", s);
         exit(1);
     }
-    if (unlink("dirfile/xx") == 0)
+    if (rmdir("dirfile/xx") == 0)
     {
-        printf("%s: unlink dirfile/xx succeeded!\n", s);
+        printf("%s: rmdir dirfile/xx succeeded!\n", s);
         exit(1);
     }
     if (link("/README.md", "dirfile/xx") == 0)
@@ -3445,7 +3445,7 @@ void diskfull(char *s)
         printf("%s: mkdir(diskfulldir) unexpectedly succeeded!\n", s);
     }
 
-    unlink("diskfulldir");
+    rmdir("diskfulldir");
 
     for (size_t i = 0; i < nzz; i++)
     {

@@ -1,19 +1,25 @@
-# Syscall dup
+# Syscall rmdir
 
 ## User Mode
 
 ```C
 #include <unistd.h>
-int dup(int fd);
+int32_t rmdir(const char *pathname);
 ```
 
-Duplicate open [file descriptor](../file_system/file.md).
+Will delete the [directory](../file_system/directory.md) if it is empty.
+
+## User Apps
+
+The app [rmdir](../../userspace/bin/rmdir.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_dub()`. 
+Implemented in `sys_file.c` as `sys_rmdir()`. 
 
 ## See also
+
+Syscall [unlink](unlink.md) to delete [files](../file_system/file.md).
 
 **Overview:** [syscalls](syscalls.md)
 

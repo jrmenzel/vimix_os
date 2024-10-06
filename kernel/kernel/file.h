@@ -67,8 +67,10 @@ ssize_t file_link(char *path_from, char *path_to);
 
 /// @brief Most of the syscall unlink
 /// @param path path name
+/// @param delete_files if false, won't delete files
+/// @param delete_directories if false, won't delete dirs
 /// @return 0 on success, -1 on error
-ssize_t file_unlink(char *path);
+ssize_t file_unlink(char *path, bool delete_files, bool delete_directories);
 
 /// @brief Most of syscall lseek
 /// @param f File of which to change read pointer

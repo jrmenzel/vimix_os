@@ -47,12 +47,6 @@ extern void exit(int32_t status) __attribute__((noreturn));
 // get process ID
 extern pid_t getpid();
 
-// let process sleep
-// extern uint32_t sleep(int32_t seconds);
-
-// let process sleep
-// extern uint32_t usleep(int32_t useconds);
-
 extern ssize_t ms_sleep(int32_t milliseconds);
 
 // let process sleep
@@ -86,6 +80,9 @@ extern int32_t link(const char *from, const char *to);
 
 // remove link [name]
 extern int32_t unlink(const char *pathname);
+
+// remove directory (must be empty)
+extern int rmdir(const char *path);
 
 // change working directory
 extern int32_t chdir(const char *path);
