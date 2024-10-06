@@ -6,26 +6,9 @@
 /// single digit int32_t to ASCII char
 #define INT_2_ASCII(x) (x + 0x30)
 
-#if defined(_arch_is_32bit)
-// 32 bit
-#define _MAX_PRINT_INT_DEC_VALUE 1000000000
-#define _MAX_PRINT_UINT_DEC_VALUE 1000000000
-#define _MAX_PRINT_UINT_HEX_VALUE 0x10000000
-#else
-// 64 bit
-#define _MAX_PRINT_INT_DEC_VALUE 1000000000000000000
-#define _MAX_PRINT_UINT_DEC_VALUE 1000000000000000000
-#define _MAX_PRINT_UINT_HEX_VALUE 0x1000000000000000
-#endif
-
 int32_t print_signed_long_long(_PUT_CHAR_FP func, size_t payload,
                                long long value)
 {
-    // 64bit:
-    // -9,223,372,036,854,775,808..9,223,372,036,854,775,807
-    // 32bit:
-    // -2.147.483.648..2.147.483.647
-
     int32_t charsWritten = 0;
 
     if (value < 0)
@@ -34,28 +17,37 @@ int32_t print_signed_long_long(_PUT_CHAR_FP func, size_t payload,
         charsWritten++;
     }
 
-    bool print = false;
-    for (size_t i = _MAX_PRINT_INT_DEC_VALUE; i > 0; i /= 10)
+#if defined(_arch_is_32bit)
+    const size_t MAX_LEN = 10;  // -2,147,483,648..2,147,483,647
+#else
+    const size_t MAX_LEN =
+        19;  // -9,223,372,036,854,775,808..9,223,372,036,854,775,807
+#endif
+    char buffer[MAX_LEN];
+
+    for (size_t i = 0; i < MAX_LEN; ++i)
     {
-        if (i == 1)
+        long long rem = value % 10;
+        value = value / 10;
+        if (rem < 0) rem *= -1;
+        buffer[MAX_LEN - i - 1] = INT_2_ASCII(rem);
+    }
+
+    bool print = false;
+    for (size_t i = 0; i < MAX_LEN; ++i)
+    {
+        if (buffer[i] != '0' || i == MAX_LEN - 1)
         {
+            // start printing at the first non zero char or the last one
             print = true;
         }
 
-        long long tmp = value / i;
-        long long rem = tmp % 10;
-        if (rem < 0)
+        if (print)
         {
-            rem *= -1;
-        }
-        if (rem > 0 || print)
-        {
-            print = true;
-            func(INT_2_ASCII(rem), payload);
+            func(buffer[i], payload);
             charsWritten++;
         }
     }
-
     return charsWritten;
 }
 
@@ -76,24 +68,36 @@ int32_t print_unsigned_long_long(_PUT_CHAR_FP func, size_t payload,
 {
     int32_t charsWritten = 0;
 
-    bool print = false;
-    for (size_t i = _MAX_PRINT_UINT_DEC_VALUE; i > 0; i /= 10)
+#if defined(_arch_is_32bit)
+    const size_t MAX_LEN = 10;  // 4,294,967,295
+#else
+    const size_t MAX_LEN = 20;  // 18,446,744,073,709,551,615
+#endif
+    char buffer[MAX_LEN];
+
+    for (size_t i = 0; i < MAX_LEN; ++i)
     {
-        if (i == 1)
+        long long rem = value % 10;
+        value = value / 10;
+        if (rem < 0) rem *= -1;
+        buffer[MAX_LEN - i - 1] = INT_2_ASCII(rem);
+    }
+
+    bool print = false;
+    for (size_t i = 0; i < MAX_LEN; ++i)
+    {
+        if (buffer[i] != '0' || i == MAX_LEN - 1)
         {
+            // start printing at the first non zero char or the last one
             print = true;
         }
 
-        unsigned long long tmp = value / i;
-        unsigned long long rem = tmp % 10;
-        if (rem > 0 || print)
+        if (print)
         {
-            print = true;
-            func(INT_2_ASCII(rem), payload);
+            func(buffer[i], payload);
             charsWritten++;
         }
     }
-
     return charsWritten;
 }
 
@@ -114,35 +118,45 @@ static const inline int32_t print_unsigned_long(_PUT_CHAR_FP func,
 int32_t print_unsigned_hex(_PUT_CHAR_FP func, size_t payload, size_t value,
                            bool upperCase)
 {
+    int32_t asciiOffset = upperCase ? 'A' : 'a';
     int32_t charsWritten = 0;
 
-    int32_t asciiOffset = upperCase ? 'A' : 'a';
+#if defined(_arch_is_32bit)
+    const size_t MAX_LEN = 8;  // FFFF FFFF
+#else
+    const size_t MAX_LEN = 16;  // FFFF FFFF FFFF FFFF
+#endif
+    char buffer[MAX_LEN];
 
-    bool print = false;
-    for (size_t i = _MAX_PRINT_UINT_HEX_VALUE; i > 0; i /= 16)
+    for (size_t i = 0; i < MAX_LEN; ++i)
     {
-        if (i == 1)
+        size_t rem = value % 16;
+        value = value / 16;
+        if (rem <= 9)
         {
-            print = true;
+            buffer[MAX_LEN - i - 1] = INT_2_ASCII(rem);
         }
-
-        size_t tmp = value / i;
-        size_t rem = tmp % 16;
-        if (rem > 0 || print)
+        else
         {
-            print = true;
-            if (rem <= 9)
-            {
-                func(INT_2_ASCII(rem), payload);
-            }
-            else
-            {
-                func(((rem - 10) + asciiOffset), payload);
-            }
-            charsWritten++;
+            buffer[MAX_LEN - i - 1] = (rem - 10) + asciiOffset;
         }
     }
 
+    bool print = false;
+    for (size_t i = 0; i < MAX_LEN; ++i)
+    {
+        if (buffer[i] != '0' || i == MAX_LEN - 1)
+        {
+            // start printing at the first non zero char or the last one
+            print = true;
+        }
+
+        if (print)
+        {
+            func(buffer[i], payload);
+            charsWritten++;
+        }
+    }
     return charsWritten;
 }
 
@@ -240,9 +254,9 @@ int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char *format,
             }
             else if ((*format == 'x') || (*format == 'X'))
             {
-                unsigned int value = va_arg(vl, unsigned int);
-                charsWritten +=
-                    print_unsigned_hex(func, payload, (size_t)value, false);
+                size_t value = va_arg(vl, size_t);
+                charsWritten += print_unsigned_hex(func, payload, (size_t)value,
+                                                   (*format == 'X'));
             }
             else if (*format == 'p')
             {
