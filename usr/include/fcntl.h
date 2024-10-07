@@ -16,3 +16,10 @@
 /// @param mode optional file mode, set this when creating a file
 /// @return the file descriptor as an int or -1 on failure
 extern int open(const char *pathname, int32_t flags, ... /*mode_t mode*/);
+
+/// @brief "A call to creat() is equivalent to calling open() with flags equal
+/// to O_CREAT|O_WRONLY|O_TRUNC." - Linux manpage open(2)
+static inline int creat(const char *pathname, mode_t mode)
+{
+    return open(pathname, O_CREAT | O_WRONLY | O_TRUNC, mode);
+}

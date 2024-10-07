@@ -1,12 +1,11 @@
-# ls - list
+# cp - copy files
 
-List contents of provided directories or the content of the CWD if no directory is provided.
+Copies a file with name `FROM` into the file `TO`. `TO` gets overwritten if it does exist and created if it does not. If `TO` is a directory, the call is equivalent to `cp FROM TO/FROM`.
 
-> ls `DIR0` `DIR1` ... `DIRn`
+> cp `FROM` `TO` 
 
 **Returns:**
 - 0 on success
-**Syscall:** [get_dirent](../../kernel/syscalls/get_dirent.md)
 
 ---
 **Up:** [user space](../userspace.md)

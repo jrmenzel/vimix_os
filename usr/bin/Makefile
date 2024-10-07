@@ -17,6 +17,7 @@ UPROGS_VIMIX_ONLY := init\
 #
 UPROGS_NAME_BOTH=\
 	cat\
+	cp\
 	date\
 	echo\
 	forktest\

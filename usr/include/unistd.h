@@ -70,7 +70,7 @@ extern ssize_t read(int fd, void *buffer, size_t n);
 // writes [n] bytes from [buffer] to [fd]. Return bytes written or -1 on error.
 extern ssize_t write(int fd, const void *buffer, size_t n);
 
-// open() is in fcntl.h
+// open() and creat() are in fcntl.h
 
 // closes [fd]
 extern int32_t close(int fd);

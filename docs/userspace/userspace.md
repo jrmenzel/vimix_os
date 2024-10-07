@@ -25,6 +25,7 @@ Stored in `/usr/bin`.
 - [kill](bin/kill.md) - send signals to [processes](../kernel/processes/processes.md)
 
 **File Management:**
+- [cp](bin/cp.md) - copy a file
 - [ln](bin/ln.md) - create hard links to files
 - [ls](bin/ls.md) - list directory content
 - [mkdir](bin/mkdir.md) - make new directories
