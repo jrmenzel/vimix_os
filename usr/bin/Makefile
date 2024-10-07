@@ -4,39 +4,20 @@
 ROOT := ../..
 include $(ROOT)/usr/MakefileCommonUser.mk
 
-USER_SPACE_INC_PARAMS=$(foreach d, $(USER_SPACE_INC), -I$(ROOT)/$d)
-USER_SPACE_INC_HOST_PARAMS=$(foreach d, $(USER_SPACE_INC_HOST), -I$d)
+USER_SPACE_INC_PARAMS := $(foreach d, $(USER_SPACE_INC), -I$(ROOT)/$d)
+USER_SPACE_INC_HOST_PARAMS := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
 
-UPROGS_NAME=\
-	init\
-	cat\
-	echo\
-	forktest\
-	grep\
-	kill\
-	ln\
-	ls\
-	mkdir\
-	rm\
-	sh\
-	grind\
-	wc\
-	zombie\
-	ls\
-	stat\
-	shutdown\
-	mknod\
-	date\
-	skill\
-	sleep\
-	rmdir
+UPROGS_VIMIX_ONLY := init\
+    grind\
+    shutdown
 
 # Some user space apps can be compiled on the host as well,
 # e.g. as native Linux apps. This can be helpful for app
 # development.
 #
-UPROGS_NAME_HOST=\
+UPROGS_NAME_BOTH=\
 	cat\
+	date\
 	echo\
 	forktest\
 	grep\
@@ -44,18 +25,20 @@ UPROGS_NAME_HOST=\
 	ln\
 	ls\
 	mkdir\
+	mknod\
 	rm\
+	rmdir\
 	sh\
-	wc\
-	zombie\
-	stat\
-	date\
 	skill\
 	sleep\
-	rmdir
+	stat\
+	wc\
+	zombie
 
-UPROGS=$(foreach a, $(UPROGS_NAME), $(B_DEPLOY_DIR)/$a)
-PROGS_HOST=$(foreach a, $(UPROGS_NAME_HOST), $(B_DEPLOY_DIR_HOST)/$a)
+UPROGS_NAME := $(UPROGS_VIMIX_ONLY) $(UPROGS_NAME_BOTH)
+
+UPROGS := $(foreach a, $(UPROGS_NAME), $(B_DEPLOY_DIR)/$a)
+PROGS_HOST := $(foreach a, $(UPROGS_NAME_BOTH), $(B_DEPLOY_DIR_HOST)/$a)
 
 # keep intermediate .o files
 .PRECIOUS: $(B_BUILD_DIR)/%.o $(B_BUILD_DIR_HOST)/%.o 

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +22,7 @@ int main(int argc, char *argv[])
     mode_t mode = 0644;
 
     // parse type and adjust mode
-    if (argv[2][0] == 0 || argv[2][2] != 0) return error_out();
+    if (argv[2][0] == 0 || argv[2][1] != 0) return error_out();
     if (argv[2][0] == 'c')
     {
         mode |= S_IFCHR;
@@ -37,12 +38,11 @@ int main(int argc, char *argv[])
 
     // parse device
     dev_t device = makedev(atoi(argv[3]), atoi(argv[4]));
-
     int ret = mknod(argv[1], mode, device);
     if (ret < 0)
     {
-        error_out();
-        return ret;
+        printf("mknod failed, errno: %d\n", errno);
+        return -1;
     }
 
     return 0;
