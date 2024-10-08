@@ -28,7 +28,7 @@ function test_config {
     BUILD_DIR=${BUILD_ROOT}/build_$1_$2_$3_SBI_$4mb_$5cpu
     make clean BUILD_DIR=${BUILD_DIR}
     make qemu -j 1 BITWIDTH=$1 BUILD_TYPE=$2 SBI_SUPPORT=$3 MEMORY_SIZE=$4 CPUS=$5 ${COMMON_FLAGS} BUILD_DIR=${BUILD_DIR}
-    tools/mkfs/mkfs ${BUILD_DIR}/filesystem.img --out ${BUILD_DIR}/root_out
+    ./build_host/root/usr/bin/mkfs ${BUILD_DIR}/filesystem.img --out ${BUILD_DIR}/root_out
 
     TEST_RESULT_DIR=${BUILD_DIR}/root_out/test_results
 

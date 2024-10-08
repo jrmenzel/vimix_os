@@ -190,7 +190,7 @@
         {
             // debug a user space application on the host
             "name": "host mkfs",
-            "program": "${workspaceRoot}/tools/mkfs/mkfs",
+            "program": "${workspaceRoot}/build_host/root/usr/bin/mkfs",
             "args": ["build/filesystem.img"],
             "cwd": "${workspaceRoot}",
             "type": "cppdbg",
@@ -220,7 +220,7 @@
         {
             // debug a user space application on the host
             "name": "host fsck.xv6fs",
-            "program": "${workspaceRoot}/tools/mkfs/fsck.xv6fs",
+            "program": "${workspaceRoot}/build_host/root/usr/bin/fsck.xv6fs",
             "args": ["build/filesystem.img"],
             "cwd": "${workspaceRoot}",
             "type": "cppdbg",

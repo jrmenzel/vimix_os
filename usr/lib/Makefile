@@ -41,7 +41,7 @@ $(LIB_BUILD_DIR)/%.o: %.c
 # automatically generated
 $(LIBC_BUILD_DIR)/usys.S : libc/usys.pl
 	@printf "$(TASK_COLOR)Generate $(@) from libc/usys.pl\n$(NO_COLOR)"
-	perl libc/usys.pl -$(ARCH) > $(LIBC_BUILD_DIR)/usys.S
+	@perl libc/usys.pl -$(ARCH) > $(LIBC_BUILD_DIR)/usys.S
 
 $(LIBC_BUILD_DIR)/usys.o : $(LIBC_BUILD_DIR)/usys.S
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
@@ -49,9 +49,9 @@ $(LIBC_BUILD_DIR)/usys.o : $(LIBC_BUILD_DIR)/usys.S
 
 
 directories: # temp build directories
-	mkdir -p $(LIBC_BUILD_DIR)/libc
+	@mkdir -p $(LIBC_BUILD_DIR)/libc
 
 clean:
 	-@rm -rf $(LIB_BUILD_DIR)
-	mkdir -p $(LIB_BUILD_DIR)
+	@mkdir -p $(LIB_BUILD_DIR)
 

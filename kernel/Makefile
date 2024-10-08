@@ -87,6 +87,9 @@ KERNEL_SPACE_INC := $(ARCH_DIR) # selected architecture
 KERNEL_SPACE_INC += ./include   # public kernel API
 KERNEL_SPACE_INC += ./lib/libfdt   # libfdt
 KERNEL_SPACE_INC += $(K_BUILD_DIR)/$(ARCH_DIR) # for initcode.h
+ifeq ($(RAMDISK_EMBEDDED), yes)
+KERNEL_SPACE_INC += $(K_BUILD_DIR)
+endif
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I$d)
 
 CFLAGS += $(ARCH_KERNEL_CFLAGS)
@@ -132,26 +135,29 @@ $(INIT_BUILD_DIR)/initcode.h: $(ARCH_DIR)/asm/initcode.S
 # embedd the filesystem image into the kernel as an array:
 ifeq ($(RAMDISK_EMBEDDED), yes)
 $(K_BUILD_DIR)/ramdisk_fs.h:
-	echo "#pragma once" > $(K_BUILD_DIR)/ramdisk_fs.h
-	echo "#include <kernel/kernel.h>" >> $(K_BUILD_DIR)/ramdisk_fs.h
-	echo "extern unsigned char ramdisk_fs[];" >> $(K_BUILD_DIR)/ramdisk_fs.h
-	echo -n "#define ramdisk_fs_size " >> $(K_BUILD_DIR)/ramdisk_fs.h
-	stat -c %s ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.h
-	#echo "extern const size_t ramdisk_fs_size;" >> $(K_BUILD_DIR)/ramdisk_fs.h
+	@printf "$(TASK_COLOR)Creating ramdisk_fs.h\n$(NO_COLOR)"
+	@echo "#pragma once" > $(K_BUILD_DIR)/ramdisk_fs.h
+	@echo "#include <kernel/kernel.h>" >> $(K_BUILD_DIR)/ramdisk_fs.h
+	@echo "extern unsigned char ramdisk_fs[];" >> $(K_BUILD_DIR)/ramdisk_fs.h
+	@echo -n "#define ramdisk_fs_size " >> $(K_BUILD_DIR)/ramdisk_fs.h
+	@stat -c %s ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.h
+#	echo "extern const size_t ramdisk_fs_size;" >> $(K_BUILD_DIR)/ramdisk_fs.h
 
 $(K_BUILD_DIR)/ramdisk_fs.c:
-	echo "#include \"ramdisk_fs.h\"" > $(K_BUILD_DIR)/ramdisk_fs.c
-	echo "unsigned char ramdisk_fs[] = {" >> $(K_BUILD_DIR)/ramdisk_fs.c
-	xxd -i < ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.c
-	echo "};" >> $(K_BUILD_DIR)/ramdisk_fs.c
+	@printf "$(TASK_COLOR)Creating ramdisk_fs.c\n$(NO_COLOR)"
+	@echo "#include \"ramdisk_fs.h\"" > $(K_BUILD_DIR)/ramdisk_fs.c
+	@echo "unsigned char ramdisk_fs[] = {" >> $(K_BUILD_DIR)/ramdisk_fs.c
+	@xxd -i < ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.c
+	@echo "};" >> $(K_BUILD_DIR)/ramdisk_fs.c
 #	echo "size_t const ramdisk_fs_size = sizeof(ramdisk_fs);" >> $(K_BUILD_DIR)/ramdisk_fs.c
 
 $(K_BUILD_DIR)/ramdisk_fs.o: $(K_BUILD_DIR)/ramdisk_fs.c
-	$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(K_BUILD_DIR)/ramdisk_fs.c -o $(K_BUILD_DIR)/ramdisk_fs.o
+	@printf "$(TASK_COLOR)Compile ramdisk_fs\n$(NO_COLOR)"
+	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(K_BUILD_DIR)/ramdisk_fs.c -o $(K_BUILD_DIR)/ramdisk_fs.o
 
 else
 $(K_BUILD_DIR)/ramdisk_fs.h:
-	touch $(K_BUILD_DIR)/ramdisk_fs.h
+	@touch $(K_BUILD_DIR)/ramdisk_fs.h
 endif
 
 
@@ -164,9 +170,9 @@ ifeq ($(CREATE_ASSEMBLY), yes)
 endif
 
 clean:
-	-@rm $(KERNEL_PATH)
+	-@rm -f $(KERNEL_PATH)
 	-@rm -rf $(K_BUILD_DIR)
-	-@rm $(ARCH_DIR)/asm/initcode.h
-	-@rm $(K_BUILD_DIR)/ramdisk_fs.h
-	-@rm $(RAMDISC_C)
+	-@rm -f $(ARCH_DIR)/asm/initcode.h
+	-@rm -f $(K_BUILD_DIR)/ramdisk_fs.h
+	-@rm -f $(RAMDISC_C)
 

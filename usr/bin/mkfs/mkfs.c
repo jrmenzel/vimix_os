@@ -13,7 +13,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#if defined(BUILD_ON_HOST)
 #include <linux/limits.h>
+#else
+#include <kernel/limits.h>
+#endif
 
 #define MAX_ACTIVE_INODESS 200
 

@@ -18,11 +18,9 @@ KERNEL_SPACE_INC := ./arch/$(ARCH) # selected architecture, needed for MAXVA
 KERNEL_SPACE_INC += ./include # public kernel API
 KERNEL_SPACE_INC_PARAMS := $(foreach d, $(KERNEL_SPACE_INC), -I../../../kernel/$d)
 
-CFLAGS_HOST += -D__USE_REAL_STDC__ 
-
 $(B_DEPLOY_DIR)/usertests: $(B_BUILD_DIR)/usertests.o $(B_BUILD_DIR)/vimix_only.o $(B_BUILD_DIR)/common_tests.o $(LIB_PATH)/stdlib.a
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
-	@$(LD) $(LDFLAGS) -T ../user-$(ARCH).ld $(LIB_PATH)/stdlib.a -o $@ $^
+	@$(LD) $(LDFLAGS) -T ../user-$(ARCH).ld -o $@ $^
 
 $(B_BUILD_DIR)/%.o: %.c 
 	@printf "$(TASK_COLOR)Compile with extra flags: $(@)\n$(NO_COLOR)"
@@ -41,8 +39,8 @@ $(B_BUILD_DIR_HOST)/%.o: %.c
 host: directories $(B_DEPLOY_DIR_HOST)/usertests
 
 directories: # make temp build directories
-	mkdir -p $(B_BUILD_DIR)
-	mkdir -p $(B_BUILD_DIR_HOST)
+	@mkdir -p $(B_BUILD_DIR)
+	@mkdir -p $(B_BUILD_DIR_HOST)
 
 clean:
 	-@rm -rf $(B_BUILD_DIR)

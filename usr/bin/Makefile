@@ -44,12 +44,12 @@ PROGS_HOST := $(foreach a, $(UPROGS_NAME_BOTH), $(B_DEPLOY_DIR_HOST)/$a)
 # keep intermediate .o files
 .PRECIOUS: $(B_BUILD_DIR)/%.o $(B_BUILD_DIR_HOST)/%.o 
 
-.PHONY: all directories clean usertests host
+.PHONY: all directories clean usertests mkfs host
 
-all: directories $(UPROGS) usertests scripts
+all: directories $(UPROGS) usertests mkfs scripts
 
 # binaries will end up in build/root_host/PATH_IN_VIMIX
-host: directories $(PROGS_HOST) usertests_host scripts_host # build supported apps for the host OS / architecture
+host: directories $(PROGS_HOST) usertests_host mkfs_host scripts_host # build supported apps for the host OS / architecture
 
 ###########################################################
 # compiling apps for VIMIX
@@ -72,23 +72,23 @@ $(B_BUILD_DIR_HOST)/%.o: %.c
 	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_HOST_PARAMS) -c $< -o $@
 
 $(LIB_PATH)/stdlib.a: 
-	$(MAKE) -C ../lib all;
+	@$(MAKE) -C ../lib all;
 
 ###########################################################
 scripts: # copy shell scripts
-	cp *.sh $(B_DEPLOY_DIR)
+	@cp *.sh $(B_DEPLOY_DIR)
 
 scripts_host: # copy shell scripts host
-	cp *.sh $(B_DEPLOY_DIR_HOST)
+	@cp *.sh $(B_DEPLOY_DIR_HOST)
 
 directories: # make temp build directories
-	mkdir -p $(B_BUILD_DIR)
-	mkdir -p $(B_BUILD_DIR_HOST)
-	mkdir -p $(B_DEPLOY_DIR)
-	mkdir -p $(B_DEPLOY_DIR_HOST)
+	@mkdir -p $(B_BUILD_DIR)
+	@mkdir -p $(B_BUILD_DIR_HOST)
+	@mkdir -p $(B_DEPLOY_DIR)
+	@mkdir -p $(B_DEPLOY_DIR_HOST)
 
 clean: # delete build dir
-	$(MAKE) -C usertests clean;
+	@$(MAKE) -C usertests clean;
 	-@rm -rf $(B_BUILD_DIR)
 	-@rm -rf $(B_BUILD_DIR_HOST)
 	-@rm -rf $(B_DEPLOY_DIR)
@@ -98,7 +98,13 @@ clean: # delete build dir
 # programs in sub dirs
 #
 usertests:
-	$(MAKE) -C usertests vimix;
+	@$(MAKE) -C usertests vimix;
 
 usertests_host:
-	$(MAKE) -C usertests host;
+	@$(MAKE) -C usertests host;
+
+mkfs:
+	@$(MAKE) -C mkfs vimix;
+
+mkfs_host:
+	@$(MAKE) -C mkfs host;

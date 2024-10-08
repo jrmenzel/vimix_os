@@ -1,40 +1,37 @@
 #
-# The kernel (in /kernel), host tools (in /tools), user space apps (in /usr/bin)
+# The kernel (in /kernel), user space apps (in /usr/bin) incl tools
 # and user space libraries (/usr/libs) have their own Makefiles.
 # The settings that are shared (e.g. compiler to use, target architecture)
 # can be found in MakefileCommon.mk
 #
 include MakefileCommon.mk
 
-.PHONY: all directories kernel tools userspace_lib userspace host
+.PHONY: all directories kernel userspace_lib userspace host
 
-all: directories kernel tools userspace_lib userspace host $(BUILD_DIR)/filesystem.img
+all: directories kernel userspace_lib userspace host $(BUILD_DIR)/filesystem.img
 
 directories: # make build output directory
-	mkdir -p $(BUILD_DIR);
+	@mkdir -p $(BUILD_DIR);
 
 kernel: userspace # the kernel itself, depends on userspace for the embedded ram disk only
-	$(MAKE) -C kernel all;
-
-tools: # mkfs
-	$(MAKE) -C tools/mkfs all;
+	@$(MAKE) -C kernel all;
 
 userspace_lib: # user space clib
-	$(MAKE) -C usr/lib all;
+	@$(MAKE) -C usr/lib all;
 
 userspace: userspace_lib # user space apps and libs
-	$(MAKE) -C usr/bin all;
+	@$(MAKE) -C usr/bin all;
 
 host: # some user space apps for the host (Linux)
-	$(MAKE) -C usr/bin host; 
+	@$(MAKE) -C usr/bin host; 
 
 # filesystem in a file containing userspace to run with qemu (kernel is set manually)
-$(BUILD_DIR)/filesystem.img: tools README.md userspace
+$(BUILD_DIR)/filesystem.img: README.md userspace host
 	@printf "$(TASK_COLOR)Create file system: $(@)\n$(NO_COLOR)"
-	cp README.md $(BUILD_DIR)/root/
-	mkdir -p $(BUILD_DIR)/root/dev
-	mkdir -p $(BUILD_DIR)/root/home
-	tools/mkfs/mkfs $(BUILD_DIR)/filesystem.img --in $(BUILD_DIR)/root/ 
+	@cp README.md $(BUILD_DIR)/root/
+	@mkdir -p $(BUILD_DIR)/root/dev
+	@mkdir -p $(BUILD_DIR)/root/home
+	$(BUILD_DIR_HOST)/root/usr/bin/mkfs $(BUILD_DIR)/filesystem.img --in $(BUILD_DIR)/root/ 
 
 ###
 # qemu
@@ -69,10 +66,10 @@ qemu-dump-tree: kernel $(BUILD_DIR)/filesystem.img
 	dtc -o tree.dts -O dts -I dtb tree.dtb
 
 .gdbinit: tools/gdbinit Makefile MakefileCommon.mk
-	cp tools/gdbinit .gdbinit
-	sed -i 's/_PORT/$(GDB_PORT)/g' .gdbinit
-	sed -i "s~_KERNEL~$(KERNEL_FILE)~g" .gdbinit
-	sed -i 's/_ARCHITECTURE/$(GDB_ARCHITECTURE)/g' .gdbinit
+	@cp tools/gdbinit .gdbinit
+	@sed -i 's/_PORT/$(GDB_PORT)/g' .gdbinit
+	@sed -i "s~_KERNEL~$(KERNEL_FILE)~g" .gdbinit
+	@sed -i 's/_ARCHITECTURE/$(GDB_ARCHITECTURE)/g' .gdbinit
 
 
 # run in qemu waiting for a debugger
@@ -122,9 +119,8 @@ $(KERNEL_FILE).bin: kernel
 	$(OBJCOPY) $(KERNEL_FILE) -O binary $(BUILD_DIR)/$(KERNEL_NAME).bin
 
 clean: # clean up
-	$(MAKE) -C kernel clean;
-	$(MAKE) -C tools/mkfs clean;
-	$(MAKE) -C usr/lib clean;
-	$(MAKE) -C usr/bin clean;
-	-@rm -r $(BUILD_DIR)/root/*
-	-@rm -r $(BUILD_DIR_HOST)/root/*
+	@$(MAKE) -C kernel clean;
+	@$(MAKE) -C usr/lib clean;
+	@$(MAKE) -C usr/bin clean;
+	-@rm -rf $(BUILD_DIR)/root/*
+	-@rm -rf $(BUILD_DIR_HOST)/root/*
