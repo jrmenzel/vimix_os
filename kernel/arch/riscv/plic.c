@@ -89,7 +89,7 @@ void plic_init_per_cpu()
     {
         irq_enable_flags[block] = 0;
     }
-    for (size_t i = 0; i < MAX_DEVICES; ++i)
+    for (size_t i = 0; i < MAX_DEVICES * MAX_MINOR_DEVICES; ++i)
     {
         struct Device *dev = g_devices[i];
         if (dev && (dev->irq_number != INVALID_IRQ_NUMBER))

@@ -10,7 +10,8 @@ struct
     struct Character_Device cdev;  ///< derived from a character device
 } g_dev_zero;
 
-ssize_t dev_zero_read(bool addr_is_userspace, size_t addr, size_t len)
+ssize_t dev_zero_read(struct Device *dev, bool addr_is_userspace, size_t addr,
+                      size_t len)
 {
     char zero = 0;
     for (size_t i = 0; i < len; ++i)
@@ -22,12 +23,13 @@ ssize_t dev_zero_read(bool addr_is_userspace, size_t addr, size_t len)
     return len;
 }
 
-ssize_t dev_zero_write(bool addr_is_userspace, size_t addr, size_t len)
+ssize_t dev_zero_write(struct Device *dev, bool addr_is_userspace, size_t addr,
+                       size_t len)
 {
     return len;
 }
 
-dev_t dev_zero_init(struct Device_Memory_Map*)
+dev_t dev_zero_init(struct Device_Memory_Map *)
 {
     // init device and register it in the system
     g_dev_zero.cdev.dev.type = CHAR;

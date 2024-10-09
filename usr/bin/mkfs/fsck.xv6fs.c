@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <errno.h>
 #include <fcntl.h>
 #include <kernel/xv6fs.h>
 #include <stdbool.h>
@@ -42,13 +43,13 @@ void read_block(struct xv6fs_in_file *file, size_t block_id, uint8_t *buffer)
     off_t offset = lseek(file->fd, block_id * BLOCK_SIZE, SEEK_SET);
     if (offset < 0)
     {
-        fprintf(stderr, "File ended unexpectedly\n\n");
+        fprintf(stderr, "File ended unexpectedly (errno: %d)\n\n", errno);
         exit(1);
     }
     ssize_t r = read(file->fd, buffer, BLOCK_SIZE);
     if (r != BLOCK_SIZE)
     {
-        fprintf(stderr, "File ended unexpectedly\n\n");
+        fprintf(stderr, "File ended unexpectedly (errno: %d)\n\n", errno);
         exit(1);
     }
 }

@@ -60,7 +60,8 @@ struct
 } g_console;
 
 /// user write()s to the console go here.
-ssize_t console_write(bool addr_is_userspace, size_t src, size_t n)
+ssize_t console_write(struct Device *dev, bool addr_is_userspace, size_t src,
+                      size_t n)
 {
     ssize_t i;
 
@@ -81,7 +82,8 @@ ssize_t console_write(bool addr_is_userspace, size_t src, size_t n)
 /// copy (up to) a whole input line to dst.
 /// user_dist indicates whether dst is a user
 /// or kernel address.
-ssize_t console_read(bool addr_is_userspace, size_t dst, size_t n)
+ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
+                     size_t n)
 {
     size_t target = n;
 

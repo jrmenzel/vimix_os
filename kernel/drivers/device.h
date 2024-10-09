@@ -5,6 +5,8 @@
 #include <kernel/major.h>
 #include <kernel/types.h>
 
+struct Device;
+
 /// @brief Interrupt handler function pointer
 /// @param dev The device to call (minor number)
 typedef void (*interrupt_handler_p)(dev_t dev);
@@ -37,7 +39,9 @@ struct Device
 
 /// @brief Array of pointers to all devices in the system.
 /// Add new devices at boot via register_device()
-extern struct Device *g_devices[MAX_DEVICES];
+extern struct Device *g_devices[MAX_DEVICES * MAX_MINOR_DEVICES];
+
+#define DEVICE_INDEX(major, minor) ((major) * MAX_MINOR_DEVICES + (minor))
 
 #define INVALID_IRQ_NUMBER (-1)
 /// @brief Initialize the device, called from the character and block device

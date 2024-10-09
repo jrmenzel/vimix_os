@@ -10,18 +10,20 @@ struct
     struct Character_Device cdev;  ///< derived from a character device
 } g_dev_null;
 
-ssize_t dev_null_read(bool addr_is_userspace, size_t addr, size_t len)
+ssize_t dev_null_read(struct Device *dev, bool addr_is_userspace, size_t addr,
+                      size_t len)
 {
     return 0;
 }
 
-ssize_t dev_null_write(bool addr_is_userspace, size_t addr, size_t len)
+ssize_t dev_null_write(struct Device *dev, bool addr_is_userspace, size_t addr,
+                       size_t len)
 {
     // ...but of course we wrote that data, trust me, I'm /dev/null ;-)
     return len;
 }
 
-dev_t dev_null_init(struct Device_Memory_Map*)
+dev_t dev_null_init(struct Device_Memory_Map *)
 {
     // init device and register it in the system
     g_dev_null.cdev.dev.type = CHAR;

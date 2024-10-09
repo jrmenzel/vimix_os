@@ -9,17 +9,21 @@
 // only tested with qemu.
 //
 // the virtio spec:
-// https://docs.oasis-open.org/virtio/virtio/v1.1/virtio-v1.1.pdf
+// https://docs.oasis-open.org/virtio/virtio/v1.2/cs01/virtio-v1.2-cs01.html
 //
 
-// virtio mmio control registers, mapped starting at 0x10001000.
-// from qemu virtio_mmio.h
-#define VIRTIO_MMIO_MAGIC_VALUE 0x000  // 0x74726976
+// virtio mmio control registers, mapping start is read from the device tree
+// from qemu virtio_mmio.h / spec 1.2 (4.2.2)
+#define VIRTIO_DISK_MAGIC 0x74726976
+#define VIRTIO_MMIO_MAGIC_VALUE 0x000  // VIRTIO_DISK_MAGIC
 #define VIRTIO_MMIO_VERSION 0x004      // version; should be 2
 #define VIRTIO_MMIO_DEVICE_ID 0x008    // device type; 1 is net, 2 is disk
 #define VIRTIO_MMIO_VENDOR_ID 0x00c    // 0x554d4551
-#define VIRTIO_MMIO_DEVICE_FEATURES 0x010
-#define VIRTIO_MMIO_DRIVER_FEATURES 0x020
+#define VIRTIO_MMIO_DEVICE_FEATURES \
+    0x010  // Flags representing features the device supports
+#define VIRTIO_MMIO_DEVICE_FEATURES_SEL 0x14
+#define VIRTIO_MMIO_DRIVER_FEATURES \
+    0x020  // features understood and activated by the driver
 #define VIRTIO_MMIO_QUEUE_SEL 0x030      // select queue, write-only
 #define VIRTIO_MMIO_QUEUE_NUM_MAX 0x034  // max size of current queue, read-only
 #define VIRTIO_MMIO_QUEUE_NUM 0x038      // size of current queue, write-only
@@ -37,6 +41,27 @@
 #define VIRTIO_MMIO_DEVICE_DESC_LOW \
     0x0a0  // physical address for used ring, write-only
 #define VIRTIO_MMIO_DEVICE_DESC_HIGH 0x0a4
+
+#define VIRTIO_MMIO_CONFIG 0x100  // beginning of struct virtio_blk_config
+
+struct virtio_blk_config
+{
+    // The capacity (in 512-byte sectors)
+    uint64_t capacity;
+    // The maximum segment size (if VIRTIO_BLK_F_SIZE_MAX)
+    uint32_t size_max;
+    // The maximum number of segments (if VIRTIO_BLK_F_SEG_MAX)
+    uint32_t seg_max;
+    // geometry the device (if VIRTIO_BLK_F_GEOMETRY)
+    struct virtio_blk_geometry
+    {
+        uint16_t cylinders;
+        uint8_t heads;
+        uint8_t sectors;
+    } geometry;
+    // block size of device (if VIRTIO_BLK_F_BLK_SIZE)
+    uint32_t blk_size;
+} __attribute__((packed));
 
 // status register bits, from qemu virtio_config.h
 #define VIRTIO_CONFIG_S_ACKNOWLEDGE 1

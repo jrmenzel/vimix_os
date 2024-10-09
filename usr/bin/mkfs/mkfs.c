@@ -455,8 +455,6 @@ void copy_filesystem_to_dir(int32_t dir_inode_on_fs, const char *sub_path,
 
 int main(int argc, char *argv[])
 {
-    _Static_assert(sizeof(int) == 4, "Integers must be 4 bytes!");
-
     if (argc == 4)
     {
         uint32_t rootino;
@@ -477,9 +475,19 @@ int main(int argc, char *argv[])
             close(g_filesystem_fd);
             return 0;
         }
+        else if (strcmp(argv[2], "--create") == 0)
+        {
+            size_t fs_size = atoi(argv[3]);
+
+            rootino = create_empty_filesystem(argv[1], fs_size * BLOCK_SIZE);
+            balloc(freeblock);
+            close(g_filesystem_fd);
+            return 0;
+        }
     }
 
-    fprintf(stderr, "Usage: mkfs fs.img [--in|--out] dir\n");
+    fprintf(stderr, "Usage: mkfs fs.img [--in|--out] <dir>\n");
+    fprintf(stderr, "       mkfs fs.img --create <size in blocks/kb>\n");
     return 1;
 }
 

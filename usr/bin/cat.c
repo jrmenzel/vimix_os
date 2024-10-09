@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -22,13 +23,13 @@ void cat(int fd)
     {
         if (write(STDOUT_FILENO, buf, n) != n)
         {
-            fprintf(stderr, "cat: write error\n");
+            fprintf(stderr, "cat: write error (errno: %d)\n", errno);
             exit(1);
         }
     }
     if (n < 0)
     {
-        fprintf(stderr, "cat: read error\n");
+        fprintf(stderr, "cat: read error (errno: %d)\n", errno);
         exit(1);
     }
 }

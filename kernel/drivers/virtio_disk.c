@@ -21,9 +21,8 @@
 /// the address of virtio mmio register r.
 #define R(base, r) ((volatile uint32_t *)(base + (r)))
 
-#define MAX_VIRTIO_DISKS 8
 size_t g_virtio_disks_used = 0;
-struct virtio_disk g_virtio_disks[MAX_VIRTIO_DISKS];
+struct virtio_disk g_virtio_disks[MAX_MINOR_DEVICES];
 
 void virtio_block_device_read(struct Block_Device *bd, struct buf *b);
 void virtio_block_device_write(struct Block_Device *bd, struct buf *b);
@@ -32,7 +31,7 @@ void virtio_block_device_interrupt();
 dev_t virtio_disk_init_internal(size_t disk_index,
                                 struct Device_Memory_Map *mapping)
 {
-    if (disk_index > MAX_VIRTIO_DISKS) return INVALID_DEVICE;
+    if (disk_index > MAX_MINOR_DEVICES) return INVALID_DEVICE;
     struct virtio_disk *disk = &g_virtio_disks[disk_index];
 
     spin_lock_init(&disk->vdisk_lock, "virtio_disk");
@@ -143,22 +142,21 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     status |= VIRTIO_CONFIG_S_DRIVER_OK;
     *R(b, VIRTIO_MMIO_STATUS) = status;
 
+    struct virtio_blk_config *config =
+        (struct virtio_blk_config *)(b + VIRTIO_MMIO_CONFIG);
+
     // init device and register it in the system
+    disk->disk.bdev.size = config->capacity * 512;
     disk->disk.bdev.dev.type = BLOCK;
     disk->disk.bdev.dev.device_number =
         MKDEV(QEMU_VIRT_IO_DISK_MAJOR, disk_index);
-    disk->disk.bdev.ops.read = virtio_block_device_read;
-    disk->disk.bdev.ops.write = virtio_block_device_write;
+    disk->disk.bdev.ops.read_buf = virtio_block_device_read;
+    disk->disk.bdev.ops.write_buf = virtio_block_device_write;
 
-    // only register the first instance, the callbacks will destinquish
-    // between the instances by minor device numbers.
-    if (disk_index == 0)
-    {
-        // plic.c and trap.c arrange for interrupts
-        dev_set_irq(&disk->disk.bdev.dev, mapping->interrupt,
-                    virtio_block_device_interrupt);
-        register_device(&disk->disk.bdev.dev);
-    }
+    // plic.c and trap.c arrange for interrupts
+    dev_set_irq(&disk->disk.bdev.dev, mapping->interrupt,
+                virtio_block_device_interrupt);
+    register_device(&disk->disk.bdev.dev);
 
     return disk->disk.bdev.dev.device_number;
 }
@@ -167,9 +165,8 @@ dev_t virtio_disk_init(struct Device_Memory_Map *mapping)
 {
     size_t b = mapping->mem_start;
 
-    if (*R(b, VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 ||
-        *R(b, VIRTIO_MMIO_VERSION) != 2 || *R(b, VIRTIO_MMIO_DEVICE_ID) != 2 ||
-        *R(b, VIRTIO_MMIO_VENDOR_ID) != 0x554d4551)
+    if (*R(b, VIRTIO_MMIO_MAGIC_VALUE) != VIRTIO_DISK_MAGIC ||
+        *R(b, VIRTIO_MMIO_VERSION) != 2 || *R(b, VIRTIO_MMIO_DEVICE_ID) != 2)
     {
         // no disk attached, e.g. no file specified in qemu
         return INVALID_DEVICE;
@@ -257,6 +254,18 @@ static int32_t alloc3_desc(struct virtio_disk *disk, int32_t *idx)
 void virtio_disk_rw(struct virtio_disk *disk, struct buf *b, bool write)
 {
     uint64_t sector = b->blockno * (BLOCK_SIZE / 512);
+    uint64_t sector_count = disk->disk.bdev.size / 512;
+    if (sector >= sector_count)
+    {
+        panic("virtio_disk_rw: invalid sector");
+    }
+    size_t read_amount = BLOCK_SIZE;
+    if (sector == sector_count - 1)
+    {
+        // A disk with an uneven number of sectors can't read two
+        // sectors ( == 1 block )
+        read_amount = 512;
+    }
 
     spin_lock(&disk->vdisk_lock);
 
@@ -297,7 +306,7 @@ void virtio_disk_rw(struct virtio_disk *disk, struct buf *b, bool write)
     disk->desc[idx[0]].next = idx[1];
 
     disk->desc[idx[1]].addr = (size_t)b->data;
-    disk->desc[idx[1]].len = BLOCK_SIZE;
+    disk->desc[idx[1]].len = read_amount;
     if (write)
     {
         disk->desc[idx[1]].flags = 0;  // device reads b->data
@@ -350,7 +359,6 @@ void virtio_disk_rw(struct virtio_disk *disk, struct buf *b, bool write)
 void virtio_block_device_read(struct Block_Device *bd, struct buf *b)
 {
     size_t minor = MINOR(bd->dev.device_number);
-
     virtio_disk_rw(&g_virtio_disks[minor], b, false);
 }
 

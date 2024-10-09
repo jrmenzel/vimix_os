@@ -262,7 +262,7 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
         {
             return -ENODEV;
         }
-        read_bytes = cdev->ops.read(true, addr, n);
+        read_bytes = cdev->ops.read(&cdev->dev, true, addr, n);
     }
     else if (S_ISBLK(f->mode))
     {
@@ -271,7 +271,13 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
         {
             return -ENODEV;
         }
-        panic("add block device read");
+
+        read_bytes = block_device_read(bdev, addr, f->off, n);
+        if (read_bytes > 0)
+        {
+            // check > 0 is needed, read_bytes can be negative on error
+            f->off += read_bytes;
+        }
     }
     else if (S_ISREG(f->mode) || S_ISDIR(f->mode))
     {
@@ -279,7 +285,7 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
         read_bytes = inode_read(f->ip, true, addr, f->off, n);
         if (read_bytes > 0)
         {
-            // check is needed, read_bytes can be negative on error
+            // check > 0 is needed, read_bytes can be negative on error
             f->off += read_bytes;
         }
         inode_unlock(f->ip);
@@ -312,7 +318,8 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
         {
             return -ENODEV;
         }
-        ret = cdev->ops.write(true, addr, n);
+        ret = cdev->ops.write(&cdev->dev, true, addr, n);
+        if (ret > 0) f->off += ret;
     }
     else if (S_ISBLK(f->mode))
     {
@@ -321,7 +328,8 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
         {
             return -ENODEV;
         }
-        panic("add block device write");
+        ret = block_device_write(bdev, addr, f->off, n);
+        if (ret > 0) f->off += ret;
     }
     else if (S_ISREG(f->mode) || S_ISDIR(f->mode))
     {
@@ -528,10 +536,20 @@ ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
 
 ssize_t file_lseek(struct file *f, ssize_t offset, int whence)
 {
-    if (!S_ISREG(f->mode))
+    if (!S_ISREG(f->mode) && !S_ISBLK(f->mode))
     {
-        return -ESPIPE;  // only correct error for pipes, but use for all
-                         // non-regular filed for now
+        return -ESPIPE;  // only correct error for pipes...
+    }
+
+    size_t file_size = f->ip->size;
+    if (S_ISBLK(f->mode))
+    {
+        struct Block_Device *bdevice = get_block_device(f->ip->dev);
+        if (!bdevice)
+        {
+            panic("file_lseek: bad device");
+        }
+        file_size = bdevice->size;
     }
 
     ssize_t new_pos = 0;
@@ -539,12 +557,12 @@ ssize_t file_lseek(struct file *f, ssize_t offset, int whence)
     {
         case SEEK_SET: new_pos = offset; break;
         case SEEK_CUR: new_pos = f->off + offset; break;
-        case SEEK_END: new_pos = f->ip->size + offset; break;
+        case SEEK_END: new_pos = file_size + offset; break;
         default: return -EINVAL; break;
     }
 
     if (new_pos < 0) return -EINVAL;
-    if (new_pos > f->ip->size) return -EINVAL;  // todo: support
+    if (new_pos > file_size) return -EINVAL;  // todo: support
 
     f->off = new_pos;
 

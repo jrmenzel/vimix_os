@@ -99,7 +99,7 @@ struct buf *bio_read(dev_t dev, uint32_t blockno)
             panic("bio_read called for non block device!");
         }
 
-        bdevice->ops.read(bdevice, b);
+        bdevice->ops.read_buf(bdevice, b);
 
         b->valid = 1;
     }
@@ -121,7 +121,7 @@ void bio_write(struct buf *b)
         panic("bio_write called for non block device!");
     }
 
-    bdevice->ops.write(bdevice, b);
+    bdevice->ops.write_buf(bdevice, b);
 }
 
 void bio_release(struct buf *b)

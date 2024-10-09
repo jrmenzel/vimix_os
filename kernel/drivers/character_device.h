@@ -5,9 +5,13 @@
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 
-typedef ssize_t (*DEVICE_READ_FUNCTION)(bool addr_is_userspace, size_t addr,
+struct Character_Device;
+
+typedef ssize_t (*DEVICE_READ_FUNCTION)(struct Device *dev,
+                                        bool addr_is_userspace, size_t addr,
                                         size_t len);
-typedef ssize_t (*DEVICE_WRITE_FUNCTION)(bool addr_is_userspace, size_t addr,
+typedef ssize_t (*DEVICE_WRITE_FUNCTION)(struct Device *dev,
+                                         bool addr_is_userspace, size_t addr,
                                          size_t len);
 
 /// @brief What a character device driver needs to implement:

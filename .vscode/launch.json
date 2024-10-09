@@ -191,7 +191,7 @@
             // debug a user space application on the host
             "name": "host mkfs",
             "program": "${workspaceRoot}/build_host/root/usr/bin/mkfs",
-            "args": ["build/filesystem.img"],
+            "args": ["fs.img", "--in", "foo"],
             "cwd": "${workspaceRoot}",
             "type": "cppdbg",
             "request": "launch",

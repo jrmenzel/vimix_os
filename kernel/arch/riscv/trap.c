@@ -291,7 +291,7 @@ void handle_plic_device_interrupt()
     bool irq_handled = false;
 
     // find device for this IRQ and call interrupt handler
-    for (size_t i = 0; i < MAX_DEVICES; ++i)
+    for (size_t i = 0; i < MAX_DEVICES * MAX_MINOR_DEVICES; ++i)
     {
         struct Device *dev = g_devices[i];
         if (dev && irq == dev->irq_number)

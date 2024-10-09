@@ -4,29 +4,26 @@
 #include <drivers/ramdisk.h>
 #include <kernel/major.h>
 #include <kernel/param.h>
+#include <kernel/proc.h>
 #include <kernel/string.h>
 
 struct ramdisk
 {
     struct Generic_Disc disk;  ///< derived from a generic disk
 
-    struct ramdisk_minor
-    {
-        struct spinlock vdisk_lock;
+    struct spinlock vdisk_lock;
 
-        void *start;
-        size_t size;
-    } m[MAX_RAMDISKS];
-} g_ramdisk;
+    void *start;
+} g_ramdisk[MAX_MINOR_DEVICES];
 
 size_t g_next_free_ramdisk = 0;
 
-void *get_address_from_buffer(struct buf *b, struct ramdisk_minor *minor)
+void *get_address_from_buffer(struct buf *b, struct ramdisk *disk)
 {
     size_t disk_address = b->blockno * BLOCK_SIZE;
-    void *addr = minor->start + disk_address;
+    void *addr = disk->start + disk_address;
 
-    if (disk_address > minor->size)
+    if (disk_address > disk->disk.bdev.size)
     {
         panic("ramdisk: read out of bounds");
     }
@@ -39,13 +36,13 @@ void *get_address_from_buffer(struct buf *b, struct ramdisk_minor *minor)
 /// @param b The buffer to fill.
 void ramdisk_block_device_read(struct Block_Device *bd, struct buf *b)
 {
-    size_t minor = MINOR(bd->dev.device_number);
-    spin_lock(&g_ramdisk.m[minor].vdisk_lock);
+    size_t minor = MINOR(b->dev);
+    spin_lock(&g_ramdisk[minor].vdisk_lock);
 
-    void *addr = get_address_from_buffer(b, &g_ramdisk.m[minor]);
+    void *addr = get_address_from_buffer(b, &g_ramdisk[minor]);
     memmove(b->data, addr, BLOCK_SIZE);
 
-    spin_unlock(&g_ramdisk.m[minor].vdisk_lock);
+    spin_unlock(&g_ramdisk[minor].vdisk_lock);
 }
 
 /// @brief Write function as mandated for a Block_Device
@@ -53,14 +50,14 @@ void ramdisk_block_device_read(struct Block_Device *bd, struct buf *b)
 /// @param b The buffer to write out to disk.
 void ramdisk_block_device_write(struct Block_Device *bd, struct buf *b)
 {
-    size_t minor = MINOR(bd->dev.device_number);
+    size_t minor = MINOR(b->dev);
 
-    spin_lock(&g_ramdisk.m[minor].vdisk_lock);
+    spin_lock(&g_ramdisk[minor].vdisk_lock);
 
-    void *addr = get_address_from_buffer(b, &g_ramdisk.m[minor]);
+    void *addr = get_address_from_buffer(b, &g_ramdisk[minor]);
     memmove(addr, b->data, BLOCK_SIZE);
 
-    spin_unlock(&g_ramdisk.m[minor].vdisk_lock);
+    spin_unlock(&g_ramdisk[minor].vdisk_lock);
 }
 
 dev_t ramdisk_init(struct Device_Memory_Map *mapping)
@@ -72,19 +69,16 @@ dev_t ramdisk_init(struct Device_Memory_Map *mapping)
     size_t minor = g_next_free_ramdisk++;
     // printk("create ram disk %d\n", minor);
 
-    g_ramdisk.m[minor].start = (void *)mapping->mem_start;
-    g_ramdisk.m[minor].size = mapping->mem_size;
+    g_ramdisk[minor].start = (void *)mapping->mem_start;
+    g_ramdisk[minor].disk.bdev.size = mapping->mem_size;
 
-    // init device and register it in the system, but only once
-    if (minor == 0)
-    {
-        g_ramdisk.disk.bdev.dev.type = BLOCK;
-        g_ramdisk.disk.bdev.dev.device_number = MKDEV(RAMDISK_MAJOR, 0);
-        g_ramdisk.disk.bdev.ops.read = ramdisk_block_device_read;
-        g_ramdisk.disk.bdev.ops.write = ramdisk_block_device_write;
-        dev_set_irq(&g_ramdisk.disk.bdev.dev, INVALID_IRQ_NUMBER, NULL);
-        register_device(&g_ramdisk.disk.bdev.dev);
-    }
+    // init device and register it in the system
+    g_ramdisk[minor].disk.bdev.dev.type = BLOCK;
+    g_ramdisk[minor].disk.bdev.dev.device_number = MKDEV(RAMDISK_MAJOR, minor);
+    g_ramdisk[minor].disk.bdev.ops.read_buf = ramdisk_block_device_read;
+    g_ramdisk[minor].disk.bdev.ops.write_buf = ramdisk_block_device_write;
+    dev_set_irq(&g_ramdisk[minor].disk.bdev.dev, INVALID_IRQ_NUMBER, NULL);
+    register_device(&g_ramdisk[minor].disk.bdev.dev);
 
     return MKDEV(RAMDISK_MAJOR, minor);
 }
