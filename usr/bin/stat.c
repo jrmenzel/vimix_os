@@ -15,35 +15,41 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    struct stat buffer;
-    if (stat(argv[1], &buffer) < 0)
+    struct stat st;
+    if (stat(argv[1], &st) < 0)
     {
         fprintf(stderr, "stat: file or directory %s not found\n", argv[1]);
         return 1;
     }
 
-    if (S_ISDIR(buffer.st_mode))
+    printf("  File: %s\n", argv[1]);
+    printf("  Size: %zd   Blocks: %zd   IO Blocks: %zd   ", st.st_size,
+           st.st_blocks, st.st_blksize);
+
+    if (S_ISDIR(st.st_mode))
     {
-        printf("Directory: %s\n", argv[1]);
+        printf("directory\n");
     }
-    else if (S_ISREG(buffer.st_mode))
+    else if (S_ISREG(st.st_mode))
     {
-        printf("File: %s\n", argv[1]);
+        printf("regular file\n");
     }
-    else if (S_ISCHR(buffer.st_mode))
+    else if (S_ISCHR(st.st_mode))
     {
-        printf("Char device: %s\n", argv[1]);
+        printf("character special file\n");
     }
-    else if (S_ISBLK(buffer.st_mode))
+    else if (S_ISBLK(st.st_mode))
     {
-        printf("Block device: %s\n", argv[1]);
+        printf("block special file\n");
     }
 
-    printf("Size:      %d\n", (int)buffer.st_size);
-    printf("Device: (%d,%d)\n", major(buffer.st_dev), minor(buffer.st_dev));
-    printf("rdev:   (%d,%d)\n", major(buffer.st_rdev), minor(buffer.st_rdev));
-    printf("Inode:     %d\n", (int)buffer.st_ino);
-    printf("Links:     %d\n", (int)buffer.st_nlink);
+    printf("Device: %d,%d   Inode: %ld   Links: %ld   ", major(st.st_dev),
+           minor(st.st_dev), st.st_ino, (unsigned long)st.st_nlink);
+    if (S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode))
+    {
+        printf("Device type: %d,%d", major(st.st_rdev), minor(st.st_rdev));
+    }
+    printf("\n");
 
     return 0;
 }

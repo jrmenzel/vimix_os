@@ -397,6 +397,8 @@ void inode_stat(struct inode *ip, struct stat *st)
     st->st_mode = ip->i_mode;
     st->st_nlink = ip->nlink;
     st->st_size = ip->size;
+    st->st_blksize = BLOCK_SIZE;
+    st->st_blocks = (ip->size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 }
 
 ssize_t inode_read(struct inode *ip, bool addr_is_userspace, size_t dst,

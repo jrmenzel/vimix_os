@@ -11,12 +11,14 @@ typedef long unsigned ino_t;
 
 struct stat
 {
-    dev_t st_dev;  ///< File system's disk device
-    ino_t st_ino;  ///< Inode number
-    mode_t st_mode;
-    int16_t st_nlink;  ///< Number of links to file
-    dev_t st_rdev;     ///< Device ID if file is a char/block device
-    size_t st_size;    ///< Size of file in bytes
+    dev_t st_dev;       ///< File system's disk device
+    ino_t st_ino;       ///< Inode number
+    mode_t st_mode;     ///< File mode
+    int16_t st_nlink;   ///< Number of links to file
+    dev_t st_rdev;      ///< Device number if file is a char/block device
+    size_t st_size;     ///< Size of file in bytes
+    size_t st_blksize;  ///< Optimal block size for I/O
+    size_t st_blocks;   ///< Number 512-byte blocks allocated
 };
 
 /// Traditional mask definitions for st_mode.
@@ -51,11 +53,11 @@ struct stat
 #define S_IXOTH 00001  ///< others: --------x
 
 /// The following macros test st_mode (from POSIX Sec. 5.6.1.1).
-#define S_ISREG(m) (((m)&S_IFMT) == S_IFREG)   ///< is a reg file
-#define S_ISDIR(m) (((m)&S_IFMT) == S_IFDIR)   ///< is a directory
-#define S_ISCHR(m) (((m)&S_IFMT) == S_IFCHR)   ///< is a char spec
-#define S_ISBLK(m) (((m)&S_IFMT) == S_IFBLK)   ///< is a block spec
-#define S_ISFIFO(m) (((m)&S_IFMT) == S_IFIFO)  ///< is a pipe/FIFO
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)   ///< is a reg file
+#define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)   ///< is a directory
+#define S_ISCHR(m) (((m) & S_IFMT) == S_IFCHR)   ///< is a char spec
+#define S_ISBLK(m) (((m) & S_IFMT) == S_IFBLK)   ///< is a block spec
+#define S_ISFIFO(m) (((m) & S_IFMT) == S_IFIFO)  ///< is a pipe/FIFO
 
 #define INODE_HAS_TYPE(i) \
     ((S_ISREG(i)) || (S_ISDIR(i)) || (S_ISCHR(i) || S_ISBLK(i) || S_ISFIFO(i)))
