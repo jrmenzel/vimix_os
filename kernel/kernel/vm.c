@@ -139,6 +139,19 @@ pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc)
 size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va,
                              bool *is_writeable)
 {
+    size_t offset = va % PAGE_SIZE;
+    size_t va_page = va - offset;
+    size_t pa_page = uvm_get_physical_paddr(pagetable, va_page, is_writeable);
+    if (pa_page == 0)
+    {
+        return 0;
+    }
+    return pa_page + offset;
+}
+
+size_t uvm_get_physical_paddr(pagetable_t pagetable, size_t va,
+                              bool *is_writeable)
+{
 #if defined(_arch_is_64bit)
     if (va >= MAXVA)
     {
@@ -496,7 +509,7 @@ int32_t uvm_copy_out(pagetable_t pagetable, size_t dst_va, char *src_pa,
 
         size_t dst_va_page_start = PAGE_ROUND_DOWN(dst_va);
         bool dst_page_is_writeable;
-        size_t dst_pa_page_start = uvm_get_physical_addr(
+        size_t dst_pa_page_start = uvm_get_physical_paddr(
             pagetable, dst_va_page_start, &dst_page_is_writeable);
 
         if (dst_pa_page_start == 0 || !dst_page_is_writeable)
@@ -529,7 +542,7 @@ int32_t uvm_copy_in(pagetable_t pagetable, char *dst_pa, size_t src_va,
 
         size_t src_va_page_start = PAGE_ROUND_DOWN(src_va);
         size_t src_pa_page_start =
-            uvm_get_physical_addr(pagetable, src_va_page_start, NULL);
+            uvm_get_physical_paddr(pagetable, src_va_page_start, NULL);
         if (src_pa_page_start == 0)
         {
             return -1;
@@ -559,7 +572,7 @@ int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
     {
         size_t src_va_page_start = PAGE_ROUND_DOWN(src_va);
         size_t src_pa_page_start =
-            uvm_get_physical_addr(pagetable, src_va_page_start, NULL);
+            uvm_get_physical_paddr(pagetable, src_va_page_start, NULL);
         if (src_pa_page_start == 0)
         {
             return -1;

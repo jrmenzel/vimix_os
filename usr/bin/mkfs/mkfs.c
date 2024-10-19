@@ -116,7 +116,7 @@ uint32_t create_empty_filesystem(const char *filename, size_t fs_size)
     size_t min_fs_size = (2 + nlog + ninodeblocks + 1) * BLOCK_SIZE;
     if (fs_size < min_fs_size)
     {
-        printf("ERROR: min file system size is %ld bytes\n", min_fs_size);
+        printf("ERROR: min file system size is %zd bytes\n", min_fs_size);
         exit(-1);
     }
     size_t fs_size_in_blocks = fs_size / BLOCK_SIZE;
@@ -144,7 +144,7 @@ uint32_t create_empty_filesystem(const char *filename, size_t fs_size)
 
     printf(
         "nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap blocks "
-        "%u) blocks %d total %ld\n",
+        "%u) blocks %d total %zd\n",
         nmeta, nlog, ninodeblocks, nbitmap, nblocks, fs_size_in_blocks);
 
     freeblock = nmeta;  // the first free block that we can allocate
@@ -221,7 +221,7 @@ void copy_file_to_filesystem(const char *path_on_host, const char *new_name,
     {
         printf("error: can't copy file %s because it is too big.\n",
                path_on_host);
-        printf("File size: %ld, max file size: %ld\n", st.st_size,
+        printf("File size: %zd, max file size: %zd\n", st.st_size,
                max_file_size);
         return;  // skip file
     }

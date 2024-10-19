@@ -54,7 +54,7 @@ CFLAGS_COMMON := -DGIT_HASH=$(git-hash)
 #####
 # C compile flags
 CFLAGS_COMMON += -fno-omit-frame-pointer
-CFLAGS_COMMON += -Wall -Werror
+CFLAGS_COMMON += -Wall -Werror -Wno-stringop-truncation
 CFLAGS_COMMON += -I.
 
 ifeq ($(BUILD_TYPE), debug)

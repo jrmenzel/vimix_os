@@ -122,7 +122,10 @@ extern int32_t pipe(int pipe_descriptors[2]);
 
 ///////////////////////////////////////
 
-// change data segment size
+/// @brief Change program break size / heap size.
+/// @param increment bytes by which the heap should grow or shrink
+/// @return On success the previous program break; on failure ((void*) -1) and
+/// errno will be set to ENOMEM
 extern void *sbrk(intptr_t increment);
 
 extern int32_t uptime();

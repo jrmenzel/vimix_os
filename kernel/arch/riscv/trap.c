@@ -29,24 +29,6 @@ void set_s_mode_trap_vector()
     cpu_set_s_mode_trap_vector(s_mode_trap_vector);
 }
 
-void dump_process_info(struct process *proc)
-{
-    struct trapframe *tf = proc->trapframe;
-    printk("Process: %s\n", proc->name);
-    // clang-format off
-    printk("ra:  0x%zx; s0: 0x%zx; a0: 0x%zx; t0: 0x%zx\n", tf->ra,  tf->s0, tf->a0, tf->t0);
-    printk("sp:  0x%zx; s1: 0x%zx; a1: 0x%zx; t1: 0x%zx\n", tf->sp,  tf->s1, tf->a1, tf->t1);
-    printk("gp:  0x%zx; s2: 0x%zx; a2: 0x%zx; t2: 0x%zx\n", tf->gp,  tf->s2, tf->a2, tf->t2);
-    printk("tp:  0x%zx; s3: 0x%zx; a3: 0x%zx; t3: 0x%zx\n", tf->tp,  tf->s3, tf->a3, tf->t3);
-    printk("s8:  0x%zx; s4: 0x%zx; a4: 0x%zx; t4: 0x%zx\n", tf->s8,  tf->s4, tf->a4, tf->t4);
-    printk("s9:  0x%zx; s5: 0x%zx; a5: 0x%zx; t5: 0x%zx\n", tf->s9,  tf->s5, tf->a5, tf->t5);
-    printk("s10: 0x%zx; s6: 0x%zx; a6: 0x%zx; t6: 0x%zx\n", tf->s10, tf->s6, tf->a6, tf->t6);
-    printk("s11: 0x%zx; s7: 0x%zx; a7: 0x%zx\n",            tf->s11, tf->s7, tf->a7);
-    // clang-format on
-
-    // debug_vm_print_page_table(proc->pagetable);
-}
-
 /// @brief Dump kernel thread state from before the interrupt.
 void dump_pre_int_kthread_state(size_t *stack)
 {
@@ -81,7 +63,10 @@ void dump_scause_and_kill_proc(struct process *proc)
         "Killing process with pid=%d\n",
         proc->pid);
     dump_scause();
-    dump_process_info(proc);
+    printk("Process: %s\n", proc->name);
+    debug_print_process_registers(proc);
+    printk("Call stack:\n");
+    debug_print_call_stack_user(proc);
     printk("\n");
     proc_set_killed(proc);
 }

@@ -142,12 +142,25 @@ pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc);
 
 /// @brief Look up the physical address behind a virtual address.
 ///        Can only be used to look up user pages.
+///        If only the address of a page is needed (va lowest 12 bits 0) use
+///        uvm_get_physical_paddr().
 /// @param pagetable Pagetable for address translation.
 /// @param va (user) virtual address to look up.
 /// @param is_writeable Optional to pass out if the page can be written to.
 /// @return Physical address or 0 if not mapped.
 size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va,
                              bool *is_writeable);
+
+/// @brief Look up the physical address of a page behind a virtual address.
+///        Can only be used to look up user pages.
+///        If a lookup of arbitrary addresses is needed, use
+///        uvm_get_physical_addr().
+/// @param pagetable Pagetable for address translation.
+/// @param va (user) virtual address to look up.
+/// @param is_writeable Optional to pass out if the page can be written to.
+/// @return Physical address or 0 if not mapped.
+size_t uvm_get_physical_paddr(pagetable_t pagetable, size_t va,
+                              bool *is_writeable);
 
 /// @brief Copy from kernel to user.
 /// Copy len bytes from src_pa to dst_va in a given page table.

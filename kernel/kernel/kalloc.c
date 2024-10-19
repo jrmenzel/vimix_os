@@ -9,6 +9,7 @@
 #include <kernel/kernel.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
+#include <lib/minmax.h>
 
 /// each free 4KB page will contain this struct to form a linked list
 struct free_page
@@ -41,8 +42,6 @@ void kfree_range(void *pa_start, void *pa_end)
         kfree(page_address);
     }
 }
-
-#define min(a, b) ((a) < (b) ? (a) : (b))
 
 void kalloc_init(struct Minimal_Memory_Map *memory_map)
 {
@@ -140,7 +139,7 @@ void *kalloc()
         memset((char *)page, 5, PAGE_SIZE);  // fill with junk
     }
 #endif  // CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
-    // printk("allocated a page 0x%x - used %d - total: %d\n", page,
+    // printk("allocated a page 0x%zx - used %zd - total: %zd\n", (size_t)page,
     //        g_kernel_memory.pages_allocated,
     //        g_kernel_memory.pages_allocated_total);
     return (void *)page;

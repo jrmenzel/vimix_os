@@ -36,7 +36,6 @@ struct Block_Device
 /// See container_of to see why this should be used instead of pointer casting.
 // #define block_device_from_device(ptr) (struct Block_Device *)(ptr)
 
-// fix compile issues to use saver version:
 #define block_device_from_device(ptr) \
     container_of(ptr, struct Block_Device, dev)
 

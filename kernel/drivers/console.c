@@ -3,12 +3,6 @@
 //
 // Console input and output, to the uart.
 // Reads are line at a time.
-// Implements special input characters:
-//   newline -- end of line
-//   control-h -- backspace
-//   control-u -- kill line
-//   control-d -- end of file
-//   control-p -- print process list
 //
 
 #include <drivers/character_device.h>
@@ -134,6 +128,18 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
     return target - n;
 }
 
+void console_debug_print_help()
+{
+    printk("\n");
+    printk("CTRL+H: Print this help\n");
+    printk("CTRL+P: Print process list\n");
+    printk("CTRL+L: Print process list\n");
+    printk("CTRL+T: Print process list with page tables\n");
+    printk("CTRL+U: Print process list with user call stack\n");
+    printk("CTRL+S: Print process list with kernel call stack\n");
+    printk("CTRL+O: Print process list with open files\n");
+}
+
 /// the console input interrupt handler.
 /// uart_interrupt_handler() calls this for input character.
 /// do erase/kill processing, append to g_console.buf,
@@ -144,19 +150,25 @@ void console_interrupt_handler(int32_t c)
 
     switch (c)
     {
+        case CONTROL_KEY('H'): console_debug_print_help(); break;
         case CONTROL_KEY('P'):  // Print process list.
-            debug_print_process_list();
+        case CONTROL_KEY('L'):  // Print process _L_ist, alternative for VSCode
+                                // which grabs CTRL+P
+            debug_print_process_list(false, false, false, false);
             break;
-        case CONTROL_KEY('U'):  // Kill line.
-            while (g_console.e != g_console.w &&
-                   g_console.buf[(g_console.e - 1) % INPUT_BUF_SIZE] != '\n')
-            {
-                g_console.e--;
-                console_putc(BACKSPACE);
-            }
+        case CONTROL_KEY('T'):  // Process list with page _T_ables
+            debug_print_process_list(false, false, false, true);
             break;
-        case CONTROL_KEY('H'):  // Backspace
-        case DELETE_KEY:        // Delete key
+        case CONTROL_KEY('U'):  // Process list with _U_ser call stack
+            debug_print_process_list(true, false, false, false);
+            break;
+        case CONTROL_KEY('S'):  // Process list with kernel call _S_tack
+            debug_print_process_list(false, true, false, false);
+            break;
+        case CONTROL_KEY('O'):  // Process list with open files
+            debug_print_process_list(false, false, true, false);
+            break;
+        case DELETE_KEY:  // Delete key
             if (g_console.e != g_console.w)
             {
                 g_console.e--;

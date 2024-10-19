@@ -89,6 +89,9 @@ u_mode_trap_vector:
     # initialize kernel stack pointer, from p->trapframe->kernel_sp
     LOAD_REG_FROM_TRAP_FRAME(sp, 1)
 
+    # set stack frame to an invalid value
+    mv s0, zero
+
     # make tp hold the current hartid, from p->trapframe->kernel_hartid
     LOAD_REG_FROM_TRAP_FRAME(tp, 4)
 

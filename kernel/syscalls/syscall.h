@@ -161,3 +161,7 @@ size_t fetchstr(size_t addr, char *buf, size_t max);
 /// @brief Fetch the size_t at addr from the current process.
 /// @return 0 on success, -1 on failure
 int32_t fetchaddr(size_t addr, size_t *ip);
+
+#ifdef CONFIG_DEBUG
+const char *debug_get_syscall_name(size_t number);
+#endif

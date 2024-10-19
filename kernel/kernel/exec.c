@@ -125,6 +125,11 @@ ssize_t execv(char *path, char **argv)
         return -ENOMEM;
     }
 
+    // Clear all registers to not spill information from the caller of execv
+    // also the stack frame and return address will be set to 0 which helps
+    // detect invalid uses and the end of the stack frames.
+    memset(proc->trapframe, 0, sizeof(struct trapframe));
+
     // arguments to user main(argc, argv)
     // argc is returned via the system call return
     // value, which goes in a0.
@@ -168,7 +173,7 @@ static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,
 {
     for (size_t i = 0; i < sz; i += PAGE_SIZE)
     {
-        size_t pa = uvm_get_physical_addr(pagetable, va + i, NULL);
+        size_t pa = uvm_get_physical_paddr(pagetable, va + i, NULL);
         if (pa == 0)
         {
             panic("loadseg: address should exist");

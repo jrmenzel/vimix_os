@@ -9,6 +9,8 @@
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
+#include <kernel/kticks.h>
+#include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/signal.h>
 #include <kernel/smp.h>
@@ -16,6 +18,7 @@
 #include <kernel/string.h>
 #include <kernel/vm.h>
 #include <mm/memlayout.h>
+#include <syscalls/syscall.h>
 
 /// a user program that calls execv("/usr/bin/init")
 /// assembled from initcode.S
@@ -753,16 +756,116 @@ int either_copyin(void *dst, bool addr_is_userspace, size_t src, size_t len)
     }
 }
 
-/// Print a process listing to console.  For debugging.
-/// Runs when user types CTRL+P on console.
-/// No lock to avoid wedging a stuck machine further.
-void debug_print_process_list()
+void debug_print_process_registers(struct process *proc)
+{
+    struct trapframe *tf = proc->trapframe;
+    // clang-format off
+    printk("ra:  0x%zx; s0: 0x%zx; a0: 0x%zx; t0: 0x%zx\n", tf->ra,  tf->s0, tf->a0, tf->t0);
+    printk("sp:  0x%zx; s1: 0x%zx; a1: 0x%zx; t1: 0x%zx\n", tf->sp,  tf->s1, tf->a1, tf->t1);
+    printk("gp:  0x%zx; s2: 0x%zx; a2: 0x%zx; t2: 0x%zx\n", tf->gp,  tf->s2, tf->a2, tf->t2);
+    printk("tp:  0x%zx; s3: 0x%zx; a3: 0x%zx; t3: 0x%zx\n", tf->tp,  tf->s3, tf->a3, tf->t3);
+    printk("s8:  0x%zx; s4: 0x%zx; a4: 0x%zx; t4: 0x%zx\n", tf->s8,  tf->s4, tf->a4, tf->t4);
+    printk("s9:  0x%zx; s5: 0x%zx; a5: 0x%zx; t5: 0x%zx\n", tf->s9,  tf->s5, tf->a5, tf->t5);
+    printk("s10: 0x%zx; s6: 0x%zx; a6: 0x%zx; t6: 0x%zx\n", tf->s10, tf->s6, tf->a6, tf->t6);
+    printk("s11: 0x%zx; s7: 0x%zx; a7: 0x%zx\n",            tf->s11, tf->s7, tf->a7);
+    // clang-format on
+}
+
+void debug_print_call_stack_kernel(struct process *proc)
+{
+    size_t proc_stack = proc->kstack;
+
+    // size_t stack_pointer = proc->context.sp;
+    size_t frame_pointer = proc->context.s0;
+    size_t return_address = proc->context.ra;
+
+    do {
+        printk("  ra (kernel): 0x%zx\n", return_address);
+
+        return_address = *((size_t *)(frame_pointer - 1 * sizeof(size_t)));
+        // stack_pointer = frame_pointer;
+        frame_pointer = *((size_t *)(frame_pointer - 2 * sizeof(size_t)));
+    } while ((frame_pointer <= proc_stack + PAGE_SIZE) &&
+             (frame_pointer > proc_stack));
+}
+
+void debug_print_call_stack_user(struct process *proc)
+{
+    // TODO: only goes over the first stack page!
+    size_t proc_stack_pa =
+        uvm_get_physical_addr(proc->pagetable, proc->stack_low, NULL);
+
+    size_t frame_pointer = proc->trapframe->s0;
+    size_t fp_physical =
+        uvm_get_physical_addr(proc->pagetable, frame_pointer, NULL);
+    size_t return_address = proc->trapframe->ra;
+
+    do {
+        printk("  ra (user): 0x%zx\n", return_address);
+
+        return_address = *((size_t *)(fp_physical - 1 * sizeof(size_t)));
+        frame_pointer = *((size_t *)(fp_physical - 2 * sizeof(size_t)));
+        fp_physical =
+            uvm_get_physical_addr(proc->pagetable, frame_pointer, NULL);
+    } while ((fp_physical <= proc_stack_pa + PAGE_SIZE) &&
+             (fp_physical > proc_stack_pa));
+}
+
+void debug_print_open_files(struct process *proc)
+{
+    for (size_t i = 0; i < MAX_FILES_PER_PROCESS; ++i)
+    {
+        struct file *f = proc->files[i];
+        if (f != NULL && f->ip != NULL)
+        {
+            struct inode *ip = proc->files[i]->ip;
+            printk("  fd %zd: inode %d on (%d,%d), ", i, ip->inum,
+                   MAJOR(ip->i_sb_dev), MINOR(ip->i_sb_dev));
+            printk("ref# %d, ", f->ref);
+            if (ip->valid)
+            {
+                if (S_ISREG(ip->i_mode))
+                {
+                    printk("regular file");
+                }
+                else if (S_ISDIR(ip->i_mode))
+                {
+                    printk("directory");
+                }
+                else if (S_ISCHR(ip->i_mode))
+                {
+                    printk("char dev (%d,%d)", MAJOR(ip->dev), MINOR(ip->dev));
+                }
+                else if (S_ISBLK(ip->i_mode))
+                {
+                    printk("block dev (%d,%d)", MAJOR(ip->dev), MINOR(ip->dev));
+                }
+                else if (S_ISFIFO(ip->i_mode))
+                {
+                    printk("pipe");
+                }
+            }
+            else
+            {
+                printk(" inode not read from disk");
+            }
+#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
+            printk(" - %s", ip->path);
+#endif
+            printk("\n");
+        }
+    }
+}
+
+void debug_print_process_list(bool print_call_stack_user,
+                              bool print_call_stack_kernel, bool print_files,
+                              bool print_page_table)
 {
     static char *states[] = {
-        [UNUSED] "unused",   [USED] "used",      [SLEEPING] "sleep ",
-        [RUNNABLE] "runble", [RUNNING] "run   ", [ZOMBIE] "zombie"};
+        [UNUSED] "unused",     [USED] "used",       [SLEEPING] "sleeping",
+        [RUNNABLE] "runnable", [RUNNING] "running", [ZOMBIE] "zombie"};
 
-    printk("\nPID state name\n");
+    printk("\nProcess list\n");
     for (struct process *proc = g_process_list;
          proc < &g_process_list[MAX_PROCS]; proc++)
     {
@@ -778,8 +881,66 @@ void debug_print_process_list()
             state = states[proc->state];
         }
 
-        printk("%d %s %s", proc->pid, state, proc->name);
+        printk(" PID: %d", proc->pid);
+
+        if (proc->parent)
+        {
+            printk(" (PPID: %d)", proc->parent->pid);
+        }
+        printk(" | %s", proc->name);
+        printk(" | state: %s", state);
+
+        if (proc->state == ZOMBIE)
+        {
+            printk(" (return value: %d)", proc->xstate);
+        }
+        if (proc->state == SLEEPING)
+        {
+            printk(", waiting on: ");
+            bool found_chan = false;
+            if (proc->chan == proc)
+            {
+                printk("child");
+                found_chan = true;
+            }
+            else if (proc->chan == &g_ticks)
+            {
+                printk("timer");
+                found_chan = true;
+            }
+            if (!found_chan)
+            {
+                printk("0x%zx", (size_t)proc->chan);
+            }
+        }
+#ifdef CONFIG_DEBUG
+        if (proc->current_syscall != 0)
+        {
+            printk(" | in syscall %s",
+                   debug_get_syscall_name(proc->current_syscall));
+        }
+#endif
         printk("\n");
+
+        if (print_call_stack_user && proc->state != RUNNING)
+        {
+            printk("Call stack user:\n");
+            debug_print_call_stack_user(proc);
+        }
+        if (print_call_stack_kernel && proc->state != RUNNING)
+        {
+            printk("Call stack kernel:\n");
+            debug_print_call_stack_kernel(proc);
+        }
+        if (print_files)
+        {
+            printk("Open files:\n");
+            debug_print_open_files(proc);
+        }
+        if (print_page_table)
+        {
+            debug_vm_print_page_table(proc->pagetable);
+        }
     }
 }
 

@@ -54,7 +54,7 @@ void dev_set_irq(struct Device *dev, int32_t irq_number,
         return NULL;                                              \
     }
 #else
-#define DEVICE_IS_OK(major, TYPE)
+#define DEVICE_IS_OK(major, minor, TYPE)
 #endif
 
 struct Block_Device *get_block_device(dev_t device_number)

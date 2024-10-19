@@ -11,7 +11,12 @@ The VIMIX kernel and user space apps can be debugged when running on [qemu](run_
 
 ## Disassembly
 
-Sometimes it can be helpful to look at the generated assembly code. `tools/disassemble.sh` is a small wrapper around `objdump` for this. It can disassemble starting at an address defined by the ELF file (or functions by name). As binaries are mapped to these locations, program counter addresses (e.g. from exceptions) can be used as disassembly starting points to find the source location.
+Sometimes it can be helpful to look at the generated assembly code. `tools/disassemble.sh` is a small wrapper around `objdump` for this. It can disassemble starting at an address defined by the ELF file (or functions by name). As binaries are mapped to these locations, program counter addresses (e.g. from exceptions, call stacks) can be used as disassembly starting points to find the source location.
+
+
+## Console build-in process list
+
+The console captures some key combinations and prints debug output. Press `CTRL + H` for a list.
 
 
 ---

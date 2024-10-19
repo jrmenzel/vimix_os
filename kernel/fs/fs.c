@@ -25,8 +25,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/stat.h>
 #include <kernel/string.h>
-
-#define min(a, b) ((a) < (b) ? (a) : (b))
+#include <lib/minmax.h>
 
 dev_t ROOT_DEVICE_NUMBER;
 

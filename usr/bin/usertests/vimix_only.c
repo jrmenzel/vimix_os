@@ -2726,9 +2726,13 @@ void sbrkfail(char *s)
         kill(pids[i], SIGKILL);
         wait(NULL);
     }
-    if (c == (char *)TEST_PTR_MAX_ADDRESS)
+    if (c == ((void *)-1))
     {
-        printf("%s: failed sbrk leaked memory\n", s);
+        // note: we can run into this error as a false alarm if the
+        // forked processes acually fill up all memory, change size of BIG
+        // to test for this condition
+        assert_errno(ENOMEM);
+        printf("%s: failed sbrk() calls seem to leak memory\n", s);
         exit(1);
     }
 

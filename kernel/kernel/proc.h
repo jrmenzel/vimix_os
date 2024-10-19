@@ -110,8 +110,29 @@ int32_t either_copyout(bool addr_is_userspace, size_t dst, void *src,
 int32_t either_copyin(void *dst, bool addr_is_userspace, size_t src,
                       size_t len);
 
-/// Prints the process list to the console (wired to CTRL+P)
-void debug_print_process_list();
+/// @brief Prints the processes register state
+/// @param proc A not running process.
+void debug_print_process_registers(struct process *proc);
+
+/// @brief Prints the processes kernel call stack.
+/// @param proc A not running process.
+void debug_print_call_stack_kernel(struct process *proc);
+
+/// @brief Prints the processes user call stack. This shows where an exception
+/// happened but also where the app was before calling a syscall.
+/// @param proc A not running process.
+void debug_print_call_stack_user(struct process *proc);
+
+/// @brief Prints the process list to the console (wired to CTRL+P)
+/// Does not lock the process list for debugging a stuck system.
+/// @param print_call_stack_user Prints the user space call stack of stopped
+/// @param print_call_stack_kernel Prints the kernel space call stack of stopped
+/// processes
+/// @param print_files Print open files
+/// @param print_page_table Prints the process page table
+void debug_print_process_list(bool print_call_stack_user,
+                              bool print_call_stack_kernel, bool print_files,
+                              bool print_page_table);
 
 /// @brief Allocate a file descriptor for the given file and add it to the
 /// current process.

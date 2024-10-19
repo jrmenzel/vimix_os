@@ -7,6 +7,7 @@
 #include <kernel/buf.h>
 #include <kernel/major.h>
 #include <kernel/string.h>
+#include <lib/minmax.h>
 
 /// there should be one xv6fs_superblock per disk device, but we run with
 /// only one device

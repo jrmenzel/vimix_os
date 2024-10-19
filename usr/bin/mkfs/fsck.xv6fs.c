@@ -85,7 +85,7 @@ void print_fs_layout(struct xv6fs_in_file *file)
     printf("[%d]         = Log Header\n", sb->logstart);
     printf("[%d] - [%d]  = Log Entries\n", sb->logstart + 1,
            sb->logstart + sb->nlog - 1);
-    printf("[%d] - [%ld] = Inodes (%ld inodes per block)\n", sb->inodestart,
+    printf("[%d] - [%zd] = Inodes (%zd inodes per block)\n", sb->inodestart,
            sb->inodestart + blocks_for_inodes - 1, XV6FS_INODES_PER_BLOCK);
     size_t bmap_end = sb->bmapstart + blocks_for_bitmap - 1;
     if (blocks_for_bitmap == 1)
@@ -94,10 +94,10 @@ void print_fs_layout(struct xv6fs_in_file *file)
     }
     else
     {
-        printf("[%d] - [%ld] = Bitmap\n", sb->bmapstart, bmap_end);
+        printf("[%d] - [%zd] = Bitmap\n", sb->bmapstart, bmap_end);
     }
     size_t data_start = bmap_end + 1;
-    printf("[%ld] - [%ld] = Data\n", data_start, data_start + sb->nblocks);
+    printf("[%zd] - [%zd] = Data\n", data_start, data_start + sb->nblocks);
 
     for (uint32_t b = 0; b < data_start; ++b)
     {
@@ -136,7 +136,7 @@ void print_log_header(struct xv6fs_in_file *file)
     printf("Log contains %d entries\n", log->n);
     for (size_t i = 0; i < log->n; ++i)
     {
-        printf(" log %ld = block %d\n", i, log->block[i]);
+        printf(" log %zd = block %d\n", i, log->block[i]);
     }
 }
 
@@ -165,7 +165,7 @@ int check_dinode(struct xv6fs_in_file *file, struct xv6fs_dinode *dinode,
     }
 
     if (verbose)
-        printf("%ld (block %ld, %ld) ", inum, (inum / XV6FS_INODES_PER_BLOCK),
+        printf("%zd (block %zd, %zd) ", inum, (inum / XV6FS_INODES_PER_BLOCK),
                inum % XV6FS_INODES_PER_BLOCK);
 
     switch (dinode->type)
@@ -238,7 +238,7 @@ void check_inodes(struct xv6fs_in_file *file, bool verbose)
             inum++;
         }
     }
-    printf("%ld disk inodes used (of %d)\n", used, sb->ninodes);
+    printf("%zd disk inodes used (of %d)\n", used, sb->ninodes);
 }
 
 size_t check_bitmap_char(uint8_t bm_file, uint8_t bm_calc, size_t offset)
@@ -256,13 +256,13 @@ size_t check_bitmap_char(uint8_t bm_file, uint8_t bm_calc, size_t offset)
             if (b_file)
             {
                 printf(
-                    "error, block %ld in use in file but not accessable from "
+                    "error, block %zd in use in file but not accessable from "
                     "inodes\n",
                     offset + i);
             }
             else
             {
-                printf("error, block %ld in use from inodes but free in file\n",
+                printf("error, block %zd in use from inodes but free in file\n",
                        offset + i);
             }
         }
@@ -299,7 +299,7 @@ void check_bitmap(struct xv6fs_in_file *file)
                                i * XV6FS_BMAP_BITS_PER_BLOCK);
     }
 
-    printf("Bitmap check done, %ld errors\n", file->bitmap_errors);
+    printf("Bitmap check done, %zd errors\n", file->bitmap_errors);
 }
 
 int check_file_system(int fd, bool verbose)
@@ -336,7 +336,7 @@ int check_file_system(int fd, bool verbose)
     {
         if (!INODE_OK(file.inodes[i]))
         {
-            printf("ERROR: Inode %ld ", i);
+            printf("ERROR: Inode %zd ", i);
             if (file.inodes[i] == INODE_DEFINE)
             {
                 printf("defined but not referenced in a dir.\n");

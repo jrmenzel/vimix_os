@@ -37,7 +37,6 @@ struct Character_Device
 /// casting.
 // #define character_device_from_device(ptr) (struct Character_Device *)(ptr)
 
-// fix compile issues to use saver version:
 #define character_device_from_device(ptr) \
     container_of(ptr, struct Character_Device, dev)
 

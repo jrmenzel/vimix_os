@@ -58,6 +58,9 @@ struct process
     struct inode *cwd;                          ///< Current Working Directory
 
     char name[16];  ///< Process name (debugging)
+#ifdef CONFIG_DEBUG
+    size_t current_syscall;  ///< More info in process listing via CTRL+P
+#endif
 };
 
 /// List of all user processes.
