@@ -152,8 +152,6 @@ struct inode *inode_open_or_create(const char *path, mode_t mode, dev_t device)
         return NULL;
     }
 
-    inode_lock(dir);
-
     // if the inode already exists, return it
     struct inode *ip = inode_dir_lookup(dir, name, 0);
     if (ip != NULL)
@@ -687,8 +685,7 @@ static struct inode *namex(const char *path, bool get_parent, char *name)
         }
         if (get_parent && *path == '\0')
         {
-            // Stop one level early.
-            inode_unlock(ip);
+            // Stop one level early, return locked ip
             return ip;
         }
         struct inode *next = inode_dir_lookup(ip, name, NULL);
@@ -705,7 +702,7 @@ static struct inode *namex(const char *path, bool get_parent, char *name)
         inode_put(ip);
         return NULL;
     }
-    return ip;
+    return ip;  // return locked ip
 }
 
 struct inode *inode_from_path(const char *path)

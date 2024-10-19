@@ -101,6 +101,7 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
         struct inode *iparent = inode_of_parent_from_path(pathname, name);
         if (iparent != NULL)
         {
+            inode_unlock(iparent);
             ip = inode_open_or_create(pathname, mode, iparent->dev);
             inode_put(iparent);
         }
@@ -412,7 +413,6 @@ ssize_t file_link(char *path_from, char *path_to)
         return -ENOENT;
     }
 
-    inode_lock(dir);
     if (dir->dev != ip->dev || inode_dir_link(dir, name, ip->inum) < 0)
     {
         inode_unlock_put(dir);
@@ -462,8 +462,6 @@ ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
         log_end_fs_transaction();
         return -ENOENT;
     }
-
-    inode_lock(dir);
 
     // Cannot unlink "." or "..".
     if (file_name_cmp(name, ".") == 0 || file_name_cmp(name, "..") == 0)

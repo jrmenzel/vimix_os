@@ -152,10 +152,12 @@ void inode_trunc(struct inode *ip);
 
 /// @brief get inode based on the path.
 /// Increases ref count (release with inode_put()).
+/// Returned inode is locked
 struct inode *inode_from_path(const char *path);
 
 /// @brief get inode of the parent directory
 /// Increases ref count (release with inode_put()).
+/// Returned inode is locked
 struct inode *inode_of_parent_from_path(const char *path, char *name);
 
 /// @brief Look for a directory entry in a directory.
