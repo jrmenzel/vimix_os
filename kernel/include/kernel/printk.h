@@ -16,3 +16,6 @@ void panic(char *error_message);
 #else
 void panic(char *error_message) __attribute__((noreturn));
 #endif
+
+// set to true after a kernel panic
+extern volatile bool g_kernel_panicked;

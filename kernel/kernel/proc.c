@@ -865,7 +865,7 @@ void debug_print_process_list(bool print_call_stack_user,
         [UNUSED] "unused",     [USED] "used",       [SLEEPING] "sleeping",
         [RUNNABLE] "runnable", [RUNNING] "running", [ZOMBIE] "zombie"};
 
-    printk("\nProcess list\n");
+    printk("\nProcess list (%zd)\n", smp_processor_id());
     for (struct process *proc = g_process_list;
          proc < &g_process_list[MAX_PROCS]; proc++)
     {

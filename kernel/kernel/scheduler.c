@@ -21,6 +21,7 @@ void scheduler()
         for (struct process *proc = g_process_list;
              proc < &g_process_list[MAX_PROCS]; proc++)
         {
+            if (g_kernel_panicked) goto KERNEL_PANIC;
             spin_lock(&proc->lock);
             if (proc->state == RUNNABLE)
             {
@@ -48,5 +49,12 @@ void scheduler()
             cpu_enable_device_interrupts();
             wait_for_interrupt();
         }
+    }
+
+KERNEL_PANIC:
+    while (true)
+    {
+        cpu_enable_device_interrupts();
+        wait_for_interrupt();
     }
 }

@@ -43,7 +43,6 @@ size_t uart_base = 0;
 #define WriteReg(reg, v) (*(Reg(reg)) = (v))
 
 struct uart_16550 g_uart_16550;
-extern volatile bool g_kernel_panicked;  // from printk.c
 
 void uartstart();
 
@@ -82,12 +81,6 @@ void uart_putc(int32_t c)
 {
     spin_lock(&g_uart_16550.uart_tx_lock);
 
-    if (g_kernel_panicked)
-    {
-        while (true)
-        {
-        }
-    }
     while (g_uart_16550.uart_tx_w == g_uart_16550.uart_tx_r + UART_TX_BUF_SIZE)
     {
         // buffer is full.
@@ -103,13 +96,6 @@ void uart_putc(int32_t c)
 void uart_putc_sync(int32_t c)
 {
     cpu_push_disable_device_interrupt_stack();
-
-    if (g_kernel_panicked)
-    {
-        while (true)
-        {
-        }
-    }
 
     while ((ReadReg(LSR) & LSR_TX_IDLE) == 0)
     {

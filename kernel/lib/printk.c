@@ -7,6 +7,8 @@
 #include <arch/reset.h>
 #include <drivers/console.h>
 #include <kernel/printk.h>
+#include <kernel/proc.h>
+#include <kernel/smp.h>
 #include <kernel/spinlock.h>
 #include <kernel/stdarg.h>
 #include <kernel/types.h>
@@ -25,7 +27,7 @@ static struct
 void console_putc_dummy(int32_t c, size_t payload) { console_putc(c); }
 
 // Print to the console
-void printk(char *format, ...)
+void printk(char* format, ...)
 {
     // error checks
     if (format == NULL)
@@ -53,13 +55,34 @@ void printk(char *format, ...)
     }
 }
 
-void panic(char *error_message)
+void panic(char* error_message)
 {
     g_printk.locking = false;
-    printk("panic: ");
-    printk(error_message);
-    printk("\n");
-    g_kernel_panicked = true;  // freeze uart output from other CPUs
+    g_kernel_panicked = true;  // freeze scheduling on other CPUs
+    printk("\n\nKernel PANIC on CPU %zd: %s\n", smp_processor_id(),
+           error_message);
+    __sync_synchronize();
+    cpu_disable_device_interrupts();
+
+    // print the kernel call stack:
+    printk(" Kernel call stack:\n");
+    size_t frame_pointer = (size_t)__builtin_frame_address(0);
+    while (true)
+    {
+        size_t ra = *((size_t*)(frame_pointer - 1 * sizeof(size_t)));
+        frame_pointer = *((size_t*)(frame_pointer - 2 * sizeof(size_t)));
+        if (frame_pointer == 0) break;
+        printk("  ra: 0x%zx\n", ra);
+    };
+
+    struct cpu* this_cpu = get_cpu();
+    if (this_cpu && this_cpu->proc)
+    {
+        struct process* proc = this_cpu->proc;
+        printk(" Process %s (PID: %d) call stack:\n", proc->name, proc->pid);
+        debug_print_call_stack_user(proc);
+    }
+
 #ifdef DEBUG_AUTOSTART_USERTESTS
     machine_power_off();
 #else
