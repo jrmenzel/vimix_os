@@ -132,6 +132,7 @@ void console_debug_print_help()
 {
     printk("\n");
     printk("CTRL+H: Print this help\n");
+    printk("CTRL+N: Print inodes\n");
     printk("CTRL+P: Print process list\n");
     printk("CTRL+L: Print process list\n");
     printk("CTRL+T: Print process list with page tables\n");
@@ -167,6 +168,9 @@ void console_interrupt_handler(int32_t c)
             break;
         case CONTROL_KEY('O'):  // Process list with open files
             debug_print_process_list(false, false, true, false);
+            break;
+        case CONTROL_KEY('N'):  // print i_N_odes
+            debug_print_inodes();
             break;
         case DELETE_KEY:  // Delete key
             if (g_console.e != g_console.w)

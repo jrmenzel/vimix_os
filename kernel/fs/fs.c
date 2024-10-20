@@ -715,3 +715,59 @@ struct inode *inode_of_parent_from_path(const char *path, char *name)
 {
     return namex(path, true, name);
 }
+
+void debug_print_inode(struct inode *ip)
+{
+    printk("inode %d on (%d,%d), ", ip->inum, MAJOR(ip->i_sb_dev),
+           MINOR(ip->i_sb_dev));
+    if (ip->valid)
+    {
+        printk("ref: %d link: %d, ", ip->ref, ip->nlink);
+
+        if (S_ISREG(ip->i_mode))
+        {
+            printk("regular file");
+        }
+        else if (S_ISDIR(ip->i_mode))
+        {
+            printk("directory");
+        }
+        else if (S_ISCHR(ip->i_mode))
+        {
+            printk("char dev (%d,%d)", MAJOR(ip->dev), MINOR(ip->dev));
+        }
+        else if (S_ISBLK(ip->i_mode))
+        {
+            printk("block dev (%d,%d)", MAJOR(ip->dev), MINOR(ip->dev));
+        }
+        else if (S_ISFIFO(ip->i_mode))
+        {
+            printk("pipe");
+        }
+    }
+    else
+    {
+        printk("inode not read from disk");
+    }
+    if (ip->lock.locked)
+    {
+        printk(" LOCKED");
+    }
+#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
+    printk(" - %s", ip->path);
+#endif
+    printk("\n");
+}
+
+void debug_print_inodes()
+{
+    printk("\n");
+    for (size_t i = 0; i < MAX_ACTIVE_INODES; ++i)
+    {
+        struct inode *ip = &itable.inode[i];
+        if (ip->ref != 0)
+        {
+            debug_print_inode(ip);
+        }
+    }
+}

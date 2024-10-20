@@ -195,3 +195,7 @@ int inode_dir_link(struct inode *dir, char *name, uint32_t inum);
 /// @return next seek_pos on success, 0 on dir end and -1 on error.
 ssize_t inode_get_dirent(struct inode *dir, size_t dir_entry_addr,
                          bool addr_is_userspace, ssize_t seek_pos);
+
+void debug_print_inode(struct inode *ip);
+
+void debug_print_inodes();

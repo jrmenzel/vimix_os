@@ -819,40 +819,8 @@ void debug_print_open_files(struct process *proc)
         if (f != NULL && f->ip != NULL)
         {
             struct inode *ip = proc->files[i]->ip;
-            printk("  fd %zd: inode %d on (%d,%d), ", i, ip->inum,
-                   MAJOR(ip->i_sb_dev), MINOR(ip->i_sb_dev));
-            printk("ref# %d, ", f->ref);
-            if (ip->valid)
-            {
-                if (S_ISREG(ip->i_mode))
-                {
-                    printk("regular file");
-                }
-                else if (S_ISDIR(ip->i_mode))
-                {
-                    printk("directory");
-                }
-                else if (S_ISCHR(ip->i_mode))
-                {
-                    printk("char dev (%d,%d)", MAJOR(ip->dev), MINOR(ip->dev));
-                }
-                else if (S_ISBLK(ip->i_mode))
-                {
-                    printk("block dev (%d,%d)", MAJOR(ip->dev), MINOR(ip->dev));
-                }
-                else if (S_ISFIFO(ip->i_mode))
-                {
-                    printk("pipe");
-                }
-            }
-            else
-            {
-                printk(" inode not read from disk");
-            }
-#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
-            printk(" - %s", ip->path);
-#endif
-            printk("\n");
+            printk("  fd %zd (ref# %d, off: %d): ", i, f->ref, f->off);
+            debug_print_inode(ip);
         }
     }
 }
