@@ -63,8 +63,11 @@ void go(int which_child)
     size_t iters = 0;
     while (true)
     {
+        // print child number (as letters) every few iterations
+        char name = 'A' + which_child;
+        if ((iters % 500) == 0) write(1, &name, 1);
         iters++;
-        if ((iters % 500) == 0) write(1, which_child ? "B" : "A", 1);
+
         int what = rand() % 23;
         if (what == 1)
         {
@@ -379,68 +382,99 @@ void go(int which_child)
     }
 }
 
-void iter()
+void iter(size_t number_of_forks)
 {
     unlink("a");
     unlink("b");
 
-    pid_t pid1 = fork();
-    if (pid1 < 0)
+    pid_t children[number_of_forks];
+    for (size_t i = 0; i < number_of_forks; ++i)
     {
-        printf("grind: fork failed\n");
-        exit(1);
+        children[i] = fork();
+        if (children[i] < 0)
+        {
+            printf("grind: fork %zd failed\n", i);
+            exit(1);
+        }
+        if (children[i] == 0)
+        {
+            rand_next ^= (31 * i);
+            go(i);
+            exit(0);
+        }
     }
-    if (pid1 == 0)
-    {
-        rand_next ^= 31;
-        go(0);
-        exit(0);
-    }
+    /*
+        pid_t pid1 = fork();
+        if (pid1 < 0)
+        {
+            printf("grind: fork failed\n");
+            exit(1);
+        }
+        if (pid1 == 0)
+        {
+            rand_next ^= 31;
+            go(0);
+            exit(0);
+        }
 
-    pid_t pid2 = fork();
-    if (pid2 < 0)
-    {
-        printf("grind: fork failed\n");
-        exit(1);
-    }
-    if (pid2 == 0)
-    {
-        rand_next ^= 7177;
-        go(1);
-        exit(0);
-    }
+        pid_t pid2 = fork();
+        if (pid2 < 0)
+        {
+            printf("grind: fork failed\n");
+            exit(1);
+        }
+        if (pid2 == 0)
+        {
+            rand_next ^= 7177;
+            go(1);
+            exit(0);
+        }*/
 
-    int st1 = -1;
-    wait(&st1);
-    st1 = WEXITSTATUS(st1);
-    if (st1 != 0)
+    for (size_t i = 0; i < number_of_forks; ++i)
     {
-        kill(pid1, SIGKILL);
-        kill(pid2, SIGKILL);
+        int st1 = -1;
+        wait(&st1);
+        st1 = WEXITSTATUS(st1);
+        children[i] = -1;
+
+        if (st1 != 0)
+        {
+            for (size_t i = 0; i < number_of_forks; ++i)
+            {
+                if (children[i] != -1) kill(children[i], SIGKILL);
+            }
+        }
     }
-    int st2 = -1;
-    wait(&st2);
-    st2 = WEXITSTATUS(st2);
 
     exit(0);
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    while (true)
+    size_t forks = 2;
+    if (argc == 2)
     {
-        pid_t pid = fork();
-        if (pid == 0)
-        {
-            iter();
-            exit(0);
-        }
-        if (pid > 0)
-        {
-            wait(NULL);
-        }
-        sleep(20);
-        rand_next += 1;
+        forks = atoi(argv[1]);
+    }
+    if (forks > 8)
+    {
+        printf("Warning: too many processes requested.\n");
+        return -1;
+    }
+    if (forks < 2)
+    {
+        printf("Not enough forks requested to be a useful test.\n");
+        return -1;
+    }
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        iter(forks);
+        exit(0);
+    }
+    if (pid > 0)
+    {
+        wait(NULL);
     }
 
     return 0;
