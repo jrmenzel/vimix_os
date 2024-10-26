@@ -2,7 +2,6 @@
 
 #include <arch/context.h>
 #include <arch/fence.h>
-#include <fs/xv6fs/log.h>
 #include <kernel/elf.h>
 #include <kernel/errno.h>
 #include <kernel/exec.h>
@@ -64,12 +63,9 @@ bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
 
 ssize_t execv(char *path, char **argv)
 {
-    log_begin_fs_transaction();
-
     struct inode *ip = inode_from_path(path);
     if (ip == NULL)
     {
-        log_end_fs_transaction();
         return -ENOENT;
     }
     inode_lock(ip);
@@ -80,7 +76,6 @@ ssize_t execv(char *path, char **argv)
     if (header_read != sizeof(elf) || elf.magic != ELF_MAGIC)
     {
         inode_unlock_put(ip);
-        log_end_fs_transaction();
         return -ENOEXEC;
     }
 
@@ -89,7 +84,6 @@ ssize_t execv(char *path, char **argv)
     if (pagetable == NULL)
     {
         inode_unlock_put(ip);
-        log_end_fs_transaction();
         return -ENOMEM;
     }
 
@@ -99,7 +93,6 @@ ssize_t execv(char *path, char **argv)
     bool fatal_error =
         !load_program_to_memory(ip, &elf, pagetable, &heap_begin);
     inode_unlock_put(ip);
-    log_end_fs_transaction();
     ip = NULL;
 
     // check error after handling the inode as this would have to be done now

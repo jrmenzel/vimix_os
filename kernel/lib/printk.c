@@ -15,7 +15,7 @@
 
 #include "print_impl.h"
 
-volatile bool g_kernel_panicked = false;
+volatile size_t g_kernel_panicked = 0;
 
 /// lock to avoid interleaving concurrent printk's.
 static struct
@@ -58,16 +58,24 @@ void printk(char* format, ...)
 void panic(char* error_message)
 {
     g_printk.locking = false;
-    g_kernel_panicked = true;  // freeze scheduling on other CPUs
+    g_kernel_panicked++;  // freeze scheduling on other CPUs
     printk("\n\nKernel PANIC on CPU %zd: %s\n", smp_processor_id(),
            error_message);
+    if (g_kernel_panicked > 1)
+    {
+        // instant loop if a panic happend inside a panic
+        while (true)
+        {
+        }
+    }
     __sync_synchronize();
     cpu_disable_device_interrupts();
 
     // print the kernel call stack:
+    size_t depth = 32;  // limit just in case of a corrupted stack
     printk(" Kernel call stack:\n");
     size_t frame_pointer = (size_t)__builtin_frame_address(0);
-    while (true)
+    while (depth-- != 0)
     {
         size_t ra = *((size_t*)(frame_pointer - 1 * sizeof(size_t)));
         frame_pointer = *((size_t*)(frame_pointer - 2 * sizeof(size_t)));

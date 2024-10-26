@@ -142,6 +142,11 @@ void *kalloc()
     // printk("allocated a page 0x%zx - used %zd - total: %zd\n", (size_t)page,
     //        g_kernel_memory.pages_allocated,
     //        g_kernel_memory.pages_allocated_total);
+    // if (page == NULL)
+    // {
+    //     printk("WARNING: OUT OF MEMORY\n");
+    // }
+
     return (void *)page;
 }
 

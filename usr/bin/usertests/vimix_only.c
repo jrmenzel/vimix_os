@@ -601,7 +601,7 @@ void iputtest(char *s)
     }
     if (chdir("/utests-tmp") < 0)
     {
-        printf("%s: chdir / failed\n", s);
+        printf("%s: chdir /utests-tmp failed\n", s);
         exit(1);
     }
 }
@@ -2291,7 +2291,7 @@ void rmdot(char *s)
     }
     if (chdir("/utests-tmp") != 0)
     {
-        printf("%s: chdir / failed\n", s);
+        printf("%s: chdir /utests-tmp failed\n", s);
         exit(1);
     }
     if (rmdir("dots/.") == 0)
@@ -2377,7 +2377,7 @@ void dirfile(char *s)
 // also tests empty file names.
 void iref(char *s)
 {
-    for (size_t i = 0; i < MAX_ACTIVE_INODES + 1; i++)
+    for (size_t i = 0; i < XV6FS_MAX_ACTIVE_INODES + 1; i++)
     {
         if (mkdir("irefd", 0755) != 0)
         {
@@ -2406,7 +2406,7 @@ void iref(char *s)
     }
 
     // clean up
-    for (size_t i = 0; i < MAX_ACTIVE_INODES + 1; i++)
+    for (size_t i = 0; i < XV6FS_MAX_ACTIVE_INODES + 1; i++)
     {
         chdir("..");
         unlink("irefd");
@@ -2682,7 +2682,7 @@ void MAXVAplus(char *s)
 void sbrkfail(char *s)
 {
 #if (MEMORY_SIZE > 4)
-    const size_t BIG = (MEMORY_SIZE - 4) * 1024 * 1024;
+    const size_t BIG = (MEMORY_SIZE - 5) * 1024 * 1024;
 #else
     _Static_assert(MEMORY_SIZE >= 2);
     const size_t BIG = (MEMORY_SIZE - 1) * 1024 * 1024;
@@ -2703,6 +2703,7 @@ void sbrkfail(char *s)
             // allocate a lot of memory
             sbrk(BIG);
             write(fds[1], "x", 1);
+
             // sit around until killed
             while (true)
             {

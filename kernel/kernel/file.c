@@ -6,7 +6,7 @@
 
 #include <drivers/block_device.h>
 #include <drivers/character_device.h>
-#include <fs/xv6fs/log.h>
+#include <fs/xv6fs/xv6fs.h>
 #include <ipc/pipe.h>
 #include <kernel/errno.h>
 #include <kernel/fcntl.h>
@@ -83,9 +83,8 @@ struct file *file_dup(struct file *f)
 
 FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
 {
-    log_begin_fs_transaction();
-    // Only getting the inode differs between opening an existing file or
-    // creating one.
+    //  Only getting the inode differs between opening an existing file or
+    //  creating one.
     struct inode *ip = NULL;
 
     if (flags & O_CREAT)
@@ -93,22 +92,20 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
         // only create regular files this way:
         if (!check_and_adjust_mode(&mode, S_IFREG) || !S_ISREG(mode))
         {
-            log_end_fs_transaction();
             return -EPERM;
         }
 
         char name[NAME_MAX];
         struct inode *iparent = inode_of_parent_from_path(pathname, name);
-        if (iparent != NULL)
+        if (iparent == NULL)
         {
-            inode_unlock(iparent);
-            ip = inode_open_or_create(pathname, mode, iparent->dev);
-            inode_put(iparent);
+            return -ENOENT;
         }
+
+        ip = xv6fs_iops_open_create(iparent, name, mode, flags, iparent->dev);
 
         if (ip == NULL)
         {
-            log_end_fs_transaction();
             return -ENOENT;
         }
     }
@@ -117,16 +114,24 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
         ip = inode_from_path(pathname);
         if (ip == NULL)
         {
-            log_end_fs_transaction();
             return -ENOENT;
         }
         inode_lock(ip);
         if (S_ISDIR(ip->i_mode) && flags != O_RDONLY)
         {
             inode_unlock_put(ip);
-            log_end_fs_transaction();
             return -EACCES;
         }
+
+        if ((flags & O_TRUNC) && S_ISREG(ip->i_mode))
+        {
+            xv6fs_iops_trunc(ip);
+        }
+    }
+
+    if (INODE_HAS_TYPE(ip->i_mode) == false)
+    {
+        panic("inode has no type");
     }
 
     if ((S_ISCHR(ip->i_mode) || S_ISBLK(ip->i_mode)) &&
@@ -137,7 +142,6 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
             "%d\n",
             MAJOR(ip->dev), MINOR(ip->dev));
         inode_unlock_put(ip);
-        log_end_fs_transaction();
         return -ENODEV;
     }
 
@@ -150,13 +154,7 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
             file_close(f);
         }
         inode_unlock_put(ip);
-        log_end_fs_transaction();
         return -ENOMEM;
-    }
-
-    if (INODE_HAS_TYPE(ip->i_mode) == false)
-    {
-        panic("inode has no type");
     }
 
     f->off = 0;
@@ -164,18 +162,7 @@ FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
     f->ip = ip;
     f->flags = flags;
 
-    if (INODE_HAS_TYPE(ip->i_mode) == false)
-    {
-        panic("inode has no type");
-    }
-
-    if ((flags & O_TRUNC) && S_ISREG(ip->i_mode))
-    {
-        inode_trunc(ip);
-    }
-
     inode_unlock(ip);
-    log_end_fs_transaction();
 
     return fd;
 }
@@ -212,9 +199,7 @@ void file_close(struct file *f)
     else if (S_ISCHR(ff.mode) || S_ISBLK(ff.mode) || S_ISDIR(ff.mode) ||
              S_ISREG(ff.mode))
     {
-        log_begin_fs_transaction();
         inode_put(ff.ip);
-        log_end_fs_transaction();
     }
 }
 
@@ -334,42 +319,7 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
     }
     else if (S_ISREG(f->mode) || S_ISDIR(f->mode))
     {
-        // write a few blocks at a time to avoid exceeding
-        // the maximum log transaction size, including
-        // i-node, indirect block, allocation blocks,
-        // and 2 blocks of slop for non-aligned writes.
-        // this really belongs lower down, since inode_write()
-        // might be writing a device like the console.
-        ssize_t max = ((MAX_OP_BLOCKS - 1 - 1 - 2) / 2) * BLOCK_SIZE;
-        ssize_t i = 0;
-        while (i < n)
-        {
-            ssize_t r;
-            ssize_t n1 = n - i;
-            if (n1 > max)
-            {
-                n1 = max;
-            }
-
-            log_begin_fs_transaction();
-            inode_lock(f->ip);
-
-            r = inode_write(f->ip, true, addr + i, f->off, n1);
-            if (r > 0)
-            {
-                f->off += r;
-            }
-            inode_unlock(f->ip);
-            log_end_fs_transaction();
-
-            if (r != n1)
-            {
-                // error from inode_write
-                break;
-            }
-            i += r;
-        }
-        ret = (i == n ? n : -1);
+        ret = xv6fs_fops_write(f, addr, n);
     }
     else
     {
@@ -381,11 +331,9 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
 
 ssize_t file_link(char *path_from, char *path_to)
 {
-    log_begin_fs_transaction();
     struct inode *ip = inode_from_path(path_from);
     if (ip == NULL)
     {
-        log_end_fs_transaction();
         return -ENOENT;
     }
 
@@ -393,143 +341,47 @@ ssize_t file_link(char *path_from, char *path_to)
     if (S_ISDIR(ip->i_mode))
     {
         inode_unlock_put(ip);
-        log_end_fs_transaction();
         return -EISDIR;
     }
-
-    ip->nlink++;
-    inode_update(ip);
     inode_unlock(ip);
 
     char name[NAME_MAX];
     struct inode *dir = inode_of_parent_from_path(path_to, name);
     if (dir == NULL)
     {
-        inode_lock(ip);
-        ip->nlink--;
-        inode_update(ip);
-        inode_unlock_put(ip);
-        log_end_fs_transaction();
+        inode_put(ip);
         return -ENOENT;
     }
 
-    if (dir->dev != ip->dev || inode_dir_link(dir, name, ip->inum) < 0)
+    inode_lock(dir);
+    inode_lock(ip);
+    if (dir->dev != ip->dev)
     {
-        inode_unlock_put(dir);
-
-        inode_lock(ip);
-        ip->nlink--;
-        inode_update(ip);
         inode_unlock_put(ip);
-        log_end_fs_transaction();
+        inode_unlock_put(dir);
         return -EOTHER;
     }
-    inode_unlock_put(dir);
-    inode_put(ip);
 
-    log_end_fs_transaction();
-
-    return 0;
-}
-
-/// Is the directory dir empty except for "." and ".." ?
-static int isdirempty(struct inode *dir)
-{
-    struct xv6fs_dirent de;
-
-    for (size_t off = 2 * sizeof(de); off < dir->size; off += sizeof(de))
-    {
-        if (inode_read(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
-        {
-            panic("isdirempty: inode_read");
-        }
-
-        if (de.inum != 0)
-        {
-            return 0;
-        }
-    }
-    return 1;
+    return xv6fs_iops_link(dir, ip, name);
 }
 
 ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
 {
-    log_begin_fs_transaction();
     char name[NAME_MAX];
     struct inode *dir = inode_of_parent_from_path(path, name);
     if (dir == NULL)
     {
-        log_end_fs_transaction();
         return -ENOENT;
     }
 
     // Cannot unlink "." or "..".
     if (file_name_cmp(name, ".") == 0 || file_name_cmp(name, "..") == 0)
     {
-        inode_unlock_put(dir);
-        log_end_fs_transaction();
+        inode_put(dir);
         return -EPERM;
     }
 
-    uint32_t off;
-    struct inode *ip = inode_dir_lookup(dir, name, &off);
-    if (ip == NULL)
-    {
-        inode_unlock_put(dir);
-        log_end_fs_transaction();
-        return -ENOENT;
-    }
-    inode_lock(ip);
-
-    if (ip->nlink < 1)
-    {
-        panic("unlink: nlink < 1");
-    }
-
-    ssize_t error = 0;
-    if (S_ISDIR(ip->i_mode) && (!delete_directories))
-    {
-        error = -EISDIR;
-    }
-    if (!S_ISDIR(ip->i_mode) && (!delete_files))
-    {
-        error = -ENOTDIR;
-    }
-    if (S_ISDIR(ip->i_mode) && !isdirempty(ip))
-    {
-        error = -ENOTEMPTY;
-    }
-
-    if (error != 0)
-    {
-        inode_unlock_put(ip);
-        inode_unlock_put(dir);
-        log_end_fs_transaction();
-        return error;
-    }
-
-    // delete directory entry by over-writing it with zeros:
-    struct xv6fs_dirent de;
-    memset(&de, 0, sizeof(de));
-    if (inode_write(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
-    {
-        panic("unlink: inode_write");
-    }
-
-    if (S_ISDIR(ip->i_mode))
-    {
-        dir->nlink--;
-        inode_update(dir);
-    }
-    inode_unlock_put(dir);
-
-    ip->nlink--;
-    inode_update(ip);
-    inode_unlock_put(ip);
-
-    log_end_fs_transaction();
-
-    return 0;
+    return xv6fs_iops_unlink(dir, name, delete_files, delete_directories);
 }
 
 ssize_t file_lseek(struct file *f, ssize_t offset, int whence)

@@ -46,9 +46,9 @@ void sleep_unlock(struct sleeplock *lk)
 #ifdef CONFIG_DEBUG_SLEEPLOCK
 bool sleep_lock_is_held_by_this_cpu(struct sleeplock *lk)
 {
-    spin_lock(&lk->lk);
+    // spin_lock(&lk->lk);
     bool rel = lk->locked && (lk->pid == get_current()->pid);
-    spin_unlock(&lk->lk);
+    // spin_unlock(&lk->lk);
     return rel;
 }
 #endif  // CONFIG_DEBUG_SLEEPLOCK

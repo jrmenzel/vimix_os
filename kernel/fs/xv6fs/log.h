@@ -27,7 +27,21 @@
 #include <kernel/buf.h>
 #include <kernel/xv6fs.h>
 
-void log_init(dev_t dev, struct xv6fs_superblock *sb);
+struct xv6fs_sb_private;
+struct super_block;
+
+struct log
+{
+    struct spinlock lock;
+    int32_t start;
+    int32_t size;
+    int32_t outstanding;  // how many FS sys calls are executing.
+    int32_t committing;   // in commit(), please wait.
+    dev_t dev;
+    struct xv6fs_log_header lh;
+};
+
+void log_init(struct log *log, dev_t dev, struct xv6fs_superblock *sb);
 
 /// Caller has modified b->data and is done with the buffer.
 /// Record the block number and pin in the cache by increasing refcnt.
@@ -38,11 +52,11 @@ void log_init(dev_t dev, struct xv6fs_superblock *sb);
 ///   modify bp->data[]
 ///   log_write(bp)
 ///   bio_release(bp)
-void log_write(struct buf *b);
+void log_write(struct log *log, struct buf *b);
 
 /// @brief FS systemcalls NEED to call this before ANY FS operations.
 /// Call log_end_fs_transaction() later
-void log_begin_fs_transaction();
+void log_begin_fs_transaction(struct super_block *sb);
 
 /// @brief FS systemcalls NEED to call this after all FS operations.
-void log_end_fs_transaction();
+void log_end_fs_transaction(struct super_block *sb);

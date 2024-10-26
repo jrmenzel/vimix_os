@@ -61,6 +61,8 @@ struct process
 #ifdef CONFIG_DEBUG
     size_t current_syscall;  ///< More info in process listing via CTRL+P
 #endif
+
+    int32_t debug_log_depth;  // debug
 };
 
 /// List of all user processes.

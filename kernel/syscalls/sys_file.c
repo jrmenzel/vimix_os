@@ -6,7 +6,7 @@
 // user code, and calls into file.c and fs.c.
 //
 
-#include <fs/xv6fs/log.h>
+#include <fs/xv6fs/xv6fs.h>
 #include <kernel/dirent.h>
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
@@ -182,7 +182,7 @@ ssize_t sys_mkdir()
         return -ENOTDIR;
     }
 
-    return (size_t)inode_open_or_create2(path, mode, ROOT_DEVICE_NUMBER);
+    return (size_t)inode_open_or_create2(path, mode, INVALID_DEVICE);
 }
 
 ssize_t sys_mknod()
@@ -216,23 +216,20 @@ ssize_t sys_chdir()
     struct inode *ip;
     struct process *proc = get_current();
 
-    log_begin_fs_transaction();
     if (argstr(0, pathname, PATH_MAX) < 0 ||
         (ip = inode_from_path(pathname)) == NULL)
     {
-        log_end_fs_transaction();
         return -ENOENT;
     }
     inode_lock(ip);
     if (!S_ISDIR(ip->i_mode))
     {
         inode_unlock_put(ip);
-        log_end_fs_transaction();
         return -ENOTDIR;
     }
     inode_unlock(ip);
+
     inode_put(proc->cwd);
-    log_end_fs_transaction();
     proc->cwd = ip;
     return 0;
 }
@@ -255,7 +252,7 @@ ssize_t sys_get_dirent()
     ssize_t seek_pos;
     argssize_t(2, &seek_pos);
 
-    return inode_get_dirent(f->ip, dir_entry_addr, true, seek_pos);
+    return xv6fs_iops_get_dirent(f->ip, dir_entry_addr, true, seek_pos);
 }
 
 ssize_t sys_lseek()

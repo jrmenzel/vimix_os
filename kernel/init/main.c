@@ -9,6 +9,8 @@
 #include <drivers/devices_list.h>
 #include <drivers/ramdisk.h>
 #include <drivers/virtio_disk.h>
+#include <fs/vfs.h>
+#include <fs/xv6fs/xv6fs.h>
 #include <init/dtb.h>
 #include <kernel/bio.h>
 #include <kernel/cpu.h>
@@ -111,9 +113,10 @@ void init_by_first_thread(void *dtb)
 
     // init filesystem:
     printk("init filesystem...\n");
-    bio_init();    // buffer cache
-    inode_init();  // inode table
-    file_init();   // file table
+    bio_init();  // buffer cache
+    // xv6fs_init();  // file system
+    init_virtual_file_system();
+    file_init();  // file table
 
     printk("init remaining devices...\n");
     // device 0 is the console and was done already, now the rest:

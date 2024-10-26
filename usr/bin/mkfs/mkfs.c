@@ -83,10 +83,10 @@ void add_directory_entry(uint32_t inode_new_entry, uint32_t inode_dir,
 uint32_t create_root_directory()
 {
     uint32_t inode = i_alloc(XV6_FT_DIR);
-    assert(inode == ROOT_INODE);
+    assert(inode == XV6FS_ROOT_INODE);
 
-    add_directory_entry(ROOT_INODE, ROOT_INODE, ".");
-    add_directory_entry(ROOT_INODE, ROOT_INODE, "..");
+    add_directory_entry(XV6FS_ROOT_INODE, XV6FS_ROOT_INODE, ".");
+    add_directory_entry(XV6FS_ROOT_INODE, XV6FS_ROOT_INODE, "..");
 
     return inode;
 }
@@ -288,7 +288,7 @@ int32_t open_filesystem(const char *filename)
     read_sector(XV6FS_SUPER_BLOCK_NUMBER, block_buffer);
     memmove(&g_super_block, block_buffer, sizeof(g_super_block));
 
-    return ROOT_INODE;
+    return XV6FS_ROOT_INODE;
 }
 
 size_t read_inode(struct xv6fs_dinode *din, void *buffer, size_t off,

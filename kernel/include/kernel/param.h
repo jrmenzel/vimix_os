@@ -5,7 +5,7 @@
 #define MAX_CPUS 8                   ///< maximum number of CPUs
 #define MAX_FILES_PER_PROCESS 16     ///< open files per process
 #define MAX_FILES_SUPPORTED 100      ///< open files per system
-#define MAX_ACTIVE_INODES 50         ///< maximum number of active i-nodes
+#define XV6FS_MAX_ACTIVE_INODES 50   ///< maximum number of active i-nodes
 #define MAX_DEVICES 20               ///< maximum major device number
 #define MAX_MINOR_DEVICES 4          ///< maximum minor device number
 #define MAX_EXEC_ARGS 32             ///< max exec arguments

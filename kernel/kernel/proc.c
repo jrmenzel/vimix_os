@@ -2,7 +2,7 @@
 
 #include <arch/cpu.h>
 #include <arch/trap.h>
-#include <fs/xv6fs/log.h>
+#include <fs/xv6fs/xv6fs.h>
 #include <kernel/cpu.h>
 #include <kernel/errno.h>
 #include <kernel/file.h>
@@ -100,7 +100,6 @@ struct cpu *get_cpu()
     return c;
 }
 
-/// Return the current struct process *, or NULL if none.
 struct process *get_current()
 {
     cpu_push_disable_device_interrupt_stack();
@@ -212,6 +211,7 @@ static void free_process(struct process *proc)
     proc->killed = false;
     proc->xstate = 0;
     proc->state = UNUSED;
+    proc->debug_log_depth = 0;
 }
 
 /// Create a user page table for a given process, with no user memory,
@@ -281,11 +281,14 @@ void userspace_init()
     uvm_create_stack(proc->pagetable, NULL, &(proc->stack_low), &sp);
 
     // prepare for the very first "return" from kernel to user.
+    // clear all registers, esp. s0 / stack frame base and ra:
+    memset(proc->trapframe, 0, sizeof(struct trapframe));
     trapframe_set_program_counter(proc->trapframe, USER_TEXT_START);
     trapframe_set_stack_pointer(proc->trapframe, sp);
 
     safestrcpy(proc->name, "initcode", sizeof(proc->name));
-    proc->cwd = inode_from_path("/");
+    // proc->cwd = inode_from_path("/");
+    proc->cwd = NULL;  // set in forkret
 
     proc->state = RUNNABLE;
 
@@ -388,7 +391,7 @@ ssize_t fork()
             np->files[i] = file_dup(parent->files[i]);
         }
     }
-    np->cwd = inode_dup(parent->cwd);
+    np->cwd = xv6fs_iops_dup(parent->cwd);
 
     // Copy name
     safestrcpy(np->name, parent->name, sizeof(parent->name));
@@ -403,6 +406,7 @@ ssize_t fork()
 
     spin_lock(&np->lock);
     np->state = RUNNABLE;
+    np->debug_log_depth = 0;
     spin_unlock(&np->lock);
 
     return pid;
@@ -454,9 +458,7 @@ void exit(int32_t status)
         }
     }
 
-    log_begin_fs_transaction();
     inode_put(proc->cwd);
-    log_end_fs_transaction();
     proc->cwd = NULL;
 
     spin_lock(&g_wait_lock);
@@ -591,7 +593,8 @@ void forkret()
         // regular process (e.g., because it calls sleep), and thus cannot
         // be run from main().
         first = false;
-        init_root_file_system(ROOT_DEVICE_NUMBER);
+        init_root_file_system(ROOT_DEVICE_NUMBER, XV6_FS_NAME);
+        get_current()->cwd = inode_from_path("/");
         __sync_synchronize();
     }
 
@@ -633,6 +636,8 @@ void sleep(void *chan, struct spinlock *lk)
 void wakeup(void *chan)
 {
     struct process *current_process = get_current();
+
+    // if (chan != &g_ticks) printk("wakeup 0x%zx\n", (size_t)chan);
 
     for (struct process *proc = g_process_list;
          proc < &g_process_list[MAX_PROCS]; proc++)
@@ -789,6 +794,11 @@ void debug_print_call_stack_kernel(struct process *proc)
              (frame_pointer > proc_stack));
 }
 
+static inline bool address_is_in_page(size_t addr, size_t page_address)
+{
+    return (addr >= page_address && addr < (page_address + PAGE_SIZE));
+}
+
 void debug_print_call_stack_user(struct process *proc)
 {
     // TODO: only goes over the first stack page!
@@ -800,15 +810,15 @@ void debug_print_call_stack_user(struct process *proc)
         uvm_get_physical_addr(proc->pagetable, frame_pointer, NULL);
     size_t return_address = proc->trapframe->ra;
 
-    do {
+    while (address_is_in_page(fp_physical, proc_stack_pa))
+    {
         printk("  ra (user): 0x%zx\n", return_address);
 
         return_address = *((size_t *)(fp_physical - 1 * sizeof(size_t)));
         frame_pointer = *((size_t *)(fp_physical - 2 * sizeof(size_t)));
         fp_physical =
             uvm_get_physical_addr(proc->pagetable, frame_pointer, NULL);
-    } while ((fp_physical <= proc_stack_pa + PAGE_SIZE) &&
-             (fp_physical > proc_stack_pa));
+    };
 }
 
 void debug_print_open_files(struct process *proc)
@@ -821,6 +831,7 @@ void debug_print_open_files(struct process *proc)
             struct inode *ip = proc->files[i]->ip;
             printk("  fd %zd (ref# %d, off: %d): ", i, f->ref, f->off);
             debug_print_inode(ip);
+            printk("\n");
         }
     }
 }
@@ -856,6 +867,8 @@ void debug_print_process_list(bool print_call_stack_user,
             printk(" (PPID: %d)", proc->parent->pid);
         }
         printk(" | %s", proc->name);
+        printk(" | cwd: ");
+        debug_print_inode(proc->cwd);
         printk(" | state: %s", state);
 
         if (proc->state == ZOMBIE)

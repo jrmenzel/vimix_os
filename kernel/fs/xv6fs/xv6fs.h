@@ -1,32 +1,111 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <fs/xv6fs/log.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 #include <kernel/xv6fs.h>
 
-extern struct xv6fs_superblock sb;
+extern const char *XV6_FS_NAME;
 
-/// Allocate a zeroed disk block.
-/// returns 0 if out of disk space.
-uint32_t balloc(dev_t dev);
+struct xv6fs_sb_private
+{
+    struct xv6fs_superblock sb;
+    struct log log;
+};
 
-/// Free a disk block.
-void bfree(dev_t dev, uint32_t b);
+void xv6fs_init();
 
-/// Return the disk block address of the nth block in inode ip.
-/// If there is no such block, bmap allocates one.
-/// returns 0 if out of disk space.
-size_t bmap(struct inode *ip, uint32_t bn);
+/// @brief Opens the inode inside of directory iparent with the given name or
+/// creates one if none existed.
+/// @param iparent Parent directory inode, unlocked
+/// @param name File name
+/// @param mode File mode
+/// @param flags Create flags
+/// @param device Device the inode is located
+/// @return NULL on failure, requested inode otherwise.
+struct inode *xv6fs_iops_open_create(struct inode *iparent, char name[NAME_MAX],
+                                     mode_t mode, int32_t flags, dev_t device);
 
-xv6fs_file_type imode_to_xv6_file_type(mode_t imode);
+struct inode *xv6fs_iops_alloc(struct super_block *sb, mode_t mode);
 
-mode_t xv6_file_type_to_imode(xv6fs_file_type type);
-
-struct inode *xv6fs_iops_alloc(dev_t dev, mode_t mode);
-
+/// @brief Copy a modified in-memory inode to disk.
+/// Must be called after every change to an ip->xxx field
+/// that lives on disk.
+/// Caller must hold ip->lock.
 int xv6fs_iops_update(struct inode *ip);
 
 int xv6fs_iops_read_in(struct inode *ip);
 
-int xv6fs_iops_trunc(struct inode *ip);
+/// @brief Truncate inode (discard contents).
+/// Caller must hold ip->lock.
+/// @param ip inode to truncate.
+void xv6fs_iops_trunc(struct inode *ip);
+
+/// @brief Helper for xv6fs_iops_trunc(), does not call xv6fs_iops_update() and
+/// does not start a FS log!
+/// @param ip inode to truncate.
+void xv6fs_iops_trunc_only(struct inode *ip);
+
+/// @brief Find the inode with number inum on super_block sb.
+/// Does not lock the inode and does not read it from disk.
+/// Assumes valid input: you get an inode or a kernel panic.
+/// @param sb The filesystem to look on.
+/// @param inum Inode number.
+/// @return in-memory copy of inode, (NOT locked)
+struct inode *xv6fs_iops_iget(struct super_block *sb, uint32_t inum);
+
+static inline struct inode *xv6fs_iops_iget_root(struct super_block *sb)
+{
+    return xv6fs_iops_iget(sb, XV6FS_ROOT_INODE);
+}
+
+/// @brief Increment reference count for ip.
+/// @return ip to enable ip = inode_dup(ip1) idiom.
+struct inode *xv6fs_iops_dup(struct inode *ip);
+
+void xv6fs_iops_put(struct inode *ip, bool external_fs_transaction);
+
+struct inode *xv6fs_iops_dir_lookup(struct inode *dir, const char *name,
+                                    uint32_t *poff);
+
+int xv6fs_iops_dir_link(struct inode *dir, char *name, uint32_t inum);
+
+/// @brief For the syscall to get directory entries get_dirent() from dirent.h.
+/// @param dir Directory inode
+/// @param dir_entry_addr address of buffer to fill with one struct dirent
+/// @param addr_is_userspace True if dir_entry_addr is a user virtual address.
+/// @param seek_pos A seek pos previously returned by inode_get_dirent or 0.
+/// @return next seek_pos on success, 0 on dir end and -1 on error.
+ssize_t xv6fs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
+                              bool addr_is_userspace, ssize_t seek_pos);
+
+ssize_t xv6fs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
+                        size_t off, size_t n);
+
+/// @brief Write data to inode.
+/// Caller must hold ip->lock.
+/// Returns the number of bytes successfully written.
+/// If the return value is less than the requested n,
+/// there was an error of some kind.
+/// @param ip Inode belonging to a file system
+/// @param src_addr_is_userspace If true, src_addr  is a user virtual address
+/// (kernel addr otherwise)
+/// @param src_addr Source address.
+/// @param off Offset in file.
+/// @param n Number of bytes to write.
+/// @return Number of bytes successfully written.
+ssize_t xv6fs_iops_write(struct inode *ip, bool src_addr_is_userspace,
+                         size_t src, size_t off, size_t n);
+
+ssize_t xv6fs_iops_link(struct inode *dir, struct inode *ip,
+                        char name[NAME_MAX]);
+
+ssize_t xv6fs_iops_unlink(struct inode *dir, char name[NAME_MAX],
+                          bool delete_files, bool delete_directories);
+
+struct file;
+
+ssize_t xv6fs_fops_write(struct file *f, size_t addr, size_t n);
+
+void xv6fs_debug_print_inodes();

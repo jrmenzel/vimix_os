@@ -28,6 +28,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	fs/fs.o \
 	fs/xv6fs/log.o \
 	fs/xv6fs/xv6fs.o \
+	fs/vfs.o \
 	init/dtb.o \
 	init/main.o \
 	ipc/pipe.o \

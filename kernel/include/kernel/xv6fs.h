@@ -8,7 +8,7 @@
 
 #include <kernel/kernel.h>
 
-#define ROOT_INODE 1  // root i-number
+#define XV6FS_ROOT_INODE 1  // root i-number
 
 /// Magic number to identify a xv6 filesystem
 #define XV6FS_MAGIC 0x10203040
@@ -34,6 +34,10 @@
 /// Block containing inode i
 #define XV6FS_BLOCK_OF_INODE(i, sb) \
     ((i) / XV6FS_INODES_PER_BLOCK + sb.inodestart)
+
+/// Block containing inode i
+#define XV6FS_BLOCK_OF_INODE_P(i, sb) \
+    ((i) / XV6FS_INODES_PER_BLOCK + (sb)->inodestart)
 
 /// Max file name length (without the NULL-terminator)
 #define XV6_NAME_MAX 14
