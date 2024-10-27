@@ -12,7 +12,8 @@ It also picks the `/` device (`ROOT_DEVICE_NUMBER`).
 
 ## Part 2: In a Kernel Process
 
-The actual file system gets initialized from the first spawned process in `forkret()` (calling `init_root_file_system(ROOT_DEVICE_NUMBER);`). This is triggered via [init_userspace](../processes/init_userspace.md).
+The actual file system gets initialized from the first spawned process in `forkret()` (calling `init_root_file_system(ROOT_DEVICE_NUMBER);`). This is triggered via [init_userspace](../processes/init_userspace.md) and [mounts](../syscalls/mount.md) the root file system.
+
 While belonging to the first process (`init`), this still runs in [S-mode](../../riscv/S-mode.md).
 
 

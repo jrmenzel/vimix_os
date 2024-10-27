@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 ///
@@ -23,13 +24,13 @@ void cat(int fd)
     {
         if (write(STDOUT_FILENO, buf, n) != n)
         {
-            fprintf(stderr, "cat: write error (errno: %d)\n", errno);
+            fprintf(stderr, "cat: write error (errno: %s)\n", strerror(errno));
             exit(1);
         }
     }
     if (n < 0)
     {
-        fprintf(stderr, "cat: read error (errno: %d)\n", errno);
+        fprintf(stderr, "cat: read error (errno: %s)\n", strerror(errno));
         exit(1);
     }
 }

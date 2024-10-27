@@ -36,14 +36,16 @@ int copy(char *from, char *to)
     int fd_from = open(from, O_RDONLY);
     if (fd_from < 0)
     {
-        fprintf(stderr, "cp: cannot open %s (errno: %d)\n", from, errno);
+        fprintf(stderr, "cp: cannot open %s (errno: %s)\n", from,
+                strerror(errno));
         return 1;
     }
 
     struct stat stbuf1, stbuf2;
     if (fstat(fd_from, &stbuf1) < 0)
     {
-        fprintf(stderr, "cp: cannot stat %s (errno: %d)\n", from, errno);
+        fprintf(stderr, "cp: cannot stat %s (errno: %s)\n", from,
+                strerror(errno));
         return 1;
     }
     int stat2_res = stat(to, &stbuf2);

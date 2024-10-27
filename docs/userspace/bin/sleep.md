@@ -11,4 +11,4 @@ Calls [sleep()](../../kernel/syscalls/ms_sleep.md) to pause process execution fo
 ---
 **Up:** [user space](../userspace.md)
 
-**Misc:** [cat](cat.md) | [echo](echo.md) | [grep](grep.md) | [wc](wc.md) | [shutdown](shutdown.md) | [date](date.md) | [sleep](sleep.md)
+**Misc:** [cat](cat.md) | [echo](echo.md) | [grep](grep.md) | [wc](wc.md) | [date](date.md) | [sleep](sleep.md)

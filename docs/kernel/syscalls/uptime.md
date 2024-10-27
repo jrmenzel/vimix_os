@@ -16,3 +16,5 @@ Implemented in `sys_system.c` as `sys_uptime()`.
 ## See also
 
 **Overview:** [syscalls](syscalls.md)
+
+**System:** [mount](mount.md) | [umount](umount.md) | [uptime](uptime.md)

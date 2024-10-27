@@ -1,7 +1,7 @@
 # Inode
 
 An inode is an unnamed object in the [file_system](file_system.md) tree, it represents a [file](file.md), a [directory](directory.md) or a [device](../devices/devices.md).
-Open inodes (e.g. of open files) are stored in an inode array in the [kernel](../kernel.md). 
+Open inodes (e.g. of open files) are managed by the owning [file systems](file_system.md).
 
 The `struct inode` kernel structure holds 
 - metadata about the inode (e.g. size, UID, GID)
@@ -16,28 +16,24 @@ UNIX [file systems](file_system.md) store the inodes to disk.
 
 The inodes go through the following life cycle before they can be used by other parts of the [kernel](../kernel.md).
 
-Inodes get allocated in `inode_alloc()`. De-allocation happens if the reference count falls to `0` in a subsequent `inode_put()` call.
+Inodes get allocated and initialized in a [file system](file_system.md) specific `alloc()` function. This way the file system can add its own data to an inode (by deriving from the base inode struct, see [object_orientation](../overview/object_orientation.md)). De-allocation happens if the reference count falls to `0` in a subsequent `inode_put()` call.
 
-Init of a inode happens in `inode_open_or_create()` which might call `inode_alloc()`.
 
 A typical sequence is:
 ```C
-ip = iget(dev, inum);
+ip = inode_from_path(path);
 inode_lock(ip);
 // ... examine and modify ip->xxx ...
 inode_unlock(ip);
 inode_put(ip);
 ```
 
-`inode_lock()` is separate from `iget()` so that [syscalls](../syscalls/syscalls.md) can get a long-term reference to an inode (as for an open file) and only lock it for short periods (e.g., in read()).
-
-The separation also helps avoid deadlock and races during path name lookup. `iget()` increments `ip->ref` so that the inode stays in the table and pointers to it remain valid.
-
+`inode_lock()` is separate from "get functions" so that [syscalls](../syscalls/syscalls.md) can get a long-term reference to an inode (e.g. for an open file) and only lock it for short periods (e.g., in read()). The separation also helps avoid deadlock and races during path name lookup. 
 
 
 ## Inode Number
 
-An inode number is a unique [file](file.md) identifier per [file system](file_system.md). In the kernel the combination of inode number and device ID of the file systems device is unique.
+An inode number is a unique [file](file.md) identifier per [file system](file_system.md). In the kernel the combination of inode number and device number of the file systems device is unique. The inode number alone is not.
 
 
 ## User space

@@ -99,7 +99,7 @@ ssize_t sys_get_dirent();
 ssize_t sys_lseek();
 
 // ********************************************************
-// System information from sys_system.c
+// System information and control from sys_system.c
 //
 
 /// @brief Syscall "int32_t uptime()" from uinstd.h.
@@ -112,8 +112,17 @@ ssize_t sys_reboot();
 
 /// @brief Syscall "ssize_t get_time(time_t *tloc);" (exposed via time() in
 /// time.h)
-/// @return -1 on error
+/// @return 0 on success, -ERRNO on error
 ssize_t sys_get_time();
+
+/// @brief Syscall "int mount(const char *source, const char *target, const char
+/// *filesystemtype, unsigned long mountflags, const void *data);" from mount.h
+/// @return 0 on success, -ERRNO on error
+ssize_t sys_mount();
+
+/// @brief Syscall "int umount(const char *target);" from mount.h
+/// @return 0 on success, -ERRNO on error
+ssize_t sys_umount();
 
 // ********************************************************
 // IPC from sys_ipc.c

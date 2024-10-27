@@ -12,10 +12,10 @@
 #define EBADF 9    ///< Bad file descriptor
 #define ECHILD 10  ///< No child processes
 // #define EAGAIN 11   ///< Try again
-#define ENOMEM 12  ///< OS is out of memory
-#define EACCES 13  ///< Permission denied
-#define EFAULT 14  ///< Address fault, e.g. memory not owned by process
-// #define ENOTBLK 15  ///< Block device required
+#define ENOMEM 12   ///< OS is out of memory
+#define EACCES 13   ///< Permission denied
+#define EFAULT 14   ///< Address fault, e.g. memory not owned by process
+#define ENOTBLK 15  ///< Block device required
 // #define EBUSY 16    ///< Device or resource busy
 // #define EEXIST 17   ///< File exists
 // #define EXDEV 18    ///< Cross-device link
@@ -38,4 +38,4 @@
 #define ENOTEMPTY 39  ///< Dir not empty
 
 #define EOTHER 0xFFF0       ///< todos to find the right error codes ;-)
-#define EINVALSCALL 0xFFFF  ///< invalid syscall number
+#define EINVALSCALL 0xFFFF  ///< Invalid syscall number

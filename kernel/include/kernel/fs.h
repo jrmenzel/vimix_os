@@ -10,6 +10,7 @@
 #include <kernel/stat.h>
 
 extern dev_t ROOT_DEVICE_NUMBER;
+extern struct super_block *ROOT_SUPER_BLOCK;
 
 #define DEFAULT_ACCESS_MODES (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)
 
@@ -162,6 +163,10 @@ int file_name_cmp(const char *s, const char *t);
 /// @param inum inode of new entry
 /// @return 0 on success, -1 on failure (e.g. out of disk blocks).
 int inode_dir_link(struct inode *dir, char *name, uint32_t inum);
+
+//
+// debug code
+//
 
 void debug_print_inode(struct inode *ip);
 

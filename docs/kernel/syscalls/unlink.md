@@ -7,7 +7,8 @@
 int32_t unlink(const char *pathname);
 ```
 
-Remove a link from a file, the last `unlink()` will also delete the [file](../file_system/file.md).
+Remove a link from a file, the last `unlink()` will also delete the [file](../file_system/file.md) if there is no reference to that [inode](../file_system/inode.md) anymore. This means that if some process still has the file open, it will continue to exist until the process closes it (then it will be effectively deleted).
+
 
 ## User Apps
 

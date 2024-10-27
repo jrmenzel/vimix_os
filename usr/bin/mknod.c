@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 #include <unistd.h>
@@ -41,7 +42,7 @@ int main(int argc, char *argv[])
     int ret = mknod(argv[1], mode, device);
     if (ret < 0)
     {
-        printf("mknod failed, errno: %d\n", errno);
+        printf("mknod failed: %s\n", strerror(errno));
         return -1;
     }
 

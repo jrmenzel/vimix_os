@@ -28,6 +28,8 @@
 #define SYS_get_time 24
 #define SYS_lseek 25
 #define SYS_rmdir 26
+#define SYS_mount 27
+#define SYS_umount 28
 
 #define SEEK_SET 0  //< Seek from beginning of file
 #define SEEK_CUR 1  //< Seek from current position

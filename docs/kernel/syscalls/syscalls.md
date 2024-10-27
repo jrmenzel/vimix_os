@@ -33,14 +33,16 @@ See also: [calling_syscall](calling_syscall.md).
 **File Information**
 - [fstat](fstat.md) - get file metadata
 
-**System Information**
-- [uptime](uptime.md)
+**System**
+- [reboot](reboot.md) - halt or reboot the system
+- [mount](mount.md) - mount [file_system](../file_system/file_system.md)
+- [umount](umount.md) - unmount file system
+- [uptime](uptime.md) - returns how log the system is running
 
 **Communication**
 - [pipe](pipe.md)
 
 **Misc**
-- [reboot](reboot.md)
 - [get_time](get_time.md) - UNIX time
 
 

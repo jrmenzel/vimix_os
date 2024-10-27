@@ -6,6 +6,7 @@
 // user code, and calls into file.c and fs.c.
 //
 
+#include <drivers/device.h>
 #include <fs/xv6fs/xv6fs.h>
 #include <kernel/dirent.h>
 #include <kernel/fcntl.h>
@@ -206,6 +207,11 @@ ssize_t sys_mknod()
     // parameter 2: dev_t device
     dev_t device;
     argint(2, &device);
+
+    if (!device_exists(device))
+    {
+        return -ENODEV;
+    }
 
     return (size_t)inode_open_or_create2(path, mode, device);
 }

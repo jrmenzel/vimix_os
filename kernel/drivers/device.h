@@ -56,3 +56,8 @@ void dev_set_irq(struct Device *dev, int32_t irq_number,
 /// @brief Every driver has to call this and register the device.
 /// @param dev the device to register
 void register_device(struct Device *dev);
+
+/// @brief Check if a device with the given device number exists.
+/// @param device_number Number to check.
+/// @return True if the device exists.
+bool device_exists(dev_t device_number);

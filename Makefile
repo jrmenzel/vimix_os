@@ -42,6 +42,11 @@ QEMU_OPTS := $(QEMU_OPTS_ARCH) -kernel $(KERNEL_FILE) -m $(MEMORY_SIZE)M -smp $(
 ifeq ($(VIRTIO_DISK), yes)
 QEMU_OPTS += -drive file=$(BUILD_DIR)/filesystem.img,if=none,format=raw,id=x0
 QEMU_OPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+# add a second file system if it is present
+ifneq ("$(wildcard home.img)","")
+    QEMU_OPTS += -drive file=home.img,if=none,format=raw,id=x1
+	QEMU_OPTS += -device virtio-blk-device,drive=x1,bus=virtio-mmio-bus.1
+endif
 endif
 
 ifeq ($(RAMDISK_BOOTLOADER), yes)

@@ -9,7 +9,9 @@ USER_SPACE_INC_HOST_PARAMS := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
 
 UPROGS_VIMIX_ONLY := init\
     grind\
-    shutdown
+    shutdown\
+	mount\
+	umount
 
 # Some user space apps can be compiled on the host as well,
 # e.g. as native Linux apps. This can be helpful for app

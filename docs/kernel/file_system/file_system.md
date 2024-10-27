@@ -1,6 +1,7 @@
 # File System
 
-A UNIX file system stores [inodes](inode.md), which represent [files](file.md), [directories](directory.md) or [devices](../devices/devices.md).
+A UNIX file system stores [inodes](inode.md), which represent [files](file.md), [directories](directory.md) or [devices](../devices/devices.md). File systems are added to the system by [mounting](../syscalls/mount.md) them into existing [directories](directory.md) (except for the root file system).
+
 
 **Software stack:**
 - File System related [system calls](../syscalls/syscalls.md) 

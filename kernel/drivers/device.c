@@ -57,6 +57,25 @@ void dev_set_irq(struct Device *dev, int32_t irq_number,
 #define DEVICE_IS_OK(major, minor, TYPE)
 #endif
 
+bool device_exists(dev_t device_number)
+{
+    if ((MAJOR(device_number) > MAX_DEVICES) ||
+        (MINOR(device_number) > MAX_MINOR_DEVICES))
+    {
+        return false;
+    }
+    // find device for this IRQ and call interrupt handler
+    for (size_t i = 0; i < MAX_DEVICES * MAX_MINOR_DEVICES; ++i)
+    {
+        struct Device *dev = g_devices[i];
+        if (dev && dev->device_number == device_number)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 struct Block_Device *get_block_device(dev_t device_number)
 {
     size_t major = MAJOR(device_number);

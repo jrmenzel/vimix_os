@@ -148,6 +148,8 @@ static ssize_t (*syscalls[])() = {
     [SYS_get_time] sys_get_time,
     [SYS_lseek] sys_lseek,
     [SYS_rmdir] sys_rmdir,
+    [SYS_mount] sys_mount,
+    [SYS_umount] sys_umount,
 };
 // clang-format on
 
@@ -207,6 +209,8 @@ static const char *g_syscall_names[] = {
     [SYS_get_time] "get_time",
     [SYS_lseek] "lseek",
     [SYS_rmdir] "rmdir",
+    [SYS_mount] "sys_mount",
+    [SYS_umount] "sys_umount",
 };
 // clang-format on
 

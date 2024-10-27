@@ -9,6 +9,7 @@
 #include <drivers/rtc.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
+#include <kernel/mount.h>
 #include <kernel/reboot.h>
 #include <kernel/spinlock.h>
 #include <kernel/time.h>
@@ -61,4 +62,51 @@ ssize_t sys_get_time()
     size_t tloc_va;
     argaddr(0, &tloc_va);
     return get_time_to_user(tloc_va);
+}
+
+ssize_t sys_mount()
+{
+    size_t idx = 0;
+    // parameter 0: const char *source
+    char source[PATH_MAX];
+    if (argstr(idx++, source, PATH_MAX) < 0)
+    {
+        return -EFAULT;
+    }
+
+    // parameter 1: const char *target
+    char target[PATH_MAX];
+    if (argstr(idx++, target, PATH_MAX) < 0)
+    {
+        return -EFAULT;
+    }
+
+    // parameter 2: const char *filesystemtype
+    char filesystemtype[64];
+    if (argstr(idx++, filesystemtype, 64) < 0)
+    {
+        return -EFAULT;
+    }
+
+    // parameter 3: unsigned long mountflags
+    unsigned long mountflags;
+    argaddr(idx++, &mountflags);
+
+    // parameter 4: const void *data
+    size_t addr_data;
+    argaddr(idx++, &addr_data);
+
+    return mount(source, target, filesystemtype, mountflags, addr_data);
+}
+
+ssize_t sys_umount()
+{
+    // parameter 0: const char *target
+    char target[PATH_MAX];
+    if (argstr(0, target, PATH_MAX) < 0)
+    {
+        return -EFAULT;
+    }
+
+    return umount(target);
 }

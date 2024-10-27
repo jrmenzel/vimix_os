@@ -26,9 +26,10 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/syscon.o \
 	drivers/virtio_disk.o \
 	fs/fs.o \
+	fs/mount.o \
+	fs/vfs.o \
 	fs/xv6fs/log.o \
 	fs/xv6fs/xv6fs.o \
-	fs/vfs.o \
 	init/dtb.o \
 	init/main.o \
 	ipc/pipe.o \

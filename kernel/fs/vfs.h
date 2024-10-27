@@ -23,8 +23,8 @@ struct file_system_type
     /// @brief Set s_type of super_block.
     /// Opens the block device and tests if the FS is supported.
     /// @param data optional mount parameters
-    /// @return 0 on success. -1 on failure (e.g. wrong FS)
-    int (*fill_super_block)(struct super_block *sb, const void *data);
+    /// @return 0 on success. -ERRNO on failure (e.g. wrong FS)
+    ssize_t (*fill_super_block)(struct super_block *sb, const void *data);
 
     struct file_system_type *next;
 };

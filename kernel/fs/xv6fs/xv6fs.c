@@ -67,7 +67,7 @@ xv6fs_file_type imode_to_xv6_file_type(mode_t imode);
 
 mode_t xv6_file_type_to_imode(xv6fs_file_type type);
 
-int xv6fs_fill_super_block(struct super_block *sb_in, const void *data);
+ssize_t xv6fs_fill_super_block(struct super_block *sb_in, const void *data);
 
 /// Allocate a zeroed disk block.
 /// returns 0 if out of disk space.
@@ -113,7 +113,7 @@ mode_t xv6_file_type_to_imode(xv6fs_file_type type)
     return 0;
 }
 
-int xv6fs_fill_super_block(struct super_block *sb_in, const void *data)
+ssize_t xv6fs_fill_super_block(struct super_block *sb_in, const void *data)
 {
     // data is used for file system specific mount parameters
     // ignore those here
@@ -121,7 +121,7 @@ int xv6fs_fill_super_block(struct super_block *sb_in, const void *data)
     struct xv6fs_sb_private *priv = get_free_sb_private();
     if (priv == NULL)
     {
-        return -1;
+        return -ENOMEM;
     }
     sb_in->s_fs_info = (void *)priv;
 
@@ -134,7 +134,7 @@ int xv6fs_fill_super_block(struct super_block *sb_in, const void *data)
     {
         // wrong file system
         bio_release(first_block);
-        return -1;
+        return -EINVAL;
     }
 
     memmove(&(priv->sb), vx6_sb, sizeof(struct xv6fs_superblock));
@@ -529,6 +529,7 @@ struct inode *xv6fs_iops_iget(struct super_block *sb, uint32_t inum)
 
     struct inode *ip = empty;
     ip->i_sb = sb;
+    ip->dev = sb->dev;
     ip->inum = inum;
     ip->ref = 1;
     ip->valid = 0;

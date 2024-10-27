@@ -113,7 +113,8 @@ void execute_command(struct execcmd *ecmd)
             execv(full_path, ecmd->argv);
         }
         // execv only returns on error
-        fprintf(stderr, "exec %s failed (errno: %d)\n", ecmd->argv[0], errno);
+        fprintf(stderr, "exec %s failed (%s)\n", ecmd->argv[0],
+                strerror(errno));
     }
 }
 

@@ -21,58 +21,12 @@
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
+#include <kernel/mount.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
-#include <kernel/stat.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
-
-dev_t ROOT_DEVICE_NUMBER;
-struct super_block *ROOT_SUPER_BLOCK = NULL;
-
-struct super_block g_active_file_systems[MAX_MOUNTED_FILE_SYSTEMS] = {0};
-
-struct super_block *get_free_super_block()
-{
-    for (size_t i = 0; i < MAX_MOUNTED_FILE_SYSTEMS; ++i)
-    {
-        if (g_active_file_systems[i].dev == INVALID_DEVICE)
-        {
-            return &g_active_file_systems[i];
-        }
-    }
-    return NULL;
-}
-
-int mount_types(struct inode *source, dev_t target,
-                struct file_system_type *filesystemtype,
-                unsigned long mountflags, const void *data)
-{
-    struct super_block *sb = get_free_super_block();
-    sb->dev = target;
-
-    if (filesystemtype->fill_super_block(sb, data) != 0)
-    {
-        return -1;
-    }
-
-    if (source == NULL)
-    {
-        // source == NULL means this is the root file system, so it's legal
-        ROOT_SUPER_BLOCK = sb;
-        sb->imounted_on = NULL;
-    }
-    else
-    {
-        source->is_mounted_on = sb;
-        sb->imounted_on = xv6fs_iops_dup(source);
-    }
-    sb->s_mountflags = mountflags;
-    sb->s_root = xv6fs_iops_iget_root(sb);
-
-    return 0;
-}
 
 void init_root_file_system(dev_t dev, const char *fs_name)
 {
@@ -86,7 +40,7 @@ void init_root_file_system(dev_t dev, const char *fs_name)
     }
 
     unsigned long flags = 0;
-    int m = mount_types(NULL, dev, *file_system, flags, NULL);
+    int m = mount_types(dev, NULL, *file_system, flags, 0);
     if (m != 0)
     {
         panic("root file system init failed, could not mount /");
