@@ -593,7 +593,7 @@ void forkret()
         // regular process (e.g., because it calls sleep), and thus cannot
         // be run from main().
         first = false;
-        init_root_file_system(ROOT_DEVICE_NUMBER, XV6_FS_NAME);
+        mount_root(ROOT_DEVICE_NUMBER, XV6_FS_NAME);
         get_current()->cwd = inode_from_path("/");
         __sync_synchronize();
     }

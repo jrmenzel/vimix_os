@@ -28,27 +28,6 @@
 #include <kernel/string.h>
 #include <lib/minmax.h>
 
-void init_root_file_system(dev_t dev, const char *fs_name)
-{
-    struct file_system_type **file_system =
-        find_filesystem(fs_name, strlen(fs_name));
-
-    if (*file_system == NULL)
-    {
-        printk("no support for file system %s\n", fs_name);
-        panic("root file system init failed");
-    }
-
-    unsigned long flags = 0;
-    int m = mount_types(dev, NULL, *file_system, flags, 0);
-    if (m != 0)
-    {
-        panic("root file system init failed, could not mount /");
-    }
-
-    printk("root file system init done\n");
-}
-
 ssize_t inode_open_or_create2(const char *pathname, mode_t mode, dev_t device)
 {
     char name[NAME_MAX];

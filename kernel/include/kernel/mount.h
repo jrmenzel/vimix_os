@@ -15,6 +15,15 @@ ssize_t mount(const char *source, const char *target,
               const char *filesystemtype, unsigned long mountflags,
               size_t addr_data);
 
+void mount_root(dev_t dev, const char *filesystemtype);
+
+/// @brief Helper for mount() and mount_root().
+/// @param source Device number of block device to mount.
+/// @param i_target Target directory inode or NULL to mount the root FS.
+/// @param filesystemtype File system type.
+/// @param mountflags ignored
+/// @param addr_data ignored
+/// @return Zero on success, -ERRNO otherwise.
 ssize_t mount_types(dev_t source, struct inode *i_target,
                     struct file_system_type *filesystemtype,
                     unsigned long mountflags, size_t addr_data);

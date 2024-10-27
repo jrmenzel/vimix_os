@@ -100,6 +100,27 @@ ssize_t mount(const char *source, const char *target,
     return ret;
 }
 
+void mount_root(dev_t dev, const char *filesystemtype)
+{
+    struct file_system_type **file_system =
+        find_filesystem(filesystemtype, strlen(filesystemtype));
+
+    if (*file_system == NULL)
+    {
+        printk("no support for file system %s\n", filesystemtype);
+        panic("root file system init failed");
+    }
+
+    unsigned long flags = 0;
+    int ret = mount_types(dev, NULL, *file_system, flags, 0);
+    if (ret != 0)
+    {
+        panic("root file system init failed, could not mount /");
+    }
+
+    printk("root file system mounted\n");
+}
+
 ssize_t mount_types(dev_t source, struct inode *i_target,
                     struct file_system_type *filesystemtype,
                     unsigned long mountflags, size_t addr_data)
@@ -166,6 +187,12 @@ ssize_t umount(const char *target)
 
     // TODO: Check if FS is still in use
 
+    if (i_target->i_sb->imounted_on == NULL)
+    {
+        // this is the root file system -> don't unmount
+        inode_unlock_put(i_target);
+        return -EACCES;
+    }
     struct inode *i_target_mountpoint =
         xv6fs_iops_dup(i_target->i_sb->imounted_on);
     struct super_block *sb = i_target->i_sb;

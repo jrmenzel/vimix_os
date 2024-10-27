@@ -66,7 +66,7 @@ struct inode
 
 /// @brief inits the filesystem with device dev becoming "/"
 /// @param dev device of the root fs
-void init_root_file_system(dev_t dev, const char *fs_name);
+void mount_root(dev_t dev, const char *fs_name);
 
 /// @brief Allocate an inode on device dev.
 /// Mark it as allocated by giving it type based on mode.
