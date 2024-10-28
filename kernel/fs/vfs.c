@@ -7,10 +7,12 @@
 #include <fs/xv6fs/xv6fs.h>
 
 struct file_system_type *g_file_systems;
+extern struct sleeplock g_mount_lock;
 
 void init_virtual_file_system()
 {
     g_file_systems = NULL;
+    sleep_lock_init(&g_mount_lock, "mount");
 
     // init all file system implementations
     xv6fs_init();

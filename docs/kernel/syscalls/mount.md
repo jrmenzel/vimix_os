@@ -7,7 +7,7 @@
 int mount(const char *source, const char *target, const char *filesystemtype, unsigned long mountflags, const void *data);
 ```
 
-Mounts a [file_system](../file_system/file_system.md). `mountflags` and `data` are currently ignored
+Mounts a [file system](../file_system/file_system.md). `mountflags` and `data` are currently ignored (present for compatibility).
 
 
 ## User Apps

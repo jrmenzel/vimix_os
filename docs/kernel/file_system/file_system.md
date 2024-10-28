@@ -14,7 +14,7 @@ A UNIX file system stores [inodes](inode.md), which represent [files](file.md), 
 ## Supported File Systems
 
 File systems supported:
-- mostly original [xv6 filesystem](xv6fs.md) (`sys/fs/xv6fs`)
+- mostly original [xv6 filesystem](xv6fs.md) (`kernel/fs/xv6fs`)
 
 
 ---

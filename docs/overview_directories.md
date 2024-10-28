@@ -23,11 +23,13 @@ The sub-directory structure was inspired by Linux:
 - `arch/riscv` ([RISC V](riscv/RISCV.md)) (ideally) all architecture dependent code
 - `drivers` ([devices](kernel/devices/devices.md)) drivers by category
 - `fs` ([file_system](kernel/file_system/file_system.md))
+	- `fs/xv6fs` [xv6fs](docs/kernel/file_system/xv6fs.md) is a simple file system based on the one from xv6 (which was inspired by the UNIX 6 file system)
 - `include` kernel API for kernel code (e.g. drivers)
 	- [user space](userspace/userspace.md) kernel API: `usr/include/sys`
 - `init` ([init_overview](kernel/overview/init_overview.md)) boot and init of all subsystems
 - `kernel` ([kernel](kernel/kernel.md)) primary functions of the OS like process management
 - `lib` libs shared by different kernel modules
+	- `lib/libfdt` [device tree](docs/misc/device_tree.md) parsing lib from https://github.com/dgibson/dtc.
 - `mm` ([memory_management](kernel/mm/memory_management.md))
 
 

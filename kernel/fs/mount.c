@@ -17,11 +17,25 @@
 #include <kernel/string.h>
 #include <lib/minmax.h>
 
+/// @brief Device number of the root file system. Set in main() during hardware
+/// discovery and used once during FS init / mount_root()
 dev_t ROOT_DEVICE_NUMBER;
+
+/// @brief Super block of the root file system, set in mount_root() and used
+/// during FS tree traversal in namex()
 struct super_block *ROOT_SUPER_BLOCK = NULL;
 
+/// @brief One super block per mounted file system, free entries are indicated
+/// by an invalid (0) device number.
 struct super_block g_active_file_systems[MAX_MOUNTED_FILE_SYSTEMS] = {0};
 
+/// @brief Lock to protect the mount/umount "inner" calls (after input
+/// validation / error checks). This means only one process can mount or umount
+/// at a time, but that limitation is fine.
+struct sleeplock g_mount_lock;
+
+/// @brief Returns an unused super_block for mounting.
+///        Indirectly protected by g_mount_lock.
 struct super_block *get_free_super_block()
 {
     for (size_t i = 0; i < MAX_MOUNTED_FILE_SYSTEMS; ++i)
@@ -34,6 +48,9 @@ struct super_block *get_free_super_block()
     return NULL;
 }
 
+/// @brief Frees a super_block during unmounting.
+///        Indirectly protected by g_mount_lock.
+/// @param sb Super block of unmounted FS to free.
 void free_super_block(struct super_block *sb)
 {
     for (size_t i = 0; i < MAX_MOUNTED_FILE_SYSTEMS; ++i)
@@ -92,11 +109,14 @@ ssize_t mount(const char *source, const char *target,
     }
     inode_unlock(i_target);
 
+    sleep_lock(&g_mount_lock);
     int ret =
         mount_types(i_src->dev, i_target, *file_system, mountflags, addr_data);
 
     inode_put(i_src);
     inode_put(i_target);
+    sleep_unlock(&g_mount_lock);
+
     return ret;
 }
 
@@ -111,8 +131,10 @@ void mount_root(dev_t dev, const char *filesystemtype)
         panic("root file system init failed");
     }
 
+    sleep_lock(&g_mount_lock);
     unsigned long flags = 0;
     int ret = mount_types(dev, NULL, *file_system, flags, 0);
+    sleep_unlock(&g_mount_lock);
     if (ret != 0)
     {
         panic("root file system init failed, could not mount /");
@@ -185,8 +207,6 @@ ssize_t umount(const char *target)
         return -EINVAL;
     }
 
-    // TODO: Check if FS is still in use
-
     if (i_target->i_sb->imounted_on == NULL)
     {
         // this is the root file system -> don't unmount
@@ -201,8 +221,12 @@ ssize_t umount(const char *target)
     DEBUG_EXTRA_ASSERT(i_target_mountpoint != NULL,
                        "imounted_on not set on mountpoint");
 
+    // TODO: Check if FS is still in use
+
     inode_lock(i_target_mountpoint);
+    sleep_lock(&g_mount_lock);
     int ret = umount_types(i_target_mountpoint, sb);
+    sleep_unlock(&g_mount_lock);
     inode_unlock_put(i_target_mountpoint);
 
     return ret;

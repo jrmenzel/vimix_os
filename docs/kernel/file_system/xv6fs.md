@@ -50,7 +50,7 @@ A `struct xv6fs_dirent` is `16` bytes long, thus 64 directory entries can be sto
 Currently a disk inode can reference `12` data blocks. One additional block can be used as a second array of `1024/sizeof(uint32_t)` = `256` block addresses. The maximal file size supported is thus `(12+256)*1024` = 268 kb.
 
 **Max file system size:**
-Blocks are indexed by 32-bit unsigned integers. Thus file systems of up to 4 TB should be possible. However, xv6fs would still only support a maximum of 65,535 files with 268 kb each. So a 16 GB disk might be the practical limit.
+Blocks are indexed by 32-bit unsigned integers. Thus file systems of up to 4 GB should be possible. xv6fs supports a maximum of 65,535 files with 268 kb each = 16 GB in total. So filling up such a huge disk is possible.
 
 **Max file name:**
 Just 14 chars, limited by `XV6_NAME_MAX` and indirectly by the size of one `struct xv6fs_dirent`.
@@ -58,8 +58,9 @@ Just 14 chars, limited by `XV6_NAME_MAX` and indirectly by the size of one `stru
 
 ## Changes compared to xv6
 
-- refactored and renamed some defines, moved code to separate generic and xv6fs specific code.
-- split device disk inodes into char and block devices to correctly store different types of [devices](../devices/devices.md).
+- Refactored and renamed some defines, moved code to separate generic and xv6fs specific code.
+- Moved out non-file system specific function calls (e.g. file system tree traversal calls) from [xv6fs_log](docs/kernel/file_system/xv6fs_log.md) specific calls. This allows a virtual file system abstraction and [mounting](../syscalls/mount.md). It also changes the order of lock acquire/releases compared to xv6.
+- Split device disk inodes into char and block devices to correctly store different types of [devices](../devices/devices.md).
 
 
 ## Related
