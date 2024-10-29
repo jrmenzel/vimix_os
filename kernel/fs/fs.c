@@ -93,7 +93,7 @@ void inode_unlock(struct inode *ip)
     sleep_unlock(&ip->lock);
 }
 
-void inode_put(struct inode *ip) { xv6fs_iops_put(ip, true); }
+void inode_put(struct inode *ip) { xv6fs_iops_put(ip); }
 
 void inode_unlock_put(struct inode *ip)
 {

@@ -30,9 +30,9 @@ void mount_root(dev_t dev, const char *filesystemtype);
 /// @param mountflags ignored
 /// @param addr_data ignored
 /// @return Zero on success, -ERRNO otherwise.
-ssize_t mount_types(dev_t source, struct inode *i_target,
-                    struct file_system_type *filesystemtype,
-                    unsigned long mountflags, size_t addr_data);
+ssize_t mount_internal(dev_t source, struct inode *i_target,
+                       struct file_system_type *filesystemtype,
+                       unsigned long mountflags, size_t addr_data);
 
 /// @brief Unmounts a file system.
 /// @param target Path to the target directory where the file system is mounted.
@@ -44,4 +44,5 @@ ssize_t umount(const char *target);
 /// @param i_target LOCKED(!) directory inode with mounted file system
 /// @param sb Super block of the file system to unmount.
 /// @return Zero on success, -ERRNO otherwise.
-ssize_t umount_types(struct inode *i_target_mountpoint, struct super_block *sb);
+ssize_t umount_internal(struct inode *i_target_mountpoint,
+                        struct super_block *sb);

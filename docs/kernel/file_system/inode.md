@@ -1,6 +1,6 @@
 # Inode
 
-An inode is an unnamed object in the [file_system](file_system.md) tree, it represents a [file](file.md), a [directory](directory.md) or a [device](../devices/devices.md).
+An inode is an unnamed object in the [file_system](file_system.md) tree, it represents a [file](file.md), a [directory](directory.md) or a [device](../devices/devices.md). 
 Open inodes (e.g. of open files) are managed by the owning [file systems](file_system.md).
 
 The `struct inode` kernel structure holds 

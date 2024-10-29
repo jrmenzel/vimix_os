@@ -110,8 +110,8 @@ ssize_t mount(const char *source, const char *target,
     inode_unlock(i_target);
 
     sleep_lock(&g_mount_lock);
-    int ret =
-        mount_types(i_src->dev, i_target, *file_system, mountflags, addr_data);
+    int ret = mount_internal(i_src->dev, i_target, *file_system, mountflags,
+                             addr_data);
 
     inode_put(i_src);
     inode_put(i_target);
@@ -133,7 +133,7 @@ void mount_root(dev_t dev, const char *filesystemtype)
 
     sleep_lock(&g_mount_lock);
     unsigned long flags = 0;
-    int ret = mount_types(dev, NULL, *file_system, flags, 0);
+    int ret = mount_internal(dev, NULL, *file_system, flags, 0);
     sleep_unlock(&g_mount_lock);
     if (ret != 0)
     {
@@ -143,9 +143,9 @@ void mount_root(dev_t dev, const char *filesystemtype)
     printk("root file system mounted\n");
 }
 
-ssize_t mount_types(dev_t source, struct inode *i_target,
-                    struct file_system_type *filesystemtype,
-                    unsigned long mountflags, size_t addr_data)
+ssize_t mount_internal(dev_t source, struct inode *i_target,
+                       struct file_system_type *filesystemtype,
+                       unsigned long mountflags, size_t addr_data)
 {
     struct super_block *sb = get_free_super_block();
     sb->dev = source;
@@ -157,7 +157,9 @@ ssize_t mount_types(dev_t source, struct inode *i_target,
         // TODO: copy data to kernel space
         // but so far no one is using the optional data and it exists
         // for compatibility with Linux and in case it's needed later.
-        panic("mount_types: implement handling of the optional data parameter");
+        panic(
+            "mount_internal: implement handling of the optional data "
+            "parameter");
     }
 
     ssize_t ret = filesystemtype->fill_super_block(sb, data_kernel_space);
@@ -225,14 +227,15 @@ ssize_t umount(const char *target)
 
     inode_lock(i_target_mountpoint);
     sleep_lock(&g_mount_lock);
-    int ret = umount_types(i_target_mountpoint, sb);
+    int ret = umount_internal(i_target_mountpoint, sb);
     sleep_unlock(&g_mount_lock);
     inode_unlock_put(i_target_mountpoint);
 
     return ret;
 }
 
-ssize_t umount_types(struct inode *i_target_mountpoint, struct super_block *sb)
+ssize_t umount_internal(struct inode *i_target_mountpoint,
+                        struct super_block *sb)
 {
     DEBUG_EXTRA_ASSERT(i_target_mountpoint->is_mounted_on != NULL,
                        "imounted_on not set on mountpoint");

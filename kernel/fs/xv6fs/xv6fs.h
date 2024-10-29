@@ -14,6 +14,7 @@ struct xv6fs_sb_private
     struct log log;
 };
 
+/// @brief Call before mounting.
 void xv6fs_init();
 
 /// @brief Opens the inode inside of directory iparent with the given name or
@@ -35,7 +36,10 @@ struct inode *xv6fs_iops_alloc(struct super_block *sb, mode_t mode);
 /// Caller must hold ip->lock.
 int xv6fs_iops_update(struct inode *ip);
 
-int xv6fs_iops_read_in(struct inode *ip);
+/// @brief Reads the inode metadata from disk, called during the first
+/// inode_lock().
+/// @param ip Inode with attribute valid == false.
+void xv6fs_iops_read_in(struct inode *ip);
 
 /// @brief Truncate inode (discard contents).
 /// Caller must hold ip->lock.
@@ -55,6 +59,7 @@ void xv6fs_iops_trunc_only(struct inode *ip);
 /// @return in-memory copy of inode, (NOT locked)
 struct inode *xv6fs_iops_iget(struct super_block *sb, uint32_t inum);
 
+/// @brief Returns the root inode of the file system.
 static inline struct inode *xv6fs_iops_iget_root(struct super_block *sb)
 {
     return xv6fs_iops_iget(sb, XV6FS_ROOT_INODE);
@@ -64,8 +69,18 @@ static inline struct inode *xv6fs_iops_iget_root(struct super_block *sb)
 /// @return ip to enable ip = inode_dup(ip1) idiom.
 struct inode *xv6fs_iops_dup(struct inode *ip);
 
-void xv6fs_iops_put(struct inode *ip, bool external_fs_transaction);
+/// @brief Decreases ref count. If the inode was "deleted" (zero links) and this
+/// was the last reference, delete on disk. Note that this can require a new log
+/// begin/end.
+/// @param ip Inode with held reference.
+void xv6fs_iops_put(struct inode *ip);
 
+/// @brief Look for a directory entry in a directory.
+/// Increases ref count (release with inode_put()).
+/// @param dir Directory to look in, should be locked.
+/// @param name Name of entry (e.g. file name)
+/// @return Inode of entry on success or NULL. Returned inode is NOT locked, and
+/// has an increases ref count (release with inode_put()).
 struct inode *xv6fs_iops_dir_lookup(struct inode *dir, const char *name,
                                     uint32_t *poff);
 
@@ -80,6 +95,15 @@ int xv6fs_iops_dir_link(struct inode *dir, char *name, uint32_t inum);
 ssize_t xv6fs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
                               bool addr_is_userspace, ssize_t seek_pos);
 
+/// @brief Read data from inode.
+/// Caller must hold ip->lock.
+/// @param ip Inode belonging to a file system
+/// @param dst_addr_is_userspace If true, dst_addr is a user virtual address
+/// (kernel addr otherwise)
+/// @param dst_addr Destination address.
+/// @param off Offset in file where to read from.
+/// @param n Maximum number of bytes to read.
+/// @return Number of bytes successfully read.
 ssize_t xv6fs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
                         size_t off, size_t n);
 

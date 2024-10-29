@@ -311,7 +311,7 @@ int xv6fs_iops_update(struct inode *ip)
     return 0;
 }
 
-int xv6fs_iops_read_in(struct inode *ip)
+void xv6fs_iops_read_in(struct inode *ip)
 {
     struct xv6fs_superblock *xsb =
         &((struct xv6fs_sb_private *)ip->i_sb->s_fs_info)->sb;
@@ -338,8 +338,6 @@ int xv6fs_iops_read_in(struct inode *ip)
     struct xv6fs_inode *xv_ip = xv6fs_inode_from_inode(ip);
     memmove(xv_ip->addrs, dip->addrs, sizeof(xv_ip->addrs));
     bio_release(bp);
-
-    return 0;
 }
 
 void xv6fs_iops_trunc_only(struct inode *ip)
@@ -547,14 +545,14 @@ struct inode *xv6fs_iops_dup(struct inode *ip)
     return ip;
 }
 
-void xv6fs_iops_put(struct inode *ip, bool external_fs_transaction)
+void xv6fs_iops_put(struct inode *ip)
 {
     spin_lock(&xv6fs_itable.lock);
 
     if (ip->ref == 1 && ip->valid && ip->nlink == 0)
     {
         struct process *proc = get_current();
-        external_fs_transaction = (proc->debug_log_depth != 0);
+        bool external_fs_transaction = (proc->debug_log_depth != 0);
         // inode has no links and no other references: truncate and free.
 
         if (!external_fs_transaction)
