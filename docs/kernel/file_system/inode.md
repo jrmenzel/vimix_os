@@ -30,7 +30,7 @@ inode_put(ip);
 
 `inode_lock()` is separate from "get functions" so that [syscalls](../syscalls/syscalls.md) can get a long-term reference to an inode (e.g. for an open file) and only lock it for short periods (e.g., in read()). The separation also helps avoid deadlock and races during path name lookup. 
 
-As inodes store a pointer to the [file system](file_system.md) they belong to, the inodes them selves can be managed by the file system driver globally for all mounted instances. E.g. [xv6fs](xv6fs.md) has one pool of inodes for all mounted file systems. 
+As inodes store a pointer to the [file system](file_system.md) they belong to, the inodes them selves can be managed by the file system driver globally for all mounted instances. E.g. [xv6fs](xv6fs/xv6fs.md) has one pool of inodes for all mounted file systems. 
 
 
 ## Inode Number
@@ -46,4 +46,4 @@ The application [stat](../../userspace/bin/stat.md) can print the inodes of file
 ---
 **Overview:** [kernel](kernel.md) | [file_system](file_system.md)
 
-**File System:** [init_filesystem](init_filesystem.md) | [xv6fs](xv6fs.md) | [xv6fs_log](xv6fs_log.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)
+**File System:** [init_filesystem](init_filesystem.md) | [vfs](vfs.md) | [xv6fs](xv6fs/xv6fs.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)

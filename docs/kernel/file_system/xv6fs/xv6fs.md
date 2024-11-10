@@ -59,8 +59,8 @@ Just 14 chars, limited by `XV6_NAME_MAX` and indirectly by the size of one `stru
 ## Changes compared to xv6
 
 - Refactored and renamed some defines, moved code to separate generic and xv6fs specific code.
-- Moved out non-file system specific function calls (e.g. file system tree traversal calls) from [xv6fs_log](docs/kernel/file_system/xv6fs_log.md) specific calls. This allows a virtual file system abstraction and [mounting](../syscalls/mount.md). It also changes the order of lock acquire/releases compared to xv6.
-- Split device disk inodes into char and block devices to correctly store different types of [devices](../devices/devices.md).
+- Moved out non-file system specific function calls (e.g. file system tree traversal calls) from [xv6fs_log](xv6fs_log.md) specific calls. This allows a [virtual file system](../vfs.md) abstraction and [mounting](../../syscalls/mount.md). It also changes the order of lock acquire/releases compared to xv6.
+- Split device disk inodes into char and block devices to correctly store different types of [devices](../../devices/devices.md).
 
 
 ## Related
@@ -70,4 +70,4 @@ Video about the original xv6 file system: https://www.youtube.com/watch?v=o9sYiW
 ---
 **Overview:** [kernel](kernel.md) | [file_system](file_system.md)
 
-**File System:** [init_filesystem](init_filesystem.md) | [xv6fs](xv6fs.md) | [xv6fs_log](xv6fs_log.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)
+**File System:** [init_filesystem](init_filesystem.md) | [vfs](vfs.md) | [xv6fs](xv6fs/xv6fs.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)

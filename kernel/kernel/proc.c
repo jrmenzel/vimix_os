@@ -391,7 +391,7 @@ ssize_t fork()
             np->files[i] = file_dup(parent->files[i]);
         }
     }
-    np->cwd = xv6fs_iops_dup(parent->cwd);
+    np->cwd = VFS_INODE_DUP(parent->cwd);
 
     // Copy name
     safestrcpy(np->name, parent->name, sizeof(parent->name));

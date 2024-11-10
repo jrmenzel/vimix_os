@@ -17,39 +17,37 @@ struct xv6fs_sb_private
 /// @brief Call before mounting.
 void xv6fs_init();
 
+struct inode *xv6fs_sops_alloc_inode(struct super_block *sb, mode_t mode);
+
+/// @brief Copy a modified in-memory inode to disk.
+/// Must be called after every change to an ip->xxx field
+/// that lives on disk.
+/// Caller must hold ip->lock.
+int xv6fs_sops_write_inode(struct inode *ip);
+
 /// @brief Opens the inode inside of directory iparent with the given name or
 /// creates one if none existed.
 /// @param iparent Parent directory inode, unlocked
 /// @param name File name
 /// @param mode File mode
 /// @param flags Create flags
-/// @param device Device the inode is located
+/// @param device Device of the inode in case it's a device file
 /// @return NULL on failure, requested inode otherwise.
-struct inode *xv6fs_iops_open_create(struct inode *iparent, char name[NAME_MAX],
-                                     mode_t mode, int32_t flags, dev_t device);
+struct inode *xv6fs_iops_create(struct inode *iparent, char name[NAME_MAX],
+                                mode_t mode, int32_t flags, dev_t device);
 
-struct inode *xv6fs_iops_alloc(struct super_block *sb, mode_t mode);
-
-/// @brief Copy a modified in-memory inode to disk.
-/// Must be called after every change to an ip->xxx field
-/// that lives on disk.
-/// Caller must hold ip->lock.
-int xv6fs_iops_update(struct inode *ip);
+/// @brief Opens the inode inside of directory iparent with the given name.
+/// @param iparent Parent directory inode, unlocked
+/// @param name File name
+/// @param flags Truncate inode content if O_TRUNC is set (regular files only)
+/// @return NULL on failure, requested inode otherwise.
+struct inode *xv6fs_iops_open(struct inode *iparent, char name[NAME_MAX],
+                              int32_t flags);
 
 /// @brief Reads the inode metadata from disk, called during the first
 /// inode_lock().
 /// @param ip Inode with attribute valid == false.
 void xv6fs_iops_read_in(struct inode *ip);
-
-/// @brief Truncate inode (discard contents).
-/// Caller must hold ip->lock.
-/// @param ip inode to truncate.
-void xv6fs_iops_trunc(struct inode *ip);
-
-/// @brief Helper for xv6fs_iops_trunc(), does not call xv6fs_iops_update() and
-/// does not start a FS log!
-/// @param ip inode to truncate.
-void xv6fs_iops_trunc_only(struct inode *ip);
 
 /// @brief Find the inode with number inum on super_block sb.
 /// Does not lock the inode and does not read it from disk.
@@ -57,12 +55,12 @@ void xv6fs_iops_trunc_only(struct inode *ip);
 /// @param sb The filesystem to look on.
 /// @param inum Inode number.
 /// @return in-memory copy of inode, (NOT locked)
-struct inode *xv6fs_iops_iget(struct super_block *sb, uint32_t inum);
+struct inode *xv6fs_iget(struct super_block *sb, uint32_t inum);
 
 /// @brief Returns the root inode of the file system.
-static inline struct inode *xv6fs_iops_iget_root(struct super_block *sb)
+static inline struct inode *xv6fs_sops_iget_root(struct super_block *sb)
 {
-    return xv6fs_iops_iget(sb, XV6FS_ROOT_INODE);
+    return xv6fs_iget(sb, XV6FS_ROOT_INODE);
 }
 
 /// @brief Increment reference count for ip.
@@ -79,11 +77,17 @@ void xv6fs_iops_put(struct inode *ip);
 /// Increases ref count (release with inode_put()).
 /// @param dir Directory to look in, should be locked.
 /// @param name Name of entry (e.g. file name)
+/// @param poff Pointer to a returned offset inside of the dir. Can be NULL.
 /// @return Inode of entry on success or NULL. Returned inode is NOT locked, and
 /// has an increases ref count (release with inode_put()).
 struct inode *xv6fs_iops_dir_lookup(struct inode *dir, const char *name,
                                     uint32_t *poff);
 
+/// @brief Write a new directory entry (name, inum) into the directory `dir`.
+/// @param dir directory to edit
+/// @param name file name of new entry
+/// @param inum inode of new entry
+/// @return 0 on success, -1 on failure (e.g. out of disk blocks).
 int xv6fs_iops_dir_link(struct inode *dir, char *name, uint32_t inum);
 
 /// @brief For the syscall to get directory entries get_dirent() from dirent.h.
@@ -119,8 +123,8 @@ ssize_t xv6fs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
 /// @param off Offset in file.
 /// @param n Number of bytes to write.
 /// @return Number of bytes successfully written.
-ssize_t xv6fs_iops_write(struct inode *ip, bool src_addr_is_userspace,
-                         size_t src, size_t off, size_t n);
+ssize_t xv6fs_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
+                    size_t off, size_t n);
 
 ssize_t xv6fs_iops_link(struct inode *dir, struct inode *ip,
                         char name[NAME_MAX]);

@@ -2,7 +2,7 @@
 
 ## Motivation
 
-[Syscalls](../syscalls/syscalls.md) might require, that multiple blocks of the [file_system](file_system.md) need to be modified. For example the creation of a [file](file.md) requires a new [inode](inode.md) and an entry into the parent [directory](directory.md). If these are stored in different blocks of the file system (which they normally are), a system crash between these two (or more) writes could leave the file system in an invalid state.
+[Syscalls](../../syscalls/syscalls.md) might require, that multiple blocks of the [file_system](file_system.md) need to be modified. For example the creation of a [file](file.md) requires a new [inode](inode.md) and an entry into the parent [directory](directory.md). If these are stored in different blocks of the file system (which they normally are), a system crash between these two (or more) writes could leave the file system in an invalid state.
 
 The solution is a log of all changes to file system blocks that belong to one system call. Once the call completed all blocks are written to disk. This is done in two steps: 
 1. First into a reserved area on the disk, the header is the last block to be written.
@@ -30,12 +30,12 @@ System calls that can modify the [xv6fs file system](xv6fs.md) must call `log_be
 
 A commit is called when the log filled up or if no system calls are tracked anymore. It will write out all blocks from the log. While the log contains blocks from potentially multiple system calls, the process of writing the log first to a log area, then to the destination is the same as in the motivation above.
 
-If multiple xv6fs file systems are [mounted](../syscalls/mount.md) at the same time, each will have its own log (it is tied to the log area on the block device!).
+If multiple xv6fs file systems are [mounted](../../syscalls/mount.md) at the same time, each will have its own log (it is tied to the log area on the block device!).
 
 
 ### Limitations
 
-A [write](../syscalls/write.md) system call can be split into multiple log transactions if the amount of data to write to the file exceeds the log space (see `MAX_OP_BLOCKS`).
+A [write](../../syscalls/write.md) system call can be split into multiple log transactions if the amount of data to write to the file exceeds the log space (see `MAX_OP_BLOCKS`).
 
 
 ---

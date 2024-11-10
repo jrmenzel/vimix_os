@@ -23,7 +23,7 @@ The sub-directory structure was inspired by Linux:
 - `arch/riscv` ([RISC V](riscv/RISCV.md)) (ideally) all architecture dependent code
 - `drivers` ([devices](kernel/devices/devices.md)) drivers by category
 - `fs` ([file_system](kernel/file_system/file_system.md))
-	- `fs/xv6fs` [xv6fs](docs/kernel/file_system/xv6fs.md) is a simple file system based on the one from xv6 (which was inspired by the UNIX 6 file system)
+	- `fs/xv6fs` [xv6fs](kernel/file_system/xv6fs/xv6fs.md) is a simple file system based on the one from xv6 (which was inspired by the UNIX 6 file system)
 - `include` kernel API for kernel code (e.g. drivers)
 	- [user space](userspace/userspace.md) kernel API: `usr/include/sys`
 - `init` ([init_overview](kernel/overview/init_overview.md)) boot and init of all subsystems
@@ -36,8 +36,8 @@ The sub-directory structure was inspired by Linux:
 ## tools
 
 Tools for the development environment.
-- `mkfs` The tool to create [xv6fs](kernel/file_system/xv6fs.md) file systems.
-- `fsck.xv6fs` A simple [xv6fs](kernel/file_system/xv6fs.md) file system checker.
+- `mkfs` The tool to create [xv6fs](kernel/file_system/xv6fs/xv6fs.md) file systems.
+- `fsck.xv6fs` A simple [xv6fs](kernel/file_system/xv6fs/xv6fs.md) file system checker.
 - Scripts for [debugging](debugging.md).
 
 

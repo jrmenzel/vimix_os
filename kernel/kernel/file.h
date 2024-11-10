@@ -27,7 +27,7 @@ bool check_and_adjust_mode(mode_t *mode, mode_t default_type);
 /// @brief Allocate a file structure. ONLY ref is initialized!
 struct file *file_alloc();
 
-FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode);
+FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode);
 
 /// @brief Close file f. (Decrement ref count, close when reaches 0.)
 void file_close(struct file *f);

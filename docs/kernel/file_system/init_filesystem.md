@@ -22,4 +22,4 @@ While belonging to the first process (`init`), this still runs in [S-mode](../..
 
 **Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
 
-**File System:** [init_filesystem](init_filesystem.md) | [xv6fs](xv6fs.md) | [xv6fs_log](xv6fs_log.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)
+**File System:** [init_filesystem](init_filesystem.md) | [vfs](vfs.md) | [xv6fs](xv6fs/xv6fs.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)

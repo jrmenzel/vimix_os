@@ -6,7 +6,6 @@
 
 #include <drivers/block_device.h>
 #include <drivers/character_device.h>
-#include <fs/xv6fs/xv6fs.h>
 #include <ipc/pipe.h>
 #include <kernel/errno.h>
 #include <kernel/fcntl.h>
@@ -72,66 +71,60 @@ struct file *file_alloc()
 struct file *file_dup(struct file *f)
 {
     spin_lock(&g_file_table.lock);
-    if (f->ref < 1)
-    {
-        panic("file_dup() called for a file with ref count 0");
-    }
+    DEBUG_EXTRA_ASSERT(f->ref >= 1,
+                       "file_dup() called for a file with ref count 0");
     f->ref++;
     spin_unlock(&g_file_table.lock);
     return f;
 }
 
-FILE_DESCRIPTOR file_open_or_create(char *pathname, int32_t flags, mode_t mode)
+FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
 {
-    //  Only getting the inode differs between opening an existing file or
-    //  creating one.
-    struct inode *ip = NULL;
-
-    if (flags & O_CREAT)
+    char name[NAME_MAX];
+    struct inode *iparent = inode_of_parent_from_path(pathname, name);
+    if (iparent == NULL)
     {
-        // only create regular files this way:
-        if (!check_and_adjust_mode(&mode, S_IFREG) || !S_ISREG(mode))
+        return -ENOENT;
+    }
+
+    struct inode *ip = VFS_INODE_OPEN(iparent, name, flags);
+
+    if (ip == NULL)
+    {
+        if (flags & O_CREAT)
         {
-            return -EPERM;
+            // only create regular files this way:
+            if (!check_and_adjust_mode(&mode, S_IFREG) || !S_ISREG(mode))
+            {
+                inode_put(iparent);
+                return -EPERM;
+            }
+
+            ip = VFS_INODE_CREATE(iparent, name, mode, flags, iparent->dev);
+            inode_put(iparent);
+            // inode is locked if not NULL
+
+            if (ip == NULL)
+            {
+                return -ENOENT;
+            }
         }
-
-        char name[NAME_MAX];
-        struct inode *iparent = inode_of_parent_from_path(pathname, name);
-        if (iparent == NULL)
+        else
         {
-            return -ENOENT;
-        }
-
-        ip = xv6fs_iops_open_create(iparent, name, mode, flags, iparent->dev);
-
-        if (ip == NULL)
-        {
+            // file not found
+            inode_put(iparent);
             return -ENOENT;
         }
     }
     else
     {
-        ip = inode_from_path(pathname);
-        if (ip == NULL)
-        {
-            return -ENOENT;
-        }
-        inode_lock(ip);
-        if (S_ISDIR(ip->i_mode) && flags != O_RDONLY)
-        {
-            inode_unlock_put(ip);
-            return -EACCES;
-        }
-
-        if ((flags & O_TRUNC) && S_ISREG(ip->i_mode))
-        {
-            xv6fs_iops_trunc(ip);
-        }
+        inode_put(iparent);
     }
 
-    if (INODE_HAS_TYPE(ip->i_mode) == false)
+    if (S_ISDIR(ip->i_mode) && flags != O_RDONLY)
     {
-        panic("inode has no type");
+        inode_unlock_put(ip);
+        return -EACCES;
     }
 
     if ((S_ISCHR(ip->i_mode) || S_ISBLK(ip->i_mode)) &&
@@ -319,7 +312,7 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
     }
     else if (S_ISREG(f->mode) || S_ISDIR(f->mode))
     {
-        ret = xv6fs_fops_write(f, addr, n);
+        ret = VFS_FILE_WRITE(f, addr, n);
     }
     else
     {
@@ -362,7 +355,7 @@ ssize_t file_link(char *path_from, char *path_to)
         return -EOTHER;
     }
 
-    return xv6fs_iops_link(dir, ip, name);
+    return VFS_INODE_LINK(dir, ip, name);
 }
 
 ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
@@ -381,7 +374,7 @@ ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
         return -EPERM;
     }
 
-    return xv6fs_iops_unlink(dir, name, delete_files, delete_directories);
+    return VFS_INODE_UNLINK(dir, name, delete_files, delete_directories);
 }
 
 ssize_t file_lseek(struct file *f, ssize_t offset, int whence)

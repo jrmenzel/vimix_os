@@ -7,7 +7,6 @@
 //
 
 #include <drivers/device.h>
-#include <fs/xv6fs/xv6fs.h>
 #include <kernel/dirent.h>
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
@@ -162,7 +161,7 @@ ssize_t sys_open()
     mode_t mode;
     arguint(2, &mode);
 
-    return file_open_or_create(pathname, flags, mode);
+    return file_open(pathname, flags, mode);
 }
 
 ssize_t sys_mkdir()
@@ -183,7 +182,7 @@ ssize_t sys_mkdir()
         return -ENOTDIR;
     }
 
-    return (size_t)inode_open_or_create2(path, mode, INVALID_DEVICE);
+    return (size_t)inode_create(path, mode, INVALID_DEVICE);
 }
 
 ssize_t sys_mknod()
@@ -213,20 +212,26 @@ ssize_t sys_mknod()
         return -ENODEV;
     }
 
-    return (size_t)inode_open_or_create2(path, mode, device);
+    return (size_t)inode_create(path, mode, device);
 }
 
 ssize_t sys_chdir()
 {
-    char pathname[PATH_MAX];
-    struct inode *ip;
-    struct process *proc = get_current();
+    // parameter 0: const char *path
+    char path[PATH_MAX];
+    uint32_t could_fetch_path = argstr(0, path, PATH_MAX);
+    if (could_fetch_path < 0)
+    {
+        return -EFAULT;
+    }
 
-    if (argstr(0, pathname, PATH_MAX) < 0 ||
-        (ip = inode_from_path(pathname)) == NULL)
+    struct process *proc = get_current();
+    struct inode *ip = inode_from_path(path);
+    if (ip == NULL)
     {
         return -ENOENT;
     }
+
     inode_lock(ip);
     if (!S_ISDIR(ip->i_mode))
     {
@@ -258,7 +263,7 @@ ssize_t sys_get_dirent()
     ssize_t seek_pos;
     argssize_t(2, &seek_pos);
 
-    return xv6fs_iops_get_dirent(f->ip, dir_entry_addr, true, seek_pos);
+    return VFS_INODE_GET_DIRENT(f->ip, dir_entry_addr, true, seek_pos);
 }
 
 ssize_t sys_lseek()

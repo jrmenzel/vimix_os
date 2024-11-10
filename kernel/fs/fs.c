@@ -28,7 +28,7 @@
 #include <kernel/string.h>
 #include <lib/minmax.h>
 
-ssize_t inode_open_or_create2(const char *pathname, mode_t mode, dev_t device)
+ssize_t inode_create(const char *pathname, mode_t mode, dev_t device)
 {
     char name[NAME_MAX];
     struct inode *dir = inode_of_parent_from_path(pathname, name);
@@ -37,7 +37,8 @@ ssize_t inode_open_or_create2(const char *pathname, mode_t mode, dev_t device)
         return -ENOENT;
     }
 
-    struct inode *ip = xv6fs_iops_open_create(dir, name, mode, 0, device);
+    struct inode *ip = VFS_INODE_CREATE(dir, name, mode, 0, device);
+    inode_put(dir);
     if (ip == NULL)
     {
         return -ENOENT;
@@ -62,7 +63,7 @@ void inode_lock(struct inode *ip)
 
     if (ip->valid == 0)
     {
-        xv6fs_iops_read_in(ip);
+        VFS_INODE_READ_IN(ip);
         ip->valid = 1;
         if (INODE_HAS_TYPE(ip->i_mode) == false)
         {
@@ -93,7 +94,7 @@ void inode_unlock(struct inode *ip)
     sleep_unlock(&ip->lock);
 }
 
-void inode_put(struct inode *ip) { xv6fs_iops_put(ip); }
+void inode_put(struct inode *ip) { VFS_INODE_PUT(ip); }
 
 void inode_unlock_put(struct inode *ip)
 {
@@ -125,7 +126,7 @@ ssize_t inode_read(struct inode *ip, bool addr_is_userspace, size_t dst,
         n = ip->size - off;
     }
 
-    return xv6fs_iops_read(ip, addr_is_userspace, dst, off, n);
+    return VFS_INODE_READ(ip, addr_is_userspace, dst, off, n);
 }
 
 // Directories
@@ -142,7 +143,7 @@ struct inode *inode_dir_lookup(struct inode *dir, const char *name)
         panic("inode_dir_lookup dir parameter is not a DIR!");
     }
 
-    return xv6fs_iops_dir_lookup(dir, name, NULL);
+    return VFS_INODE_DIR_LOOKUP(dir, name, NULL);
 }
 
 int inode_dir_link(struct inode *dir, char *name, uint32_t inum)
@@ -155,7 +156,7 @@ int inode_dir_link(struct inode *dir, char *name, uint32_t inum)
         return -1;
     }
 
-    return xv6fs_iops_dir_link(dir, name, inum);
+    return VFS_INODE_DIR_LINK(dir, name, inum);
 }
 
 // Paths
@@ -217,11 +218,11 @@ static struct inode *namex(const char *path, bool get_parent, char *name)
     if (*path == '/')
     {
         DEBUG_EXTRA_ASSERT(ROOT_SUPER_BLOCK != NULL, "No root filesystem!");
-        ip = xv6fs_iops_iget_root(ROOT_SUPER_BLOCK);
+        ip = VFS_SUPER_IGET_ROOT(ROOT_SUPER_BLOCK);
     }
     else
     {
-        ip = xv6fs_iops_dup(get_current()->cwd);
+        ip = VFS_INODE_DUP(get_current()->cwd);
     }
 
     while ((path = skipelem(path, name)) != 0)
@@ -254,7 +255,7 @@ static struct inode *namex(const char *path, bool get_parent, char *name)
         }
         if (next->is_mounted_on)
         {
-            struct inode *tmp = xv6fs_iops_dup(next->is_mounted_on->s_root);
+            struct inode *tmp = VFS_INODE_DUP(next->is_mounted_on->s_root);
             inode_put(next);
             next = tmp;
         }
@@ -318,6 +319,9 @@ void debug_print_inode(struct inode *ip)
     if (ip->lock.locked)
     {
         printk(" LOCKED (0x%zx)", (size_t)&ip->lock);
+#ifdef CONFIG_DEBUG_SLEEPLOCK
+        printk(" by PID %d ", ip->lock.pid);
+#endif
     }
 #if defined(CONFIG_DEBUG_INODE_PATH_NAME)
     printk(" - %s", ip->path);

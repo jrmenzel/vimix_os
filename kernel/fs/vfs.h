@@ -7,24 +7,22 @@
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 
-#define FILE_SYSTEM_NAME_LENGTH 8
 #define MAX_FILE_SYSTEM_TYPES 2
 #define MAX_MOUNTED_FILE_SYSTEMS 4
 
 // A file system like xv6fs
 struct file_system_type
 {
-    // char name[FILE_SYSTEM_NAME_LENGTH]; // short identifier
     const char *name;  //< short identifier
 
-    // shutdown
-    // void (*kill_sb)(struct super_block *sb);
+    // shutdown file system during umount
+    void (*kill_sb)(struct super_block *sb);
 
     /// @brief Set s_type of super_block.
     /// Opens the block device and tests if the FS is supported.
     /// @param data optional mount parameters
     /// @return 0 on success. -ERRNO on failure (e.g. wrong FS)
-    ssize_t (*fill_super_block)(struct super_block *sb, const void *data);
+    ssize_t (*init_fs_super_block)(struct super_block *sb, const void *data);
 
     struct file_system_type *next;
 };

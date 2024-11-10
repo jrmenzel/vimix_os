@@ -4,6 +4,7 @@
 // On-disk file system format.
 // Both the kernel and user programs use this header file.
 
+#include <fs/vfs.h>
 #include <kernel/dirent.h>
 #include <kernel/kernel.h>
 #include <kernel/sleeplock.h>
@@ -23,7 +24,10 @@ struct super_block
 {
     dev_t dev;  ///< dev_t = INVALID_DEVICE means super block is unused
 
-    struct file_system_type *s_type;
+    struct file_system_type *s_type;  ///< File system type of device
+    struct super_operations *s_op;    ///< FS specific super block operations
+    struct inode_operations *i_op;    ///< FS specific inode operations
+    struct file_operations *f_op;     ///< FS specific file operations
 
     struct inode *s_root;  ///< inode for root dir of mounted file sys
     void *s_fs_info;       ///< Filesystem private info
@@ -36,7 +40,7 @@ struct super_block
 /// in-memory copy of an inode
 struct inode
 {
-    struct super_block *i_sb;
+    struct super_block *i_sb;  ///< info on FS this inode belongs to
 
     /// Device number (NOT where the file is stored: ->i_sb->dev)
     /// e.g. mknod(..., dev) will result in dev being the dev
@@ -53,7 +57,7 @@ struct inode
                     ///< invalid if false
 
     mode_t i_mode;  ///< type and access rights, see stat.h
-    int16_t nlink;
+    int16_t nlink;  ///< links to this inode
     uint32_t size;
 
     struct super_block *is_mounted_on;  ///< if set a file system is mounted on
@@ -76,9 +80,10 @@ void mount_root(dev_t dev, const char *fs_name);
 /// or NULL if there is no free inode.
 // struct inode *inode_alloc(dev_t dev, mode_t mode);
 
-/// @brief Like xv6fs_iops_open_create() but only returns success codes.
-/// @return -1 on failure, 0 otherwise.
-ssize_t inode_open_or_create2(const char *path, mode_t mode, dev_t device);
+/// @brief Wrapper for _iops_open() which only returns success codes.
+///        Used by mkdir() and mknod().
+/// @return -ERRNO on failure, 0 otherwise.
+ssize_t inode_create(const char *path, mode_t mode, dev_t device);
 
 /// @brief Lock the given inode.
 /// Reads the inode from disk if necessary.

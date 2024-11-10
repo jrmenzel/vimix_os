@@ -162,14 +162,14 @@ ssize_t mount_internal(dev_t source, struct inode *i_target,
             "parameter");
     }
 
-    ssize_t ret = filesystemtype->fill_super_block(sb, data_kernel_space);
+    ssize_t ret = filesystemtype->init_fs_super_block(sb, data_kernel_space);
     if (ret != 0)
     {
         return ret;
     }
 
     sb->s_mountflags = mountflags;
-    sb->s_root = xv6fs_iops_iget_root(sb);
+    sb->s_root = VFS_SUPER_IGET_ROOT(sb);
     if (i_target == NULL)
     {
         // target == NULL means this is the root file system, so it's legal
@@ -180,7 +180,7 @@ ssize_t mount_internal(dev_t source, struct inode *i_target,
     {
         inode_lock(i_target);
         i_target->is_mounted_on = sb;
-        sb->imounted_on = xv6fs_iops_dup(i_target);
+        sb->imounted_on = VFS_INODE_DUP(i_target);
         inode_unlock(i_target);
     }
 
@@ -216,7 +216,7 @@ ssize_t umount(const char *target)
         return -EACCES;
     }
     struct inode *i_target_mountpoint =
-        xv6fs_iops_dup(i_target->i_sb->imounted_on);
+        VFS_INODE_DUP(i_target->i_sb->imounted_on);
     struct super_block *sb = i_target->i_sb;
     inode_unlock_put(i_target);
 
@@ -241,7 +241,8 @@ ssize_t umount_internal(struct inode *i_target_mountpoint,
                        "imounted_on not set on mountpoint");
 
     // assume target to be locked
-    free_super_block(sb);
+    sb->s_type->kill_sb(sb);  // free file system specific data
+    free_super_block(sb);     // free generic super block itself
     i_target_mountpoint->is_mounted_on = NULL;
 
     return 0;
