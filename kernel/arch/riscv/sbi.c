@@ -114,6 +114,16 @@ void sbi_set_timer(uint64_t stime_value)
 #endif
 }
 
+bool EXT_SRST_SUPPORTED = false;
+
+void sbi_system_reset(uint32_t reset_type, uint32_t reset_reason)
+{
+    if (!EXT_SRST_SUPPORTED) return;
+
+    sbi_ecall(SBI_EXT_ID_SRST, SBI_SRST_SYSTEM_RESET, reset_type, reset_reason,
+              0, 0, 0, 0);
+}
+
 void init_sbi()
 {
     long version = sbi_get_spec_version();
@@ -121,6 +131,8 @@ void init_sbi()
         (version >> SBI_SPEC_VERSION_MAJOR_SHIFT) & SBI_SPEC_VERSION_MAJOR_MASK;
     long minor = version & SBI_SPEC_VERSION_MINOR_MASK;
     printk("SBI specification v%ld.%ld detected\n", major, minor);
+
+    EXT_SRST_SUPPORTED = (sbi_probe_extension(SBI_EXT_ID_SRST) > 0);
 
 #if defined(__SBI_CONSOLE__)
     if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) <= 0)

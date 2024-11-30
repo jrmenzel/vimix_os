@@ -4,6 +4,16 @@
 
 #include <kernel/kernel.h>
 
+/// @brief An SBI call returns an error value in a0 (packed into
+/// error here) and a value in a1.
+/// Taken directly from the SBI spec:
+/// https://www.scs.stanford.edu/~zyedidia/docs/riscv/riscv-sbi.pdf
+struct sbiret
+{
+    long error;
+    long value;
+};
+
 /// @brief Looks for required SBI extensions, starts additional harts.
 void init_sbi();
 
@@ -64,6 +74,18 @@ void sbi_set_timer(uint64_t stime_value);
 // System Reset (SRST) Extension
 #define SBI_EXT_ID_SRST 0x53525354
 #define SBI_SRST_SYSTEM_RESET 0
+#define SBI_SRST_TYPE_SHUTDOWN 0
+#define SBI_SRST_TYPE_COLD_REBOOT 1
+#define SBI_SRST_TYPE_WARM_REBOOT 2
+
+#define SBI_SRST_REASON_NONE 0
+#define SBI_SRST_REASON_SYSTEM_FAILURE 1
+
+/// @brief Reboots or shuts down the system.
+/// @param reset_type SBI_SRST_TYPE_*
+/// @param reset_reason Optional SBI_SRST_REASON_*
+/// Should not return
+void sbi_system_reset(uint32_t reset_type, uint32_t reset_reason);
 
 // Performance Monitoring Unit (PMU) Extension
 #define SBI_EXT_ID_PMU 0x504D55
@@ -88,16 +110,6 @@ void sbi_set_timer(uint64_t stime_value);
 #define SBI_SPEC_VERSION_MAJOR_SHIFT 24
 #define SBI_SPEC_VERSION_MAJOR_MASK 0x7f
 #define SBI_SPEC_VERSION_MINOR_MASK 0xffffff
-
-/// @brief An SBI call returns an error value in a0 (packed into
-/// error here) and a value in a1.
-/// Taken directly from the SBI spec:
-/// https://www.scs.stanford.edu/~zyedidia/docs/riscv/riscv-sbi.pdf
-struct sbiret
-{
-    long error;
-    long value;
-};
 
 /// @brief Tests if a SBI extension is available.
 /// See https://www.scs.stanford.edu/~zyedidia/docs/riscv/riscv-sbi.pdf

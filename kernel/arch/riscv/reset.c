@@ -4,14 +4,26 @@
 #include <drivers/syscon.h>
 #include <kernel/kernel.h>
 
+#ifdef __ENABLE_SBI__
+#include <arch/riscv/sbi.h>
+#endif
+
 void machine_restart()
 {
+#ifdef __ENABLE_SBI__
+    sbi_system_reset(SBI_SRST_TYPE_WARM_REBOOT, SBI_SRST_REASON_NONE);
+#else
     syscon_write_reg(VIRT_TEST_SHUTDOWN_REG, VIRT_TEST_REBOOT);
+#endif
     panic("machine_restart() failed");
 }
 
 void machine_power_off()
 {
+#ifdef __ENABLE_SBI__
+    sbi_system_reset(SBI_SRST_TYPE_SHUTDOWN, SBI_SRST_REASON_NONE);
+#else
     syscon_write_reg(VIRT_TEST_SHUTDOWN_REG, VIRT_TEST_SHUTDOWN);
+#endif
     panic("machine_power_off() failed");
 }
