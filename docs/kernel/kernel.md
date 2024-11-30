@@ -10,7 +10,7 @@ Code organization of the kernel: [overview_directories](../overview_directories.
 
 ## Boot and Init
 
-See [boot_process](overview/boot_process.md) to see how the kernel gets from the boot loader to main().
+See [boot_process](overview/boot_process.md) to see how the kernel gets from the boot loader to `main()`.
 See [init_overview](overview/init_overview.md) to see how main() inits all subsystems.
 
 

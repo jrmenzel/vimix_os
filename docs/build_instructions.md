@@ -20,17 +20,21 @@ Run in qemu waiting for a debugger:
 
 ## Build options
 
-In `MakefileCommon.mk` some options can get selected, e.g. debug vs. release build, 32 vs 64-bit etc. Some configs are select-able via the `PLATFORM` variable, e.g. to build for [qemu](run_on_qemu.md).
+In `MakefileCommon.mk` some options can get selected, e.g. debug vs. release build, and the architecture to build for. Currently only [RISC V](riscv/RISCV.md) is supported. 
+
+Architecture specific setting, e.g. 32 vs 64-bit etc. can be found in `kernel/arch/<architecture>/MakefileArch.mk`.
 
 
 ### 32- vs 64-bit
 
-For RISC V either 32-bit or 64-bit target can get selected in `MakefileCommon.mk`. 64-bit [kernel](kernel/kernel.md) can only run 64-bit [applications](userspace/userspace.md). Both versions have the same features. `make qemu` will automatically run the right variant of qemu, but in VSCode the matching debug targets must get selected manually. For VSCode two settings for syntax highlighting are provided: one per bit width. They set the correct defines which are defined by the Makefiles.
+For RISC V either 32-bit or 64-bit target can get selected in `MakefileArch.mk`. 64-bit [kernel](kernel/kernel.md) can only run 64-bit [applications](userspace/userspace.md). Both versions have the same features. `make qemu` will automatically run the right variant of qemu, but in VSCode the matching debug targets must get selected manually. For VSCode two settings for syntax highlighting are provided: one per bit width. They set the correct defines which are defined by the Makefiles.
 
 
 ### RISC V Extensions
 
 The use of the RISC V compressed instruction extension can be disabled by setting `RV_ENABLE_EXT_C=no`.
+
+When `RV_ENABLE_EXT_SSTC` is set, the timer will be based on this extension instead of using the [SBI](riscv/SBI.md) or [M-mode](riscv/M-mode.md) timers.
 
 
 ### SBI
@@ -40,7 +44,7 @@ VIMIX can run bare-metal (booting in [M-mode](riscv/M-mode.md)) or via a [SBI](r
 
 ### Root Filesystem
 
-The root [file_system](kernel/file_system/file_system.md) can be on a [ramdisk](kernel/devices/ramdisk.md), either embedded in the kernel binary or loaded by the boot loader from a file. On [qemu](run_on_qemu.md) it can also be a virtio [device](kernel/devices/devices.md).
+The root [file system](kernel/file_system/file_system.md) can be on a [ramdisk](kernel/devices/ramdisk.md), either embedded in the kernel binary or loaded by the boot loader from a file. On [qemu](run_on_qemu.md) it can also be a virtio [device](kernel/devices/devices.md). See make file variables `VIRTIO_DISK`, `RAMDISK_EMBEDDED` and `RAMDISK_BOOTLOADER`.
 
 
 ### Kernel parameters
@@ -54,7 +58,7 @@ Some [user space](userspace/userspace.md) apps compile on the host (tested on Li
 
 > make host
 
-The binaries end up in `build/root_host`. See `.vscode/launch.json` on how to debug them running on the host.
+The binaries end up in `build_host/root/usr/bin`. See `.vscode/launch.json` on how to debug them running on the host.
 
 
 ---

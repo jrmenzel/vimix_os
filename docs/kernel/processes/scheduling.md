@@ -14,7 +14,7 @@ From the processes perspective: [life_cycle_user_application](../overview/life_c
 
 ## Scheduling Algorithm
 
-- A primitive **round-robin** without any priorities.
+- A primitive **round-robin** scheduler without any priorities.
 - All CPUs go over the same global process list, CPUs can be switched at random.
 
 

@@ -4,10 +4,10 @@
 ## build
 
 Temp build files. See [build_instructions](build_instructions.md) on how to compile the system.
-- `build/root` Compiled [user space](userspace/userspace.md) apps for VIMIX
-- `build/root_host` Subset of the apps compiled for the host
+- `build/root` Compiled [user space](userspace/userspace.md) apps for VIMIX. This directory will be copied into a [file_system](kernel/file_system/file_system.md) in a file (`filesystem.img`) as the root file system of VIMIX.
 - `build/kernel-vimix` The compiled kernel
 - `build/filesystem.img` The final image of the file system for qemu
+- `build_host` The applications which can be build on the host as well end up here in the same structure as in `build`.
 
 
 ## docs
