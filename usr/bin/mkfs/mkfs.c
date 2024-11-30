@@ -461,7 +461,7 @@ int main(int argc, char *argv[])
         if (strcmp(argv[2], "--in") == 0)
         {
             // --in: create a new fs and copy in a directory
-            rootino = create_empty_filesystem(argv[1], 2048 * BLOCK_SIZE);
+            rootino = create_empty_filesystem(argv[1], 4 * 1024 * BLOCK_SIZE);
             copy_dir_to_filesystem(argv[3], rootino);
             balloc(freeblock);
             close(g_filesystem_fd);
@@ -530,8 +530,13 @@ void read_dinode(uint32_t inum, struct xv6fs_dinode *ip)
 void read_sector(uint32_t sec, void *buf)
 {
     if (lseek(g_filesystem_fd, sec * BLOCK_SIZE, 0) != sec * BLOCK_SIZE)
-        die("lseek");
-    if (read(g_filesystem_fd, buf, BLOCK_SIZE) != BLOCK_SIZE) die("read");
+    {
+        die("lseek failed in read_sector()");
+    }
+    if (read(g_filesystem_fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
+    {
+        die("read failed in read_sector()");
+    }
 }
 
 /// @brief Allocates a new unique inode number and creates a disk inode.

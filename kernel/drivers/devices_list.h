@@ -32,4 +32,11 @@ struct Devices_List *get_devices_list();
 
 void print_found_devices();
 ssize_t get_first_virtio(struct Devices_List *dev_list);
+
+/// @brief Returns the index of the diece. Assumes a device only exists once.
+/// @param dev_list
+/// @param name
+/// @return Index or -1 on error
+ssize_t get_device_index(struct Devices_List *dev_list, const char *name);
+
 void init_device(struct Supported_Device *dev);

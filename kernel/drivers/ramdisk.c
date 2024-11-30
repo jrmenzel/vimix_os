@@ -67,7 +67,7 @@ dev_t ramdisk_init(struct Device_Memory_Map *mapping)
         panic("invalid ramdisk_init parameters");
     }
     size_t minor = g_next_free_ramdisk++;
-    // printk("create ram disk %d\n", minor);
+    // printk("ramdisk_init %zd\n", minor);
 
     g_ramdisk[minor].start = (void *)mapping->mem_start;
     g_ramdisk[minor].disk.bdev.size = mapping->mem_size;

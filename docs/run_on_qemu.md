@@ -2,7 +2,7 @@
 
 **Pre-requirement:** 
 1. Install qemu for RISC V 64-bit or 32-bit. 
-2. Build VIMIX (see [build_instructions](build_instructions.md)), make sure `PLATFORM` in `MakefileCommon.mk` is set to `qemu`.
+2. Build VIMIX (see [build_instructions](build_instructions.md)), make sure `PLATFORM` in `MakefileArch.mk` is set to `qemu`.
 
 
 Run 
@@ -38,4 +38,4 @@ Launch gdb from the project directory to apply the settings from `.gdbinit`. If 
 ---
 **Up:** [README](../README.md)
 
-[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [overview_directories](overview_directories.md) | [architectures](architectures.md) | [kernel](kernel/kernel.md) | [user space](userspace/userspace.md)
+[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) |  [overview_directories](overview_directories.md) | [architectures](architectures.md) | [kernel](kernel/kernel.md) | [user space](userspace/userspace.md)

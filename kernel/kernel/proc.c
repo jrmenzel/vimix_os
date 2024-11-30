@@ -598,6 +598,8 @@ void forkret()
         __sync_synchronize();
     }
 
+    // printk("forkret()\n");
+
     return_to_user_mode();
 }
 

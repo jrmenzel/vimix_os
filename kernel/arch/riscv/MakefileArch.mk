@@ -4,10 +4,12 @@
 
 PLATFORM := qemu
 #PLATFORM := spike
+#PLATFORM := visionfive2
 
 # RAM in MB
 # Note:
 # - Used as a fallback if no device tree file is provided by the boot loader
+#   - Also serves as a maximum if run on HW if set -> faster usertests / memory init
 # - Used by the usertests app as long as there is no API to query the available memory
 # - Of course used to set up the emulators with the same amount of memory
 MEMORY_SIZE := 64
@@ -20,6 +22,7 @@ ifeq ($(PLATFORM), qemu)
 BITWIDTH := 64
 # with and without SBI supported
 SBI_SUPPORT := yes
+#SBI_CONSOLE := yes
 RV_ENABLE_EXT_C := yes
 RV_ENABLE_EXT_SSTC := yes
 # use this or a ramdisk
@@ -32,8 +35,26 @@ BITWIDTH := 32
 RV_ENABLE_EXT_C := yes
 #RAMDISK_EMBEDDED := yes
 RAMDISK_BOOTLOADER := yes
+else ifeq ($(PLATFORM), visionfive2)
+BITWIDTH := 64
+SBI_SUPPORT := yes
+SBI_CONSOLE := yes
+RV_ENABLE_EXT_C := yes
+RV_ENABLE_EXT_SSTC := no
+RAMDISK_EMBEDDED := yes
 else
 $(error PLATFORM not set)
+endif
+
+ifeq ($(PLATFORM), visionfive2)
+KERNBASE := 0x40200000
+else
+# qemu & spike:
+ifeq ($(SBI_SUPPORT), yes)
+KERNBASE := 0x80200000
+else
+KERNBASE := 0x80000000
+endif
 endif
 
 # pick timer source
@@ -102,15 +123,17 @@ endif
 
 ARCH_CFLAGS := -march=$(MARCH) -mabi=$(MABI) -D_ARCH_$(BITWIDTH)BIT $(EXT_DEFINES)
 ARCH_CFLAGS += -mcmodel=medany -mno-relax
-
-ifeq ($(SBI_SUPPORT), yes)
-ARCH_LD_FLAGS += --defsym=openbsi=1
-endif
+ARCH_CFLAGS += -DKERNBASE=$(KERNBASE) # for usertests on target
 
 ARCH_KERNEL_CFLAGS := -D__$(TIMER_SOURCE)
 ARCH_KERNEL_CFLAGS += -D__$(BOOT_MODE)
+
 ifeq ($(SBI_SUPPORT), yes)
 ARCH_KERNEL_CFLAGS += -D__ENABLE_SBI__
+endif
+
+ifeq ($(SBI_CONSOLE), yes)
+ARCH_KERNEL_CFLAGS += -D__SBI_CONSOLE__
 endif
 
 #

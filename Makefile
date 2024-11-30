@@ -8,12 +8,12 @@ include MakefileCommon.mk
 
 .PHONY: all directories kernel userspace_lib userspace host
 
-all: directories kernel userspace_lib userspace host $(BUILD_DIR)/filesystem.img
+all: directories userspace_lib userspace host $(BUILD_DIR)/filesystem.img kernel
 
 directories: # make build output directory
 	@mkdir -p $(BUILD_DIR);
 
-kernel: userspace # the kernel itself, depends on userspace for the embedded ram disk only
+kernel: userspace $(BUILD_DIR)/filesystem.img # the kernel itself, depends on userspace for the embedded ram disk only
 	@$(MAKE) -C kernel all;
 
 userspace_lib: # user space clib
@@ -119,9 +119,6 @@ spike-gdb: spike-requirements
 
 spike-sbi: spike-requirements
 	$(SPIKE) $(SPIKE_SBI_FW) $(SPIKE_OPTIONS)
-
-$(KERNEL_FILE).bin: kernel
-	$(OBJCOPY) $(KERNEL_FILE) -O binary $(BUILD_DIR)/$(KERNEL_NAME).bin
 
 clean: # clean up
 	@$(MAKE) -C kernel clean;

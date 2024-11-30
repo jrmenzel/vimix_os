@@ -7,8 +7,21 @@
 /// @brief Looks for required SBI extensions, starts additional harts.
 void init_sbi();
 
-/// @brief Sets the per CPU timer to trigger an interrupt.
-void sbi_set_timer(uint64_t stime_value);
+// legacy console
+#define SBI_LEGACY_EXT_CONSOLE_PUTCHAR 0x01
+#define SBI_LEGACY_EXT_CONSOLE_GETCHAR 0x02
+
+/// @brief Legacy SBI debug console. Can block if reader is too slow.
+/// @param ch char to write
+void sbi_console_putchar(int ch);
+
+/// @brief Legacy SBI debug console.
+/// @return char or -1 on error.
+long sbi_console_getchar();
+
+/// @brief Call in regular intervals: the SBI console does not
+/// trigger interrupts when data is ready.
+void sbi_console_poll_input();
 
 // SBI Base Extension
 #define SBI_EXT_ID_BASE 0x10
@@ -23,6 +36,9 @@ void sbi_set_timer(uint64_t stime_value);
 // Timer (TIME) Extension
 #define SBI_EXT_ID_TIME 0x54494D45
 #define SBI_TIME_SET_TIMER 0
+
+/// @brief Sets the per CPU timer to trigger an interrupt.
+void sbi_set_timer(uint64_t stime_value);
 
 // S-mode IPI (IPI) Extension
 #define SBI_EXT_ID_IPI 0x735049

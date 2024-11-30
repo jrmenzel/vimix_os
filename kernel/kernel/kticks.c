@@ -4,6 +4,8 @@
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 
+#include <arch/riscv/sbi.h>
+
 // each call to the timer interrupt is one tick
 struct spinlock g_tickslock;
 size_t g_ticks;
@@ -20,6 +22,10 @@ void kticks_inc_ticks()
     g_ticks++;
     wakeup(&g_ticks);
     spin_unlock(&g_tickslock);
+
+#ifdef __SBI_CONSOLE__
+    sbi_console_poll_input();
+#endif
 }
 
 size_t kticks_get_ticks()

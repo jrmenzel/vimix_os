@@ -309,7 +309,7 @@ void handle_timer_interrupt()
     timer_schedule_interrupt(now + timer_interrupt_interval);
 
     // will only update on CPU 0
-    if (smp_processor_id() == 0)
+    // if (smp_processor_id() == 0)
     {
         kticks_inc_ticks();
     }

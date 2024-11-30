@@ -26,7 +26,14 @@ To support 32-bit applications on a 64-bit [kernel](kernel/kernel.md) at least t
 Only sv39 [memory_management](kernel/mm/memory_management.md) is supported.
 
 
+## RISC V Platforms
+
+- [qemu emulator](run_on_qemu.md)
+- [spike emulator](run_on_spike.md)
+- [Visionfive 2 development board](run_on_visionfive2.md)
+
+
 ---
 **Up:** [README](../README.md)
 
-[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [overview_directories](overview_directories.md) | [architectures](architectures.md) | [kernel](kernel/kernel.md) | [user space](userspace/userspace.md)
+[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) |  [overview_directories](overview_directories.md) | [architectures](architectures.md) | [kernel](kernel/kernel.md) | [user space](userspace/userspace.md)

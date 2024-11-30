@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 #ifdef __ENABLE_SBI__
 
+#include <clint.h>
+#include <drivers/console.h>
 #include <kernel/kernel.h>
-
 #include <kernel/smp.h>
 #include <riscv.h>
 #include <sbi.h>
-#include "clint.h"
 
 void _entry();
 
@@ -32,6 +32,32 @@ struct sbiret sbi_ecall(int32_t ext, int32_t fid, xlen_t arg0, xlen_t arg1,
     ret.value = a1;
 
     return ret;
+}
+
+void sbi_console_putchar(int ch)
+{
+    sbi_ecall(SBI_LEGACY_EXT_CONSOLE_PUTCHAR, 0, ch, 0, 0, 0, 0, 0);
+}
+
+long sbi_console_getchar()
+{
+    struct sbiret ret =
+        sbi_ecall(SBI_LEGACY_EXT_CONSOLE_GETCHAR, 0, 0, 0, 0, 0, 0, 0);
+    return ret.error;  // legacy SBI calls return in a0 -> ret.error
+}
+
+void sbi_console_poll_input()
+{
+    // read and process incoming characters.
+    while (true)
+    {
+        long c = sbi_console_getchar();
+        if (c == -1)
+        {
+            break;
+        }
+        console_interrupt_handler(c);
+    }
 }
 
 static inline long sbi_get_spec_version()
@@ -63,14 +89,14 @@ long sbi_probe_extension(int32_t extid)
 /// @brief Starts a hart
 /// @param hartid The hart ID to start
 /// @param saddr The function to run
-/// @param priv Privilege mode: 0 = U Mode, 1 = S Mode
+/// @param opaque Opaque parameter to be set in a1
 /// @return SBI_SUCCESS on success
-static inline long sbi_hart_start(size_t hartid, size_t saddr, size_t priv)
+static inline long sbi_hart_start(size_t hartid, size_t saddr, size_t opaque)
 {
     struct sbiret ret;
 
-    ret = sbi_ecall(SBI_EXT_ID_HSM, SBI_HSM_HART_START, hartid, saddr, priv, 0,
-                    0, 0);
+    ret = sbi_ecall(SBI_EXT_ID_HSM, SBI_HSM_HART_START, hartid, saddr, opaque,
+                    0, 0, 0);
     if (ret.error)
     {
         return ret.error;
@@ -95,28 +121,38 @@ void init_sbi()
         (version >> SBI_SPEC_VERSION_MAJOR_SHIFT) & SBI_SPEC_VERSION_MAJOR_MASK;
     long minor = version & SBI_SPEC_VERSION_MINOR_MASK;
     printk("SBI specification v%ld.%ld detected\n", major, minor);
+
+#if defined(__SBI_CONSOLE__)
+    if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) <= 0)
+    {
+        panic(
+            "Error: support for the SBI legacy console extension was "
+            "expected\n");
+    }
+#endif
     /*
-        if (sbi_probe_extension(SBI_EXT_ID_TIME) > 0)
-        {
-            // timer extension
-            printk("SBI TIME extension detected\n");
-        }
+            if (sbi_probe_extension(SBI_EXT_ID_TIME) > 0)
+            {
+                // timer extension
+                printk("SBI TIME extension detected\n");
+            }
 
-        if (sbi_probe_extension(SBI_EXT_ID_IPI) > 0)
-        {
-            // inter processor interrupts
-            printk("SBI IPI extension detected\n");
-        }
+            if (sbi_probe_extension(SBI_EXT_ID_IPI) > 0)
+            {
+                // inter processor interrupts
+                printk("SBI IPI extension detected\n");
+            }
 
-        if (sbi_probe_extension(SBI_EXT_ID_RFNC) > 0)
-        {
-            // remote fences
-            printk("SBI RFNC extension detected\n");
-        }
-    */
+            if (sbi_probe_extension(SBI_EXT_ID_RFNC) > 0)
+            {
+                // remote fences
+                printk("SBI RFNC extension detected\n");
+            }
+        */
+
     if (sbi_probe_extension(SBI_EXT_ID_HSM) > 0)
     {
-        // hart state management
+        //   hart state management
         printk("SBI HSM extension detected, starting additional harts\n");
 
         size_t this_hart = smp_processor_id();
@@ -126,14 +162,20 @@ void init_sbi()
             if (hartid != this_hart)
             {
                 // start all other harts, trying to start a hart that does not
-                // exist in hardware will fail and break the loop
-                const size_t privilige_supervisor_mode = 1;
-                long ret = sbi_hart_start(hartid, (size_t)_entry,
-                                          privilige_supervisor_mode);
+                // exist in hardware will fail
+                long ret = sbi_hart_start(hartid, (size_t)_entry, 0);
                 if (ret != SBI_SUCCESS)
                 {
-                    break;
+                    // printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
                 }
+                else
+                {
+                    printk("SBI HSM: starting hart %zd: OK\n", hartid);
+                }
+            }
+            else
+            {
+                printk("SBI HSM: hart %zd already running\n", hartid);
             }
             hartid++;
         }
@@ -147,13 +189,12 @@ void init_sbi()
         if (sbi_probe_extension(SBI_EXT_ID_PMU) > 0)
         {
             //
-       https://github.com/riscv-software-src/opensbi/blob/master/docs/pmu_support.md
+       github.com/riscv-software-src/opensbi/blob/master/docs/pmu_support.md
             // "SBI PMU extension supports allow supervisor software to
             // configure/start/stop any performance counter at anytime."
             printk("SBI PMU extension detected\n");
         }
-        */
-
+    */
     printk("\n");
 }
 

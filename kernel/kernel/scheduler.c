@@ -25,6 +25,7 @@ void scheduler()
             spin_lock(&proc->lock);
             if (proc->state == RUNNABLE)
             {
+                // printk("run %s\n", proc->name);
                 struct cpu *this_cpu = get_cpu();
 
                 proc_shrink_stack(proc);

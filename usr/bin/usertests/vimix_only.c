@@ -2463,7 +2463,11 @@ void forktest(char *s)
 
 void sbrkbasic(char *s)
 {
+#ifdef _ARCH_32BIT
     const size_t TOOMUCH = 1024 * 1024 * 1024;
+#else
+    const size_t TOOMUCH = 512ull * 1024ull * 1024ull * 1024ull;
+#endif
     char *c, *a, *b;
 
     // does sbrk() return the expected failure value?
@@ -2610,12 +2614,6 @@ void sbrkmuch(char *s)
         exit(1);
     }
 }
-
-#ifdef __ENABLE_SBI__
-#define KERNBASE 0x80200000L
-#else
-#define KERNBASE 0x80000000L
-#endif  // __ENABLE_SBI__
 
 // can we read the kernel's memory?
 void kernmem(char *s)

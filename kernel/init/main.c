@@ -48,6 +48,11 @@ void print_kernel_info()
 #elif defined(__TIMER_SOURCE_SBI)
     printk("Timer source: SBI\n");
 #endif
+#if defined(__SBI_CONSOLE__)
+    printk("Console: SBI\n");
+#else
+    printk("Console: UART\n");
+#endif
 }
 
 #ifdef __ENABLE_SBI__
@@ -64,6 +69,8 @@ void print_memory_map(struct Minimal_Memory_Map *memory_map)
     printk("RAMDISK S: 0x%zx\n", (size_t)ramdisk_fs);
     printk("RAMDISK E: 0x%zx\n", (size_t)ramdisk_fs + ramdisk_fs_size);
 #endif
+    // printk("    BSS S: 0x%zx\n", (size_t)bss_start);
+    // printk("    BSS E: 0x%zx\n", (size_t)bss_end);
     printk(" KERNEL E: 0x%zx\n", memory_map->kernel_end);
     if (memory_map->dtb_file_start != 0)
     {
@@ -75,7 +82,10 @@ void print_memory_map(struct Minimal_Memory_Map *memory_map)
         printk(" INITRD S: 0x%zx\n", memory_map->initrd_begin);
         printk(" INITRD E: 0x%zx\n", memory_map->initrd_end);
     }
-    printk("    RAM E: 0x%zx\n", memory_map->ram_end);
+    size_t ram_size_mb =
+        (memory_map->ram_end - memory_map->ram_start) / (1024 * 1024);
+    printk("    RAM E: 0x%zx - size: %zd MB\n", memory_map->ram_end,
+           ram_size_mb);
 }
 
 /// some init that only one thread should perform while all others wait
@@ -100,6 +110,15 @@ void init_by_first_thread(void *dtb)
     printk("init memory management...\n");
     struct Minimal_Memory_Map memory_map;
     dtb_get_memory(dtb, &memory_map);
+
+    // cap usable memory for performance reasons if MEMORY_SIZE is set
+    size_t ram_size = memory_map.ram_end - memory_map.ram_start;
+    size_t max_ram = 1024 * 1024 * MEMORY_SIZE;
+    if ((max_ram != 0) && (ram_size > max_ram))
+    {
+        memory_map.ram_end = memory_map.ram_start + max_ram;
+    }
+
     print_memory_map(&memory_map);
     kalloc_init(&memory_map);         // physical page allocator
     kvm_init(&memory_map, dev_list);  // create kernel page table,
@@ -133,16 +152,28 @@ void init_by_first_thread(void *dtb)
     }
     if (memory_map.initrd_begin != 0)
     {
-        dev_list->dev[1].mapping.mem_start = memory_map.initrd_begin;
-        dev_list->dev[1].mapping.mem_size =
-            memory_map.initrd_end - memory_map.initrd_begin;
-        dev_list->dev[1].found = true;
-        device_of_root_fs = 1;
+        ssize_t ramdisk_index = get_device_index(dev_list, "ramdisk_initrd");
+        if (ramdisk_index > 0)
+        {
+            dev_list->dev[ramdisk_index].mapping.mem_start =
+                memory_map.initrd_begin;
+            dev_list->dev[ramdisk_index].mapping.mem_size =
+                memory_map.initrd_end - memory_map.initrd_begin;
+            dev_list->dev[ramdisk_index].found = true;
+            device_of_root_fs = ramdisk_index;
+
+            // init ramdisk:
+            init_device(&(dev_list->dev[ramdisk_index]));
+        }
     }
-#ifdef RAMDISK_EMBEDDED
-    // a ram disk has preference over a previously found virtio disk
-    device_of_root_fs = 2;
-#endif
+
+    // an embedded ram disk has preference over a previously found virtio disk /
+    // initrd ramdisk
+    ssize_t ramdisk_index = get_device_index(dev_list, "ramdisk_embedded");
+    if (ramdisk_index > 0)
+    {
+        device_of_root_fs = ramdisk_index;
+    }
 
     // store the device number of root:
     if (device_of_root_fs != -1)
@@ -181,6 +212,12 @@ void main(void *device_tree, size_t is_first_thread)
 {
     if (is_first_thread)
     {
+#ifdef _PLATFORM_VISIONFIVE2
+        // device tree is not set as expected, but the location is static:
+        printk("HACK: device tree set from 0x%zx to 0xfffc6080\n",
+               (size_t)device_tree);
+        device_tree = (void *)0xfffc6080;
+#endif
         init_by_first_thread(device_tree);
     }
     else

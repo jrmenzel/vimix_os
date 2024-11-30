@@ -135,7 +135,9 @@ ssize_t sys_execv()
 
     if (error_code == 0)
     {
+        // printk("execv(%s)\n", path);
         error_code = execv(path, argv);
+        // printk("execv(%s) = %zd\n", path, error_code);
     }
     // cleanup on error and success:
     for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)

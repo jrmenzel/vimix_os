@@ -6,7 +6,7 @@
 	2. Set the correct Spike binary in the Makefile.
 2. Optional: Install OpenOCD (for debugging)
 3. Configure VIMIX:
-	1. Set `PLATFORM` in `MakefileCommon.mk` to `spike`. This will set:
+	1. Set `PLATFORM` in `MakefileArch.mk` to `spike`. This will set:
 		1. to use a [ramdisk](kernel/devices/ramdisk.md) (initrd or embedded)
 		2. 32-bit build (64-bit defaults to a SV57 MMU, VIMIX needs a SV39 MMU. Spike can be modified to support SV39: Look for SV57 in `riscv/dts.cc` and `riscv/processor.cc`)
 	2. Clean and rebuild after switching the `PLATFORM`!
@@ -33,4 +33,4 @@ Spike starts executing without waiting for the debugger. The command line option
 ---
 **Up:** [README](../README.md)
 
-[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [overview_directories](overview_directories.md) | [architectures](architectures.md) | [kernel](kernel/kernel.md) | [user space](userspace/userspace.md)
+[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) |  [overview_directories](overview_directories.md) | [architectures](architectures.md) | [kernel](kernel/kernel.md) | [user space](userspace/userspace.md)

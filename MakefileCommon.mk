@@ -56,6 +56,8 @@ CFLAGS_COMMON := -DGIT_HASH=$(git-hash)
 CFLAGS_COMMON += -fno-omit-frame-pointer
 CFLAGS_COMMON += -Wall -Werror -Wno-stringop-truncation
 CFLAGS_COMMON += -I.
+# Disable position independend code generation
+CFLAGS_COMMON += -fno-pie -no-pie
 
 ifeq ($(BUILD_TYPE), debug)
 CFLAGS_COMMON += -O0 
@@ -69,6 +71,10 @@ ifeq ($(REL_WITH_DEBUG), yes)
 CFLAGS_COMMON += -ggdb -gdwarf-2 -DDEBUG # debug info
 CFLAGS_COMMON += -g # native format for debug info
 endif
+endif
+
+ifeq ($(PLATFORM), visionfive2)
+CFLAGS_COMMON += -D_PLATFORM_VISIONFIVE2
 endif
 
 CFLAGS_TARGET_ONLY += $(ARCH_CFLAGS)

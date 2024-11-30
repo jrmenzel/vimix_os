@@ -23,7 +23,8 @@
                 "__TIMER_SOURCE_SSTC",
                 "DEBUG",
                 "USER_TEXT_START=0x1000",
-                "MEMORY_SIZE=64"
+                "MEMORY_SIZE=64",
+                "_PLATFORM_VISIONFIVE2"
             ],
             "compilerArgs": [
                 "-nostdinc"

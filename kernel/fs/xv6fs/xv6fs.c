@@ -164,6 +164,7 @@ ssize_t xv6fs_init_fs_super_block(struct super_block *sb_in, const void *data)
     if (vx6_sb->magic != XV6FS_MAGIC)
     {
         // wrong file system
+        printk("xv6fs error: wrong file system\n");
         bio_release(first_block);
         return -EINVAL;
     }

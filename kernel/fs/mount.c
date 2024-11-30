@@ -133,10 +133,11 @@ void mount_root(dev_t dev, const char *filesystemtype)
 
     sleep_lock(&g_mount_lock);
     unsigned long flags = 0;
-    int ret = mount_internal(dev, NULL, *file_system, flags, 0);
+    ssize_t ret = mount_internal(dev, NULL, *file_system, flags, 0);
     sleep_unlock(&g_mount_lock);
     if (ret != 0)
     {
+        printk("mount_internal() returned error %zd\n", -ret);
         panic("root file system init failed, could not mount /");
     }
 
