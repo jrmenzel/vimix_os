@@ -21,8 +21,8 @@ size_t uart_base = 0;
 
 // TODO: why 4*reg?
 #ifdef _PLATFORM_VISIONFIVE2
-#define Reg(reg) \
-    ((volatile unsigned char *)(uart_base + (VIRT_OFFSET) + (4 * reg)))
+// #define Reg(reg) ((volatile unsigned char *)(uart_base + (4 * reg)))
+#define Reg(reg) ((volatile unsigned char *)(uart_base + (reg)))
 #else
 #define Reg(reg) ((volatile unsigned char *)(uart_base + (reg)))
 #endif

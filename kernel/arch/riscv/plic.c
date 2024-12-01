@@ -38,7 +38,7 @@
 #define PLIC_CLAIM(context) (PLIC_BASE + 0x200004 + (context) * 0x1000)
 
 /// Size and addess of the memory map
-size_t PLIC_BASE = 0xc000000L + (VIRT_OFFSET);
+size_t PLIC_BASE = 0xc000000L;
 bool plic_is_initialized = false;
 
 //
@@ -51,7 +51,7 @@ dev_t plic_init(struct Device_Memory_Map *mapping)
     {
         return 0;
     }
-    PLIC_BASE = mapping->mem_start + (VIRT_OFFSET);
+    PLIC_BASE = mapping->mem_start;
     plic_is_initialized = true;
     return MKDEV(PLIC_MAJOR, 0);
 }

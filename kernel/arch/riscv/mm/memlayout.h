@@ -38,6 +38,3 @@
 /// down!). But moving it a bit lower gives nicer stack addresses during
 /// debugging :-)
 #define USER_STACK_HIGH (TRAPFRAME - 13 * PAGE_SIZE)
-
-// #define VIRT_OFFSET 0x3F00000000L
-#define VIRT_OFFSET 0x00

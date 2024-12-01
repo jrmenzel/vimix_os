@@ -45,10 +45,7 @@ struct Supported_Device g_supported_devices[] = {
     {"virtio,mmio",         false, virtio_disk_init, 0, true,  {0x10007000L, PAGE_SIZE, 7}},
     {"virtio,mmio",         false, virtio_disk_init, 0, true,  {0x10008000L, PAGE_SIZE, 8}},
     {"google,goldfish-rtc", false, rtc_init,      0, true,  {0x101000L,   PAGE_SIZE, 11}},
-#ifndef _PLATFORM_VISIONFIVE2
-    // used for shutdown on qemu, but incompatible with visionfive2
     {"syscon",              false, syscon_init,   0, true,  {0x100000L,   PAGE_SIZE, -1}},
-#endif
     {"riscv,plic0",         false, plic_init,     0, true,  {0xc000000L,  0x600000L, -1}},
 #if defined(__TIMER_SOURCE_CLINT)
     {"riscv,clint0",        false, clint_init,    0, true,  {0x2000000L,  PAGE_SIZE, -1}},

@@ -10,8 +10,7 @@ bool clint_is_initialized = false;
 size_t CLINT_BASE = 0x02000000L;
 
 /// Compare value for the timer. Always 64 bit!
-#define CLINT_MTIMECMP(hartid) \
-    (CLINT_BASE + (VIRT_OFFSET) + 0x4000 + 8 * (hartid))
+#define CLINT_MTIMECMP(hartid) (CLINT_BASE + 0x4000 + 8 * (hartid))
 
 /// Cycles since boot. This register is always 64 bit!
 #define CLINT_MTIME (CLINT_BASE + 0xBFF8)
