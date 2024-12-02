@@ -212,12 +212,6 @@ void main(void *device_tree, size_t is_first_thread)
 {
     if (is_first_thread)
     {
-#ifdef _PLATFORM_VISIONFIVE2
-        // device tree is not set as expected, but the location is static:
-        printk("HACK: device tree set from 0x%zx to 0xfffc6080\n",
-               (size_t)device_tree);
-        device_tree = (void *)0xfffc6080;
-#endif
         init_by_first_thread(device_tree);
     }
     else

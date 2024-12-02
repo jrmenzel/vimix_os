@@ -6,6 +6,9 @@
 
 timer_schedule_interrupt_p *timer_schedule_interrupt = NULL;
 
+/// value from qemu, should be read from the device tree
+uint64_t g_timebase_frequency = 10000000ull;
+
 //
 // schedule interrupt functions of supported timers
 
@@ -31,8 +34,10 @@ void sstc_schedule_interrupt(uint64_t next_timer_intr)
 //
 // init one of the supported timers
 
-void timer_init()
+void timer_init(uint64_t timebase_frequency)
 {
+    g_timebase_frequency = timebase_frequency;
+
 #if defined(__TIMER_SOURCE_CLINT)
     // ask for clock interrupts.
     clint_init_timer_interrupt();
@@ -56,7 +61,7 @@ void timer_init()
     }
 
     uint64_t timer_interrupt_interval =
-        timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
+        g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
     uint64_t now = rv_get_time();
     timer_schedule_interrupt(now + timer_interrupt_interval);
 }

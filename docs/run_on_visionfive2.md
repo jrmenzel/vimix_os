@@ -43,20 +43,23 @@ The memory starts at `0x40000000`, the firmware is also mapped here. The usable 
 
 ### From UART
 
-> loady 0x50000000
+```
+StarFive # loady 0x50000000
+```
 
 CTRL+A CTRL+S:
-> ./vimix_os/build/kernel-vimix
-> bootelf 0x50000000
-
+```
+StarFive # ./vimix_os/build/kernel-vimix
+StarFive # bootelf 0x50000000
+```
 
 ### From SD Card
 
 Copy `build/kernel-vimix` to the root of the SD card. Reboot the board after inserting the SD card.
-
-> load mmc 1 0x50000000 kernel-vimix
-> bootelf 0x50000000
-
+```
+StarFive # load mmc 1 0x50000000 kernel-vimix
+StarFive # bootelf 0x50000000
+```
 
 
 ---

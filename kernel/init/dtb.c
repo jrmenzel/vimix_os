@@ -148,3 +148,30 @@ void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map)
 
     dtb_get_initrd(dtb, memory_map);
 }
+
+// note: gets called too early for printk...
+uint64_t dtb_get_timebase(void *dtb)
+{
+    if (dtb == NULL)
+    {
+        return 0;
+    }
+
+    int offset = fdt_path_offset(dtb, "/cpus");
+    if (offset < 0)
+    {
+        // printk("dtb error: %s\n", (char *)fdt_strerror(offset));
+        return 0;
+    }
+    int error;
+    const uint32_t *value =
+        fdt_getprop(dtb, offset, "timebase-frequency", &error);
+    if (value == NULL)
+    {
+        // printk("dtb error: %s\n", (char *)fdt_strerror(error));
+        return 0;
+    }
+    uint64_t timebase = fdt32_to_cpu(value[0]);
+
+    return timebase;
+}

@@ -3,8 +3,7 @@
 #include <arch/riscv/riscv.h>
 #include <kernel/kernel.h>
 
-/// value from CLIT/qemu, should be read from the device tree
-#define timebase_frequency 10000000
+extern uint64_t g_timebase_frequency;
 #define TIMER_INTERRUPTS_PER_SECOND 100
 
 typedef void(timer_schedule_interrupt_p)(uint64_t time);
@@ -15,4 +14,4 @@ extern timer_schedule_interrupt_p *timer_schedule_interrupt;
 
 /// @brief Called from start() and sets timer_schedule_interrupt() pointer
 /// depending on the configured timer.
-void timer_init();
+void timer_init(uint64_t timebase_frequency);

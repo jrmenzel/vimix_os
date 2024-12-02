@@ -3,6 +3,7 @@
 #include <arch/interrupts.h>
 #include <arch/riscv/clint.h>
 #include <arch/riscv/timer.h>
+#include <init/dtb.h>
 #include <init/main.h>
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
@@ -126,6 +127,11 @@ void reset_s_mode_cpu_state()
 /// started by sbi_hart_start()
 void start(xlen_t cpuid, void *device_tree)
 {
+#ifdef _PLATFORM_VISIONFIVE2
+    // device tree is not set as expected, but the location is static:
+    device_tree = (void *)0xfffc6080;
+#endif
+
     // Pick thread for all non-parallel init stuff:
     // - Based on global flag for SBI (no race condition thanks to how harts are
     // started in SBI mode)
@@ -142,9 +148,14 @@ void start(xlen_t cpuid, void *device_tree)
     // clear BSS
     wait_on_bss_clear(is_first_thread);
 
-    // If using CLINT this must be done in M-Mode before jumping to main,
+    // If using CLINT, timer init must be done in M-Mode before jumping to main,
     // also init S-Mode timers here.
-    timer_init();
+    uint64_t timebase = dtb_get_timebase(device_tree);
+    if (timebase == 0)
+    {
+        timebase = 10000000ull;  // fallback
+    }
+    timer_init(timebase);
 
     // enable external, timer, software interrupts
     rv_write_csr_sie(rv_read_csr_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);

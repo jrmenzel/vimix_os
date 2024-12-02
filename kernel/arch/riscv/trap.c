@@ -304,7 +304,7 @@ void handle_plic_device_interrupt()
 void handle_timer_interrupt()
 {
     uint64_t timer_interrupt_interval =
-        timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
+        g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
     uint64_t now = rv_get_time();
     timer_schedule_interrupt(now + timer_interrupt_interval);
 

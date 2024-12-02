@@ -51,7 +51,7 @@ void clint_init_timer_interrupt()
 
     // ask the CLINT for a timer interrupt: also 64 bit on 32bit CPU!
     uint64_t timer_interrupt_interval =
-        timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
+        g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
 
     // 64bit even on 32bit systems!
     *(uint64_t *)CLINT_MTIMECMP(id) =

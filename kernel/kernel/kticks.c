@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 
+#ifdef __SBI_CONSOLE__
 #include <arch/riscv/sbi.h>
+#endif
+
 #include <kernel/kticks.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
