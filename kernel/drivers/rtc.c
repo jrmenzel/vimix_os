@@ -2,6 +2,7 @@
 
 #include <drivers/rtc.h>
 #include <kernel/kernel.h>
+#include <kernel/kticks.h>
 #include <kernel/major.h>
 
 struct Device_Memory_Map goldfish_mapping = {0};
@@ -29,7 +30,8 @@ time_t rtc_get_time()
 {
     if (!rtc_is_initialized)
     {
-        return 0;
+        // no real time clock -> assume boot was at time 0 / 1.1.1970
+        return kticks_get_seconds();
     }
 
     uint32_t t_low;  // unsigned !

@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/riscv/sbi.h>
 #include <kernel/kticks.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
-
-#include <arch/riscv/sbi.h>
+#include <timer.h>
 
 // each call to the timer interrupt is one tick
 struct spinlock g_tickslock;
@@ -34,4 +34,9 @@ size_t kticks_get_ticks()
     size_t xticks = g_ticks;
     spin_unlock(&g_tickslock);
     return xticks;
+}
+
+size_t kticks_get_seconds()
+{
+    return kticks_get_ticks() / TIMER_INTERRUPTS_PER_SECOND;
 }

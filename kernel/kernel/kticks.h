@@ -15,3 +15,6 @@ void kticks_inc_ticks();
 
 /// @brief Get current timer value in ticks since boot
 size_t kticks_get_ticks();
+
+/// @brief Get current timer value in seconds since boot
+size_t kticks_get_seconds();
