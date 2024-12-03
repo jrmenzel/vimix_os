@@ -31,7 +31,7 @@ time_t rtc_get_time()
     if (!rtc_is_initialized)
     {
         // no real time clock -> assume boot was at time 0 / 1.1.1970
-        return kticks_get_seconds();
+        return seconds_since_boot();
     }
 
     uint32_t t_low;  // unsigned !

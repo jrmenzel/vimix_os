@@ -13,6 +13,9 @@
 struct spinlock g_tickslock;
 size_t g_ticks;
 
+/// @brief boot time from rv_get_time()
+uint64_t g_boot_time;
+
 void kticks_init()
 {
     g_ticks = 0;
@@ -39,7 +42,9 @@ size_t kticks_get_ticks()
     return xticks;
 }
 
-size_t kticks_get_seconds()
+size_t seconds_since_boot()
 {
-    return kticks_get_ticks() / TIMER_INTERRUPTS_PER_SECOND;
+    uint64_t now = rv_get_time();
+    uint64_t delta = now - g_boot_time;
+    return delta / g_timebase_frequency;
 }

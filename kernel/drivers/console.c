@@ -97,6 +97,7 @@ ssize_t console_write(struct Device *dev, bool addr_is_userspace, size_t src,
         else
         {
             uart_putc(c);
+            // uart_putc_sync(c);
         }
     }
 

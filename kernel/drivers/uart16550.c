@@ -19,10 +19,9 @@
 /// address of one of the registers.
 size_t uart_base = 0;
 
-// TODO: why 4*reg?
 #ifdef _PLATFORM_VISIONFIVE2
-// #define Reg(reg) ((volatile unsigned char *)(uart_base + (4 * reg)))
-#define Reg(reg) ((volatile unsigned char *)(uart_base + (reg)))
+// reg-shift == 2 in device tree
+#define Reg(reg) ((volatile unsigned char *)(uart_base + (reg << 2)))
 #else
 #define Reg(reg) ((volatile unsigned char *)(uart_base + (reg)))
 #endif
@@ -86,10 +85,8 @@ void uart_init(struct Device_Memory_Map *dev_map)
     // reset and enable FIFOs.
     WriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
-    //  enable receive interrupt. IER_TX_ENABLE would add an interrupt, when the
-    //  send buffer is empty, but we busy wait on it to clear while sending.
+    //  enable receive interrupt.
     WriteReg(IER, IER_RX_ENABLE);
-    // #endif
 
     // init uart_16550 object
     spin_lock_init(&g_uart_16550.uart_tx_lock, "uart");
@@ -135,7 +132,6 @@ void uartstart()
         if (g_uart_16550.uart_tx_w == g_uart_16550.uart_tx_r)
         {
             // transmit buffer is empty.
-            ReadReg(ISR);  // clears the interrupt source
             return;
         }
 
@@ -178,6 +174,9 @@ int32_t uart_getc()
 /// both. called from interrupt_handler().
 void uart_interrupt_handler(dev_t dev)
 {
+    // unsigned char int_status =
+    ReadReg(ISR);  // clears the interrupt source
+
     // read and process incoming characters.
     while (true)
     {
