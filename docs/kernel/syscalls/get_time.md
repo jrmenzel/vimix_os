@@ -18,7 +18,8 @@ time_t time(time_t *tloc);
 
 ## Kernel Mode
 
-Implemented in `sys_system.c` as `sys_get_time()`. Calls `rtc_get_time()` which queries the current time from a real-time clock driver.
+Implemented in `sys_system.c` as `sys_get_time()`. Calls `rtc_get_time()` which queries the current time from a real-time clock driver. If no RTC is present, the time since boot gets returned. So it's guaranteed that this value increases at a speed of the "wall clock", even if the date is wrong.
+
 
 ## See also
 

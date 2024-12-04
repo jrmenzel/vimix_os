@@ -2,14 +2,12 @@
 # Build userspace test app "usertests"
 #
 ROOT := ../../..
+BUILD_DIR_SUFFIX := bin/usertests
+DEPLOY_DIR_SUFFIX := bin
 include $(ROOT)/usr/MakefileCommonUser.mk
 
 USER_SPACE_INC_PARAMS := $(foreach d, $(USER_SPACE_INC), -I$(ROOT)/$d)
 USER_SPACE_INC_HOST_PARAMS := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
-
-# update build dir
-B_BUILD_DIR := $(B_BUILD_DIR)/usertests
-B_BUILD_DIR_HOST := $(B_BUILD_DIR_HOST)/usertests
 
 .PHONY: all directories clean usertests
 

@@ -2,6 +2,8 @@
 # Build all userspace apps
 #
 ROOT := ../..
+BUILD_DIR_SUFFIX := bin
+DEPLOY_DIR_SUFFIX := bin
 include $(ROOT)/usr/MakefileCommonUser.mk
 
 USER_SPACE_INC_PARAMS := $(foreach d, $(USER_SPACE_INC), -I$(ROOT)/$d)
@@ -63,6 +65,9 @@ $(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) -T user-$(ARCH).ld $(LIB_PATH)/stdlib.a -o $@ $^
 
+$(LIB_PATH)/stdlib.a: 
+	@$(MAKE) -C ../lib all;
+
 ###########################################################
 # compiling apps for the host
 $(B_DEPLOY_DIR_HOST)/%: $(B_BUILD_DIR_HOST)/%.o
@@ -72,9 +77,6 @@ $(B_DEPLOY_DIR_HOST)/%: $(B_BUILD_DIR_HOST)/%.o
 $(B_BUILD_DIR_HOST)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile for host: $(@)\n$(NO_COLOR)"
 	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_HOST_PARAMS) -c $< -o $@
-
-$(LIB_PATH)/stdlib.a: 
-	@$(MAKE) -C ../lib all;
 
 ###########################################################
 scripts: # copy shell scripts

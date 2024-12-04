@@ -91,7 +91,7 @@ int build_full_path(char *dst, const char *path, const char *file)
     return 0;
 }
 
-const char *search_path[] = {"/usr/bin", NULL};
+const char *search_path[] = {"/usr/bin", "/usr/local/bin", NULL};
 
 void execute_command(struct execcmd *ecmd)
 {

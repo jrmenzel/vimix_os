@@ -13,13 +13,10 @@ This normally starts a shell ([sh](bin/sh.md)) for users to start any applicatio
 
 [/usr/bin/init](bin/init.md) - the first process
 
-**User interface:** 
-- [sh](bin/sh.md) - the shell
-
 
 ### User Applications
 
-Stored in `/usr/bin`.
+Stored in `/usr/bin` or `/usr/local/bin`.
 
 **Process Management:**
 - [kill](bin/kill.md) - send signals to [processes](../kernel/processes/processes.md)
@@ -41,8 +38,10 @@ Stored in `/usr/bin`.
 - [wc](bin/wc.md) - count words and characters in a text file
 - [date](bin/date.md) - Prints date and time
 - [sleep](bin/sleep.md) - Pauses execution for N seconds
+- [dhrystone](local/bin/dhrystone.md) - A benchmark
 
 **System:**
+- [sh](bin/sh.md) - the shell
 - [mount](bin/mount.md) - mounts a [file_system](../kernel/file_system/file_system.md)
 - [umount](bin/umount.md) - unmounts a [file_system](../kernel/file_system/file_system.md)
 - [shutdown](bin/shutdown.md) - Halts or shuts down the OS

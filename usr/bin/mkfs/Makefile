@@ -2,14 +2,12 @@
 # Build xv6fs tools
 #
 ROOT := ../../..
+BUILD_DIR_SUFFIX := bin/mkfs
+DEPLOY_DIR_SUFFIX := bin
 include $(ROOT)/usr/MakefileCommonUser.mk
 
 USER_SPACE_INC_PARAMS := $(foreach d, $(USER_SPACE_INC), -I$(ROOT)/$d)
 USER_SPACE_INC_HOST_PARAMS := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
-
-# update build dir
-B_BUILD_DIR := $(B_BUILD_DIR)/mkfs
-B_BUILD_DIR_HOST := $(B_BUILD_DIR_HOST)/mkfs
 
 .PHONY: all directories clean 
 

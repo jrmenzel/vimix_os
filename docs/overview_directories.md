@@ -36,17 +36,20 @@ The sub-directory structure was inspired by Linux:
 ## tools
 
 Tools for the development environment.
-- `mkfs` The tool to create [xv6fs](kernel/file_system/xv6fs/xv6fs.md) file systems.
-- `fsck.xv6fs` A simple [xv6fs](kernel/file_system/xv6fs/xv6fs.md) file system checker.
 - Scripts for [debugging](debugging.md).
 
 
 ## usr
 
 [user space](userspace/userspace.md) applications and libs for VIMIX.
-All default apps from /usr/bin are here.
+- `usr/bin`: All default apps
+- `usr/bin/mkfs`:
+	- `mkfs`: The tool to create [xv6fs](kernel/file_system/xv6fs/xv6fs.md) file systems.
+	- `fsck.xv6fs`: A simple [xv6fs](kernel/file_system/xv6fs/xv6fs.md) file system checker.
+- `usr/bin/usertests`: The [usertests](userspace/tests/usertests.md) app.
 - `usr/include`: user space headers
 - `usr/include/sys`: user space [kernel](kernel/kernel.md) API
+- `usr/local/bin`: additional applications which are not essential
 
 
 ---

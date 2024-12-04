@@ -21,9 +21,11 @@ userspace_lib: # user space clib
 
 userspace: userspace_lib # user space apps and libs
 	@$(MAKE) -C usr/bin all;
+	@$(MAKE) -C usr/local/bin/dhrystone all;
 
 host: # some user space apps for the host (Linux)
-	@$(MAKE) -C usr/bin host; 
+	@$(MAKE) -C usr/bin host;
+	@$(MAKE) -C usr/local/bin/dhrystone host; 
 
 # filesystem in a file containing userspace to run with qemu (kernel is set manually)
 $(BUILD_DIR)/filesystem.img: README.md userspace host
@@ -124,5 +126,6 @@ clean: # clean up
 	@$(MAKE) -C kernel clean;
 	@$(MAKE) -C usr/lib clean;
 	@$(MAKE) -C usr/bin clean;
+	@$(MAKE) -C usr/local/bin/dhrystone clean;
 	-@rm -rf $(BUILD_DIR)/root/*
 	-@rm -rf $(BUILD_DIR_HOST)/root/*
