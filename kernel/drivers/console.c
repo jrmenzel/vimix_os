@@ -22,9 +22,11 @@
 #define CONTROL_KEY(x) ((x) - '@')  // Control-x
 
 #ifdef __SBI_CONSOLE__
-const bool G_CONSOLE_VIA_SBI = true;
+#define device_putc sbi_console_putchar
+#define device_putc_sync sbi_console_putchar
 #else
-const bool G_CONSOLE_VIA_SBI = false;
+#define device_putc uart_putc
+#define device_putc_sync uart_putc_sync
 #endif
 
 /// send one character to the uart.
@@ -35,29 +37,13 @@ void console_putc(int32_t c)
     if (c == BACKSPACE)
     {
         // if the user typed backspace, overwrite with a space.
-        if (G_CONSOLE_VIA_SBI)
-        {
-            sbi_console_putchar('\b');
-            sbi_console_putchar(' ');
-            sbi_console_putchar('\b');
-        }
-        else
-        {
-            uart_putc_sync('\b');
-            uart_putc_sync(' ');
-            uart_putc_sync('\b');
-        }
+        device_putc_sync('\b');
+        device_putc_sync(' ');
+        device_putc_sync('\b');
     }
     else
     {
-        if (G_CONSOLE_VIA_SBI)
-        {
-            sbi_console_putchar(c);
-        }
-        else
-        {
-            uart_putc_sync(c);
-        }
+        device_putc_sync(c);
     }
 }
 
@@ -90,15 +76,7 @@ ssize_t console_write(struct Device *dev, bool addr_is_userspace, size_t src,
             break;
         }
 
-        if (G_CONSOLE_VIA_SBI)
-        {
-            sbi_console_putchar(c);
-        }
-        else
-        {
-            uart_putc(c);
-            // uart_putc_sync(c);
-        }
+        device_putc(c);
     }
 
     return i;

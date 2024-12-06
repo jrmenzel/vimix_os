@@ -17,6 +17,21 @@
 #include <ramdisk_fs.h>
 #endif
 
+// The interrupt values are supposed to be read from the device tree,
+// the correct values are only here as fallbacks if device tree parsing is
+// skipped.
+#if defined(_PLATFORM_SPIKE)
+#define UART_NAME "ns16550a"
+#define UART_INTERRUPT 1
+#elif defined(_PLATFORM_VISIONFIVE2)
+#define UART_NAME "snps,dw-apb-uart"
+#define UART_INTERRUPT 32
+#else
+// qemu
+#define UART_NAME "ns16550a"
+#define UART_INTERRUPT 10
+#endif
+
 // The mapping will be set from the device tree if a device was found.
 //   found should be false for everything intended to be read from the dtb
 //   found can be true if a device should always be initialized with the
@@ -27,11 +42,7 @@
 struct Supported_Device g_supported_devices[] = {
 //  name (searched in dtb) |found| init func  |dev_t|map memory| {mem map}
     // first one must be the boot console:
-#ifdef _PLATFORM_VISIONFIVE2
-    {"snps,dw-apb-uart",    true, console_init,  0, true,  {0x10000000L, PAGE_SIZE, 32}},
-#else
-    {"ns16550a",            false, console_init,  0, true,  {0x10000000L, PAGE_SIZE, 10}},
-#endif
+    {UART_NAME,            false, console_init,  0, true,  {0x10000000L, PAGE_SIZE, UART_INTERRUPT}},
     {"ramdisk_initrd",     false, ramdisk_init,  0, false, {0,0,-1}},
 #ifdef RAMDISK_EMBEDDED                                                   
     {"ramdisk_embedded",    true, ramdisk_init,  0, false, {(size_t)ramdisk_fs,  ramdisk_fs_size, -1}},

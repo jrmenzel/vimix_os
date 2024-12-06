@@ -126,8 +126,7 @@ void init_by_first_thread(void *dtb)
 
     // init processes, syscalls and interrupts:
     printk("init process and syscall support...\n");
-    proc_init();    // process table
-    kticks_init();  // counts ticks since boot/init
+    proc_init();  // process table
 
     // init filesystem:
     printk("init filesystem...\n");

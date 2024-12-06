@@ -2,6 +2,11 @@
 #pragma once
 #include <kernel/types.h>
 
+#if !defined(__RISCV_CSR_TIME)
+#include <kernel/kticks.h>
+#include <timer.h>
+#endif
+
 //
 // xlen is the RISC-V register width
 // xlen_t is used where data is load/stored to registers
@@ -164,6 +169,7 @@ rv_read_csr_(scause);
 // Supervisor Trap Value
 rv_read_csr_(stval);
 
+#if defined(__RISCV_CSR_TIME)
 // Time CSRs: it's a 64bit value so 32bit mode needs two CSRs to get the full
 // value
 rv_read_csr_(time);
@@ -182,6 +188,15 @@ static inline uint64_t rv_get_time()
 #else
 static inline uint64_t rv_get_time() { return rv_read_csr_time(); }
 #endif
+
+#else   // __RISCV_CSR_TIME
+static inline uint64_t rv_get_time()
+{
+    // hack for platforms without time CSRs (Spike without SBI)
+    uint64_t now = kticks_get_ticks() / TIMER_INTERRUPTS_PER_SECOND;
+    return now * g_timebase_frequency;
+}
+#endif  // __RISCV_CSR_TIME
 
 // read cycle counter
 rv_read_csr_(cycle);

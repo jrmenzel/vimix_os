@@ -76,6 +76,9 @@ endif
 ifeq ($(PLATFORM), visionfive2)
 CFLAGS_COMMON += -D_PLATFORM_VISIONFIVE2
 endif
+ifeq ($(PLATFORM), spike)
+CFLAGS_COMMON += -D_PLATFORM_SPIKE
+endif
 
 CFLAGS_TARGET_ONLY += $(ARCH_CFLAGS)
 CFLAGS_TARGET_ONLY += -ffreestanding -fno-common -nostdlib

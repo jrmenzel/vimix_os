@@ -89,14 +89,15 @@ ssize_t sys_mount()
     }
 
     // parameter 3: unsigned long mountflags
-    unsigned long mountflags;
+    size_t mountflags;
     argaddr(idx++, &mountflags);
 
     // parameter 4: const void *data
     size_t addr_data;
     argaddr(idx++, &addr_data);
 
-    return mount(source, target, filesystemtype, mountflags, addr_data);
+    return mount(source, target, filesystemtype, (unsigned long)mountflags,
+                 addr_data);
 }
 
 ssize_t sys_umount()

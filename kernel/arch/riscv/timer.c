@@ -63,8 +63,12 @@ void timer_init(uint64_t timebase_frequency)
         panic("NO TIMER FOUND\n");
     }
 
+#if defined(__TIMER_SOURCE_CLINT)
+    timer_schedule_interrupt(0);
+#else
     uint64_t timer_interrupt_interval =
         g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
     uint64_t now = rv_get_time();
     timer_schedule_interrupt(now + timer_interrupt_interval);
+#endif
 }

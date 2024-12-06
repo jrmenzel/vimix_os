@@ -91,9 +91,8 @@ qemu-gdb: kernel .gdbinit $(BUILD_DIR)/filesystem.img # run VIMIX in qemu waitin
 # Note: see docs on how to build VIMIX for Spike
 
 # spike binary, edit to use e.g. a self compiled version
-SPIKE=spike
-#SPIKE_BUILD := ../riscv-simulator/riscv-isa-sim/build
-#SPIKE := $(SPIKE_BUILD)/spike
+#SPIKE_BUILD := ../riscv-simulator/riscv-isa-sim/build/
+SPIKE := $(SPIKE_BUILD)spike
 #SPIKE_SBI_FW=../opensbi/build/platform/generic/firmware/fw_payload.elf
 ifeq ($(BITWIDTH), 32)
 SPIKE_ISA := rv32gc
@@ -102,7 +101,7 @@ SPIKE_ISA := rv64gc
 endif
 
 MEMORY_SIZE_BYTES := $(shell echo $$(( $(MEMORY_SIZE) * 1024 * 1024 )))
-SPIKE_OPTIONS := -m0x80000000:$(MEMORY_SIZE_BYTES) -p$(CPUS) --isa=$(SPIKE_ISA)
+SPIKE_OPTIONS := -m0x80000000:$(MEMORY_SIZE_BYTES) -p$(CPUS) --isa=$(SPIKE_ISA) --real-time-clint
 ifeq ($(RAMDISK_BOOTLOADER), yes)
 SPIKE_OPTIONS += --initrd=$(BUILD_DIR)/filesystem.img
 endif
@@ -121,6 +120,10 @@ spike-gdb: spike-requirements
 
 spike-sbi: spike-requirements
 	$(SPIKE) $(SPIKE_SBI_FW) $(SPIKE_OPTIONS)
+
+# dump device tree
+spike-dump-tree: spike-requirements
+	$(SPIKE) --dump-dts $(SPIKE_OPTIONS) 
 
 clean: # clean up
 	@$(MAKE) -C kernel clean;

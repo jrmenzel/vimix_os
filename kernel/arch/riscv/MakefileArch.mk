@@ -17,13 +17,16 @@ MEMORY_SIZE := 64
 # for qemu and Spike
 CPUS := 4
 
+# defaults:
+RV_ENABLE_EXT_C    := yes # compile with compressed instructions
+RV_ENABLE_CSR_TIME := yes # S mode can read the time CSR
+
 ifeq ($(PLATFORM), qemu)
 # 32 and 64 supported
 BITWIDTH := 64
 # with and without SBI supported
 SBI_SUPPORT := yes
 #SBI_CONSOLE := yes
-RV_ENABLE_EXT_C := yes
 RV_ENABLE_EXT_SSTC := yes
 # use this or a ramdisk
 VIRTIO_DISK := yes
@@ -32,14 +35,14 @@ VIRTIO_DISK := yes
 else ifeq ($(PLATFORM), spike)
 # 64 fails if Spike defaults to a Sv48 MMU
 BITWIDTH := 32
-RV_ENABLE_EXT_C := yes
+RV_ENABLE_EXT_SSTC := no
+RV_ENABLE_CSR_TIME := no
 #RAMDISK_EMBEDDED := yes
 RAMDISK_BOOTLOADER := yes
 else ifeq ($(PLATFORM), visionfive2)
 BITWIDTH := 64
 SBI_SUPPORT := yes
 SBI_CONSOLE := yes
-RV_ENABLE_EXT_C := yes
 RV_ENABLE_EXT_SSTC := no
 RAMDISK_EMBEDDED := yes
 else
@@ -111,7 +114,10 @@ MARCH := $(MARCH)_zicsr_zifencei
 endif
 
 ifeq ($(RV_ENABLE_EXT_SSTC), yes)
-EXT_DEFINES := -D__RISCV_EXT_SSTC
+EXT_DEFINES += -D__RISCV_EXT_SSTC
+endif
+ifeq ($(RV_ENABLE_CSR_TIME), yes)
+EXT_DEFINES += -D__RISCV_CSR_TIME
 endif
 
 # calling convention

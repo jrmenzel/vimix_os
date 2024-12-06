@@ -7,6 +7,7 @@
 #include <init/main.h>
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
+#include <kernel/kticks.h>
 #include <kernel/string.h>
 
 /// entry.S needs one kernel stack per CPU (one page of 4KB each)
@@ -155,6 +156,7 @@ void start(xlen_t cpuid, void *device_tree)
     {
         timebase = 10000000ull;  // fallback
     }
+    kticks_init();
     timer_init(timebase);
 
     // enable external, timer, software interrupts

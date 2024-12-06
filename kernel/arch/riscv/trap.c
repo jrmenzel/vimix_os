@@ -303,10 +303,14 @@ void handle_plic_device_interrupt()
 
 void handle_timer_interrupt()
 {
+#if defined(__TIMER_SOURCE_CLINT)
+    timer_schedule_interrupt(0);
+#else
     uint64_t timer_interrupt_interval =
         g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
     uint64_t now = rv_get_time();
     timer_schedule_interrupt(now + timer_interrupt_interval);
+#endif
 
     // will only update on CPU 0
     if (smp_processor_id() == 0)
