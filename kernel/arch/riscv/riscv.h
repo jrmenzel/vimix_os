@@ -193,8 +193,9 @@ static inline uint64_t rv_get_time() { return rv_read_csr_time(); }
 static inline uint64_t rv_get_time()
 {
     // hack for platforms without time CSRs (Spike without SBI)
-    uint64_t now = kticks_get_ticks() / TIMER_INTERRUPTS_PER_SECOND;
-    return now * g_timebase_frequency;
+    uint64_t now =
+        kticks_get_ticks() * g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
+    return now;
 }
 #endif  // __RISCV_CSR_TIME
 

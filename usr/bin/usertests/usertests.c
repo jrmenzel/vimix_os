@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include "usertests.h"
+#include <time.h>
 
 //
 // drive tests
@@ -10,6 +11,7 @@
 // indicates success.
 int run(void f(char *), char *s)
 {
+    time_t start_time = time(NULL);
     printf("test %s: ", s);
 
     // need a flush, because if the print from above is in the processes "todo
@@ -38,7 +40,10 @@ int run(void f(char *), char *s)
     }
     else
     {
-        printf("OK\n");
+        printf("OK");
+        time_t end_time = time(NULL);
+        time_t seconds = end_time - start_time;
+        printf(" - %zus\n", (size_t)seconds);
     }
     return xstatus == 0;
 }
@@ -107,6 +112,8 @@ int drivetests(int quick, int continuous, char *justone)
 
 int main(int argc, char *argv[])
 {
+    time_t start_time = time(NULL);
+
     int continuous = 0;
     bool quick_tests_only = false;
     char *justone = NULL;
@@ -146,6 +153,11 @@ int main(int argc, char *argv[])
     }
 
     printf("ALL TESTS PASSED\n");
+    time_t end_time = time(NULL);
+    time_t seconds = end_time - start_time;
+    time_t minutes = seconds / 60;
+    seconds = seconds % 60;
+    printf("Elapsed time: %zum %zus\n", (size_t)minutes, (size_t)seconds);
 
     return 0;
 }

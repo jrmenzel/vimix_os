@@ -2,8 +2,10 @@
 # RISC V specific settings
 #
 
-PLATFORM := qemu
-#PLATFORM := spike
+#PLATFORM := qemu32
+PLATFORM := qemu64
+#PLATFORM := spike32
+#PLATFORM := spike64
 #PLATFORM := visionfive2
 
 # RAM in MB
@@ -17,33 +19,45 @@ MEMORY_SIZE := 64
 # for qemu and Spike
 CPUS := 4
 
-# defaults:
+# defaults for all:
 RV_ENABLE_EXT_C    := yes # compile with compressed instructions
-RV_ENABLE_CSR_TIME := yes # S mode can read the time CSR
 
-ifeq ($(PLATFORM), qemu)
-# 32 and 64 supported
+ifeq ($(PLATFORM), qemu64)
 BITWIDTH := 64
 # with and without SBI supported
 SBI_SUPPORT := yes
 #SBI_CONSOLE := yes
 RV_ENABLE_EXT_SSTC := yes
+RV_ENABLE_CSR_TIME := yes
 # use this or a ramdisk
 VIRTIO_DISK := yes
 #RAMDISK_EMBEDDED := yes
 #RAMDISK_BOOTLOADER := yes
-else ifeq ($(PLATFORM), spike)
-# 64 fails if Spike defaults to a Sv48 MMU
+else ifeq ($(PLATFORM), qemu32)
+# test config
+BITWIDTH := 32
+SBI_SUPPORT := no
+RV_ENABLE_EXT_SSTC := yes
+RV_ENABLE_CSR_TIME := yes
+RAMDISK_BOOTLOADER := yes
+else ifeq ($(PLATFORM), spike32)
 BITWIDTH := 32
 RV_ENABLE_EXT_SSTC := no
 RV_ENABLE_CSR_TIME := no
 #RAMDISK_EMBEDDED := yes
+RAMDISK_BOOTLOADER := yes
+else ifeq ($(PLATFORM), spike64)
+# 64 fails if Spike defaults to a Sv48 MMU
+BITWIDTH := 64
+RV_ENABLE_EXT_SSTC := no
+RV_ENABLE_CSR_TIME := no
 RAMDISK_BOOTLOADER := yes
 else ifeq ($(PLATFORM), visionfive2)
 BITWIDTH := 64
 SBI_SUPPORT := yes
 SBI_CONSOLE := yes
 RV_ENABLE_EXT_SSTC := no
+RV_ENABLE_CSR_TIME := yes
 RAMDISK_EMBEDDED := yes
 else
 $(error PLATFORM not set)
@@ -118,6 +132,8 @@ EXT_DEFINES += -D__RISCV_EXT_SSTC
 endif
 ifeq ($(RV_ENABLE_CSR_TIME), yes)
 EXT_DEFINES += -D__RISCV_CSR_TIME
+else
+EXT_DEFINES += -D__FOO
 endif
 
 # calling convention

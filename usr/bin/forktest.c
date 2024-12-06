@@ -46,5 +46,6 @@ int main()
     }
 
     printf("fork test OK\n");
+    printf("ALL TESTS PASSED\n");
     return 0;
 }

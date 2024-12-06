@@ -46,7 +46,7 @@ unsigned long rand_next = 1;
 
 int rand() { return (do_rand(&rand_next)); }
 
-void go(int which_child)
+void go(int which_child, int max_iterations)
 {
     int fd = -1;
     static char buf[999];
@@ -61,7 +61,7 @@ void go(int which_child)
     chdir("/");
 
     size_t iters = 0;
-    while (true)
+    while (iters < max_iterations)
     {
         // print child number (as letters) every few iterations
         char name = 'A' + which_child;
@@ -382,7 +382,7 @@ void go(int which_child)
     }
 }
 
-void iter(size_t number_of_forks)
+void iter(size_t number_of_forks, int max_iterations)
 {
     unlink("a");
     unlink("b");
@@ -399,36 +399,10 @@ void iter(size_t number_of_forks)
         if (children[i] == 0)
         {
             rand_next ^= (31 * i);
-            go(i);
+            go(i, max_iterations);
             exit(0);
         }
     }
-    /*
-        pid_t pid1 = fork();
-        if (pid1 < 0)
-        {
-            printf("grind: fork failed\n");
-            exit(1);
-        }
-        if (pid1 == 0)
-        {
-            rand_next ^= 31;
-            go(0);
-            exit(0);
-        }
-
-        pid_t pid2 = fork();
-        if (pid2 < 0)
-        {
-            printf("grind: fork failed\n");
-            exit(1);
-        }
-        if (pid2 == 0)
-        {
-            rand_next ^= 7177;
-            go(1);
-            exit(0);
-        }*/
 
     for (size_t i = 0; i < number_of_forks; ++i)
     {
@@ -446,15 +420,22 @@ void iter(size_t number_of_forks)
         }
     }
 
+    printf("\ngrind passed\n");
     exit(0);
 }
 
 int main(int argc, char *argv[])
 {
     size_t forks = 2;
+    int max_iterations = 1000;
     if (argc == 2)
     {
         forks = atoi(argv[1]);
+    }
+    else if (argc == 3)
+    {
+        forks = atoi(argv[1]);
+        max_iterations = atoi(argv[2]);
     }
     if (forks > 8)
     {
@@ -469,7 +450,7 @@ int main(int argc, char *argv[])
     pid_t pid = fork();
     if (pid == 0)
     {
-        iter(forks);
+        iter(forks, max_iterations);
         exit(0);
     }
     if (pid > 0)

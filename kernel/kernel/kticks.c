@@ -11,7 +11,7 @@
 
 // each call to the timer interrupt is one tick
 struct spinlock g_tickslock;
-size_t g_ticks;
+size_t g_ticks = 0;
 
 /// @brief boot time from rv_get_time()
 uint64_t g_boot_time;

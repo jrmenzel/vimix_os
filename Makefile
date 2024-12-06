@@ -33,6 +33,8 @@ $(BUILD_DIR)/filesystem.img: README.md userspace host
 	@cp README.md $(BUILD_DIR)/root/
 	@mkdir -p $(BUILD_DIR)/root/dev
 	@mkdir -p $(BUILD_DIR)/root/home
+	@mkdir -p $(BUILD_DIR)/root/tests
+	@cp -r root/tests/* $(BUILD_DIR)/root/tests
 	$(BUILD_DIR_HOST)/root/usr/bin/mkfs $(BUILD_DIR)/filesystem.img --in $(BUILD_DIR)/root/ 
 
 ###

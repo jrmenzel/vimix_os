@@ -3527,14 +3527,11 @@ struct test quicktests[] = {
     {dirtest, "dirtest"},
     {exectest, "exectest"},
     {pipe1, "pipe1"},
-    {killstatus, "killstatus"},
     {preempt, "preempt"},
     {exitwait, "exitwait"},
     {reparent, "reparent"},
-    {twochildren, "twochildren"},
     {forkfork, "forkfork"},
     {forkforkfork, "forkforkfork"},
-    {reparent2, "reparent2"},
     {mem, "mem"},
     {sharedfd, "sharedfd"},
     {fourfiles, "fourfiles"},
@@ -3574,6 +3571,9 @@ struct test quicktests[] = {
 };
 
 struct test slowtests[] = {
+    {killstatus, "killstatus"},
+    {twochildren, "twochildren"},
+    {reparent2, "reparent2"},
     {bigdir, "bigdir"},
     {manywrites, "manywrites"},
     {badwrite, "badwrite"},

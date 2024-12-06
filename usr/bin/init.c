@@ -63,7 +63,18 @@ int main()
         }
         if (pid == 0)
         {
-            execv(SHELL_NAME, SHELL_ARGV);
+            struct stat st;
+            char *SHELL_ARGV[] = {"sh", 0};
+            char *SHELL_ARGV_AUTORUN[] = {"sh", "/tests/autoexec.sh", 0};
+            if (stat(SHELL_ARGV_AUTORUN[1], &st) == 0)
+            {
+                execv(SHELL_NAME, SHELL_ARGV_AUTORUN);
+            }
+            else
+            {
+                execv(SHELL_NAME, SHELL_ARGV);
+            }
+
             printf("init: execv sh failed\n");
             exit(1);
         }

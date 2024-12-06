@@ -76,7 +76,10 @@ endif
 ifeq ($(PLATFORM), visionfive2)
 CFLAGS_COMMON += -D_PLATFORM_VISIONFIVE2
 endif
-ifeq ($(PLATFORM), spike)
+ifeq ($(PLATFORM), spike32)
+CFLAGS_COMMON += -D_PLATFORM_SPIKE
+endif
+ifeq ($(PLATFORM), spike64)
 CFLAGS_COMMON += -D_PLATFORM_SPIKE
 endif
 

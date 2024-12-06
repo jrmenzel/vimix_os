@@ -21,7 +21,7 @@ size_t foo(size_t x)
 
 int main(int argc, char *argv[])
 {
-    size_t loop = 1000;
+    size_t loop = 1200;
     if (argc > 1)
     {
         loop = atoi(argv[1]);
