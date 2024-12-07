@@ -43,6 +43,7 @@ _entry:
     addi t1, a0, 1               # t1 = hartid + 1 (+1 as the stack grows down, so set sp to the "end" of the stack space, not the "begining")
     mul t2, t0, t1               # t2 = ((hartid+1) * PAGE_SIZE)
     add sp, sp, t2               # sp = g_kernel_cpu_stack + ((hartid+1) * PAGE_SIZE)
+    mv fp, zero
 
     # jump to start() in start.c
     call start

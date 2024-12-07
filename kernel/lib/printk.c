@@ -63,10 +63,7 @@ void panic(char* error_message)
            error_message);
     if (g_kernel_panicked > 1)
     {
-        // instant loop if a panic happend inside a panic
-        while (true)
-        {
-        }
+        machine_power_off();
     }
     __sync_synchronize();
     cpu_disable_device_interrupts();
@@ -79,8 +76,8 @@ void panic(char* error_message)
     {
         size_t ra = *((size_t*)(frame_pointer - 1 * sizeof(size_t)));
         frame_pointer = *((size_t*)(frame_pointer - 2 * sizeof(size_t)));
-        if (frame_pointer == 0) break;
         printk("  ra: 0x%zx\n", ra);
+        if (frame_pointer == 0) break;
     };
 
     struct cpu* this_cpu = get_cpu();
@@ -91,11 +88,13 @@ void panic(char* error_message)
         debug_print_call_stack_user(proc);
     }
 
-#ifdef DEBUG_AUTOSTART_USERTESTS
+#if defined(_SHUTDOWN_ON_PANIC)
     machine_power_off();
 #else
     while (true)
     {
+        // allows other CPUs to react to console input and print more machine
+        // state for debugging
     }
 #endif
 }

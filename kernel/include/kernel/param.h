@@ -50,6 +50,12 @@
 /// stores the filename / last element of path in an inode for easier debugging
 #define CONFIG_DEBUG_INODE_PATH_NAME
 
+#else  // CONFIG_DEBUG
+/// allows to query more system info on crashes if NOT set
+#ifndef _SHUTDOWN_ON_PANIC
+#define _SHUTDOWN_ON_PANIC
+#endif  // _SHUTDOWN_ON_PANIC
+
 #endif  // CONFIG_DEBUG
 
 #if defined(CONFIG_DEBUG_EXTRA_RUNTIME_TESTS)

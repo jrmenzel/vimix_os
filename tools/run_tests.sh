@@ -2,6 +2,7 @@
 set -e
 
 BUILD_ROOT=build_tests
+EXTERNAL_KERNEL_FLAGS=-D_SHUTDOWN_ON_PANIC
 EMU_FLAGS=SPIKE_BUILD=../riscv-simulator/riscv-isa-sim/build/
 
 # platform debug|release
@@ -25,7 +26,7 @@ function test_config {
     # copy test
     cp ${BUILD_DIR}/root/tests/$4.sh ${BUILD_DIR}/root/tests/autoexec.sh
     # re-create fs image
-    make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} ${BUILD_DIR}/filesystem.img || exit 1
+    make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 EXTERNAL_KERNEL_FLAGS="$(EXTERNAL_KERNEL_FLAGS)" BUILD_DIR=${BUILD_DIR} ${BUILD_DIR}/filesystem.img || exit 1
     # run test
     make PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} CPUS=$6 ${EMU_FLAGS} $3 > ${RESULT_FILE} || exit 1
     # get file system content, clear target dir fist:
@@ -47,33 +48,46 @@ function test_config {
     set -e
 }
 
-function main {
-    if ! [ -f Makefile ] 
-    then
-        echo "call from project root directory"
-        exit 1
-    fi
-
+function prepare_tests {
     if [ -d ${BUILD_ROOT} ] 
     then
     rm -rf ${BUILD_ROOT}/*
     fi
     mkdir -p ${BUILD_ROOT}
+}
 
+function test_build_qemu {
     build_config_release_debug qemu32
     build_config_release_debug qemu64
+}
+
+function test_build {
+    test_build_qemu
+
     build_config_release_debug spike32
     build_config_release_debug spike64
     build_config_release_debug visionfive2
 
     echo "Compiling done"
+}
 
+function test_boot {
     # trivial test to verify boot and console out
     test_config qemu32 debug   qemu echo "ALL TESTS PASSED" 1
     test_config qemu32 release qemu echo "ALL TESTS PASSED" 3
     test_config qemu64 debug   qemu echo "ALL TESTS PASSED" 5
     test_config qemu64 release qemu echo "ALL TESTS PASSED" 8
+}
 
+function test_grind {
+    test_config qemu32 release qemu grind_2 "grind passed" 4
+    test_config qemu64 debug   qemu grind_2 "grind passed" 4
+
+    test_config qemu64 release qemu grind_8 "grind passed" 8
+    test_config qemu32 debug   qemu grind_8 "grind passed" 8
+}
+
+function test_functional {
     # passed if it didn't crash before
     test_config qemu64 release qemu stack "Foo of 1199 is 1199" 2
     test_config qemu32 release qemu stack "Foo of 1199 is 1199" 3
@@ -89,7 +103,9 @@ function main {
     test_config qemu64 debug   qemu usertests_q "ALL TESTS PASSED" 5
     test_config qemu32 release qemu usertests_q "ALL TESTS PASSED" 3
     test_config qemu32 debug   qemu usertests   "ALL TESTS PASSED" 8
+}
 
+function print_stats {
     # print stats
     echo "Kernels:"
     ls -lh ${BUILD_ROOT}/*/kernel-vimix
@@ -101,4 +117,51 @@ function main {
     ls ${BUILD_ROOT} | grep FAIL
 }
 
-main
+function main {
+    if ! [ -f Makefile ] 
+    then
+        echo "call from project root directory"
+        exit 1
+    fi
+
+    prepare_tests
+
+    if [ "$1" = "build" ]
+    then 
+        test_build
+        print_stats
+        exit 0
+    fi
+
+    if [ "$1" = "boot" ]
+    then 
+        test_build
+        test_boot
+        print_stats
+        exit 0
+    fi
+
+    if [ "$1" = "grind" ]
+    then 
+        test_build_qemu
+        test_grind
+        print_stats
+        exit 0
+    fi
+
+    if [ "$1" = "all" ]
+    then 
+        test_build
+        test_boot
+        test_functional
+        print_stats
+        exit 0
+    fi
+
+    echo "Usage: run_tests.sh {build | boot | all}"
+    echo " build: builds for all plattforms"
+    echo " boot:  builds and boots on qemu"
+    echo " all:   builds and performs usertests, forktest, grind, etc."
+}
+
+main $1

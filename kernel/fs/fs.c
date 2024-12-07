@@ -284,6 +284,11 @@ struct inode *inode_of_parent_from_path(const char *path, char *name)
 
 void debug_print_inode(struct inode *ip)
 {
+    if (ip == NULL)
+    {
+        printk("NULL");
+        return;
+    }
     printk("inode %d on (%d,%d), ", ip->inum, MAJOR(ip->i_sb->dev),
            MINOR(ip->i_sb->dev));
     printk("ref: %d, ", ip->ref);

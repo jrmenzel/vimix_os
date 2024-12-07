@@ -11,14 +11,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#if defined(DEBUG_AUTOSTART_USERTESTS)
-const char *SHELL_NAME = "/usr/bin/sh";
-char *SHELL_ARGV[] = {"sh", "/usr/bin/run_tests.sh", 0};
-#else
-const char *SHELL_NAME = "/usr/bin/sh";
-char *SHELL_ARGV[] = {"sh", 0};
-#endif
-
 int make_dev(const char *file, int device_type, dev_t dev)
 {
     int f = open(file, O_RDWR);
@@ -53,7 +45,8 @@ int main()
 
     while (true)
     {
-        printf("init: starting %s\n", SHELL_NAME);
+        const char *SHELL_PATH = "/usr/bin/sh";
+        printf("init: starting %s\n", SHELL_PATH);
         pid_t pid = fork();
 
         if (pid < 0)
@@ -63,16 +56,20 @@ int main()
         }
         if (pid == 0)
         {
+            // HACK to enable automated testing:
+            // if /tests/autoexec.sh exists, run it. It should contain a system
+            // shutdown.
             struct stat st;
             char *SHELL_ARGV[] = {"sh", 0};
             char *SHELL_ARGV_AUTORUN[] = {"sh", "/tests/autoexec.sh", 0};
             if (stat(SHELL_ARGV_AUTORUN[1], &st) == 0)
             {
-                execv(SHELL_NAME, SHELL_ARGV_AUTORUN);
+                execv(SHELL_PATH, SHELL_ARGV_AUTORUN);
             }
             else
             {
-                execv(SHELL_NAME, SHELL_ARGV);
+                // default path, just start a shell:
+                execv(SHELL_PATH, SHELL_ARGV);
             }
 
             printf("init: execv sh failed\n");
