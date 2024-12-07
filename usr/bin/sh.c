@@ -163,7 +163,9 @@ void runcmd(struct cmd *cmd)
             if (fork1() == 0)
             {
                 close(1);
-                dup(p[1]);
+                int fd = dup(p[1]);
+                if (fd != 1) exit(1);
+
                 close(p[0]);
                 close(p[1]);
                 runcmd(pcmd->left);
@@ -171,7 +173,9 @@ void runcmd(struct cmd *cmd)
             if (fork1() == 0)
             {
                 close(0);
-                dup(p[0]);
+                int fd = dup(p[0]);
+                if (fd != 0) exit(1);
+
                 close(p[0]);
                 close(p[1]);
                 runcmd(pcmd->right);
@@ -194,12 +198,15 @@ int getcmd(char *buf, int nbuf, bool print_prompt)
 {
     if (print_prompt)
     {
-        write(STDOUT_FILENO, "$ ", 2);
+        ssize_t w = write(STDOUT_FILENO, "$ ", 2);
+        if (w != 2) return -1;
     }
     memset(buf, 0, nbuf);
-    fgets(buf, nbuf, stdin);
-    if (buf[0] == 0)  // EOF
+    char * s = fgets(buf, nbuf, stdin);
+    if (s == NULL || buf[0] == 0)  // error or EOF
+    {
         return -1;
+    }
     return 0;
 }
 

@@ -393,7 +393,11 @@ void copy_out_file(int32_t inode, const char *filename)
     }
 
     int fd = open(filename, O_RDWR | O_CREAT, 0655);
-    write(fd, buffer, file_size);
+    ssize_t w = write(fd, buffer, file_size);
+    if (w != file_size)
+    {
+        printf("Error writing to file\n");
+    }
     close(fd);
 
     free(buffer);

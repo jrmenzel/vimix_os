@@ -13,14 +13,14 @@ UPROGS_VIMIX_ONLY := init\
     grind\
     shutdown\
 	mount\
-	umount
+	umount\
+	skill
 
 # Some user space apps can be compiled on the host as well,
 # e.g. as native Linux apps. This can be helpful for app
 # development.
 #
-UPROGS_NAME_BOTH=\
-	cat\
+UPROGS_NAME_BOTH := cat\
 	cp\
 	date\
 	echo\
@@ -34,7 +34,6 @@ UPROGS_NAME_BOTH=\
 	rm\
 	rmdir\
 	sh\
-	skill\
 	sleep\
 	stat\
 	wc\

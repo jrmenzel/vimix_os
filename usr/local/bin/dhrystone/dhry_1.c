@@ -291,6 +291,8 @@ int main()
         printf("%d \n", (int)Dhrystones_Per_Second);
         printf("\n");
     }
+
+    return 0;
 }
 
 void Proc_1(Ptr_Val_Par)

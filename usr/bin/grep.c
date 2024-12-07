@@ -29,7 +29,8 @@ void grep(char *pattern, int fd)
             if (match(pattern, p))
             {
                 *q = '\n';
-                write(1, p, q + 1 - p);
+                ssize_t written = write(1, p, q + 1 - p);
+                if (written != q + 1 - p) exit(1);
             }
             p = q + 1;
         }

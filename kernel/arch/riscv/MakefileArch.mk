@@ -19,8 +19,8 @@ MEMORY_SIZE := 64
 # for qemu and Spike
 CPUS := 4
 
-# defaults for all:
-RV_ENABLE_EXT_C    := yes # compile with compressed instructions
+# compile with compressed instructions:
+RV_ENABLE_EXT_C := yes
 
 ifeq ($(PLATFORM), qemu64)
 BITWIDTH := 64
@@ -90,6 +90,7 @@ endif
 #####
 # TOOLPREFIX, e.g. riscv64-unknown-elf-
 # Set explicitly or try to infer the correct TOOLPREFIX
+# first look for matching bit width in toolset, then try the 64 bit versions
 #TOOLPREFIX = 
 ifndef TOOLPREFIX
 TOOLPREFIX := $(shell if riscv$(BITWIDTH)-unknown-elf-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
@@ -100,6 +101,10 @@ TOOLPREFIX := $(shell if riscv$(BITWIDTH)-unknown-elf-objdump -i 2>&1 | grep 'el
 	then echo 'riscv$(BITWIDTH)-unknown-linux-gnu-'; \
 	elif riscv$(BITWIDTH)-elf-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
 	then echo 'riscv$(BITWIDTH)-elf-'; \
+	elif riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
+	then echo 'riscv64-unknown-elf-'; \
+	elif riscv64-elf-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
+	then echo 'riscv64-elf-'; \
 	else echo "***" 1>&2; \
 	echo "*** Error: Couldn't find a riscv$(BITWIDTH) version of GCC/binutils." 1>&2; \
 	echo "*** To turn off this error, set TOOLPREFIX in MakefileArch.mk." 1>&2; \
@@ -117,14 +122,19 @@ MARCH := $(MARCH)c
 endif
 
 # prior to gcc 12 the extensions zicsr and zifencei were implicit in the base ISA
-GCC_VERSION_AT_LEAST_12 := $(shell expr `$(CC) -dumpversion | cut -f1 -d.` \>= 12)
-ifeq "$(GCC_VERSION_AT_LEAST_12)" "1"
+TARGET_GCC_VERSION_AT_LEAST_12 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 12)
+TARGET_GCC_VERSION_AT_LEAST_13 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 13)
+TARGET_GCC_VERSION_AT_LEAST_14 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 14)
+ifeq "$(TARGET_GCC_VERSION_AT_LEAST_12)" "1"
 # mandatory: CSRs and fence instructions
 MARCH := $(MARCH)_zicsr_zifencei
+endif
+
+ifeq "$(TARGET_GCC_VERSION_AT_LEAST_14)" "1"
 # optional: s-mode timer extension, needs gcc 14
-#ifeq ($(RV_ENABLE_EXT_SSTC), yes)
-#MARCH := $(MARCH)_sstc
-#endif
+ifeq ($(RV_ENABLE_EXT_SSTC), yes)
+MARCH := $(MARCH)_sstc
+endif
 endif
 
 ifeq ($(RV_ENABLE_EXT_SSTC), yes)
@@ -132,8 +142,6 @@ EXT_DEFINES += -D__RISCV_EXT_SSTC
 endif
 ifeq ($(RV_ENABLE_CSR_TIME), yes)
 EXT_DEFINES += -D__RISCV_CSR_TIME
-else
-EXT_DEFINES += -D__FOO
 endif
 
 # calling convention
@@ -143,6 +151,7 @@ else
 MABI := lp64
 endif
 
+ARCH_LFLAGS := -melf$(BITWIDTH)lriscv
 ARCH_CFLAGS := -march=$(MARCH) -mabi=$(MABI) -D_ARCH_$(BITWIDTH)BIT $(EXT_DEFINES)
 ARCH_CFLAGS += -mcmodel=medany -mno-relax
 ARCH_CFLAGS += -DKERNBASE=$(KERNBASE) # for usertests on target

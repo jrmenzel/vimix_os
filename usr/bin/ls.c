@@ -88,7 +88,7 @@ void print_access(mode_t mode)
         pos--;
     }
 
-    printf(str);
+    printf("%s",str);
 }
 
 void print_padded(size_t value, size_t min_chars_wide, bool min_one_space)

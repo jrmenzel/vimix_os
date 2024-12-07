@@ -13,9 +13,37 @@ function build_config {
     make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} || exit 1
 }
 
+# platform debug|release|compiler
+# on Ubuntu multiple 64-bit gcc versions can be installed in parallel
+function build_config_compiler {
+    # build VIMIX
+    BUILD_DIR=${BUILD_ROOT}/build_$1_$2_gcc$3
+    make clean BUILD_DIR=${BUILD_DIR}
+    make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} TOOLPREFIX=riscv64-linux-gnu- GCCPOSTFIX=-$3 || exit 1
+}
+
 function build_config_release_debug {
     build_config $1 debug
     build_config $1 release
+}
+
+function build_compiler_versions {
+    build_config_compiler $1 debug 11
+    build_config_compiler $1 release 11
+    build_config_compiler $1 debug 12
+    build_config_compiler $1 release 12
+    build_config_compiler $1 debug 13
+    build_config_compiler $1 release 13
+    build_config_compiler $1 debug 14
+    build_config_compiler $1 release 14
+}
+
+function test_build_compiler_versions {
+    build_compiler_versions qemu64
+    build_compiler_versions spike64
+    build_compiler_versions qemu32
+    build_compiler_versions spike32
+    build_compiler_versions visionfive2
 }
 
 # platform debug|release emulator testname expected_result CPUs
@@ -129,6 +157,13 @@ function main {
     if [ "$1" = "build" ]
     then 
         test_build
+        print_stats
+        exit 0
+    fi
+
+    if [ "$1" = "compilers" ]
+    then 
+        test_build_compiler_versions
         print_stats
         exit 0
     fi

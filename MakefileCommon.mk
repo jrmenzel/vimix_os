@@ -29,16 +29,13 @@ KERNEL_FILE := $(BUILD_DIR)/$(KERNEL_NAME)
 # create assembly files from C, can be compared with the VSCode extension "Disassembly Explorer"
 #CREATE_ASSEMBLY=yes
 
-# Start automated tests and shutdown OS afterwards. Will also shutdown on panic.
-#EXTRA_DEBUG_FLAGS=-DDEBUG_AUTOSTART_USERTESTS
-
 # First page of the user space apps. Needed by user.ld and the kernel source
 # so defined here. Don't place at 0 to make NULL pointer dereferences illegal.
 USER_TEXT_START := "0x1000"
 
 #####
 # tools
-CC := $(TOOLPREFIX)gcc
+CC := $(TOOLPREFIX)gcc$(GCCPOSTFIX)
 AS := $(TOOLPREFIX)gas
 AR := $(TOOLPREFIX)ar
 LD := $(TOOLPREFIX)ld
@@ -47,6 +44,9 @@ OBJDUMP := $(TOOLPREFIX)objdump
 
 # for compiling userspace apps on the host platform
 CC_HOST := gcc
+HOST_GCC_VERSION_AT_LEAST_12 := $(shell expr `$(CC_HOST) -dumpversion | cut -f1 -d.` \>= 12)
+HOST_GCC_VERSION_AT_LEAST_13 := $(shell expr `$(CC_HOST) -dumpversion | cut -f1 -d.` \>= 13)
+HOST_GCC_VERSION_AT_LEAST_14 := $(shell expr `$(CC_HOST) -dumpversion | cut -f1 -d.` \>= 14)
 
 git-hash=$(shell git log --pretty=format:'%h' -n 1)
 CFLAGS_COMMON := -DGIT_HASH=$(git-hash)
@@ -95,7 +95,7 @@ CFLAGS_HOST := $(CFLAGS_COMMON) $(EXTRA_DEBUG_FLAGS) -DBUILD_ON_HOST -D__USE_REA
 
 #####
 # linker flags
-LDFLAGS := -z max-page-size=4096
+LDFLAGS := -z max-page-size=4096 $(ARCH_LFLAGS)
 
 BUILD_DIR_HOST := build_host
 

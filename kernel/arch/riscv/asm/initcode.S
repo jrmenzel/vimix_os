@@ -29,7 +29,7 @@ init:
 #if (__riscv_xlen == 64)
 
 # char *argv[] = { init, 0 };
-.p2align 2
+.p2align 4
 argv:
     .quad init
     .quad 0
