@@ -26,10 +26,7 @@ Run
 
 3. Attach debugger from VSCode
 
-**Known issues:**
-Spike starts executing without waiting for the debugger. The command line option `-H` prevents this, but also somehow generated exceptions during execution.
-
-The Spike version which comes with Arch Linux seems not to have any console enabled. A self compiled version had everything and worked. Set the Spike binary in `Makefile` when not calling Spike via the default PATH. Check that Spike supports a `ns16550` UART, [PLIC](riscv/PLIC.md) and [CLINT](riscv/CLINT.md). To do so check the [device_tree](misc/device_tree.md) via:
+Set the Spike binary in `Makefile` when not calling Spike via the default PATH or the self compiled version created by the `tools/build_spike.sh` script. Check that Spike supports a `ns16550` UART, [PLIC](riscv/PLIC.md) and [CLINT](riscv/CLINT.md). To do so check the [device_tree](misc/device_tree.md) via:
 
 > make PLATFORM=spike spike-dump-tree
 

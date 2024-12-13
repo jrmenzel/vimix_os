@@ -2,8 +2,16 @@
 
 Requirements: qemu, 32- or 64-bit [RISC V](riscv/RISCV.md) gcc toolchain
 
-on Arch Linux install for 64-bit:
-> sudo pacman -S qemu-system-riscv qemu-system-riscv-firmware riscv64-elf-binutils riscv64-elf-gcc riscv64-elf-gdb riscv64-elf-newlib
+on Arch Linux install:
+```bash
+sudo pacman -S qemu-system-riscv qemu-system-riscv-firmware riscv64-elf-binutils riscv64-elf-gcc riscv64-elf-gdb riscv64-elf-newlib
+```
+
+on Ubuntu 24.04 install:
+```bash
+sudo apt update
+sudo apt install make git gcc gcc-riscv64-unknown-elf build-essential qemu-system-riscv64 gdb-multiarch clang-format
+```
 
 Build all:
 > make

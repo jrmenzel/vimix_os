@@ -13,8 +13,8 @@
 #define VIRT_TEST_REBOOT 0x7777
 
 /// @brief Init function, if never called the shutdown and reboot will panic
-/// @param mapping Only the memory address is relevant.
-dev_t syscon_init(struct Device_Memory_Map *mapping);
+/// @param init_parameters Only the memory address is relevant.
+dev_t syscon_init(struct Device_Init_Parameters *init_parameters);
 
 /// @brief Write a 32 bit value to a register.
 /// @param reg Register offset in bytes.

@@ -6,4 +6,4 @@
 
 /// @brief Adds itself to the devices list.
 /// @returns the device ID of the created ram disk
-dev_t ramdisk_init(struct Device_Memory_Map *mapping);
+dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters);

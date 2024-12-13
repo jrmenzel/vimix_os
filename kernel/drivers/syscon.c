@@ -3,16 +3,16 @@
 #include <drivers/syscon.h>
 #include <kernel/major.h>
 
-struct Device_Memory_Map syscon_mapping = {0};
+struct Device_Init_Parameters syscon_mapping = {0};
 bool syscon_is_initialized = false;
 
-dev_t syscon_init(struct Device_Memory_Map *mapping)
+dev_t syscon_init(struct Device_Init_Parameters *init_parameters)
 {
     if (syscon_is_initialized)
     {
         return 0;
     }
-    syscon_mapping = *mapping;
+    syscon_mapping = *init_parameters;
     syscon_is_initialized = true;
     return MKDEV(SYSCON_MAJOR, 0);
 }

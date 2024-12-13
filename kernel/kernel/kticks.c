@@ -1,9 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
-#ifdef __SBI_CONSOLE__
 #include <arch/riscv/sbi.h>
-#endif
-
+#include <drivers/console.h>
 #include <kernel/kticks.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
@@ -29,8 +27,13 @@ void kticks_inc_ticks()
     wakeup(&g_ticks);
     spin_unlock(&g_tickslock);
 
-#ifdef __SBI_CONSOLE__
-    sbi_console_poll_input();
+#ifdef __ENABLE_SBI__
+    // the SBI console can be a fallback for UART,
+    // but without IRQs we need to poll the input manually
+    if (g_console_poll_sbi)
+    {
+        sbi_console_poll_input();
+    }
 #endif
 }
 

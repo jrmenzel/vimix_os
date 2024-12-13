@@ -4,6 +4,7 @@
 
 #include <kernel/major.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -34,8 +35,12 @@ int main()
 
     if (open("/dev/console", O_RDWR) < 0)
     {
-        mknod("/dev/console", S_IFCHR | 0666, MKDEV(CONSOLE_DEVICE_MAJOR, 0));
-        open("/dev/console", O_RDWR);
+        int ret = mknod("/dev/console", S_IFCHR | 0666,
+                        MKDEV(CONSOLE_DEVICE_MAJOR, 0));
+        if (ret < 0) return -errno;
+
+        ret = open("/dev/console", O_RDWR);
+        if (ret < 0) return -errno;
     }
     dup(0);  // stdout
     dup(0);  // stderr

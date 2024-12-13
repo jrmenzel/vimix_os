@@ -60,17 +60,17 @@ void ramdisk_block_device_write(struct Block_Device *bd, struct buf *b)
     spin_unlock(&g_ramdisk[minor].vdisk_lock);
 }
 
-dev_t ramdisk_init(struct Device_Memory_Map *mapping)
+dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters)
 {
-    if (mapping->mem_start == 0 || mapping->mem_size == 0)
+    if (init_parameters->mem_start == 0 || init_parameters->mem_size == 0)
     {
         panic("invalid ramdisk_init parameters");
     }
     size_t minor = g_next_free_ramdisk++;
     // printk("ramdisk_init %zd\n", minor);
 
-    g_ramdisk[minor].start = (void *)mapping->mem_start;
-    g_ramdisk[minor].disk.bdev.size = mapping->mem_size;
+    g_ramdisk[minor].start = (void *)init_parameters->mem_start;
+    g_ramdisk[minor].disk.bdev.size = init_parameters->mem_size;
 
     // init device and register it in the system
     g_ramdisk[minor].disk.bdev.dev.type = BLOCK;

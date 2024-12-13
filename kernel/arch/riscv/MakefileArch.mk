@@ -26,13 +26,12 @@ ifeq ($(PLATFORM), qemu64)
 BITWIDTH := 64
 # with and without SBI supported
 SBI_SUPPORT := yes
-#SBI_CONSOLE := yes
 RV_ENABLE_EXT_SSTC := yes
 RV_ENABLE_CSR_TIME := yes
 # use this or a ramdisk
 VIRTIO_DISK := yes
 #RAMDISK_EMBEDDED := yes
-#RAMDISK_BOOTLOADER := yes
+RAMDISK_BOOTLOADER := yes
 else ifeq ($(PLATFORM), qemu32)
 # test config
 BITWIDTH := 32
@@ -55,7 +54,6 @@ RAMDISK_BOOTLOADER := yes
 else ifeq ($(PLATFORM), visionfive2)
 BITWIDTH := 64
 SBI_SUPPORT := yes
-SBI_CONSOLE := yes
 RV_ENABLE_EXT_SSTC := no
 RV_ENABLE_CSR_TIME := yes
 RAMDISK_EMBEDDED := yes
@@ -161,10 +159,6 @@ ARCH_KERNEL_CFLAGS += -D__$(BOOT_MODE)
 
 ifeq ($(SBI_SUPPORT), yes)
 ARCH_KERNEL_CFLAGS += -D__ENABLE_SBI__
-endif
-
-ifeq ($(SBI_CONSOLE), yes)
-ARCH_KERNEL_CFLAGS += -D__SBI_CONSOLE__
 endif
 
 #

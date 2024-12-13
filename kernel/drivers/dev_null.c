@@ -23,7 +23,7 @@ ssize_t dev_null_write(struct Device *dev, bool addr_is_userspace, size_t addr,
     return len;
 }
 
-dev_t dev_null_init(struct Device_Memory_Map *)
+dev_t dev_null_init(struct Device_Init_Parameters *)
 {
     // init device and register it in the system
     g_dev_null.cdev.dev.type = CHAR;

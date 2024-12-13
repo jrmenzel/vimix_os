@@ -88,6 +88,7 @@ void panic(char* error_message)
         debug_print_call_stack_user(proc);
     }
 
+    machine_power_off();
 #if defined(_SHUTDOWN_ON_PANIC)
     machine_power_off();
 #else

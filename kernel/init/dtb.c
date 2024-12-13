@@ -23,7 +23,25 @@ bool is_compatible_device(const char *dtb_dev, const char *dev)
     return false;
 }
 
-void dtb_get_devices(void *dtb, struct Devices_List *dev_list)
+ssize_t dtb_add_driver_if_compatible(void *dtb, const char *device_name,
+                                     int device_offset,
+                                     struct Device_Driver *driver,
+                                     struct Devices_List *dev_list)
+{
+    for (; driver->dtb_name != NULL; driver++)
+    {
+        // find a compatible driver from the list
+        if (is_compatible_device(device_name, driver->dtb_name))
+        {
+            return dev_list_add_from_dtb(dev_list, dtb, device_name,
+                                         device_offset, driver);
+        }
+    }
+    return -1;
+}
+
+void dtb_add_devices_to_dev_list(void *dtb, struct Device_Driver *driver_list,
+                                 struct Devices_List *dev_list)
 {
     if (dtb == NULL)
     {
@@ -35,43 +53,9 @@ void dtb_get_devices(void *dtb, struct Devices_List *dev_list)
     while ((off = fdt_next_node(dtb, off, &depth)) >= 0)
     {
         const char *value = fdt_getprop(dtb, off, "compatible", NULL);
-        for (size_t i = 0; i < dev_list->dev_array_length; ++i)
-        {
-            struct Supported_Device *dev = &(dev_list->dev[i]);
-            if (value && (dev->found == false) &&
-                is_compatible_device(value, dev->dtb_name))
-            {
-                uint64_t base_addr = 0;
-                uint64_t size = 0;
+        if (value == NULL) continue;
 
-                const uint64_t *regs = fdt_getprop(dtb, off, "reg", NULL);
-                if (regs != NULL)
-                {
-                    base_addr = fdt64_to_cpu(regs[0]);
-                    size = fdt64_to_cpu(regs[1]);
-                }
-
-                const fdt32_t *intp =
-                    (fdt32_t *)fdt_getprop(dtb, off, "interrupts", NULL);
-
-                if (intp)
-                {
-                    int32_t interrupt = fdt32_to_cpu(*intp);
-                    dev->mapping.interrupt = interrupt;
-                }
-                else
-                {
-                    dev->mapping.interrupt = INVALID_IRQ_NUMBER;
-                }
-
-                dev->mapping.mem_start = base_addr;
-                dev->mapping.mem_size = size;
-                dev->found = true;
-
-                // break loop looking for a supported device
-                break;
-            }
-        }
+        dtb_add_driver_if_compatible(dtb, value, off, driver_list, dev_list);
     }
 }
 
@@ -80,7 +64,7 @@ void dtb_get_initrd(void *dtb, struct Minimal_Memory_Map *memory_map)
     size_t initrd_begin = 0;
     size_t initrd_end = 0;
     int offset = fdt_path_offset(dtb, "/chosen");
-    if (offset)
+    if (offset >= 0)
     {
         // initrd-start / initrd-end can be stored as 64 or 32 bit (even on a 64
         // bit system). Assume both have the same size:
@@ -174,4 +158,55 @@ uint64_t dtb_get_timebase(void *dtb)
     uint64_t timebase = fdt32_to_cpu(value[0]);
 
     return timebase;
+}
+
+ssize_t dtb_add_boot_console_to_dev_list(void *dtb,
+                                         struct Devices_List *dev_list)
+{
+    // find /chosen/stdout-path
+    int offset = fdt_path_offset(dtb, "/chosen");
+    if (offset < 0) return offset;  // contains a negative error code
+
+    int lenp = 0;  // string length incl. 0-terminator
+    const void *console = fdt_getprop(dtb, offset, "stdout-path", &lenp);
+    if (console == NULL) return -1;
+
+#define MAX_NAME_LEN 64
+    char name[MAX_NAME_LEN];
+    strncpy(name, console, MAX_NAME_LEN);
+
+    // remove the baud rate if present:
+    // e.g. "/soc/serial@10000000:115200" -> "/soc/serial@10000000"
+    for (char *pos = name; *pos != 0; pos++)
+    {
+        if (*pos == ':')
+        {
+            *pos = 0;
+            break;
+        }
+    }
+
+    int console_offset = fdt_path_offset(dtb, name);
+    if (console_offset < 0)
+        return console_offset;  // contains a negative error code
+
+    // see what it is compatible with...
+    const char *value = fdt_getprop(dtb, console_offset, "compatible", NULL);
+    if (value == NULL) return -1;
+
+    return dtb_add_driver_if_compatible(dtb, value, console_offset,
+                                        get_console_drivers(), dev_list);
+}
+
+int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
+                                    const char *name, int32_t fallback)
+{
+    const fdt32_t *intp = (fdt32_t *)fdt_getprop(dtb, node_offset, name, NULL);
+    if (intp != NULL)
+    {
+        int32_t value = fdt32_to_cpu(*intp);
+        return value;
+    }
+
+    return fallback;
 }

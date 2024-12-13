@@ -6,6 +6,8 @@
 #include <arch/platform.h>
 #include <arch/trap.h>
 #include <drivers/console.h>
+#include <drivers/dev_null.h>
+#include <drivers/dev_zero.h>
 #include <drivers/devices_list.h>
 #include <drivers/ramdisk.h>
 #include <drivers/virtio_disk.h>
@@ -48,11 +50,6 @@ void print_kernel_info()
 #elif defined(__TIMER_SOURCE_SBI)
     printk("Timer source: SBI\n");
 #endif
-#if defined(__SBI_CONSOLE__)
-    printk("Console: SBI\n");
-#else
-    printk("Console: UART\n");
-#endif
 }
 
 #ifdef __ENABLE_SBI__
@@ -88,29 +85,75 @@ void print_memory_map(struct Minimal_Memory_Map *memory_map)
            ram_size_mb);
 }
 
+void add_ramdisks_to_dev_list(struct Devices_List *dev_list,
+                              struct Minimal_Memory_Map *memory_map)
+{
+    struct Device_Init_Parameters init_params;
+#ifdef RAMDISK_EMBEDDED
+    clear_init_parameters(&init_params);
+    init_params.mem_start = (size_t)ramdisk_fs;
+    init_params.mem_size = (size_t)ramdisk_fs_size;
+    dev_list_add_with_parameters(dev_list, "ramdisk_embedded", ramdisk_init,
+                                 init_params);
+#endif
+    if (memory_map->initrd_begin != 0)
+    {
+        // boot loader provided ramdisk detected
+        clear_init_parameters(&init_params);
+        init_params.mem_start = memory_map->initrd_begin;
+        init_params.mem_size =
+            memory_map->initrd_end - memory_map->initrd_begin;
+        dev_list_add_with_parameters(dev_list, "ramdisk_initrd", ramdisk_init,
+                                     init_params);
+    }
+}
+
 /// some init that only one thread should perform while all others wait
 void init_by_first_thread(void *dtb)
 {
-    // get list of available devices from the device tree:
+    // Collect all found devices in this list for later init:
     struct Devices_List *dev_list = get_devices_list();
-    dtb_get_devices(dtb, dev_list);
 
-    // init a way to print, also starts uart:
-    init_device(&(dev_list->dev[0]));  ///< device 0 is the console
+    // init a way to print, starts uart (unless the SBI console is used):
+    ssize_t console_index = dtb_add_boot_console_to_dev_list(dtb, dev_list);
+    if (console_index >= 0)
+    {
+        init_device(&(dev_list->dev[console_index]));
+    }
+    else
+    {
+        // fallback if no UART was found: try the SBI console:
+        console_init(NULL);
+    }
     printk_init();
+
     printk("\n");
     printk("VIMIX OS " _arch_bits_string " bit " FEATURE_STRING
            " kernel version " str_from_define(GIT_HASH) " is booting\n");
     print_kernel_info();
-    printk("\n");
-    // print_found_devices();
-    // printk("\n");
+    if (console_index < 0)
+    {
+        printk("Console: SBI\n");
+    }
+    else
+    {
+        printk("Console: %s\n", dev_list->dev[console_index].dtb_name);
+    }
 
-    // init memory management:
-    printk("init memory management...\n");
     struct Minimal_Memory_Map memory_map;
     dtb_get_memory(dtb, &memory_map);
 
+    // collect all found devices:
+    add_ramdisks_to_dev_list(dev_list, &memory_map);
+    dev_list_add(dev_list, "/dev/null", dev_null_init);
+    dev_list_add(dev_list, "/dev/zero", dev_zero_init);
+    dtb_add_devices_to_dev_list(dtb, get_generell_drivers(), dev_list);
+    // debug_dev_list_print(dev_list);
+
+    // init memory management:
+    printk("init memory management...\n");
+
+#ifdef _PLATFORM_VISIONFIVE2
     // cap usable memory for performance reasons if MEMORY_SIZE is set
     size_t ram_size = memory_map.ram_end - memory_map.ram_start;
     size_t max_ram = 1024 * 1024 * MEMORY_SIZE;
@@ -118,6 +161,7 @@ void init_by_first_thread(void *dtb)
     {
         memory_map.ram_end = memory_map.ram_start + max_ram;
     }
+#endif
 
     print_memory_map(&memory_map);
     kalloc_init(&memory_map);         // physical page allocator
@@ -135,57 +179,39 @@ void init_by_first_thread(void *dtb)
     file_init();  // file table
 
     printk("init remaining devices...\n");
-    // device 0 is the console and was done already, now the rest:
-    for (size_t i = 1; i < dev_list->dev_array_length; ++i)
-    {
-        init_device(&(dev_list->dev[i]));
-    }
+    dev_list_init_all_devices(dev_list);
 
-    // if a virtio device was found, init the one with the lowest address
-    // this is the first device in qemu and the one the FS image is loaded
-    ssize_t device_of_root_fs = -1;
-    ssize_t i = get_first_virtio(dev_list);
-    if (i >= 0)
+    // find the device with the root file system:
+    size_t device_of_root_fs = 0;
+    ssize_t ramdisk_index_0 =
+        dev_list_get_device_index(dev_list, "ramdisk_embedded");
+    ssize_t ramdisk_index_1 =
+        dev_list_get_device_index(dev_list, "ramdisk_initrd");
+    ssize_t disk_index_0 =
+        dev_list_get_first_device_index(dev_list, "virtio,mmio");
+    if (ramdisk_index_0 >= 0)
     {
-        device_of_root_fs = i;
+        device_of_root_fs = ramdisk_index_0;
     }
-    if (memory_map.initrd_begin != 0)
+    else if (ramdisk_index_1 >= 0)
     {
-        ssize_t ramdisk_index = get_device_index(dev_list, "ramdisk_initrd");
-        if (ramdisk_index > 0)
-        {
-            dev_list->dev[ramdisk_index].mapping.mem_start =
-                memory_map.initrd_begin;
-            dev_list->dev[ramdisk_index].mapping.mem_size =
-                memory_map.initrd_end - memory_map.initrd_begin;
-            dev_list->dev[ramdisk_index].found = true;
-            device_of_root_fs = ramdisk_index;
-
-            // init ramdisk:
-            init_device(&(dev_list->dev[ramdisk_index]));
-        }
+        device_of_root_fs = ramdisk_index_1;
     }
-
-    // an embedded ram disk has preference over a previously found virtio disk /
-    // initrd ramdisk
-    ssize_t ramdisk_index = get_device_index(dev_list, "ramdisk_embedded");
-    if (ramdisk_index > 0)
+    else if (disk_index_0 >= 0)
     {
-        device_of_root_fs = ramdisk_index;
-    }
-
-    // store the device number of root:
-    if (device_of_root_fs != -1)
-    {
-        ROOT_DEVICE_NUMBER = dev_list->dev[device_of_root_fs].dev_num;
-        printk("fs root device: %s (%d,%d)\n",
-               dev_list->dev[device_of_root_fs].dtb_name,
-               MAJOR(ROOT_DEVICE_NUMBER), MINOR(ROOT_DEVICE_NUMBER));
+        device_of_root_fs = disk_index_0;
     }
     else
     {
         panic("NO ROOT FILESYSTEM FOUND");
     }
+
+    // store the device number of root:
+    ROOT_DEVICE_NUMBER = dev_list->dev[device_of_root_fs].dev_num;
+    printk("fs root device: %s (%d,%d)\n",
+           dev_list->dev[device_of_root_fs].dtb_name, MAJOR(ROOT_DEVICE_NUMBER),
+           MINOR(ROOT_DEVICE_NUMBER));
+
     // e.g. boots other harts in SBI mode:
     init_platform();
 

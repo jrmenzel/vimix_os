@@ -45,13 +45,13 @@ bool plic_is_initialized = false;
 // the riscv Platform Level Interrupt Controller (PLIC).
 //
 
-dev_t plic_init(struct Device_Memory_Map *mapping)
+dev_t plic_init(struct Device_Init_Parameters *init_parameters)
 {
     if (plic_is_initialized)
     {
         return 0;
     }
-    PLIC_BASE = mapping->mem_start;
+    PLIC_BASE = init_parameters->mem_start;
     plic_is_initialized = true;
     return MKDEV(PLIC_MAJOR, 0);
 }

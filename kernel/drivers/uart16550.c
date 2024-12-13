@@ -11,20 +11,14 @@
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
-
+#include <kernel/string.h>
 #include <mm/memlayout.h>
 
-/// the UART control registers are memory-mapped
-/// at address UART0. this macro returns the
-/// address of one of the registers.
-size_t uart_base = 0;
+#define Reg(uart, reg) \
+    ((volatile unsigned char *)(uart->uart_base + (reg << uart->reg_shift)))
 
-#ifdef _PLATFORM_VISIONFIVE2
-// reg-shift == 2 in device tree
-#define Reg(reg) ((volatile unsigned char *)(uart_base + (reg << 2)))
-#else
-#define Reg(reg) ((volatile unsigned char *)(uart_base + (reg)))
-#endif
+#define Reg32(uart, reg) \
+    ((volatile uint32_t *)(uart->uart_base + (reg << uart->reg_shift)))
 
 /// the UART control registers.
 /// some have different meanings for
@@ -55,38 +49,67 @@ size_t uart_base = 0;
 // bautrate divisor most significant byte; only visibly if DLAB bit is set
 #define DLM 1
 
-#define ReadReg(reg) (*(Reg(reg)))
-#define WriteReg(reg, v) (*(Reg(reg)) = (v))
+int32_t read_register(struct uart_16550 *uart, size_t reg)
+{
+    if (uart->reg_io_width == 1)
+    {
+        return (int32_t)*Reg(uart, reg);
+    }
+    else  // uart->reg_io_width == 4, only two supported options
+    {
+        return *Reg32(uart, reg);
+    }
+}
+
+void write_register(struct uart_16550 *uart, size_t reg, uint32_t value)
+{
+    if (uart->reg_io_width == 1)
+    {
+        *Reg(uart, reg) = (uint8_t)value;
+    }
+    else  // uart->reg_io_width == 4, only two supported options
+    {
+        *Reg32(uart, reg) = value;
+    }
+}
 
 struct uart_16550 g_uart_16550;
 
 void uartstart();
 
-void uart_init(struct Device_Memory_Map *dev_map)
+void uart_init(struct Device_Init_Parameters *init_param)
 {
-    uart_base = dev_map->mem_start;
+    DEBUG_EXTRA_ASSERT(
+        init_param->reg_io_width == 1 || init_param->reg_io_width == 4,
+        "unsupported IO width");
+
+    g_uart_16550.uart_base = init_param->mem_start;
+    g_uart_16550.reg_io_width = init_param->reg_io_width;
+    g_uart_16550.reg_shift = init_param->reg_shift;
 
     //   disable interrupts.
-    WriteReg(IER, 0x00);
+    write_register(&g_uart_16550, IER, 0x00);
+
 #ifndef _PLATFORM_VISIONFIVE2
     //  special mode to set baud rate.
-    WriteReg(LCR, LCR_BAUD_LATCH);
+    write_register(&g_uart_16550, LCR, LCR_BAUD_LATCH);
 
     // LSB for baud rate of 38.4K.
-    WriteReg(DLL, 0x03);
+    write_register(&g_uart_16550, DLL, 0x03);
 
     // MSB for baud rate of 38.4K.
-    WriteReg(DLM, 0x00);
+    write_register(&g_uart_16550, DLM, 0x00);
 
     // leave set-baud mode,
     // and set word length to 8 bits, no parity.
-    WriteReg(LCR, LCR_EIGHT_BITS);
+    write_register(&g_uart_16550, LCR, LCR_EIGHT_BITS);
 #endif
+
     // reset and enable FIFOs.
-    WriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
+    write_register(&g_uart_16550, FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
     //  enable receive interrupt.
-    WriteReg(IER, IER_RX_ENABLE);
+    write_register(&g_uart_16550, IER, IER_RX_ENABLE);
 
     // init uart_16550 object
     spin_lock_init(&g_uart_16550.uart_tx_lock, "uart");
@@ -112,11 +135,11 @@ void uart_putc_sync(int32_t c)
 {
     cpu_push_disable_device_interrupt_stack();
 
-    while ((ReadReg(LSR) & LSR_TX_IDLE) == 0)
+    while ((read_register(&g_uart_16550, LSR) & LSR_TX_IDLE) == 0)
     {
         // wait for Transmit Holding Empty to be set in LSR.
     }
-    WriteReg(THR, c);
+    write_register(&g_uart_16550, THR, c);
 
     cpu_pop_disable_device_interrupt_stack();
 }
@@ -135,7 +158,7 @@ void uartstart()
             return;
         }
 
-        if ((ReadReg(LSR) & LSR_TX_IDLE) == 0)
+        if ((read_register(&g_uart_16550, LSR) & LSR_TX_IDLE) == 0)
         {
             // the UART transmit holding register is full,
             // so we cannot give it another byte.
@@ -150,7 +173,7 @@ void uartstart()
         // maybe uart_putc() is waiting for space in the buffer.
         wakeup(&g_uart_16550.uart_tx_r);
 
-        WriteReg(THR, c);
+        write_register(&g_uart_16550, THR, c);
     }
 }
 
@@ -158,10 +181,10 @@ void uartstart()
 /// @return The char on success or -1 on failure
 int32_t uart_getc()
 {
-    if (ReadReg(LSR) & LSR_DATA_READY)
+    if (read_register(&g_uart_16550, LSR) & LSR_DATA_READY)
     {
         // input data is ready.
-        return ReadReg(RHR);
+        return read_register(&g_uart_16550, RHR);
     }
     else
     {
@@ -175,7 +198,7 @@ int32_t uart_getc()
 void uart_interrupt_handler(dev_t dev)
 {
     // unsigned char int_status =
-    ReadReg(ISR);  // clears the interrupt source
+    read_register(&g_uart_16550, ISR);  // clears the interrupt source
 
     // read and process incoming characters.
     while (true)

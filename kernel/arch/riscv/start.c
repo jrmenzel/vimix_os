@@ -149,14 +149,17 @@ void start(xlen_t cpuid, void *device_tree)
     // clear BSS
     wait_on_bss_clear(is_first_thread);
 
-    // If using CLINT, timer init must be done in M-Mode before jumping to main,
-    // also init S-Mode timers here.
+    if (is_first_thread)
+    {
+        kticks_init();
+    }
+    // If using CLINT, timer init must be done in M-Mode before jumping to
+    // main, also init S-Mode timers here.
     uint64_t timebase = dtb_get_timebase(device_tree);
     if (timebase == 0)
     {
         timebase = 10000000ull;  // fallback
     }
-    kticks_init();
     timer_init(timebase);
 
     // enable external, timer, software interrupts

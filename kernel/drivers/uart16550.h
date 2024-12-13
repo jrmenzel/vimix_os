@@ -7,7 +7,7 @@
 
 /// @brief Inits the hardware, creates a uart_16550 object
 /// and adds it to the devices list.
-void uart_init(struct Device_Memory_Map *dev_map);
+void uart_init(struct Device_Init_Parameters *init_param);
 
 /// @brief Console Character Device will set this up
 void uart_interrupt_handler();
@@ -47,4 +47,19 @@ struct uart_16550
     /// read index
     /// (next read from uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE])
     size_t uart_tx_r;
+
+    /// the UART control registers are memory-mapped to this address
+    size_t uart_base;
+
+    int32_t reg_io_width;
+
+    /// @brief Register addresses are shifted by this amount of bits to allow
+    /// different register width
+    int32_t reg_shift;
+
+    enum UART_Variant
+    {
+        NS16550,
+        DW_APT
+    } uart_variant;
 };

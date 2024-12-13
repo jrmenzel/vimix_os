@@ -93,9 +93,15 @@ qemu-gdb: kernel .gdbinit $(BUILD_DIR)/filesystem.img # run VIMIX in qemu waitin
 # Note: see docs on how to build VIMIX for Spike
 
 # spike binary, edit to use e.g. a self compiled version
-#SPIKE_BUILD := ../riscv-simulator/riscv-isa-sim/build/
+ifneq ("$(wildcard spike/riscv-isa-sim/build/spike)","")
+SPIKE_BUILD := spike/riscv-isa-sim/build/
+endif
 SPIKE := $(SPIKE_BUILD)spike
-#SPIKE_SBI_FW=../opensbi/build/platform/generic/firmware/fw_payload.elf
+
+ifneq ("$(wildcard spike/opensbi/build/platform/generic/firmware/fw_payload.elf)","")
+SPIKE_SBI_FW=spike/opensbi/build/platform/generic/firmware/fw_payload.elf
+endif
+
 ifeq ($(BITWIDTH), 32)
 SPIKE_ISA := rv32gc
 else
@@ -109,23 +115,25 @@ SPIKE_OPTIONS += --initrd=$(BUILD_DIR)/filesystem.img
 endif
 SPIKE_OPTIONS += --kernel=$(KERNEL_FILE) $(KERNEL_FILE)
 
+ifeq ($(SBI_SUPPORT), yes)
+SPIKE_OPTIONS := $(SPIKE_SBI_FW) $(SPIKE_OPTIONS)
+endif
+
 spike-requirements: kernel $(BUILD_DIR)/filesystem.img
 
 spike: spike-requirements
+	@printf "\n$(YELLOW)CTRL+C q Enter to close Spike$(NO_COLOR)\n"
 	$(SPIKE) $(SPIKE_OPTIONS)
 
 spike-log: spike-requirements
 	$(SPIKE) -l --log=spike_log.txt $(SPIKE_OPTIONS) 
 
 spike-gdb: spike-requirements
-	$(SPIKE) --rbb-port=9824 $(SPIKE_OPTIONS)
-
-spike-sbi: spike-requirements
-	$(SPIKE) $(SPIKE_SBI_FW) $(SPIKE_OPTIONS)
+	$(SPIKE) --rbb-port=9824 --halted $(SPIKE_OPTIONS)
 
 # dump device tree
 spike-dump-tree: spike-requirements
-	$(SPIKE) --dump-dts $(SPIKE_OPTIONS) 
+	$(SPIKE) --dump-dts $(SPIKE_OPTIONS) > tree_$(PLATFORM).dts
 
 clean: # clean up
 	@$(MAKE) -C kernel clean;

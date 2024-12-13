@@ -4,7 +4,7 @@
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
 
-dev_t clint_init(struct Device_Memory_Map *mapping);
+dev_t clint_init(struct Device_Init_Parameters *init_parameters);
 
 #ifdef __TIMER_SOURCE_CLINT
 /// arrange to receive timer interrupts.

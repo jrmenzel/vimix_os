@@ -15,13 +15,13 @@ size_t CLINT_BASE = 0x02000000L;
 /// Cycles since boot. This register is always 64 bit!
 #define CLINT_MTIME (CLINT_BASE + 0xBFF8)
 
-dev_t clint_init(struct Device_Memory_Map *mapping)
+dev_t clint_init(struct Device_Init_Parameters *init_parameters)
 {
 // TODO: clint_init_timer_interrupt() is called before this as
 // it has to run in M-Mode, this only works if the base address
 // is the same.
 #ifdef __TIMER_SOURCE_CLINT
-    if (CLINT_BASE != mapping->mem_start)
+    if (CLINT_BASE != init_parameters->mem_start)
     {
         panic("Unexpected CLINT address\n");
     }
@@ -31,7 +31,7 @@ dev_t clint_init(struct Device_Memory_Map *mapping)
     {
         return 0;
     }
-    CLINT_BASE = mapping->mem_start;
+    CLINT_BASE = init_parameters->mem_start;
     clint_is_initialized = true;
     return MKDEV(CLINT_MAJOR, 0);
 }

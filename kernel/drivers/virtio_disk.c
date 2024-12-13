@@ -29,7 +29,7 @@ void virtio_block_device_write(struct Block_Device *bd, struct buf *b);
 void virtio_block_device_interrupt();
 
 dev_t virtio_disk_init_internal(size_t disk_index,
-                                struct Device_Memory_Map *mapping)
+                                struct Device_Init_Parameters *mapping)
 {
     if (disk_index > MAX_MINOR_DEVICES) return INVALID_DEVICE;
     struct virtio_disk *disk = &g_virtio_disks[disk_index];
@@ -161,7 +161,7 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     return disk->disk.bdev.dev.device_number;
 }
 
-dev_t virtio_disk_init(struct Device_Memory_Map *mapping)
+dev_t virtio_disk_init(struct Device_Init_Parameters *mapping)
 {
     size_t b = mapping->mem_start;
 

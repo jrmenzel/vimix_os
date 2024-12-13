@@ -5,8 +5,8 @@
 #include <kernel/kernel.h>
 
 /// @brief Set the memory map
-/// @param mapping Need the memory start address
-dev_t plic_init(struct Device_Memory_Map *mapping);
+/// @param init_parameters Need the memory start address
+dev_t plic_init(struct Device_Init_Parameters *init_parameters);
 
 /// @brief Enables an interrupt if priority > 0.
 /// @param irq The IRQ to enable.

@@ -21,13 +21,13 @@
 #define DELETE_KEY '\x7f'
 #define CONTROL_KEY(x) ((x) - '@')  // Control-x
 
-#ifdef __SBI_CONSOLE__
-#define device_putc sbi_console_putchar
-#define device_putc_sync sbi_console_putchar
-#else
-#define device_putc uart_putc
-#define device_putc_sync uart_putc_sync
-#endif
+// pointers for the put chat function of either a UART driver or the SBI
+// fallback
+void (*device_putc)(int32_t ch);
+void (*device_putc_sync)(int32_t ch);
+
+// true if the SBI fallback is used
+bool g_console_poll_sbi = false;
 
 /// send one character to the uart.
 /// called by printk(), and to echo input characters,
@@ -50,7 +50,7 @@ void console_putc(int32_t c)
 struct
 {
     struct Character_Device cdev;  ///< derived from a character device
-    struct Device_Memory_Map mapping;
+    struct Device_Init_Parameters init_parameters;
 
     struct spinlock lock;
 
@@ -215,19 +215,47 @@ void console_interrupt_handler(int32_t c)
     spin_unlock(&g_console.lock);
 }
 
-dev_t console_init(struct Device_Memory_Map *dev_map)
+dev_t console_init(struct Device_Init_Parameters *init_param)
 {
     spin_lock_init(&g_console.lock, "cons");
-
-    uart_init(dev_map);
 
     // init device and register it in the system
     g_console.cdev.dev.type = CHAR;
     g_console.cdev.dev.device_number = MKDEV(CONSOLE_DEVICE_MAJOR, 0);
     g_console.cdev.ops.read = console_read;
     g_console.cdev.ops.write = console_write;
-    dev_set_irq(&g_console.cdev.dev, dev_map->interrupt,
-                uart_interrupt_handler);
+
+    if (init_param != NULL)
+    {
+        device_putc = uart_putc;
+        device_putc_sync = uart_putc_sync;
+
+        uart_init(init_param);
+        dev_set_irq(&g_console.cdev.dev, init_param->interrupt,
+                    uart_interrupt_handler);
+
+        g_console_poll_sbi = false;
+    }
+    else
+    {
+#ifdef __ENABLE_SBI__
+        if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) <= 0)
+        {
+            panic(
+                "Error: support for the SBI legacy console extension "
+                "missing\n");
+        }
+
+        // SBI console fallback
+        device_putc = sbi_console_putchar;
+        device_putc_sync = sbi_console_putchar;
+        g_console_poll_sbi = true;  // there is no IRQ, this var is a hack to
+                                    // poll the input via the timer
+#else
+        panic("No device parameters to init a console");
+#endif
+    }
+
     register_device(&g_console.cdev.dev);
 
     return g_console.cdev.dev.device_number;

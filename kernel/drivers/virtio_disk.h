@@ -57,4 +57,4 @@ struct virtio_disk
 /// @brief Inits the virtio disk driver (for qemu) and inits the hardware.
 /// Creates a virtio_disk object and adds it to the devices list.
 /// @return device number of the created device
-dev_t virtio_disk_init(struct Device_Memory_Map *mapping);
+dev_t virtio_disk_init(struct Device_Init_Parameters *mapping);

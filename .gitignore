@@ -11,6 +11,10 @@ build_tests/*
 build_host/*
 utests-tmp/*
 
+# device tree files
+*.dts
+*.dtb
+
 # auto generated:
 kernel/arch/riscv/asm/initcode.h
 .gdbinit

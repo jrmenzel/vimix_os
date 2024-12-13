@@ -61,6 +61,10 @@ StarFive # load mmc 1 0x50000000 kernel-vimix
 StarFive # bootelf 0x50000000
 ```
 
+U-Boot commands can be concatenated:
+
+> load mmc 1 0x50000000 kernel-vimix && bootelf 0x50000000
+
 
 ---
 **Up:** [README](../README.md)

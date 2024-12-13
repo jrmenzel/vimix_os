@@ -60,14 +60,14 @@ pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
     // map all found MMIO devices
     for (size_t i = 0; i < dev_list->dev_array_length; ++i)
     {
-        struct Supported_Device *dev = &(dev_list->dev[i]);
-        if (dev->found && dev->map_memory)
+        struct Found_Device *dev = &(dev_list->dev[i]);
+        if (dev->init_parameters.mmu_map_memory)
         {
             // printk("mapping found device %s at 0x%zx size: 0x%zx\n",
             //        dev->dtb_name, dev->mapping.mem_start,
             //        dev->mapping.mem_size);
-            kvm_map_mmio(kpage_table, dev->mapping.mem_start,
-                         PAGE_ROUND_UP(dev->mapping.mem_size));
+            kvm_map_mmio(kpage_table, dev->init_parameters.mem_start,
+                         PAGE_ROUND_UP(dev->init_parameters.mem_size));
         }
     }
 

@@ -5,16 +5,16 @@
 #include <kernel/kticks.h>
 #include <kernel/major.h>
 
-struct Device_Memory_Map goldfish_mapping = {0};
+struct Device_Init_Parameters goldfish_mapping = {0};
 bool rtc_is_initialized = false;
 
-dev_t rtc_init(struct Device_Memory_Map *mapping)
+dev_t rtc_init(struct Device_Init_Parameters *init_parameters)
 {
     if (rtc_is_initialized)
     {
         return 0;
     }
-    goldfish_mapping = *mapping;
+    goldfish_mapping = *init_parameters;
     rtc_is_initialized = true;
     return MKDEV(RTC_MAJOR, 0);
 }
