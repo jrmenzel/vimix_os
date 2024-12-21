@@ -29,7 +29,7 @@ ssize_t dev_zero_write(struct Device *dev, bool addr_is_userspace, size_t addr,
     return len;
 }
 
-dev_t dev_zero_init(struct Device_Init_Parameters *)
+dev_t dev_zero_init(struct Device_Init_Parameters *param, const char *name)
 {
     // init device and register it in the system
     g_dev_zero.cdev.dev.type = CHAR;

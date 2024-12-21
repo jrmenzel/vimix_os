@@ -71,8 +71,8 @@ qemu: kernel $(BUILD_DIR)/filesystem.img # run VIMIX in qemu
 
 # dump device tree
 qemu-dump-tree: kernel $(BUILD_DIR)/filesystem.img
-	$(QEMU) $(QEMU_OPTS) -M dumpdtb=tree.dtb
-	dtc -o tree.dts -O dts -I dtb tree.dtb
+	$(QEMU) $(QEMU_OPTS) -M dumpdtb=tree_$(PLATFORM).dtb
+	dtc -o tree_$(PLATFORM).dts -O dts -I dtb tree_$(PLATFORM).dtb
 
 .gdbinit: tools/gdbinit Makefile MakefileCommon.mk
 	@cp tools/gdbinit .gdbinit

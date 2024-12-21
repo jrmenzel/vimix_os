@@ -13,7 +13,7 @@ struct Device_Init_Parameters
     int32_t interrupt;
 };
 
-typedef dev_t (*init_func_p)(struct Device_Init_Parameters *);
+typedef dev_t (*init_func_p)(struct Device_Init_Parameters *, const char *name);
 
 void clear_init_parameters(struct Device_Init_Parameters *param);
 

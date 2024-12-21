@@ -45,7 +45,8 @@ bool plic_is_initialized = false;
 // the riscv Platform Level Interrupt Controller (PLIC).
 //
 
-dev_t plic_init(struct Device_Init_Parameters *init_parameters)
+dev_t plic_init(struct Device_Init_Parameters *init_parameters,
+                const char *name)
 {
     if (plic_is_initialized)
     {

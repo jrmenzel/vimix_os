@@ -4,13 +4,13 @@
 // System Information system calls.
 //
 
-#include <arch/reset.h>
 #include <arch/trap.h>
 #include <drivers/rtc.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
 #include <kernel/mount.h>
 #include <kernel/reboot.h>
+#include <kernel/reset.h>
 #include <kernel/spinlock.h>
 #include <kernel/time.h>
 #include <syscalls/syscall.h>

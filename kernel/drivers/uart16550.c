@@ -77,7 +77,7 @@ struct uart_16550 g_uart_16550;
 
 void uartstart();
 
-void uart_init(struct Device_Init_Parameters *init_param)
+void uart_init(struct Device_Init_Parameters *init_param, const char *name)
 {
     DEBUG_EXTRA_ASSERT(
         init_param->reg_io_width == 1 || init_param->reg_io_width == 4,

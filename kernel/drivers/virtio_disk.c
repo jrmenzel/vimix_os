@@ -161,9 +161,10 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     return disk->disk.bdev.dev.device_number;
 }
 
-dev_t virtio_disk_init(struct Device_Init_Parameters *mapping)
+dev_t virtio_disk_init(struct Device_Init_Parameters *init_param,
+                       const char *name)
 {
-    size_t b = mapping->mem_start;
+    size_t b = init_param->mem_start;
 
     if (*R(b, VIRTIO_MMIO_MAGIC_VALUE) != VIRTIO_DISK_MAGIC ||
         *R(b, VIRTIO_MMIO_VERSION) != 2 || *R(b, VIRTIO_MMIO_DEVICE_ID) != 2)
@@ -172,7 +173,7 @@ dev_t virtio_disk_init(struct Device_Init_Parameters *mapping)
         return INVALID_DEVICE;
     }
 
-    dev_t dev = virtio_disk_init_internal(g_virtio_disks_used, mapping);
+    dev_t dev = virtio_disk_init_internal(g_virtio_disks_used, init_param);
     if (dev != INVALID_DEVICE)
     {
         g_virtio_disks_used++;

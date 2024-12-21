@@ -7,7 +7,7 @@
 
 /// @brief Inits the hardware, creates a uart_16550 object
 /// and adds it to the devices list.
-void uart_init(struct Device_Init_Parameters *init_param);
+void uart_init(struct Device_Init_Parameters *init_param, const char *name);
 
 /// @brief Console Character Device will set this up
 void uart_interrupt_handler();

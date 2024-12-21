@@ -4,7 +4,13 @@
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
 
-dev_t clint_init(struct Device_Init_Parameters *init_parameters);
+/// @brief
+/// @param init_parameters
+/// @param name Device name from the dtb file (if one driver supports multiple
+/// devices)
+/// @return Device number of successful init.
+dev_t clint_init(struct Device_Init_Parameters *init_parameters,
+                 const char *name);
 
 #ifdef __TIMER_SOURCE_CLINT
 /// arrange to receive timer interrupts.

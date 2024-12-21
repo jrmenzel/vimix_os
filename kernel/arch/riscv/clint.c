@@ -15,7 +15,8 @@ size_t CLINT_BASE = 0x02000000L;
 /// Cycles since boot. This register is always 64 bit!
 #define CLINT_MTIME (CLINT_BASE + 0xBFF8)
 
-dev_t clint_init(struct Device_Init_Parameters *init_parameters)
+dev_t clint_init(struct Device_Init_Parameters *init_parameters,
+                 const char *name)
 {
 // TODO: clint_init_timer_interrupt() is called before this as
 // it has to run in M-Mode, this only works if the base address

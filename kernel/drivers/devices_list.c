@@ -6,6 +6,7 @@
 #include <drivers/dev_null.h>
 #include <drivers/dev_zero.h>
 #include <drivers/devices_list.h>
+#include <drivers/htif.h>
 #include <drivers/ramdisk.h>
 #include <drivers/rtc.h>
 #include <drivers/syscon.h>
@@ -36,11 +37,13 @@ struct Devices_List *get_devices_list() { return &g_devices_list; }
 // clang-format off
 struct Device_Driver g_console_drivers[] = {{"ns16550a", console_init},
 //                                          {"snps,dw-apb-uart", console_init},
+                                            {"ucb,htif0", console_init},
                                             {NULL, NULL}};
 
 struct Device_Driver g_generell_drivers[] = {{"virtio,mmio", virtio_disk_init},
                                              {"google,goldfish-rtc", rtc_init},
                                              {"syscon", syscon_init},
+                                             {"ucb,htif0", htif_init},
                                              {"riscv,plic0", plic_init},
 #if defined(__TIMER_SOURCE_CLINT)
                                              {"riscv,clint0", clint_init},
@@ -59,7 +62,7 @@ void init_device(struct Found_Device *dev)
         // NOTE: the first device to init is the console for boot
         // messages. No printk before the init function in case this is the
         // first console
-        dev_t dev_num = dev->init_func(&(dev->init_parameters));
+        dev_t dev_num = dev->init_func(&(dev->init_parameters), dev->dtb_name);
         dev->dev_num = dev_num;
         printk("init device %s... ", dev->dtb_name);
         if (dev_num == 0)

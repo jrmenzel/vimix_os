@@ -123,7 +123,7 @@ void init_by_first_thread(void *dtb)
     else
     {
         // fallback if no UART was found: try the SBI console:
-        console_init(NULL);
+        console_init(NULL, NULL);
     }
     printk_init();
 
@@ -148,7 +148,7 @@ void init_by_first_thread(void *dtb)
     dev_list_add(dev_list, "/dev/null", dev_null_init);
     dev_list_add(dev_list, "/dev/zero", dev_zero_init);
     dtb_add_devices_to_dev_list(dtb, get_generell_drivers(), dev_list);
-    // debug_dev_list_print(dev_list);
+    debug_dev_list_print(dev_list);
 
     // init memory management:
     printk("init memory management...\n");

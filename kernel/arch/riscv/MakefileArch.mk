@@ -2,10 +2,15 @@
 # RISC V specific settings
 #
 
+# qemu machine virt:
 #PLATFORM := qemu32
 PLATFORM := qemu64
+
+# spike simulator:
 #PLATFORM := spike32
 #PLATFORM := spike64
+
+# hardware:
 #PLATFORM := visionfive2
 
 # RAM in MB
@@ -32,6 +37,7 @@ RV_ENABLE_CSR_TIME := yes
 VIRTIO_DISK := yes
 #RAMDISK_EMBEDDED := yes
 RAMDISK_BOOTLOADER := yes
+QEMU_MACHINE := virt
 else ifeq ($(PLATFORM), qemu32)
 # test config
 BITWIDTH := 32
@@ -39,6 +45,7 @@ SBI_SUPPORT := no
 RV_ENABLE_EXT_SSTC := yes
 RV_ENABLE_CSR_TIME := yes
 RAMDISK_BOOTLOADER := yes
+QEMU_MACHINE := virt
 else ifeq ($(PLATFORM), spike32)
 BITWIDTH := 32
 RV_ENABLE_EXT_SSTC := no
@@ -172,8 +179,7 @@ OBJS_ARCH := arch/riscv/asm/entry.o \
 	arch/riscv/plic.o \
 	arch/riscv/trap.o \
 	arch/riscv/timer.o \
-	arch/riscv/scause.o \
-	arch/riscv/reset.o
+	arch/riscv/scause.o
 
 ifeq ($(BOOT_MODE), BOOT_M_MODE)
 OBJS_ARCH += arch/riscv/asm/m_mode_trap_vector.o
@@ -196,6 +202,6 @@ else
 QEMU_BIOS := none
 endif
 
-QEMU_OPTS_ARCH := -machine virt -bios $(QEMU_BIOS)
+QEMU_OPTS_ARCH := -machine $(QEMU_MACHINE) -bios $(QEMU_BIOS)
 QEMU_OPTS_ARCH += -global virtio-mmio.force-legacy=false
 

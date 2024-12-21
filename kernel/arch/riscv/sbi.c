@@ -4,6 +4,7 @@
 #include <clint.h>
 #include <drivers/console.h>
 #include <kernel/kernel.h>
+#include <kernel/reset.h>
 #include <kernel/smp.h>
 #include <riscv.h>
 #include <sbi.h>
@@ -129,6 +130,16 @@ void sbi_system_reset(uint32_t reset_type, uint32_t reset_reason)
               0, 0, 0, 0);
 }
 
+void sbi_machine_power_off()
+{
+    sbi_system_reset(SBI_SRST_TYPE_SHUTDOWN, SBI_SRST_REASON_NONE);
+}
+
+void sbi_machine_restart()
+{
+    sbi_system_reset(SBI_SRST_TYPE_WARM_REBOOT, SBI_SRST_REASON_NONE);
+}
+
 void init_sbi()
 {
     long version = sbi_get_spec_version();
@@ -136,6 +147,17 @@ void init_sbi()
         (version >> SBI_SPEC_VERSION_MAJOR_SHIFT) & SBI_SPEC_VERSION_MAJOR_MASK;
     long minor = version & SBI_SPEC_VERSION_MINOR_MASK;
     printk("SBI specification v%ld.%ld detected\n", major, minor);
+
+    if (!EXT_SRST_QUERIED)
+    {
+        EXT_SRST_SUPPORTED = (sbi_probe_extension(SBI_EXT_ID_SRST) > 0);
+    }
+    if (EXT_SRST_SUPPORTED)
+    {
+        printk("register SBI reboot/shutdown functions\n");
+        g_machine_power_off_func = &sbi_machine_power_off;
+        g_machine_restart_func = &sbi_machine_restart;
+    }
 
     /*
             if (sbi_probe_extension(SBI_EXT_ID_TIME) > 0)

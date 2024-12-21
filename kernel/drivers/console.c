@@ -8,6 +8,7 @@
 #include <arch/riscv/sbi.h>
 #include <drivers/character_device.h>
 #include <drivers/console.h>
+#include <drivers/htif.h>
 #include <drivers/uart16550.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
@@ -16,6 +17,7 @@
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
+#include <kernel/string.h>
 
 #define BACKSPACE 0x100
 #define DELETE_KEY '\x7f'
@@ -23,8 +25,8 @@
 
 // pointers for the put chat function of either a UART driver or the SBI
 // fallback
-void (*device_putc)(int32_t ch);
-void (*device_putc_sync)(int32_t ch);
+void (*device_putc)(int32_t ch) = NULL;
+void (*device_putc_sync)(int32_t ch) = NULL;
 
 // true if the SBI fallback is used
 bool g_console_poll_sbi = false;
@@ -34,6 +36,8 @@ bool g_console_poll_sbi = false;
 /// but not from write().
 void console_putc(int32_t c)
 {
+    if (device_putc_sync == NULL) return;
+
     if (c == BACKSPACE)
     {
         // if the user typed backspace, overwrite with a space.
@@ -215,7 +219,9 @@ void console_interrupt_handler(int32_t c)
     spin_unlock(&g_console.lock);
 }
 
-dev_t console_init(struct Device_Init_Parameters *init_param)
+void console_putc_noop(int32_t ch) {}
+
+dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
 {
     spin_lock_init(&g_console.lock, "cons");
 
@@ -224,16 +230,27 @@ dev_t console_init(struct Device_Init_Parameters *init_param)
     g_console.cdev.dev.device_number = MKDEV(CONSOLE_DEVICE_MAJOR, 0);
     g_console.cdev.ops.read = console_read;
     g_console.cdev.ops.write = console_write;
+    g_console.cdev.dev.irq_number = INVALID_IRQ_NUMBER;
 
     if (init_param != NULL)
     {
-        device_putc = uart_putc;
-        device_putc_sync = uart_putc_sync;
+        if (strcmp(name, "ucb,htif0") == 0)
+        {
+            device_putc = htif_putc;
+            device_putc_sync = htif_putc;
 
-        uart_init(init_param);
-        dev_set_irq(&g_console.cdev.dev, init_param->interrupt,
-                    uart_interrupt_handler);
+            htif_init(init_param, name);
+        }
+        else
+        {
+            // ns16550a or snps,dw-apb-uart
+            device_putc = uart_putc;
+            device_putc_sync = uart_putc_sync;
 
+            uart_init(init_param, name);
+            dev_set_irq(&g_console.cdev.dev, init_param->interrupt,
+                        uart_interrupt_handler);
+        }
         g_console_poll_sbi = false;
     }
     else
@@ -252,7 +269,9 @@ dev_t console_init(struct Device_Init_Parameters *init_param)
         g_console_poll_sbi = true;  // there is no IRQ, this var is a hack to
                                     // poll the input via the timer
 #else
-        panic("No device parameters to init a console");
+        // run with no input/output:
+        device_putc = console_putc_noop;
+        device_putc_sync = console_putc_noop;
 #endif
     }
 

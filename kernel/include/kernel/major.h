@@ -18,11 +18,9 @@
 #define SYSCON_MAJOR 7
 #define PLIC_MAJOR 8
 #define CLINT_MAJOR 9
+#define HTIF_MAJOR 10
 
 // NOTE: highest major value can be MAX_DEVICES-1
-
-// no uart device for now, the console device embedds the UART
-// #define UART_16550_MAJOR         3
 
 // macro values from Linux kdev_t.h:
 #define MINORBITS 20

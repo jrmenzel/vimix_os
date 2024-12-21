@@ -4,10 +4,10 @@
 // formatted console output -- printk, panic.
 //
 
-#include <arch/reset.h>
 #include <drivers/console.h>
 #include <kernel/printk.h>
 #include <kernel/proc.h>
+#include <kernel/reset.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
 #include <kernel/stdarg.h>
@@ -59,14 +59,22 @@ void panic(char* error_message)
 {
     g_printk.locking = false;
     g_kernel_panicked++;  // freeze scheduling on other CPUs
+    __sync_synchronize();
+    cpu_disable_device_interrupts();
+
     printk("\n\nKernel PANIC on CPU %zd: %s\n", smp_processor_id(),
            error_message);
     if (g_kernel_panicked > 1)
     {
+        if (g_kernel_panicked > 2)
+        {
+            // machine_power_off failed before and panicked
+            while (true)
+            {
+            }
+        }
         machine_power_off();
     }
-    __sync_synchronize();
-    cpu_disable_device_interrupts();
 
     // print the kernel call stack:
     size_t depth = 32;  // limit just in case of a corrupted stack
@@ -88,7 +96,6 @@ void panic(char* error_message)
         debug_print_call_stack_user(proc);
     }
 
-    machine_power_off();
 #if defined(_SHUTDOWN_ON_PANIC)
     machine_power_off();
 #else

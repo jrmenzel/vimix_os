@@ -8,7 +8,7 @@
 struct Device_Init_Parameters goldfish_mapping = {0};
 bool rtc_is_initialized = false;
 
-dev_t rtc_init(struct Device_Init_Parameters *init_parameters)
+dev_t rtc_init(struct Device_Init_Parameters *init_parameters, const char *name)
 {
     if (rtc_is_initialized)
     {

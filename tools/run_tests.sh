@@ -105,6 +105,9 @@ function test_boot {
     test_config qemu32 release qemu echo "ALL TESTS PASSED" 3
     test_config qemu64 debug   qemu echo "ALL TESTS PASSED" 5
     test_config qemu64 release qemu echo "ALL TESTS PASSED" 8
+
+    test_config spike32 debug   spike echo "ALL TESTS PASSED" 1
+    test_config spike32 release spike echo "ALL TESTS PASSED" 2
 }
 
 function test_grind {

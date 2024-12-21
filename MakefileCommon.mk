@@ -4,7 +4,7 @@
 
 BUILD_TYPE := debug
 #BUILD_TYPE := release
-#REL_WITH_DEBUG := yes
+REL_WITH_DEBUG := yes
 
 #####
 # target architecture subpath in kernel/

@@ -21,6 +21,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/dev_null.o \
 	drivers/dev_zero.o \
 	drivers/devices_list.o \
+	drivers/htif.o \
 	drivers/ramdisk.o \
 	drivers/rtc.o \
 	drivers/syscon.o \
@@ -40,6 +41,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/bio.o \
 	kernel/file.o \
 	kernel/exec.o \
+	kernel/reset.o \
 	kernel/scheduler.o \
 	kernel/kticks.o \
 	syscalls/sys_file.o \

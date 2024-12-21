@@ -34,6 +34,11 @@ SECTIONS
     *(.sdata .sdata.*) /* do not need to distinguish this from .data */
     . = ALIGN(16);
     *(.data .data.*)
+
+    /* avoid writing to HTIF locations during bss clear */
+    . = ALIGN(16);
+    tohost = .;
+    fromhost = .;
   }
 
   .bss : ALIGN(CONSTANT(MAXPAGESIZE)) {

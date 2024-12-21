@@ -60,7 +60,8 @@ void ramdisk_block_device_write(struct Block_Device *bd, struct buf *b)
     spin_unlock(&g_ramdisk[minor].vdisk_lock);
 }
 
-dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters)
+dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
+                   const char *name)
 {
     if (init_parameters->mem_start == 0 || init_parameters->mem_size == 0)
     {
