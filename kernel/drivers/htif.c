@@ -106,19 +106,6 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
                                             HTIF_REGISTER_TOHOST);
         htif_fromhost = (volatile uint64_t *)(init_parameters->mem_start +
                                               HTIF_REGISTER_FROMHOST);
-
-        /*
-                size_t htif_base = init_parameters->mem_start;
-                uint64_t console_funcs = *Reg64(htif_base,
-           HTIF_REGISTER_ICONSOLE); uint64_t halt_funcs = *Reg64(htif_base,
-           HTIF_REGISTER_IHALT);
-
-                printk("base: 0x%zd\n", htif_base);
-                printk("ihalt:    %llu\n", halt_funcs);
-                printk("iconsole: %llu\n", console_funcs);
-                printk("iyield:   %llu\n", *Reg64(htif_base,
-           HTIF_REGISTER_IYIELD));
-                */
     }
     printk("register HTIF shutdown function\n");
     g_machine_power_off_func = &htif_machine_power_off;
