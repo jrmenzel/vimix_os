@@ -11,6 +11,7 @@ struct Device_Init_Parameters
     int32_t reg_io_width;
     int32_t reg_shift;
     int32_t interrupt;
+    void *dtb;
 };
 
 typedef dev_t (*init_func_p)(struct Device_Init_Parameters *, const char *name);

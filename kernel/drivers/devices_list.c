@@ -84,6 +84,7 @@ void clear_init_parameters(struct Device_Init_Parameters *param)
     param->mmu_map_memory = false;
     param->reg_io_width = 1;
     param->reg_shift = 0;
+    param->dtb = NULL;
 }
 
 ssize_t dev_list_get_first_device_index(struct Devices_List *dev_list,
@@ -188,6 +189,7 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
     // reset/default values for init parameters:
     struct Device_Init_Parameters params;
     clear_init_parameters(&params);
+    params.dtb = dtb;
 
     const uint64_t *regs = fdt_getprop(dtb, device_offset, "reg", NULL);
     if (regs != NULL)
