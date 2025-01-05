@@ -7,6 +7,7 @@
 #include <arch/trap.h>
 #include <drivers/console.h>
 #include <drivers/dev_null.h>
+#include <drivers/dev_random.h>
 #include <drivers/dev_zero.h>
 #include <drivers/devices_list.h>
 #include <drivers/ramdisk.h>
@@ -145,9 +146,11 @@ void init_by_first_thread(void *dtb)
 
     // collect all found devices:
     add_ramdisks_to_dev_list(dev_list, &memory_map);
+    dtb_add_devices_to_dev_list(dtb, get_generell_drivers(), dev_list);
     dev_list_add(dev_list, "/dev/null", dev_null_init);
     dev_list_add(dev_list, "/dev/zero", dev_zero_init);
-    dtb_add_devices_to_dev_list(dtb, get_generell_drivers(), dev_list);
+    dev_list_add(dev_list, "/dev/random",
+                 dev_random_init);  // init after the RTC (if present)
     dev_list_sort(dev_list,
                   "virtio,mmio");  // for predictable dev numbers on qemu
     // debug_dev_list_print(dev_list);

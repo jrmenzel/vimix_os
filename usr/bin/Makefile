@@ -25,6 +25,7 @@ UPROGS_NAME_BOTH := cat\
 	date\
 	echo\
 	forktest\
+	fortune\
 	grep\
 	kill\
 	ln\

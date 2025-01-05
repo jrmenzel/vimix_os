@@ -33,6 +33,7 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 
 **Misc:**
 - [cat](bin/cat.md) - concatenate input files and print them
+- [xxd](bin/xxd.md) - hex dump
 - [echo](bin/echo.md) - echo parameters back
 - [grep](bin/grep.md) - find a string in a file
 - [wc](bin/wc.md) - count words and characters in a text file
@@ -45,6 +46,9 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [mount](bin/mount.md) - mounts a [file_system](../kernel/file_system/file_system.md)
 - [umount](bin/umount.md) - unmounts a [file_system](../kernel/file_system/file_system.md)
 - [shutdown](bin/shutdown.md) - Halts or shuts down the OS
+
+**Games:**
+- [fortune](bin/fortune.md) - classic UNIX fortune cookie
 
 **Tests:**
 - [usertests](tests/usertests.md) - various automated tests
@@ -61,11 +65,21 @@ Some user space apps compile also on Linux. See [build_instructions](../build_in
 
 ## File System
 
-**Devices in [/dev](../kernel/file_system/devfs/devfs.md):**
+**/etc**
+- Config files
+
+**/dev:**
+- All devices, automatically added by the [devfs](../kernel/file_system/devfs/devfs.md)
 - [/dev/console](dev/console.md)
 - [/dev/null](dev/null.md)
+- [/dev/random](dev/random.md)
 - [/dev/zero](dev/zero.md)
 
+**/home:**
+- [mount point](bin/mount.md) for an optional second file system
+
+**/tests:**
+- Shell scripts for automated testing
 
 ---
 **Up:** [README](../../README.md)

@@ -19,6 +19,7 @@
 #define PLIC_MAJOR 8
 #define CLINT_MAJOR 9
 #define HTIF_MAJOR 10
+#define DEV_RANDOM_MAJOR 12
 
 // special case: not a device itself but needs a device number for its inodes
 #define DEVFS_MAJOR 11

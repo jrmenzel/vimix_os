@@ -1,12 +1,13 @@
-# date - print current time and date
+# xxd - hex dump of files
 
-Prints the current date and time.
+Prints a hex dump from a file. Optionally only prints the first `n` bytes.
 
-> date
+> xxd `file` 
+
+> xxd -l `n` `file`
 
 **Returns:**
 - 0 on success
-**Syscall:** [get_time](../../kernel/syscalls/get_time.md)
 
 ---
 **Up:** [user space](../userspace.md)

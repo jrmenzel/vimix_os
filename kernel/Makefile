@@ -19,6 +19,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/console.o \
 	drivers/uart16550.o \
 	drivers/dev_null.o \
+	drivers/dev_random.o \
 	drivers/dev_zero.o \
 	drivers/devices_list.o \
 	drivers/htif.o \
