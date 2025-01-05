@@ -61,7 +61,7 @@ Some user space apps compile also on Linux. See [build_instructions](../build_in
 
 ## File System
 
-**Devices in /dev:**
+**Devices in [/dev](../kernel/file_system/devfs/devfs.md):**
 - [/dev/console](dev/console.md)
 - [/dev/null](dev/null.md)
 - [/dev/zero](dev/zero.md)

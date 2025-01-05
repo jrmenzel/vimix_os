@@ -104,4 +104,11 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
                               const char *device_name, int device_offset,
                               struct Device_Driver *driver);
 
+/// @brief Sorts the entries of a specified device. Useful to soft virtio
+/// devices as the index specified on the command line for devices seem to
+/// correspont to the devices when sorted by memory map location.
+/// @param dev_list List to sort
+/// @param name Device to sort
+void dev_list_sort(struct Devices_List *dev_list, const char *device_name);
+
 void debug_dev_list_print(struct Devices_List *dev_list);

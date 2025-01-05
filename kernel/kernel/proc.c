@@ -594,11 +594,10 @@ void forkret()
         // be run from main().
         first = false;
         mount_root(ROOT_DEVICE_NUMBER, XV6_FS_NAME);
+        printk("forkret() mounting /... OK\n");
         get_current()->cwd = inode_from_path("/");
         __sync_synchronize();
     }
-
-    // printk("forkret()\n");
 
     return_to_user_mode();
 }

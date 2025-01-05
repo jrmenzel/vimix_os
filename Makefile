@@ -31,10 +31,7 @@ host: # some user space apps for the host (Linux)
 $(BUILD_DIR)/filesystem.img: README.md userspace host
 	@printf "$(TASK_COLOR)Create file system: $(@)\n$(NO_COLOR)"
 	@cp README.md $(BUILD_DIR)/root/
-	@mkdir -p $(BUILD_DIR)/root/dev
-	@mkdir -p $(BUILD_DIR)/root/home
-	@mkdir -p $(BUILD_DIR)/root/tests
-	@cp -r root/tests/* $(BUILD_DIR)/root/tests
+	@cp -r root/* $(BUILD_DIR)/root/
 	$(BUILD_DIR_HOST)/root/usr/bin/mkfs $(BUILD_DIR)/filesystem.img --in $(BUILD_DIR)/root/ 
 
 ###

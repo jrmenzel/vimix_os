@@ -29,6 +29,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	fs/fs.o \
 	fs/mount.o \
 	fs/vfs.o \
+	fs/devfs/devfs.o \
 	fs/xv6fs/log.o \
 	fs/xv6fs/xv6fs.o \
 	init/dtb.o \
@@ -70,6 +71,7 @@ OBJS += $(addprefix lib/libfdt/, $(LIBFDT_OBJS))
 SUB_DIRS := \
   kernel \
   fs \
+  fs/devfs \
   fs/xv6fs \
   init \
   ipc \

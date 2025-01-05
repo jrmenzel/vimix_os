@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -33,25 +34,39 @@ int main()
     // this way all programs that don't change these open files will
     // direct all stdin/stdout/stderr IO to console.
 
+    int ret = mount("dev", "/dev", "devfs", 0, NULL);
+    if (ret < 0) return -errno;
+
     if (open("/dev/console", O_RDWR) < 0)
     {
-        int ret = mknod("/dev/console", S_IFCHR | 0666,
-                        MKDEV(CONSOLE_DEVICE_MAJOR, 0));
-        if (ret < 0) return -errno;
-
-        ret = open("/dev/console", O_RDWR);
-        if (ret < 0) return -errno;
+        return -errno;
     }
     dup(0);  // stdout
     dup(0);  // stderr
 
-    make_dev("/dev/null", S_IFCHR, MKDEV(DEV_NULL_MAJOR, 0));
-    make_dev("/dev/zero", S_IFCHR, MKDEV(DEV_ZERO_MAJOR, 0));
+    // wait till print works:
+    printf("init mounting /dev... OK\n");
+
+    int fd_dev = open("/dev/virtio1", O_RDONLY);
+    if (fd_dev >= 0)
+    {
+        close(fd_dev);
+        printf("init mounting /home... ");
+        int ret = mount("/dev/virtio1", "/home", "xv6fs", 0, NULL);
+        if (ret < 0)
+        {
+            printf("failed. Error %d\n", errno);
+        }
+        else
+        {
+            printf("OK\n");
+        }
+    }
 
     while (true)
     {
         const char *SHELL_PATH = "/usr/bin/sh";
-        printf("init: starting %s\n", SHELL_PATH);
+        printf("init starting %s\n", SHELL_PATH);
         pid_t pid = fork();
 
         if (pid < 0)

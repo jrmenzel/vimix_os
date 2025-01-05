@@ -26,6 +26,7 @@ ssize_t dev_null_write(struct Device *dev, bool addr_is_userspace, size_t addr,
 dev_t dev_null_init(struct Device_Init_Parameters *param, const char *name)
 {
     // init device and register it in the system
+    g_dev_null.cdev.dev.name = "null";
     g_dev_null.cdev.dev.type = CHAR;
     g_dev_null.cdev.dev.device_number = MKDEV(DEV_NULL_MAJOR, 0);
     g_dev_null.cdev.ops.read = dev_null_read;

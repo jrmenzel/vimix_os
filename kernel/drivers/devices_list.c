@@ -212,6 +212,55 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
                                         driver->init_func, params);
 }
 
+void dev_list_sort(struct Devices_List *dev_list, const char *name)
+{
+    const size_t MAX_DEVICES_PER_TYPE =
+        16;  // can be more than MAX_MINOR_DEVICES, which is the limit for
+             // initialized devices
+    ssize_t index[MAX_DEVICES_PER_TYPE];
+    for (size_t i = 0; i < MAX_DEVICES_PER_TYPE; ++i)
+    {
+        index[i] = -1;
+    }
+
+    // find devices of the given name
+    size_t next_index = 0;
+    for (size_t i = 0; i < dev_list->dev_array_length; ++i)
+    {
+        struct Found_Device *dev = &(dev_list->dev[i]);
+        if (strcmp(dev->dtb_name, name) == 0)
+        {
+            index[next_index++] = i;
+        }
+    }
+
+    // primitive bubble sort
+    bool swapped = false;
+    do {
+        swapped = false;
+        size_t max_addr = 0;
+        size_t max_addr_index = 0;
+        for (size_t i = 0; i < next_index; ++i)
+        {
+            ssize_t idx = index[i];
+            size_t addr = dev_list->dev[idx].init_parameters.mem_start;
+            if (addr < max_addr)
+            {
+                // swap idx and max_addr_index
+                struct Found_Device tmp = dev_list->dev[idx];
+                dev_list->dev[idx] = dev_list->dev[max_addr_index];
+                dev_list->dev[max_addr_index] = tmp;
+                swapped = true;
+            }
+            else
+            {
+                max_addr = addr;
+                max_addr_index = idx;
+            }
+        }
+    } while (swapped);
+}
+
 void debug_dev_list_print(struct Devices_List *dev_list)
 {
     for (size_t i = 0; i < dev_list->dev_array_length; ++i)

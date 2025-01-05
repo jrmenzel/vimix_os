@@ -737,7 +737,7 @@ struct inode *xv6fs_iops_dir_lookup(struct inode *dir, const char *name,
             {
                 inode_lock(dir->i_sb->imounted_on);
                 struct inode *ret =
-                    xv6fs_iops_dir_lookup(dir->i_sb->imounted_on, "..", poff);
+                    VFS_INODE_DIR_LOOKUP(dir->i_sb->imounted_on, "..", poff);
                 inode_unlock(dir->i_sb->imounted_on);
                 return ret;
             }
@@ -810,6 +810,7 @@ ssize_t xv6fs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
 
     struct dirent dir_entry;
     dir_entry.d_ino = xv6_dir_entry.inum;
+    dir_entry.d_reclen = sizeof(struct dirent);
     strncpy(dir_entry.d_name, xv6_dir_entry.name, XV6_NAME_MAX);
     dir_entry.d_off = (long)(new_seek_pos);
 

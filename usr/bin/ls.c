@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -88,7 +89,7 @@ void print_access(mode_t mode)
         pos--;
     }
 
-    printf("%s",str);
+    printf("%s", str);
 }
 
 void print_padded(size_t value, size_t min_chars_wide, bool min_one_space)
@@ -120,7 +121,11 @@ int print_file(const char *file_name, const char *full_path,
                struct Parameters *parameters)
 {
     struct stat st;
-    if (stat(full_path, &st) < 0) return S_SERIOUS_ERROR;
+    if (stat(full_path, &st) < 0)
+    {
+        printf("stat (%s) error, errno: %d\n", full_path, errno);
+        return S_SERIOUS_ERROR;
+    }
 
     // print_padded(st.st_ino, 4, false);
     // printf(" ");
@@ -236,6 +241,8 @@ int main(int argc, char *argv[])
 {
     struct Parameters parameters;
     set_default_parameters(&parameters);
+    // parameters.print_hidden = true;
+    // parameters.print_dot_dotdot = true;
 
     if (argc < 2)
     {

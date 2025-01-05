@@ -35,6 +35,8 @@ struct Device
     struct general_device_ops dev_ops;
 
     dev_t device_number;  ///< Major and Minor device number, use MKDEV macro
+
+    const char *name;  ///< for DEV FS in /dev
 };
 
 /// @brief Array of pointers to all devices in the system.

@@ -1,10 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <fs/devfs/devfs.h>
 #include <fs/vfs.h>
-
-#include <kernel/string.h>
-
 #include <fs/xv6fs/xv6fs.h>
+#include <kernel/string.h>
 
 struct file_system_type *g_file_systems;
 extern struct sleeplock g_mount_lock;
@@ -15,6 +14,7 @@ void init_virtual_file_system()
     sleep_lock_init(&g_mount_lock, "mount");
 
     // init all file system implementations
+    devfs_init();
     xv6fs_init();
 }
 

@@ -226,6 +226,7 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
     spin_lock_init(&g_console.lock, "cons");
 
     // init device and register it in the system
+    g_console.cdev.dev.name = "console";
     g_console.cdev.dev.type = CHAR;
     g_console.cdev.dev.device_number = MKDEV(CONSOLE_DEVICE_MAJOR, 0);
     g_console.cdev.ops.read = console_read;

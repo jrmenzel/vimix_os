@@ -6,5 +6,8 @@
     "disasexpl.associations": {
         "**/*.c": "${workspaceFolder}/build/${relativeFileDirname}/${fileBasenameNoExtension}.s",
         "**/*.cpp": "${workspaceFolder}/build/${relativeFileDirname}/${fileBasenameNoExtension}.s"
+    },
+    "files.associations": {
+        "errno.h": "c"
     }
 }

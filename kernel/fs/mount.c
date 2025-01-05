@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <fs/devfs/devfs.h>
 #include <fs/vfs.h>
 #include <fs/xv6fs/xv6fs.h>
 #include <kernel/bio.h>
@@ -80,6 +81,34 @@ ssize_t mount(const char *source, const char *target,
         return -EINVAL;
     }
 
+    // source is a path to a block device, e.g. "/dev/sda1"
+    // but in special cases it is a magic constant
+    if (strcmp(source, "dev") == 0)
+    {
+        struct inode *i_target = inode_from_path(target);
+        if (i_target == NULL)
+        {
+            return -ENOENT;
+        }
+        inode_lock(i_target);
+        if (!S_ISDIR(i_target->i_mode))
+        {
+            inode_unlock_put(i_target);
+            return -ENOTDIR;
+        }
+        inode_unlock(i_target);
+
+        sleep_lock(&g_mount_lock);
+        int ret = mount_internal(INVALID_DEVICE, i_target, *file_system,
+                                 mountflags, addr_data);
+
+        inode_put(i_target);
+        sleep_unlock(&g_mount_lock);
+        return ret;
+    }
+
+    // normal filesystem on a device:
+
     struct inode *i_src = inode_from_path(source);
     if (i_src == NULL)
     {
@@ -140,8 +169,6 @@ void mount_root(dev_t dev, const char *filesystemtype)
         printk("mount_internal() returned error %zd\n", -ret);
         panic("root file system init failed, could not mount /");
     }
-
-    printk("root file system mounted\n");
 }
 
 ssize_t mount_internal(dev_t source, struct inode *i_target,

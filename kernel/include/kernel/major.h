@@ -20,6 +20,9 @@
 #define CLINT_MAJOR 9
 #define HTIF_MAJOR 10
 
+// special case: not a device itself but needs a device number for its inodes
+#define DEVFS_MAJOR 11
+
 // NOTE: highest major value can be MAX_DEVICES-1
 
 // macro values from Linux kdev_t.h:

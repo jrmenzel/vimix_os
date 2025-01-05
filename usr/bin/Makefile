@@ -49,10 +49,10 @@ PROGS_HOST := $(foreach a, $(UPROGS_NAME_BOTH), $(B_DEPLOY_DIR_HOST)/$a)
 
 .PHONY: all directories clean usertests mkfs host
 
-all: directories $(UPROGS) usertests mkfs scripts
+all: directories $(UPROGS) usertests mkfs #scripts
 
 # binaries will end up in build/root_host/PATH_IN_VIMIX
-host: directories $(PROGS_HOST) usertests_host mkfs_host scripts_host # build supported apps for the host OS / architecture
+host: directories $(PROGS_HOST) usertests_host mkfs_host #scripts_host # build supported apps for the host OS / architecture
 
 ###########################################################
 # compiling apps for VIMIX
@@ -78,11 +78,11 @@ $(B_BUILD_DIR_HOST)/%.o: %.c
 	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_HOST_PARAMS) -c $< -o $@
 
 ###########################################################
-scripts: # copy shell scripts
-	@cp *.sh $(B_DEPLOY_DIR)
+#scripts: # copy shell scripts
+#	@cp *.sh $(B_DEPLOY_DIR)
 
-scripts_host: # copy shell scripts host
-	@cp *.sh $(B_DEPLOY_DIR_HOST)
+#scripts_host: # copy shell scripts host
+#	@cp *.sh $(B_DEPLOY_DIR_HOST)
 
 directories: # make temp build directories
 	@mkdir -p $(B_BUILD_DIR)

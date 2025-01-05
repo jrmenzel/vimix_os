@@ -36,7 +36,7 @@ RV_ENABLE_CSR_TIME := yes
 # use this or a ramdisk
 VIRTIO_DISK := yes
 #RAMDISK_EMBEDDED := yes
-RAMDISK_BOOTLOADER := yes
+#RAMDISK_BOOTLOADER := yes
 QEMU_MACHINE := virt
 else ifeq ($(PLATFORM), qemu32)
 # test config

@@ -28,6 +28,9 @@ void virtio_block_device_read(struct Block_Device *bd, struct buf *b);
 void virtio_block_device_write(struct Block_Device *bd, struct buf *b);
 void virtio_block_device_interrupt();
 
+const char *virtio_names[MAX_MINOR_DEVICES] = {"virtio0", "virtio1", "virtio2",
+                                               "virtio3"};
+
 dev_t virtio_disk_init_internal(size_t disk_index,
                                 struct Device_Init_Parameters *mapping)
 {
@@ -147,6 +150,7 @@ dev_t virtio_disk_init_internal(size_t disk_index,
 
     // init device and register it in the system
     disk->disk.bdev.size = config->capacity * 512;
+    disk->disk.bdev.dev.name = virtio_names[disk_index];
     disk->disk.bdev.dev.type = BLOCK;
     disk->disk.bdev.dev.device_number =
         MKDEV(QEMU_VIRT_IO_DISK_MAJOR, disk_index);

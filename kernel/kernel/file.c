@@ -119,6 +119,13 @@ FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
     else
     {
         inode_put(iparent);
+        if (ip->is_mounted_on != NULL)
+        {
+            struct inode *tmp_ip = VFS_INODE_DUP(ip->is_mounted_on->s_root);
+            inode_unlock_put(ip);
+            inode_lock(tmp_ip);
+            ip = tmp_ip;
+        }
     }
 
     if (S_ISDIR(ip->i_mode) && flags != O_RDONLY)

@@ -60,6 +60,9 @@ void ramdisk_block_device_write(struct Block_Device *bd, struct buf *b)
     spin_unlock(&g_ramdisk[minor].vdisk_lock);
 }
 
+const char *ramdisk_names[MAX_MINOR_DEVICES] = {"ramdisk0", "ramdisk1",
+                                                "ramdisk2", "ramdisk3"};
+
 dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
                    const char *name)
 {
@@ -74,6 +77,7 @@ dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
     g_ramdisk[minor].disk.bdev.size = init_parameters->mem_size;
 
     // init device and register it in the system
+    g_ramdisk[minor].disk.bdev.dev.name = ramdisk_names[minor];
     g_ramdisk[minor].disk.bdev.dev.type = BLOCK;
     g_ramdisk[minor].disk.bdev.dev.device_number = MKDEV(RAMDISK_MAJOR, minor);
     g_ramdisk[minor].disk.bdev.ops.read_buf = ramdisk_block_device_read;
