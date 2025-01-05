@@ -13,18 +13,11 @@
 ///
 char buf[512];
 
-size_t fortune_offset[256];
+#define MAX_FORTUNES 128
+size_t fortune_offset[MAX_FORTUNES];
 
-int fortune(char *filename)
+size_t get_number_of_fortunes(int fd)
 {
-    int fd;
-
-    if ((fd = open(filename, O_RDONLY)) < 0)
-    {
-        fprintf(stderr, "fortune: cannot open %s\n", filename);
-        return 1;
-    }
-
     size_t chunk = 0;
     size_t number_of_fortunes = 0;
     fortune_offset[number_of_fortunes++] = 0;
@@ -38,6 +31,8 @@ int fortune(char *filename)
             {
                 fortune_offset[number_of_fortunes++] =
                     (chunk * sizeof(buf)) + i + 1;
+                if (number_of_fortunes == MAX_FORTUNES)
+                    return number_of_fortunes;
             }
         }
         chunk++;
@@ -47,6 +42,20 @@ int fortune(char *filename)
         fprintf(stderr, "fortune: read error (errno: %s)\n", strerror(errno));
         exit(1);
     }
+    return number_of_fortunes;
+}
+
+int fortune(char *filename)
+{
+    int fd;
+
+    if ((fd = open(filename, O_RDONLY)) < 0)
+    {
+        fprintf(stderr, "fortune: cannot open %s\n", filename);
+        return 1;
+    }
+
+    size_t number_of_fortunes = get_number_of_fortunes(fd);
 
     int fd_random;
     if ((fd_random = open("/dev/random", O_RDONLY)) < 0)
