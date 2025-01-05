@@ -66,8 +66,8 @@ int runtests(struct test *tests, char *justone)
 
 int drivetests(int quick, int continuous, char *justone)
 {
-    mkdir("/utests-tmp", 0755);
-    if (chdir("/utests-tmp") < 0) return -1;
+    mkdir("utests-tmp", 0755);
+    if (chdir("utests-tmp") < 0) return -1;
 
     do {
         printf("usertests starting\n");
@@ -106,7 +106,7 @@ int drivetests(int quick, int continuous, char *justone)
     } while (continuous);
 
     if (chdir("..") < 0) return -1;
-    rmdir("/utests-tmp");
+    rmdir("utests-tmp");
     return 0;
 }
 
@@ -149,6 +149,7 @@ int main(int argc, char *argv[])
     }
     if (drivetests(quick_tests_only, continuous, justone))
     {
+        printf("drivetests failed\n");
         return 1;
     }
 

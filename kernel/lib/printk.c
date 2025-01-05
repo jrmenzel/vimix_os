@@ -84,7 +84,7 @@ void panic(char* error_message)
     {
         size_t ra = *((size_t*)(frame_pointer - 1 * sizeof(size_t)));
         frame_pointer = *((size_t*)(frame_pointer - 2 * sizeof(size_t)));
-        printk("  ra: 0x%zx\n", ra);
+        printk("  ra: " FORMAT_REG_SIZE "\n", ra);
         if (frame_pointer == 0) break;
     };
 

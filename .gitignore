@@ -21,3 +21,5 @@ kernel/arch/riscv/asm/initcode.h
 
 # 3rd party tools
 .obsidian
+
+spike/*

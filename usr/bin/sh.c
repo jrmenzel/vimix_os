@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 // Shell.
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -202,7 +203,7 @@ int getcmd(char *buf, int nbuf, bool print_prompt)
         if (w != 2) return -1;
     }
     memset(buf, 0, nbuf);
-    char * s = fgets(buf, nbuf, stdin);
+    char *s = fgets(buf, nbuf, stdin);
     if (s == NULL || buf[0] == 0)  // error or EOF
     {
         return -1;
@@ -210,18 +211,12 @@ int getcmd(char *buf, int nbuf, bool print_prompt)
     return 0;
 }
 
-int is_whitespace(char c)
-{
-    // \t = 9, \n = 10, \v = 11, \f = 12, \r = 13
-    return (('\t' <= c && c <= '\r') || (c == ' '));
-}
-
 int is_blank_string(const char *s)
 {
     char c = 0;
     while ((c = *s++))
     {
-        if (!is_whitespace(c))
+        if (!isspace(c))
         {
             return 0;
         }

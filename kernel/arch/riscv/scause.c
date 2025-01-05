@@ -2,6 +2,7 @@
 
 #include "scause.h"
 
+#include <arch/cpu.h>
 #include <kernel/proc.h>
 #include <kernel/vm.h>
 #include <mm/mm.h>
@@ -13,7 +14,8 @@ void dump_scause()
 
     printk("scause (0x%zx): %s\n", scause,
            scause_exception_code_to_string(scause));
-    printk("sepc: 0x%zx stval: 0x%zx\n", rv_read_csr_sepc(), stval);
+    printk("sepc: " FORMAT_REG_SIZE " stval: 0x%zx\n", rv_read_csr_sepc(),
+           stval);
 
     if (scause == SCAUSE_INSTRUCTION_PAGE_FAULT ||
         scause == SCAUSE_LOAD_PAGE_FAULT ||

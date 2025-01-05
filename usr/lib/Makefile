@@ -14,6 +14,7 @@ STD_LIBC := \
 	$(LIBC_BUILD_DIR)/dirent_impl.o \
 	$(LIBC_BUILD_DIR)/stdio_impl.o \
 	$(LIBC_BUILD_DIR)/stdio_printf.o \
+	$(LIBC_BUILD_DIR)/stdlib_ctype.o \
 	$(LIBC_BUILD_DIR)/stdlib_impl.o \
 	$(LIBC_BUILD_DIR)/stdlib_malloc.o \
 	$(LIBC_BUILD_DIR)/string_impl.o \

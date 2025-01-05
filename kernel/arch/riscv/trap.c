@@ -37,19 +37,20 @@ void dump_pre_int_kthread_state(size_t *stack)
     // in the stack.
     if (stack == NULL) return;
 
-    printk("stack: 0x%zx | CPU ID (tp): %zd\n", (size_t)stack, stack[IDX_TP]);
-    printk("ra  = 0x%zx\n", stack[IDX_RA]);
-    printk("sp  = 0x%zx\n", stack[IDX_SP]);
-    printk("gp  = 0x%zx\n", stack[IDX_GP]);
+    printk("stack: " FORMAT_REG_SIZE " | CPU ID (tp): %zd\n", (size_t)stack,
+           stack[IDX_TP]);
+    printk("ra  = " FORMAT_REG_SIZE "\n", stack[IDX_RA]);
+    printk("sp  = " FORMAT_REG_SIZE "\n", stack[IDX_SP]);
+    printk("gp  = " FORMAT_REG_SIZE "\n", stack[IDX_GP]);
 
-    printk("a0  = 0x%zx\n", stack[IDX_A0]);
-    printk("a1  = 0x%zx\n", stack[IDX_A1]);
-    printk("a2  = 0x%zx\n", stack[IDX_A2]);
-    printk("a3  = 0x%zx\n", stack[IDX_A3]);
-    printk("a4  = 0x%zx\n", stack[IDX_A4]);
-    printk("a5  = 0x%zx\n", stack[IDX_A5]);
-    printk("a6  = 0x%zx\n", stack[IDX_A6]);
-    printk("a7  = 0x%zx\n", stack[IDX_A7]);
+    printk("a0  = " FORMAT_REG_SIZE "\n", stack[IDX_A0]);
+    printk("a1  = " FORMAT_REG_SIZE "\n", stack[IDX_A1]);
+    printk("a2  = " FORMAT_REG_SIZE "\n", stack[IDX_A2]);
+    printk("a3  = " FORMAT_REG_SIZE "\n", stack[IDX_A3]);
+    printk("a4  = " FORMAT_REG_SIZE "\n", stack[IDX_A4]);
+    printk("a5  = " FORMAT_REG_SIZE "\n", stack[IDX_A5]);
+    printk("a6  = " FORMAT_REG_SIZE "\n", stack[IDX_A6]);
+    printk("a7  = " FORMAT_REG_SIZE "\n", stack[IDX_A7]);
 }
 
 void handle_timer_interrupt();

@@ -37,6 +37,8 @@ UPROGS_NAME_BOTH := cat\
 	sleep\
 	stat\
 	wc\
+	xxd\
+	testprintf\
 	zombie
 
 UPROGS_NAME := $(UPROGS_VIMIX_ONLY) $(UPROGS_NAME_BOTH)
