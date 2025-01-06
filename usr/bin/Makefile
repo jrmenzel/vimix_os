@@ -39,7 +39,6 @@ UPROGS_NAME_BOTH := cat\
 	stat\
 	wc\
 	xxd\
-	testprintf\
 	zombie
 
 UPROGS_NAME := $(UPROGS_VIMIX_ONLY) $(UPROGS_NAME_BOTH)

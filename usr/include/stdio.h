@@ -30,6 +30,14 @@ int printf(const char *format, ...) __attribute__((format(printf, 1, 2)));
 int fprintf(FILE *stream, const char *format, ...)
     __attribute__((format(printf, 2, 3)));
 
+/// @brief Prints into a string, max n chars.
+/// @param dst Destination buffer
+/// @param n Size of destination.
+/// @param fmt printf formatting
+/// @param ... printf parameters
+/// @return Chars written, excluding NULL byte.
+int snprintf(char *dst, size_t n, const char *fmt, ...);
+
 /// @brief Gets the file descriptor as an int.
 /// @param stream file to get the descriptor from
 /// @return file descriptor on success, -1 on failure

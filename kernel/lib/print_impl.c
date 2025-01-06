@@ -42,6 +42,7 @@ int32_t print_signed_long_long(_PUT_CHAR_FP func, size_t payload,
         func('-', payload);
         charsWritten++;
         padding--;
+        value *= -1;
     }
 
 #if defined(_arch_is_32bit)
@@ -62,24 +63,6 @@ int32_t print_signed_long_long(_PUT_CHAR_FP func, size_t payload,
 
     return charsWritten +
            print_number_buffer(func, payload, buffer, MAX_LEN, padding);
-    /*
-        padding = (padding <= 0) ? 1 : padding;
-        bool print = false;
-        for (size_t i = 0; i < MAX_LEN; ++i)
-        {
-            if (buffer[i] != '0' || i == MAX_LEN - padding)
-            {
-                // start printing at the first non zero char or the last one
-                print = true;
-            }
-
-            if (print)
-            {
-                func(buffer[i], payload);
-                charsWritten++;
-            }
-        }
-        return charsWritten;*/
 }
 
 static const inline int32_t print_signed_int(_PUT_CHAR_FP func, size_t payload,
@@ -116,25 +99,6 @@ int32_t print_unsigned_long_long(_PUT_CHAR_FP func, size_t payload,
 
     return charsWritten +
            print_number_buffer(func, payload, buffer, MAX_LEN, padding);
-    /*
-
-        padding = (padding <= 0) ? 1 : padding;
-        bool print = false;
-        for (size_t i = 0; i < MAX_LEN; ++i)
-        {
-            if (buffer[i] != '0' || i == MAX_LEN - padding)
-            {
-                // start printing at the first non zero char or the last one
-                print = true;
-            }
-
-            if (print)
-            {
-                func(buffer[i], payload);
-                charsWritten++;
-            }
-        }
-        return charsWritten;*/
 }
 
 static const inline int32_t print_unsigned_int(_PUT_CHAR_FP func,
@@ -182,25 +146,6 @@ int32_t print_unsigned_hex(_PUT_CHAR_FP func, size_t payload, ssize_t padding,
 
     return charsWritten +
            print_number_buffer(func, payload, buffer, MAX_LEN, padding);
-    /*
-
-    padding = (padding <= 0) ? 1 : padding;
-    bool print = false;
-    for (size_t i = 0; i < MAX_LEN; ++i)
-    {
-        if (buffer[i] != '0' || i == MAX_LEN - padding)
-        {
-            // start printing at the first non zero char or the last one
-            print = true;
-        }
-
-        if (print)
-        {
-            func(buffer[i], payload);
-            charsWritten++;
-        }
-    }
-    return charsWritten;*/
 }
 
 int32_t print_string(_PUT_CHAR_FP func, size_t payload, const char *value)
@@ -227,7 +172,7 @@ int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char *format,
         if (*format == '\n')
         {
             func('\n', payload);
-            func('\r', payload);
+            charsWritten++;
             format++;
         }
         else if (*format == '%')

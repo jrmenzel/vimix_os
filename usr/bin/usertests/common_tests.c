@@ -407,11 +407,138 @@ void ctype_test(char *s)
     }
 }
 
+void printf_test(char *s)
+{
+#define MAX_STRING 128
+    char buf[MAX_STRING];
+    int ret;
+
+    ret = snprintf(buf, MAX_STRING, "Test printf formatting\n");
+    assert_same_string(buf, "Test printf formatting\n");
+    assert_same_value(ret, 23);
+
+    // test truncation
+    assert_same_string(s, "printf");
+    ret = snprintf(buf, 1, "%s", s);
+    assert_same_string(buf, "");
+    assert_same_value(ret, 6);  // untruncated length should be returned!
+
+    ret = snprintf(buf, 4, "%s", s);
+    assert_same_string(buf, "pri");
+    assert_same_value(ret, 6);  // untruncated length should be returned!
+
+    ret = snprintf(buf, 0, "xxx");   // n = 0 -> no change of string
+    assert_same_string(buf, "pri");  // previous result still valid!
+    assert_same_value(ret, 3);       // untruncated length should be returned!
+
+    // counting newlines
+    ret = snprintf(buf, MAX_STRING, "\n\n\n");
+    assert_same_string(buf, "\n\n\n");
+    assert_same_value(ret, 3);
+
+    ret = snprintf(buf, MAX_STRING, "String %s and number %d\nsecond line\n",
+                   "foo", 42);
+    assert_same_string(buf, "String foo and number 42\nsecond line\n");
+    assert_same_value(ret, 37);
+
+    ret = snprintf(buf, MAX_STRING, "%zd", (size_t)(-1));
+    assert_same_string(buf, "-1");
+    assert_same_value(ret, 2);
+
+    ret = snprintf(buf, MAX_STRING, "%d", -42);
+    assert_same_string(buf, "-42");
+    assert_same_value(ret, 3);
+
+    ret = snprintf(buf, MAX_STRING, "%d", 0);
+    assert_same_string(buf, "0");
+    assert_same_value(ret, 1);
+
+    ret = snprintf(buf, MAX_STRING, "%d", 42);
+    assert_same_string(buf, "42");
+    assert_same_value(ret, 2);
+
+    ret = snprintf(buf, MAX_STRING, "%x", 0x12ab);
+    assert_same_string(buf, "12ab");
+    assert_same_value(ret, 4);
+
+    ret = snprintf(buf, MAX_STRING, "%zX", (size_t)(0xABCDEF));
+    assert_same_string(buf, "ABCDEF");
+    assert_same_value(ret, 6);
+
+    ret = snprintf(buf, MAX_STRING, "%zX", (size_t)(0xFFFFFFFF));
+    assert_same_string(buf, "FFFFFFFF");
+    assert_same_value(ret, 8);
+
+    ret = snprintf(buf, MAX_STRING, "%zx", (size_t)(256));
+    assert_same_string(buf, "100");
+    assert_same_value(ret, 3);
+
+    ret = snprintf(buf, MAX_STRING, "%03d", 7);
+    assert_same_string(buf, "007");
+    assert_same_value(ret, 3);
+
+    ret = snprintf(buf, MAX_STRING, "%03d", -7);
+    assert_same_string(buf, "-07");
+    assert_same_value(ret, 3);
+
+    ret = snprintf(buf, MAX_STRING, "%08zd", (ssize_t)5678);
+    assert_same_string(buf, "00005678");
+    assert_same_value(ret, 8);
+
+    ret = snprintf(buf, MAX_STRING, "%08zd", (ssize_t)-5678);
+    assert_same_string(buf, "-0005678");
+    assert_same_value(ret, 8);
+
+    ret = snprintf(buf, MAX_STRING, "0x%08zx", (ssize_t)0xdeadf00d);
+    assert_same_string(buf, "0xdeadf00d");
+    assert_same_value(ret, 10);
+
+    ret = snprintf(buf, MAX_STRING, "0x%08zX", (ssize_t)0xdeadf00d);
+    assert_same_string(buf, "0xDEADF00D");
+    assert_same_value(ret, 10);
+
+    if (sizeof(size_t) == 8)
+    {
+        ret = snprintf(buf, MAX_STRING, "%zu", (size_t)(-1));
+        assert_same_string(buf, "18446744073709551615");
+        assert_same_value(ret, 20);
+
+        ret = snprintf(buf, MAX_STRING, "%zx", (size_t)(-1));
+        assert_same_string(buf, "ffffffffffffffff");
+        assert_same_value(ret, 16);
+
+        ret = snprintf(buf, MAX_STRING, "0x%010zx", (ssize_t)0xdeadf00d);
+        assert_same_string(buf, "0x00deadf00d");
+        assert_same_value(ret, 12);
+
+        ret = snprintf(buf, MAX_STRING, "0x%010zX", (ssize_t)0xdeadf00d);
+        assert_same_string(buf, "0x00DEADF00D");
+        assert_same_value(ret, 12);
+
+        ret = snprintf(buf, MAX_STRING, "%zX", (size_t)(0xFFFFFFFFFFFF));
+        assert_same_string(buf, "FFFFFFFFFFFF");
+        assert_same_value(ret, 12);
+    }
+    else
+    {
+        ret = snprintf(buf, MAX_STRING, "%zu", (size_t)(-1));
+        assert_same_string(buf, "4294967295");
+        assert_same_value(ret, 10);
+
+        ret = snprintf(buf, MAX_STRING, "%zx", (size_t)(-1));
+        assert_same_string(buf, "ffffffff");
+        assert_same_value(ret, 8);
+    }
+
+#undef MAX_STRING
+}
+
 struct test quicktests_common[] = {
     {dev_null, "dev_null"},
     {dev_zero, "dev_zero"},
     {lseek_test, "lseek"},
     {ctype_test, "ctype"},
+    {printf_test, "printf"},
 
     {0, 0},
 };

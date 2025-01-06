@@ -51,11 +51,20 @@ void assert_null_s(const char *test_name, ssize_t value);
 // write the NULL-terminated string to the file, but without the 0-terminator!
 void assert_write_to_file(const char *test_name, int fd, const char *string);
 
-#define assert_same_value(val_a, val_b)             \
-    if (val_a != val_b)                             \
-    {                                               \
-        printf("%s: error: values mismatch!\n", s); \
-        exit(1);                                    \
+#define assert_same_value(val_a, val_b)                              \
+    if (val_a != val_b)                                              \
+    {                                                                \
+        printf("%s: error: values mismatch in %s:%d\n", s, __FILE__, \
+               __LINE__);                                            \
+        exit(1);                                                     \
+    }
+
+#define assert_same_string(val_a, val_b)                                    \
+    if (strcmp(val_a, val_b) != 0)                                          \
+    {                                                                       \
+        printf("%s: error: strings mismatch, is:\n%s\nshould be:\n%s\n", s, \
+               val_a, val_b);                                               \
+        exit(1);                                                            \
     }
 
 #define assert_errno(value)                                                  \
