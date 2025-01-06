@@ -108,6 +108,7 @@ extern off_t lseek(int fd, off_t offset, int whence);
 #define _SC_PAGESIZE _SC_PAGE_SIZE
 #define _SC_ARG_MAX 1
 #define _SC_OPEN_MAX 2
+#define _SC_ATEXIT_MAX 3
 extern long sysconf(int name);
 
 ///////////////////////////////////////

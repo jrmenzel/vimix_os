@@ -6,7 +6,11 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "stdlib_impl.h"
+
 int errno;
+
+void (*at_exit_function[ATEXIT_MAX])(void) = {NULL};
 
 int abs(int j) { return (j < 0) ? -j : j; }
 
@@ -43,6 +47,7 @@ long sysconf(int name)
         case _SC_PAGE_SIZE: return PAGE_SIZE;
         case _SC_ARG_MAX: return PAGE_SIZE;
         case _SC_OPEN_MAX: return MAX_FILES_PER_PROCESS;
+        case _SC_ATEXIT_MAX: return ATEXIT_MAX;
     }
 
     return -1;
@@ -156,4 +161,17 @@ struct tm *localtime(const time_t *timer)
     g_calendar_time.tm_isdst = 0;
 
     return &g_calendar_time;
+}
+
+int atexit(void (*function)(void))
+{
+    for (ssize_t i = 0; i < ATEXIT_MAX; ++i)
+    {
+        if (at_exit_function[i] == NULL)
+        {
+            at_exit_function[i] = function;
+            return 0;
+        }
+    }
+    return 1;
 }

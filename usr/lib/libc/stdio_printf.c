@@ -55,8 +55,6 @@ static void put_char_in_buffer(const int32_t c, size_t payload)
 
 int snprintf(char *dst, size_t n, const char *fmt, ...)
 {
-    // if (n == 0) return n;  // discard all
-
     struct sprintf_payload payload;
     payload.dst_pos = dst;
     payload.n_left = n;

@@ -12,13 +12,14 @@ print ".extern errno\n";
 # Check if return value is < 0
 #   If so, store negated return value in errno
 #   Return -1 instead
-sub entry {
+sub entry_named {
+    my $syscall_name = shift;
     my $name = shift;
     if ($ARGV[0] eq "-riscv")
     {
         print ".global $name\n";
         print "${name}:\n";
-        print " li a7, SYS_${name}\n";
+        print " li a7, SYS_${syscall_name}\n";
         print " ecall\n";
         print " bge a0, zero, 1f\n";
         print " neg a0, a0\n";
@@ -29,8 +30,13 @@ sub entry {
     }
 }
 
+sub entry {
+    my $name = shift;
+    entry_named(${name}, ${name});
+}
+
 entry("fork");
-entry("exit");
+entry_named("exit", "_sys_exit"); # needs a wrapper
 entry("wait");
 entry("pipe");
 entry("read");

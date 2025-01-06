@@ -22,3 +22,9 @@ long long int llabs(long long int j);
 
 /// convert a string to an integer
 int32_t atoi(const char *string);
+
+/// @brief Registers a function to be called at process termination. If multiple
+/// functions are registered, they are called in reverse order.
+/// @param function The function to be called.
+/// @return 0 on sucess, -1 if too many functions are registered.
+int atexit(void (*function)(void));
