@@ -49,6 +49,7 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 
 **Games:**
 - [fortune](bin/fortune.md) - classic UNIX fortune cookie
+- [wumpus](bin/wumpus.md) - UNIX 7 version of Hunt the Wumpus
 
 **Tests:**
 - [usertests](tests/usertests.md) - various automated tests

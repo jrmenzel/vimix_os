@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
 #include "usertests.h"
-#include <time.h>
 
 //
 // drive tests

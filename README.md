@@ -68,7 +68,7 @@ $
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
 - Changed [memory map](docs/kernel/mm/memory_map_process.md); app stacks grow dynamically.
 - Added applications:
-	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md)
+	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md)
 - Added syscalls:
 	- [get_dirent](docs/kernel/syscalls/get_dirent.md)
 	- [reboot](docs/kernel/syscalls/reboot.md)

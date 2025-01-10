@@ -52,6 +52,7 @@ const char *bin_init = "/usr/bin/init";
 int countfree()
 {
     int fds[2];
+    time_t start_time = time(NULL);
 
     if (pipe(fds) < 0)
     {
@@ -115,6 +116,10 @@ int countfree()
 
     close(fds[0]);
     wait(NULL);
+
+    time_t end_time = time(NULL);
+    time_t seconds = end_time - start_time;
+    printf("count free: %zus\n", (size_t)seconds);
 
     return n;
 }

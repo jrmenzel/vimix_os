@@ -9,3 +9,5 @@ Uses the [/dev/random](../dev/random.md) device. Fortunes are stored in `/etc/fo
 
 ---
 **Up:** [user space](../userspace.md)
+
+**Games:** [fortune](fortune.md) | [wumpus](wumpus.md)

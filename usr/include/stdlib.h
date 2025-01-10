@@ -28,3 +28,12 @@ int32_t atoi(const char *string);
 /// @param function The function to be called.
 /// @return 0 on sucess, -1 if too many functions are registered.
 int atexit(void (*function)(void));
+
+#define RAND_MAX 0x7ffffffd
+/// @brief Returns a random value between 0 and RAND_MAX
+/// @return [0..RAND_MAX]
+int rand(void);
+
+/// @brief Sets the random seed value.
+/// @param seed New seed.
+void srand(unsigned int seed);

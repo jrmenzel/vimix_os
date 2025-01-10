@@ -17,9 +17,9 @@
  * They are defined by the C standard (the pointers below).
  * The C standard also defines the FILE_DESCRIPTOR values.
  */
-FILE STD_IN;
-FILE STD_OUT;
-FILE STD_ERR;
+FILE STD_IN = {STDIN_FILENO, _FILE_NO_RETURNED_CHAR};
+FILE STD_OUT = {STDOUT_FILENO, _FILE_NO_RETURNED_CHAR};
+FILE STD_ERR = {STDERR_FILENO, _FILE_NO_RETURNED_CHAR};
 ///@}
 
 FILE *stdin = NULL;
@@ -30,11 +30,8 @@ void init_stdio()
 {
     // Setup standard files as defined by the C standard.
     // /usr/bin/init will have these files already opened.
-    STD_IN.fd = STDIN_FILENO;
     stdin = &STD_IN;
-    STD_OUT.fd = STDOUT_FILENO;
     stdout = &STD_OUT;
-    STD_ERR.fd = STDERR_FILENO;
     stderr = &STD_ERR;
 }
 
@@ -47,24 +44,35 @@ int fileno(FILE *stream)
     return (int)stream->fd;
 }
 
-char *get_from_fd(char *buf, int32_t max, FILE_DESCRIPTOR fd)
-{
-    int32_t i, cc;
-    char c;
+static inline bool is_newline(int c) { return (c == '\n' || c == '\r'); }
 
-    for (i = 0; i + 1 < max;)
+char *get_from_fd(char *buf, int32_t max, FILE_DESCRIPTOR fd, int returned_char)
+{
+    int32_t i = 0;
+
+    if (returned_char != _FILE_NO_RETURNED_CHAR)
     {
-        cc = read(fd, &c, 1);
-        if (cc < 1)
+        buf[i++] = returned_char;
+    }
+
+    if (!is_newline(returned_char))
+    {
+        for (; i + 1 < max;)
         {
-            break;
-        }
-        buf[i++] = c;
-        if (c == '\n' || c == '\r')
-        {
-            break;
+            char c;
+            int32_t cc = read(fd, &c, 1);
+            if (cc < 1)
+            {
+                break;
+            }
+            buf[i++] = c;
+            if (is_newline(c))
+            {
+                break;
+            }
         }
     }
+
     buf[i] = '\0';
     return buf;
 }
@@ -113,6 +121,7 @@ FILE *fopen(const char *filename, const char *modes)
     FILE *file = malloc(sizeof(FILE));
     memset(file, 0, sizeof(FILE));
     file->fd = open(filename, flags, mode);
+    file->returned_char = _FILE_NO_RETURNED_CHAR;
 
     return file;
 }
@@ -137,7 +146,52 @@ char *fgets(char *s, size_t size, FILE *stream)
         return NULL;
     }
 
-    return get_from_fd(s, size, stream->fd);
+    int returned_char = _FILE_NO_RETURNED_CHAR;
+    if ((stream->returned_char != _FILE_NO_RETURNED_CHAR) && (size > 0))
+    {
+        returned_char = stream->returned_char;
+        stream->returned_char = _FILE_NO_RETURNED_CHAR;
+    }
+
+    return get_from_fd(s, size, stream->fd, returned_char);
+}
+
+int fgetc(FILE *stream)
+{
+    if (stream == NULL)
+    {
+        return EOF;
+    }
+
+    if ((stream->returned_char != _FILE_NO_RETURNED_CHAR))
+    {
+        int returned_char = stream->returned_char;
+        stream->returned_char = _FILE_NO_RETURNED_CHAR;
+        return returned_char;
+    }
+
+    char c;
+    int32_t bytes_read = read(stream->fd, &c, 1);
+    if (bytes_read < 1)
+    {
+        return EOF;
+    }
+    return c;
+}
+
+int ungetc(int c, FILE *stream)
+{
+    if (stream == NULL)
+    {
+        return EOF;
+    }
+    if (stream->returned_char != _FILE_NO_RETURNED_CHAR)
+    {
+        // only one returned char supported
+        return EOF;
+    }
+    stream->returned_char = c;
+    return c;
 }
 
 int fseek(FILE *stream, long offset, int whence)

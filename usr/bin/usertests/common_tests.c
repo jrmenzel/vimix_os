@@ -533,12 +533,60 @@ void printf_test(char *s)
 #undef MAX_STRING
 }
 
+void getc_test(char *s)
+{
+    const char str[] = "abcd";
+    const char *file_name = "getc_test";
+    size_t str_len = sizeof(str) - 1;  // excluding 0-terminator
+
+    // write file:
+    int fd = open(file_name, O_CREAT | O_WRONLY | O_TRUNC, 0755);
+    assert_open_ok(s, fd, file_name);
+    assert_same_value(write(fd, str, str_len), str_len);
+    assert_same_value(close(fd), 0);
+
+    // open and read via getc():
+    FILE *f = fopen(file_name, "r");
+    for (size_t i = 0; i < str_len; ++i)
+    {
+        assert_same_value((char)getc(f), str[i]);
+    }
+    int c = getc(f);
+    assert_same_value(c, EOF);
+    assert_same_value(fclose(f), 0);
+
+    // open and read via fgetc():
+    f = fopen(file_name, "r");
+    for (size_t i = 0; i < str_len; ++i)
+    {
+        assert_same_value((char)getc(f), str[i]);
+    }
+    c = fgetc(f);
+    assert_same_value(c, EOF);
+    assert_same_value(fclose(f), 0);
+
+    // again with ungetc():
+    f = fopen(file_name, "r");
+    for (size_t i = 0; i < str_len; ++i)
+    {
+        int c = getc(f);
+        assert_same_value((char)c, str[i]);
+        ungetc(c, f);
+        c = getc(f);
+        assert_same_value((char)c, str[i]);
+    }
+    c = getc(f);
+    assert_same_value(c, EOF);
+    assert_same_value(fclose(f), 0);
+}
+
 struct test quicktests_common[] = {
     {dev_null, "dev_null"},
     {dev_zero, "dev_zero"},
     {lseek_test, "lseek"},
     {ctype_test, "ctype"},
     {printf_test, "printf"},
+    {getc_test, "getc"},
 
     {0, 0},
 };

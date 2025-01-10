@@ -10,6 +10,7 @@
 struct _FILE
 {
     FILE_DESCRIPTOR fd;
+    int returned_char;  /// from ungetc(c)
 };
 
 typedef struct _FILE FILE;
@@ -64,6 +65,23 @@ int fclose(FILE *stream);
 /// @param stream file to read from
 /// @return pointer to the string s
 char *fgets(char *s, size_t size, FILE *stream);
+
+/// @brief Gets next char from stream or EOF.
+/// @param stream Stream to read from.
+/// @return Unsigned char value or EOF on end of file or error.
+int fgetc(FILE *stream);
+static inline int getc(FILE *stream) { return fgetc(stream); }
+
+/// @brief getc() on stdin.
+/// @return Next stdin char or EOF on error.
+static inline int getchar(void) { return getc(stdin); }
+
+/// @brief Returns one char to be read later. Only one unget() before re-reading
+/// the char is supported!
+/// @param c The char.
+/// @param stream The stream.
+/// @return c on success, EOF on error
+int ungetc(int c, FILE *stream);
 
 /// @brief Set the file position indicator of stream to whence +/- offset.
 /// @param stream File stream to set seek position from.

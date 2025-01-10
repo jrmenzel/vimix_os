@@ -38,6 +38,7 @@ UPROGS_NAME_BOTH := cat\
 	sleep\
 	stat\
 	wc\
+	wumpus\
 	xxd\
 	zombie
 
