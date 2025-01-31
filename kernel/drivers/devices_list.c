@@ -36,7 +36,7 @@ struct Devices_List *get_devices_list() { return &g_devices_list; }
 
 // clang-format off
 struct Device_Driver g_console_drivers[] = {{"ns16550a", console_init},
-//                                          {"snps,dw-apb-uart", console_init},
+                                            {"snps,dw-apb-uart", console_init},
                                             {"ucb,htif0", console_init},
                                             {NULL, NULL}};
 

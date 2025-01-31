@@ -78,11 +78,19 @@ void plic_enable_interrupts(size_t context,
     *(uint32_t *)PLIC_PRIORITY_THRESHOLD(context) = 0;
 }
 
-size_t plic_get_this_harts_context()
+/// @brief The index of the context to set s mode interrupt enable bits etc.
+/// @return
+size_t plic_get_this_harts_s_context()
 {
-    // per hart: M mode context, S mode context...
     size_t hart = smp_processor_id();
+#if defined(_PLATFORM_VISIONFIVE2)
+    // first context is reserved for the S7 core which has no S mode (and VIMIX
+    // wont boot there)
+    return 1 + (2 * hart + 1);
+#else
+    // per hart: M mode context, S mode context...
     return 2 * hart + 1;
+#endif
 }
 
 void plic_init_per_cpu()
@@ -103,19 +111,19 @@ void plic_init_per_cpu()
         }
     }
 
-    size_t context = plic_get_this_harts_context();
+    size_t context = plic_get_this_harts_s_context();
     plic_enable_interrupts(context, irq_enable_flags);
 }
 
 int32_t plic_claim()
 {
-    size_t context = plic_get_this_harts_context();
+    size_t context = plic_get_this_harts_s_context();
     int32_t irq = *(uint32_t *)PLIC_CLAIM(context);
     return irq;
 }
 
 void plic_complete(int32_t irq)
 {
-    size_t context = plic_get_this_harts_context();
+    size_t context = plic_get_this_harts_s_context();
     *(uint32_t *)PLIC_CLAIM(context) = irq;
 }

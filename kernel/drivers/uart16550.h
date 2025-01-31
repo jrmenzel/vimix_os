@@ -9,6 +9,20 @@
 /// and adds it to the devices list.
 void uart_init(struct Device_Init_Parameters *init_param, const char *name);
 
+enum UART_BAUD_RATE
+{
+    BAUD_1200,
+    BAUD_2400,
+    BAUD_4800,
+    BAUD_9600,
+    BAUD_19200,
+    BAUD_38400,
+    BAUD_57600,
+    BAUD_115200
+};
+
+bool uart_set_baud_rate(enum UART_BAUD_RATE rate);
+
 /// @brief Console Character Device will set this up
 void uart_interrupt_handler();
 

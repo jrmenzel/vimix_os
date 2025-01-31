@@ -36,6 +36,7 @@
 #define FCR_FIFO_ENABLE (1 << 0)
 #define FCR_FIFO_CLEAR (3 << 1)  //< clear the content of the two FIFOs
 #define LCR 3                    //< line control register
+#define MCR 4                    //< modem control register
 #define LCR_EIGHT_BITS (3 << 0)
 #define LCR_BAUD_LATCH (1 << 7)  //< set DLAB bit, special mode to set baud rate
 #define LSR 5                    //< line status register
@@ -48,6 +49,9 @@
 
 // bautrate divisor most significant byte; only visibly if DLAB bit is set
 #define DLM 1
+
+// baudrate prescaler devision
+#define PSD 5
 
 int32_t read_register(struct uart_16550 *uart, size_t reg)
 {
@@ -91,28 +95,56 @@ void uart_init(struct Device_Init_Parameters *init_param, const char *name)
     write_register(&g_uart_16550, IER, 0x00);
 
 #ifndef _PLATFORM_VISIONFIVE2
-    //  special mode to set baud rate.
-    write_register(&g_uart_16550, LCR, LCR_BAUD_LATCH);
-
-    // LSB for baud rate of 38.4K.
-    write_register(&g_uart_16550, DLL, 0x03);
-
-    // MSB for baud rate of 38.4K.
-    write_register(&g_uart_16550, DLM, 0x00);
-
-    // leave set-baud mode,
-    // and set word length to 8 bits, no parity.
-    write_register(&g_uart_16550, LCR, LCR_EIGHT_BITS);
+    uart_set_baud_rate(BAUD_115200);
 #endif
 
     // reset and enable FIFOs.
     write_register(&g_uart_16550, FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
-    //  enable receive interrupt.
+    //  enable receive/send interrupts
+#ifdef _PLATFORM_SPIKE
+    // somehow TX interrupts break Vimix on Spike
     write_register(&g_uart_16550, IER, IER_RX_ENABLE);
+#else
+    write_register(&g_uart_16550, IER, IER_RX_ENABLE | IER_TX_ENABLE);
+#endif
 
     // init uart_16550 object
     spin_lock_init(&g_uart_16550.uart_tx_lock, "uart");
+}
+
+bool uart_set_baud_rate(enum UART_BAUD_RATE rate)
+{
+    // the BAUD rate is the system clock / 16 / [DLM DLL] / (PSD+1)
+    // the PSD register is not present in all 16650 UARTS
+    // values below should work for 1.8432 MHz
+    uint8_t DLM_value = 0;  // 0 for all supported BAUD rates
+    uint8_t DLL_value = 0;
+
+    switch (rate)
+    {
+        case BAUD_1200: DLL_value = 0x60; break;
+        case BAUD_2400: DLL_value = 0x30; break;
+        case BAUD_4800: DLL_value = 0x18; break;
+        case BAUD_9600: DLL_value = 0x0C; break;
+        case BAUD_19200: DLL_value = 0x06; break;
+        case BAUD_38400: DLL_value = 0x03; break;
+        case BAUD_57600: DLL_value = 0x02; break;
+        case BAUD_115200: DLL_value = 0x01; break;
+        default: return false;
+    }
+
+    // special mode to set baud rate.
+    write_register(&g_uart_16550, LCR, LCR_BAUD_LATCH);
+
+    write_register(&g_uart_16550, DLL, DLL_value);
+    write_register(&g_uart_16550, DLM, DLM_value);
+
+    // leave set-baud mode,
+    // and set word length to 8 bits, no parity.
+    write_register(&g_uart_16550, LCR, LCR_EIGHT_BITS);
+
+    return true;
 }
 
 void uart_putc(int32_t c)

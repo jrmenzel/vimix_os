@@ -28,8 +28,11 @@
 void (*device_putc)(int32_t ch) = NULL;
 void (*device_putc_sync)(int32_t ch) = NULL;
 
-// true if the SBI fallback is used
+/// @brief true if the SBI fallback is used
 bool g_console_poll_sbi = false;
+
+/// @brief add a CR / 'r' for every '\n' written
+const bool g_console_add_cr = true;
 
 /// send one character to the uart.
 /// called by printk(), and to echo input characters,
@@ -47,6 +50,11 @@ void console_putc(int32_t c)
     }
     else
     {
+        if (g_console_add_cr && c == '\n')
+        {
+            // add carrige return to a newline
+            device_putc_sync('\r');
+        }
         device_putc_sync(c);
     }
 }
@@ -80,6 +88,11 @@ ssize_t console_write(struct Device *dev, bool addr_is_userspace, size_t src,
             break;
         }
 
+        if (g_console_add_cr && c == '\n')
+        {
+            // add carrige return to a newline, don't count extra
+            device_putc('\r');
+        }
         device_putc(c);
     }
 
