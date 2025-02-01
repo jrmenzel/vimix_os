@@ -35,6 +35,7 @@
 /// let hart 0 (or the first hart in SBI mode) signal to other harts when
 /// the init is done which should only run on one core
 volatile size_t g_global_init_done = GLOBAL_INIT_NOT_STARTED;
+size_t g_boot_hart = 0;
 
 /// @brief print some debug info during boot
 void print_kernel_info()
@@ -242,6 +243,7 @@ void main(void *device_tree, size_t is_first_thread)
 {
     if (is_first_thread)
     {
+        g_boot_hart = smp_processor_id();
         init_by_first_thread(device_tree);
     }
     else

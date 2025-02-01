@@ -24,6 +24,8 @@ extern char trampoline[], u_mode_trap_vector[], return_to_user_mode_asm[];
 /// in s_mode_trap_vector.S, calls kernel_mode_interrupt_handler().
 extern void s_mode_trap_vector();
 
+extern size_t g_boot_hart;
+
 void set_s_mode_trap_vector()
 {
     cpu_set_s_mode_trap_vector(s_mode_trap_vector);
@@ -313,8 +315,8 @@ void handle_timer_interrupt()
     timer_schedule_interrupt(now + timer_interrupt_interval);
 #endif
 
-    // will only update on CPU 0
-    if (smp_processor_id() == 0)
+    // will only update on the CPU that booted first
+    if (smp_processor_id() == g_boot_hart)
     {
         kticks_inc_ticks();
     }
