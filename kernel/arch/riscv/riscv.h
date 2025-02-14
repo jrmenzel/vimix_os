@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
+
+#include <arch/fence.h>
 #include <kernel/types.h>
 
 #if !defined(__RISCV_CSR_TIME)
@@ -292,8 +294,17 @@ static inline void rv_sfence_vma()
 
 static inline void cpu_set_page_table(xlen_t addr)
 {
+    // wait for any previous writes to the page table memory to finish.
     rv_sfence_vma();
+
     rv_write_csr_satp(addr);
+
+    // Depending on the cpu implementation a memory barrier might
+    // not affect the instruction caches, so after loading executable
+    // code an instruction memory barrier is needed.
+    instruction_memory_barrier();
+
+    // flush stale entries from the TLB.
     rv_sfence_vma();
 }
 

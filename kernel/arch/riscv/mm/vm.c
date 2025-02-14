@@ -6,16 +6,7 @@
 
 extern pagetable_t g_kernel_pagetable;
 
-void kvm_init_per_cpu()
-{
-    // wait for any previous writes to the page table memory to finish.
-    rv_sfence_vma();
-
-    cpu_set_page_table(MAKE_SATP(g_kernel_pagetable));
-
-    // flush stale entries from the TLB.
-    rv_sfence_vma();
-}
+void kvm_init_per_cpu() { cpu_set_page_table(MAKE_SATP(g_kernel_pagetable)); }
 
 pte_t elf_flags_to_perm(int32_t flags)
 {

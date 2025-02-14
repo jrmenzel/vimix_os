@@ -108,6 +108,9 @@ u_mode_trap_vector:
     # install the kernel page table.
     csrw satp, t1
 
+    # flush the instruction cache now that the code changed by updating the page tabe
+    fence.i
+
     # flush now-stale user entries from the TLB.
     sfence.vma zero, zero
 
@@ -123,7 +126,14 @@ return_to_user_mode_asm:
 
     # switch to the user page table.
     sfence.vma zero, zero
+    
+    # install user page table
     csrw satp, a0
+
+    # flush the instruction cache now that the code changed by updating the page tabe
+    fence.i
+
+    # flush now-stale user entries from the TLB.
     sfence.vma zero, zero
 
     li a0, TRAPFRAME

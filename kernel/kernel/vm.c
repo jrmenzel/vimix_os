@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <arch/fence.h>
 #include <arch/riscv/clint.h>
 #include <arch/riscv/plic.h>
 #include <kernel/elf.h>
@@ -482,10 +481,6 @@ int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
         uvm_unmap(dst_page, va_start, pages_mapped, true);
         return -1;
     }
-
-    // might have copied paged with executable code, in that case flush the
-    // instruction caches
-    instruction_memory_barrier();
 
     return 0;
 }

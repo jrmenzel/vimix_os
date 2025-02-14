@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/context.h>
-#include <arch/fence.h>
 #include <kernel/elf.h>
 #include <kernel/errno.h>
 #include <kernel/exec.h>
@@ -102,12 +101,6 @@ ssize_t execv(char *path, char **argv)
         proc_free_pagetable(pagetable);
         return -ENOMEM;
     }
-
-    // Depending on the cpu implementation a memory barrier might
-    // not affect the instruction caches, so after loading executable
-    // code an instruction memory barrier is needed.
-    // Todo: this should happen on all cores that want to run this process.
-    instruction_memory_barrier();
 
     size_t stack_low;
     size_t sp;
