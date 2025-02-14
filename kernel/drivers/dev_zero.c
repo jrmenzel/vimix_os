@@ -37,6 +37,7 @@ dev_t dev_zero_init(struct Device_Init_Parameters *param, const char *name)
     g_dev_zero.cdev.dev.device_number = MKDEV(DEV_ZERO_MAJOR, 0);
     g_dev_zero.cdev.ops.read = dev_zero_read;
     g_dev_zero.cdev.ops.write = dev_zero_write;
+    g_dev_zero.cdev.ops.ioctl = NULL;
     dev_set_irq(&g_dev_zero.cdev.dev, INVALID_IRQ_NUMBER, NULL);
     register_device(&g_dev_zero.cdev.dev);
 

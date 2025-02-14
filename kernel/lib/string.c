@@ -218,3 +218,21 @@ unsigned long strtoul(const char *string, char **end, int base)
     }
     return n;
 }
+
+char *strstr(const char *haystack, const char *needle)
+{
+    for (const char *start = haystack; *start != 0; start++)
+    {
+        const char *pin, *hay;
+        for (pin = needle, hay = start;
+             (*hay == *pin) && (*hay != 0) && (pin != 0); hay++, pin++);
+
+        if (*pin != 0)
+        {
+            // needle not fully found at this pos
+            continue;
+        }
+        return (char *)start;
+    }
+    return NULL;
+}

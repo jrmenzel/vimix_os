@@ -67,6 +67,7 @@ dev_t dev_random_init(struct Device_Init_Parameters *param, const char *name)
     g_dev_random.cdev.dev.device_number = MKDEV(DEV_RANDOM_MAJOR, 0);
     g_dev_random.cdev.ops.read = dev_random_read;
     g_dev_random.cdev.ops.write = dev_random_write;
+    g_dev_random.cdev.ops.ioctl = NULL;
     dev_set_irq(&g_dev_random.cdev.dev, INVALID_IRQ_NUMBER, NULL);
     register_device(&g_dev_random.cdev.dev);
 

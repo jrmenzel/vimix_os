@@ -25,7 +25,9 @@
 #define EINVAL 22   ///< Invalid argument
 // #define ENFILE 23   ///< File table overflow
 #define EMFILE 24  ///< Too many open files for this process
-// #define ENOTTY 25   ///< Not a typewriter
+#define ENOTTY \
+    25  ///< Not a typewriter, e.g. returned by ioctl on char devices that don't
+        ///< support ioctl
 // #define ETXTBSY 26  ///< Text file busy
 // #define EFBIG 27    ///< File too large
 // #define ENOSPC 28   ///< No space left on device

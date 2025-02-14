@@ -14,6 +14,8 @@ typedef ssize_t (*DEVICE_WRITE_FUNCTION)(struct Device *dev,
                                          bool addr_is_userspace, size_t addr,
                                          size_t len);
 
+typedef int32_t (*DEVICE_IOCTL_FUNCTION)(struct inode *, int, void *);
+
 /// @brief What a character device driver needs to implement:
 ///        read/write to a buffer which might be in userspace
 ///        ioctl is optional (can be NULL)
@@ -21,6 +23,7 @@ struct char_device_ops
 {
     DEVICE_READ_FUNCTION read;
     DEVICE_WRITE_FUNCTION write;
+    DEVICE_IOCTL_FUNCTION ioctl;
 };
 
 /// @brief Represents a character device.

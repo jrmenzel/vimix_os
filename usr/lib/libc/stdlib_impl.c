@@ -3,6 +3,7 @@
 #include <kernel/limits.h>
 #include <kernel/param.h>
 #include <stdlib.h>
+#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -203,3 +204,10 @@ int rand(void)
 }
 
 void srand(unsigned int seed) { _rand_next = (unsigned long)seed; }
+
+int isatty(int fd)
+{
+    struct termios t;
+
+    return (tcgetattr(fd, &t) != -1);
+}

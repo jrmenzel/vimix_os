@@ -6,18 +6,23 @@
 //
 
 #include <arch/riscv/sbi.h>
+#include <arch/riscv/timer.h>
 #include <drivers/character_device.h>
 #include <drivers/console.h>
 #include <drivers/htif.h>
 #include <drivers/uart16550.h>
+#include <kernel/errno.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
+#include <kernel/ioctl.h>
 #include <kernel/kernel.h>
+#include <kernel/kticks.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
+#include <kernel/termios.h>
 
 #define BACKSPACE 0x100
 #define DELETE_KEY '\x7f'
@@ -66,12 +71,15 @@ struct
 
     struct spinlock lock;
 
-    // input
+    /// max line length: real UNIXes allow 4096 bytes
 #define INPUT_BUF_SIZE 128
     char buf[INPUT_BUF_SIZE];
     uint32_t r;  ///< Read index
     uint32_t w;  ///< Write index
     uint32_t e;  ///< Edit index
+
+    // support for simple RAW mode
+    struct termios termios;
 } g_console;
 
 /// user write()s to the console go here.
@@ -107,10 +115,16 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
                      size_t n)
 {
     size_t target = n;
+    ssize_t termios_target = g_console.termios.c_cc[VMIN];
+    bool canonical_mode = (g_console.termios.c_lflag & ICANON);
 
     spin_lock(&g_console.lock);
     while (n > 0)
     {
+        size_t timeout = g_console.termios.c_cc[VTIME];  // 1/10s
+        timeout = timeout * TIMER_INTERRUPTS_PER_SECOND / 10;
+        timeout += kticks_get_ticks();
+
         // wait until interrupt handler has put some
         // input into g_console.buffer.
         while (g_console.r == g_console.w)
@@ -118,9 +132,26 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
             if (proc_is_killed(get_current()))
             {
                 spin_unlock(&g_console.lock);
-                return -1;
+                return -ESRCH;
             }
-            sleep(&g_console.r, &g_console.lock);
+            if (canonical_mode)
+            {
+                sleep(&g_console.r, &g_console.lock);
+            }
+            else
+            {
+                size_t now = kticks_get_ticks();
+                if (now >= timeout)
+                {
+                    // timeout expired
+                    spin_unlock(&g_console.lock);
+                    return 0;
+                }
+                // wake up eack kernel tick to check for input
+                // if we wait here for a console interrupt, we miss the
+                // timeout
+                sleep(&g_ticks, &g_console.lock);
+            }
         }
 
         int32_t c = g_console.buf[g_console.r++ % INPUT_BUF_SIZE];
@@ -142,17 +173,80 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
 
         dst++;
         --n;
+        --termios_target;
 
-        if (c == '\n')
+        if (canonical_mode)
         {
-            // a whole line has arrived, return to
-            // the user-level read().
+            if (c == '\n')
+            {
+                // a whole line has arrived, return to
+                // the user-level read().
+                break;
+            }
+        }
+        else if (termios_target <= 0)
+        {
             break;
         }
     }
     spin_unlock(&g_console.lock);
 
     return target - n;
+}
+
+int console_ioctl(struct inode *ip, int req, void *ttyctl)
+{
+    spin_lock(&g_console.lock);
+    if (req == TCGETA)
+    {
+        // *termios_p = cons.termios;
+        struct termios *termios_out = (struct termios *)ttyctl;
+
+        if (either_copyout(true, (size_t)termios_out,
+                           (void *)&(g_console.termios),
+                           sizeof(struct termios)) == -1)
+        {
+            spin_unlock(&g_console.lock);
+            return -1;
+        }
+    }
+    else if (req == TCSETA)
+    {
+        // cons.termios = *termios_p;
+        struct termios *termios_in = (struct termios *)ttyctl;
+
+        if (either_copyin((void *)&(g_console.termios), true,
+                          (size_t)termios_in, sizeof(struct termios)) == -1)
+        {
+            spin_unlock(&g_console.lock);
+            return -1;
+        }
+    }
+    else if (req == TIOCGWINSZ)
+    {
+        struct winsize *ws_out = (struct winsize *)ttyctl;
+
+        struct winsize ws;
+        ws.ws_col = 80;
+        ws.ws_row = 24;
+        ws.ws_xpixel = ws.ws_col * 8;
+        ws.ws_ypixel = ws.ws_col * 16;
+
+        if (either_copyout(true, (size_t)(ws_out), (void *)&(ws),
+                           sizeof(struct winsize)) == -1)
+        {
+            spin_unlock(&g_console.lock);
+            return -1;
+        }
+    }
+    else
+    {
+        printk("console_ioctl: unknown request 0x%x\n", req);
+        spin_unlock(&g_console.lock);
+        return -1;
+    }
+    spin_unlock(&g_console.lock);
+    return 0;
 }
 
 void console_debug_print_help()
@@ -168,13 +262,9 @@ void console_debug_print_help()
     printk("CTRL+O: Print process list with open files\n");
 }
 
-/// the console input interrupt handler.
-/// uart_interrupt_handler() calls this for input character.
-/// do erase/kill processing, append to g_console.buf,
-/// wake up console_read() if a whole line has arrived.
-void console_interrupt_handler(int32_t c)
+bool console_handle_control_keys(int32_t c)
 {
-    spin_lock(&g_console.lock);
+    bool processed = true;
 
     switch (c)
     {
@@ -203,30 +293,65 @@ void console_interrupt_handler(int32_t c)
             if (g_console.e != g_console.w)
             {
                 g_console.e--;
-                console_putc(BACKSPACE);
-            }
-            break;
-        default:
-            if (c != 0 && g_console.e - g_console.r < INPUT_BUF_SIZE)
-            {
-                c = (c == '\r') ? '\n' : c;
-
-                // echo back to the user.
-                console_putc(c);
-
-                // store for consumption by console_read().
-                g_console.buf[g_console.e++ % INPUT_BUF_SIZE] = c;
-
-                if (c == '\n' || c == CONTROL_KEY('D') ||
-                    g_console.e - g_console.r == INPUT_BUF_SIZE)
+                if (g_console.termios.c_lflag & ECHO)
                 {
-                    // wake up console_read() if a whole line (or end-of-file)
-                    // has arrived.
-                    g_console.w = g_console.e;
-                    wakeup(&g_console.r);
+                    console_putc(BACKSPACE);
                 }
             }
             break;
+        default: processed = false; break;
+    }
+
+    return processed;
+}
+
+/// the console input interrupt handler.
+/// uart_interrupt_handler() calls this for input character.
+/// do erase/kill processing, append to g_console.buf,
+/// wake up console_read() if a whole line has arrived.
+void console_interrupt_handler(int32_t c)
+{
+    spin_lock(&g_console.lock);
+
+    bool input_processed = false;
+    if (g_console.termios.c_lflag & ICANON)
+    {
+        input_processed = console_handle_control_keys(c);
+    }
+
+    if (!input_processed)
+    {
+        if (c != 0 && g_console.e - g_console.r < INPUT_BUF_SIZE)
+        {
+            // carriage return to newline
+            if (g_console.termios.c_lflag & ICRNL)
+            {
+                c = (c == '\r') ? '\n' : c;
+            }
+
+            // echo back to the user.
+            if (g_console.termios.c_lflag & ECHO)
+            {
+                console_putc(c);
+            }
+
+            // store for consumption by console_read().
+            g_console.buf[g_console.e++ % INPUT_BUF_SIZE] = c;
+
+            // in non-canonical mode, return each key press, otherwise wait for
+            // newline
+            bool wakeup_readers = !(g_console.termios.c_lflag & ICANON);
+            wakeup_readers |= (c == '\n');
+            wakeup_readers |= (c == CONTROL_KEY('D'));
+            // buffer full:
+            wakeup_readers |= (g_console.e - g_console.r == INPUT_BUF_SIZE);
+
+            if (wakeup_readers)
+            {
+                g_console.w = g_console.e;
+                wakeup(&g_console.r);
+            }
+        }
     }
 
     spin_unlock(&g_console.lock);
@@ -244,7 +369,13 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
     g_console.cdev.dev.device_number = MKDEV(CONSOLE_DEVICE_MAJOR, 0);
     g_console.cdev.ops.read = console_read;
     g_console.cdev.ops.write = console_write;
+    g_console.cdev.ops.ioctl = console_ioctl;
     g_console.cdev.dev.irq_number = INVALID_IRQ_NUMBER;
+
+    memset(&g_console.termios, sizeof(struct termios), 0);
+    g_console.termios.c_lflag = ECHO | ICANON | ICRNL;
+    g_console.termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
+    g_console.termios.c_cc[VTIME] = 0;  // no timeout in read()
 
     if (init_param != NULL)
     {

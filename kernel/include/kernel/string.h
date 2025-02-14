@@ -92,3 +92,10 @@ void *memchr(const void *s, int c, size_t n);
 /// @param c Char to find
 /// @return Pointer to the found location or NULL.
 char *strrchr(const char *s, int c);
+
+/// @brief Finds first occurance of needle in hackstack. NULL terminator is not
+/// compared.
+/// @param haystack The string to search in.
+/// @param needle The substring to search for.
+/// @return Pointer to found substring or NULL if not found.
+char *strstr(const char *haystack, const char *needle);

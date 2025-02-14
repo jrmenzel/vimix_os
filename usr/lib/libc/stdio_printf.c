@@ -53,17 +53,23 @@ static void put_char_in_buffer(const int32_t c, size_t payload)
     my_payload->n_left--;
 }
 
-int snprintf(char *dst, size_t n, const char *fmt, ...)
+int snprintf(char *dst, size_t n, const char *format, ...)
+{
+    va_list arg;
+
+    va_start(arg, format);
+    int32_t ret = vsnprintf(dst, n, format, arg);
+    va_end(arg);
+    return ret;
+}
+
+int vsnprintf(char *dst, size_t n, const char *format, va_list arg)
 {
     struct sprintf_payload payload;
     payload.dst_pos = dst;
     payload.n_left = n;
 
-    va_list ap;
-
-    va_start(ap, fmt);
-    int32_t ret = print_impl(put_char_in_buffer, (size_t)&payload, fmt, ap);
-    va_end(ap);
+    int32_t ret = print_impl(put_char_in_buffer, (size_t)&payload, format, arg);
 
     // 0-terminate, does not count as written char!
     // n == 0 means nothing can be written -> skip

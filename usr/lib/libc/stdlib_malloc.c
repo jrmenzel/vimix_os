@@ -1,33 +1,53 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 // Memory allocator by Kernighan and Ritchie,
 // The C programming Language, 2nd ed.  Section 8.7.
 
-typedef long Align;
+// typedef size_t Align;
 
 union header
 {
     struct
     {
         union header *ptr;
-        uint32_t size;
+        size_t size;
     } s;
-    Align x;
+    // Align x;
 };
 
 typedef union header Header;
 
+const Header *MAGIC_VALUE = (const Header *)0x42F00;
+
 static Header g_base_pointer;
-static Header *g_free_pointer;
+static Header *g_free_pointer = NULL;
+
+void t(Header *p)
+{
+    if (p->s.size > 4096)
+    {
+        p->s.size++;
+        p->s.size--;
+    }
+}
 
 void free(void *ap)
 {
-    Header *p;
+    if (ap == NULL) return;
 
     Header *bp = (Header *)ap - 1;
+    if (bp->s.ptr != MAGIC_VALUE)
+    {
+        // not a pointer allocated by malloc()
+        return;
+    }
+
+    Header *p;
     for (p = g_free_pointer; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
     {
         if (p >= p->s.ptr && (bp > p || bp < p->s.ptr))
@@ -39,6 +59,7 @@ void free(void *ap)
     if (bp + bp->s.size == p->s.ptr)
     {
         bp->s.size += p->s.ptr->s.size;
+        t(bp);
         bp->s.ptr = p->s.ptr->s.ptr;
     }
     else
@@ -49,6 +70,7 @@ void free(void *ap)
     if (p + p->s.size == bp)
     {
         p->s.size += bp->s.size;
+        t(p);
         p->s.ptr = bp->s.ptr;
     }
     else
@@ -59,7 +81,7 @@ void free(void *ap)
     g_free_pointer = p;
 }
 
-static Header *morecore(uint32_t nu)
+static Header *morecore(size_t nu)
 {
     if (nu < 4096)
     {
@@ -74,16 +96,19 @@ static Header *morecore(uint32_t nu)
 
     Header *hp = (Header *)p;
     hp->s.size = nu;
+    hp->s.ptr = (Header *)MAGIC_VALUE;
+    t(hp);
     free((void *)(hp + 1));
     return g_free_pointer;
 }
 
 void *malloc(size_t size_in_bytes)
 {
+    if (size_in_bytes == 0) return NULL;
     Header *p = NULL;
     Header *prevp = NULL;
 
-    uint32_t nunits = (size_in_bytes + sizeof(Header) - 1) / sizeof(Header) + 1;
+    size_t nunits = (size_in_bytes + sizeof(Header) - 1) / sizeof(Header) + 1;
 
     prevp = g_free_pointer;
     if (prevp == NULL)
@@ -94,6 +119,7 @@ void *malloc(size_t size_in_bytes)
 
     for (p = prevp->s.ptr;; prevp = p, p = p->s.ptr)
     {
+        t(p);
         if (p->s.size >= nunits)
         {
             if (p->s.size == nunits)
@@ -103,10 +129,13 @@ void *malloc(size_t size_in_bytes)
             else
             {
                 p->s.size -= nunits;
+                t(p);
                 p += p->s.size;
                 p->s.size = nunits;
+                t(p);
             }
             g_free_pointer = prevp;
+            p->s.ptr = (Header *)MAGIC_VALUE;
             return (void *)(p + 1);
         }
         if (p == g_free_pointer)
@@ -114,8 +143,35 @@ void *malloc(size_t size_in_bytes)
             p = morecore(nunits);
             if (p == NULL)
             {
+                errno = ENOMEM;
                 return NULL;
             }
         }
     }
+}
+
+void *realloc(void *ptr, size_t size)
+{
+    if (ptr == NULL)
+    {
+        return malloc(size);
+    }
+
+    Header *bp = (Header *)ptr - 1;
+    size_t old_size = (bp->s.size - 1) * sizeof(Header);
+
+    if (size == old_size) return ptr;
+
+    void *new_ptr = malloc(size);
+    if (new_ptr == NULL)
+    {
+        errno = ENOMEM;
+        return NULL;
+    }
+
+    size_t min = (size > old_size) ? old_size : size;
+    memmove(new_ptr, ptr, min);
+    free(ptr);
+
+    return new_ptr;
 }

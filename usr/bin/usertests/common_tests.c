@@ -580,6 +580,125 @@ void getc_test(char *s)
     assert_same_value(fclose(f), 0);
 }
 
+void realloc_test(char *s)
+{
+    size_t size = 16;
+    int *ptr1 = (int *)realloc(NULL, sizeof(int) * size);
+    assert_no_error(ptr1);
+
+    for (size_t i = 0; i < size; ++i)
+    {
+        ptr1[i] = i;
+    }
+
+    int *ptr2 = (int *)realloc(ptr1, sizeof(int) * size * 2);
+    assert_no_error(ptr2);
+
+    for (size_t i = 0; i < size; ++i)
+    {
+        assert_same_value(ptr2[i], i);
+    }
+
+    size = size / 2;
+    int *ptr3 = (int *)realloc(ptr2, sizeof(int) * size);
+    assert_no_error(ptr3);
+
+    for (size_t i = 0; i < size; ++i)
+    {
+        assert_same_value(ptr3[i], i);
+    }
+
+    free(ptr3);
+}
+
+void str_test(char *s)
+{
+    char *haystack = "Foobar test string test";
+    char *pos = strstr(haystack, "Foo");
+    assert_same_value(pos, haystack);
+
+    pos = strstr(haystack, "test");
+    assert_same_value(pos, haystack + 7);
+
+    pos = strstr(haystack, "404");
+    assert_same_value(pos, NULL);
+
+    pos = strstr(haystack, "testing");
+    assert_same_value(pos, NULL);
+}
+
+void getline_test(char *s)
+{
+    const char *file_name = "getline_test";
+    unlink(file_name);
+
+    {
+        FILE *f = fopen(file_name, "r");
+        char *line = NULL;
+        size_t line_buf_size;
+        ssize_t ret = getline(&line, &line_buf_size, f);
+        assert_same_value(ret, EOF);
+
+        free(line);
+        fclose(f);
+    }
+    {
+        const char str[] = "abcd";
+        size_t str_len = sizeof(str) - 1;  // excluding 0-terminator
+
+        // write file:
+        int fd = open(file_name, O_CREAT | O_WRONLY | O_TRUNC, 0755);
+        assert_open_ok(s, fd, file_name);
+        assert_same_value(write(fd, str, str_len), str_len);
+        assert_same_value(close(fd), 0);
+
+        FILE *f = fopen(file_name, "r");
+        char *line = NULL;
+        size_t line_buf_size;
+        ssize_t ret = getline(&line, &line_buf_size, f);
+        assert_same_value(ret, str_len);
+        assert_same_string(line, str);
+
+        ret = getline(&line, &line_buf_size, f);
+        assert_same_value(ret, EOF);
+
+        free(line);
+        fclose(f);
+    }
+    {
+        const char str[] = "abcdXY\n\nefg\n";
+        size_t str_len = sizeof(str) - 1;  // excluding 0-terminator
+
+        // write file:
+        int fd = open(file_name, O_CREAT | O_WRONLY | O_TRUNC, 0755);
+        assert_open_ok(s, fd, file_name);
+        assert_same_value(write(fd, str, str_len), str_len);
+        assert_same_value(close(fd), 0);
+
+        FILE *f = fopen(file_name, "r");
+        char *line = malloc(4);  // intentionally too small
+        size_t line_buf_size = 4;
+        ssize_t ret = getline(&line, &line_buf_size, f);
+        if (line_buf_size < 7) exit(-1);
+        assert_same_value(ret, 7);  // incl new line
+        assert_same_string(line, "abcdXY\n");
+
+        ret = getline(&line, &line_buf_size, f);
+        assert_same_value(ret, 1);
+        assert_same_string(line, "\n");
+
+        ret = getline(&line, &line_buf_size, f);
+        assert_same_value(ret, 4);
+        assert_same_string(line, "efg\n");
+
+        ret = getline(&line, &line_buf_size, f);
+        assert_same_value(ret, EOF);
+
+        free(line);
+        fclose(f);
+    }
+}
+
 struct test quicktests_common[] = {
     {dev_null, "dev_null"},
     {dev_zero, "dev_zero"},
@@ -587,6 +706,9 @@ struct test quicktests_common[] = {
     {ctype_test, "ctype"},
     {printf_test, "printf"},
     {getc_test, "getc"},
+    {realloc_test, "realloc"},
+    {str_test, "str"},
+    {getline_test, "getline"},
 
     {0, 0},
 };

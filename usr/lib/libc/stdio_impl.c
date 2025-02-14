@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #include <unistd.h>
 
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -61,8 +62,9 @@ char *get_from_fd(char *buf, int32_t max, FILE_DESCRIPTOR fd, int returned_char)
         {
             char c;
             int32_t cc = read(fd, &c, 1);
-            if (cc < 1)
+            if (cc <= 0)
             {
+                // error or EOF
                 break;
             }
             buf[i++] = c;
@@ -208,3 +210,61 @@ long ftell(FILE *stream)
 }
 
 void rewind(FILE *stream) { fseek(stream, 0L, SEEK_SET); }
+
+void perror(const char *s)
+{
+    if (s != NULL)
+    {
+        printf("%s; ", s);
+    }
+    printf("errno: %s (%d)\n", strerror(errno), errno);
+}
+
+ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream)
+{
+    const size_t _MALLOC_SIZE = 64;
+
+    if (!lineptr || !n || !stream)
+    {
+        errno = EINVAL;
+        return EOF;
+    }
+
+    if (*lineptr == NULL)
+    {
+        *n = 0;
+    }
+
+    size_t bytes_read = 0;
+    while (true)
+    {
+        int c = getc(stream);
+        if (c == EOF)
+        {
+            if (bytes_read == 0)
+            {
+                return EOF;
+            }
+            break;
+        }
+        bytes_read++;
+
+        // +1 will reserve one byte extra which is needed to 0-terminate the
+        // string
+        if ((bytes_read + 1) > *n)
+        {
+            size_t new_malloc_size = *n + _MALLOC_SIZE;
+            *lineptr = realloc(*lineptr, new_malloc_size);
+            if (*lineptr == NULL) return ENOMEM;
+            *n = new_malloc_size;
+        }
+        (*lineptr)[bytes_read - 1] = (char)c;
+        if (c == delim)
+        {
+            break;
+        }
+    }
+
+    (*lineptr)[bytes_read] = 0;
+    return bytes_read;
+}

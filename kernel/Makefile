@@ -46,6 +46,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/reset.o \
 	kernel/scheduler.o \
 	kernel/kticks.o \
+	syscalls/sys_device.o \
 	syscalls/sys_file.o \
 	syscalls/sys_ipc.o \
 	syscalls/sys_system.o \

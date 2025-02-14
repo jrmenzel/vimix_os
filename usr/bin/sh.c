@@ -246,6 +246,7 @@ int main(int argc, const char *argv[])
         return 1;
     }
 
+    int status = 0;
     // Read and run input commands.
     while (getcmd(buf, sizeof(buf), print_prompt) >= 0)
     {
@@ -266,6 +267,15 @@ int main(int argc, const char *argv[])
             if (chdir(buf + 3) < 0) fprintf(stderr, "cannot cd %s\n", buf + 3);
             continue;
         }
+        if (strcmp(buf, "exit\n") == 0)
+        {
+            return 0;
+        }
+        if (strcmp(buf, "echo $?\n") == 0)
+        {
+            printf("%d\n", status);
+            continue;
+        }
         if (is_blank_string(buf))
         {
             // ignore blank lines and don't fork just to return
@@ -276,12 +286,10 @@ int main(int argc, const char *argv[])
             runcmd(parsecmd(buf));
         }
 
-        int status = 0;
         wait(&status);
         status = WEXITSTATUS(status);
-        // printf("return code: %d\n", status);
     }
-    return 0;
+    return -1;
 }
 
 void sh_panic(char *s)

@@ -11,19 +11,8 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <termios.h>
 #include <unistd.h>
-
-int make_dev(const char *file, int device_type, dev_t dev)
-{
-    int f = open(file, O_RDWR);
-    if (f < 0)
-    {
-        return mknod(file, device_type | 0666, dev);
-    }
-    close(f);
-
-    return 0;
-}
 
 int main()
 {
@@ -46,6 +35,9 @@ int main()
 
     // wait till print works:
     printf("init mounting /dev... OK\n");
+
+    struct termios original_termios;
+    tcgetattr(STDIN_FILENO, &original_termios);
 
     int fd_dev = open("/dev/virtio1", O_RDONLY);
     if (fd_dev >= 0)
@@ -84,11 +76,13 @@ int main()
             char *SHELL_ARGV_AUTORUN[] = {"sh", "/tests/autoexec.sh", 0};
             if (stat(SHELL_ARGV_AUTORUN[1], &st) == 0)
             {
+                tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios);
                 execv(SHELL_PATH, SHELL_ARGV_AUTORUN);
             }
             else
             {
                 // default path, just start a shell:
+                tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios);
                 execv(SHELL_PATH, SHELL_ARGV);
             }
 

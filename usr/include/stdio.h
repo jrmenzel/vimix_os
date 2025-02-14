@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <stdarg.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -37,7 +38,13 @@ int fprintf(FILE *stream, const char *format, ...)
 /// @param fmt printf formatting
 /// @param ... printf parameters
 /// @return Chars written, excluding NULL byte.
-int snprintf(char *dst, size_t n, const char *fmt, ...);
+int snprintf(char *dst, size_t n, const char *format, ...)
+    __attribute__((format(printf, 3, 4)));
+
+int vsnprintf(char *dst, size_t n, const char *format, va_list arg)
+    __attribute__((format(printf, 3, 0)));
+
+void perror(const char *s);
 
 /// @brief Gets the file descriptor as an int.
 /// @param stream file to get the descriptor from
@@ -99,3 +106,10 @@ long ftell(FILE *stream);
 /// @brief Set file position indicator to beginning of the file.
 /// @param stream Stream to rewind.
 void rewind(FILE *stream);
+
+ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream);
+
+static inline ssize_t getline(char **lineptr, size_t *n, FILE *stream)
+{
+    return getdelim(lineptr, n, '\n', stream);
+}

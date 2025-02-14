@@ -63,3 +63,4 @@ entry("lseek");
 entry("rmdir");
 entry("mount");
 entry("umount");
+entry("ioctl");

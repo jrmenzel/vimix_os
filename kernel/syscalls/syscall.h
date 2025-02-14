@@ -132,6 +132,13 @@ ssize_t sys_umount();
 ssize_t sys_pipe();
 
 // ********************************************************
+// Device functions from sys_device.c
+//
+
+/// @brief Syscall "int ioctl(int fd, unsigned long request, ...)" from ioctl.h.
+ssize_t sys_ioctl();
+
+// ********************************************************
 // Helper functions to get syscall parameters
 //
 

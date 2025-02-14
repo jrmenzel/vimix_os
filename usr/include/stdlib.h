@@ -8,6 +8,13 @@
 /// @return pointer to the memory or NULL on failure
 void *malloc(size_t size_in_bytes);
 
+/// @brief Change size of memory pointed to by ptr. Can move the data, will not
+/// init new data. Use returned value after use instead of ptr.
+/// @param ptr Current allocation. If NULL, realloc will behave like malloc.
+/// @param size New size.
+/// @return Address of new allocation.
+void *realloc(void *ptr, size_t size);
+
 /// @brief Free memory allocated by malloc
 /// @param ptr pointer returned by malloc
 void free(void *ptr);

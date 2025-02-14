@@ -130,3 +130,5 @@ extern int32_t pipe(int pipe_descriptors[2]);
 extern void *sbrk(intptr_t increment);
 
 extern int32_t uptime();
+
+int isatty(int fd);

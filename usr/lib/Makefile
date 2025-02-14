@@ -19,6 +19,7 @@ STD_LIBC := \
 	$(LIBC_BUILD_DIR)/stdlib_malloc.o \
 	$(LIBC_BUILD_DIR)/string_impl.o \
 	$(LIBC_BUILD_DIR)/sys_stat_impl.o \
+	$(LIBC_BUILD_DIR)/termios.o \
 	$(LIBC_BUILD_DIR)/usys.o 
 
 ifeq ($(BITWIDTH), 32)

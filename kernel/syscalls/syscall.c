@@ -150,6 +150,7 @@ static ssize_t (*syscalls[])() = {
     [SYS_rmdir] sys_rmdir,
     [SYS_mount] sys_mount,
     [SYS_umount] sys_umount,
+    [SYS_ioctl] sys_ioctl,
 };
 // clang-format on
 
