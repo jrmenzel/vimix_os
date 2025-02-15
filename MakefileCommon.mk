@@ -4,7 +4,9 @@
 
 BUILD_TYPE := debug
 #BUILD_TYPE := release
-REL_WITH_DEBUG := yes
+# release builds with debug symbols increase the binary sizes and can 
+# push usertests over the limit of fitting on a xv6 filesystem
+#REL_WITH_DEBUG := yes
 
 #####
 # target architecture subpath in kernel/

@@ -3,11 +3,16 @@ set -e
 
 BUILD_ROOT=build_tests
 EXTERNAL_KERNEL_FLAGS=-D_SHUTDOWN_ON_PANIC
-EMU_FLAGS=SPIKE_BUILD=../riscv-simulator/riscv-isa-sim/build/
+EMU_FLAGS=SPIKE_BUILD=./spike/riscv-isa-sim/build/
+
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
 
 # platform debug|release
 function build_config {
     # build VIMIX
+    echo -e "${YELLOW}Build config: $1 $2${NC}"
     BUILD_DIR=${BUILD_ROOT}/build_$1_$2
     make clean BUILD_DIR=${BUILD_DIR}
     make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} || exit 1
@@ -17,6 +22,7 @@ function build_config {
 # on Ubuntu multiple 64-bit gcc versions can be installed in parallel
 function build_config_compiler {
     # build VIMIX
+    echo -e "${YELLOW}Build config: $1 $2 on gcc$3 ${NC}"
     BUILD_DIR=${BUILD_ROOT}/build_$1_$2_gcc$3
     make clean BUILD_DIR=${BUILD_DIR}
     make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} TOOLPREFIX=riscv64-linux-gnu- GCCPOSTFIX=-$3 || exit 1
@@ -51,11 +57,13 @@ function test_config {
     BUILD_DIR=${BUILD_ROOT}/build_$1_$2
     RESULT_FILE=${BUILD_ROOT}/testrun_$1_$2_$4_on_$3_$6_CPUs.txt
     EXPECTED_RESULT="$5"
+    echo -e "${YELLOW}Test config: $1 $2 ${NC}"
     # copy test
     cp ${BUILD_DIR}/root/tests/$4.sh ${BUILD_DIR}/root/tests/autoexec.sh
     # re-create fs image
     make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 EXTERNAL_KERNEL_FLAGS="$(EXTERNAL_KERNEL_FLAGS)" BUILD_DIR=${BUILD_DIR} ${BUILD_DIR}/filesystem.img || exit 1
     # run test
+    echo -e "${YELLOW}Test config: make PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} CPUS=$6 ${EMU_FLAGS} $3 ${NC}"
     make PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} CPUS=$6 ${EMU_FLAGS} $3 > ${RESULT_FILE} || exit 1
     # get file system content, clear target dir fist:
     #if [ -d ${BUILD_DIR}/root_out ]

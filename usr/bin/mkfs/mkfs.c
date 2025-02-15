@@ -208,7 +208,7 @@ int build_full_path(char *dst, const char *path, const char *file)
     return 0;
 }
 
-void copy_file_to_filesystem(const char *path_on_host, const char *new_name,
+bool copy_file_to_filesystem(const char *path_on_host, const char *new_name,
                              int32_t dir_inode_on_fs)
 {
     int fd = open(path_on_host, O_RDONLY);
@@ -216,14 +216,16 @@ void copy_file_to_filesystem(const char *path_on_host, const char *new_name,
 
     size_t max_file_size = XV6FS_MAX_FILE_SIZE_BLOCKS * BLOCK_SIZE;
     struct stat st;
-    if (fstat(fd, &st) < 0) return;
+    if (fstat(fd, &st) < 0) return false;
     if (st.st_size > max_file_size)
     {
+        printf("\033[1;31m");  // font color to red
         printf("error: can't copy file %s because it is too big.\n",
                path_on_host);
         printf("File size: %zd, max file size: %zd\n", st.st_size,
                max_file_size);
-        return;  // skip file
+        printf("\033[0m");  // reset font color
+        return false;       // skip file
     }
 
     uint32_t inum = i_alloc(XV6_FT_FILE);
@@ -240,16 +242,18 @@ void copy_file_to_filesystem(const char *path_on_host, const char *new_name,
     close(fd);
 
     fix_dir_size(dir_inode_on_fs);
+    return true;
 }
 
-void copy_dir_to_filesystem(const char *dir_on_host, int32_t dir_inode_on_fs)
+bool copy_dir_to_filesystem(const char *dir_on_host, int32_t dir_inode_on_fs)
 {
     DIR *dir = opendir(dir_on_host);
     if (dir == NULL)
     {
-        return;
+        return false;
     }
 
+    bool all_ok = true;
     char full_path[PATH_MAX];
     struct dirent *dir_entry = NULL;
     while ((dir_entry = readdir(dir)))
@@ -258,22 +262,25 @@ void copy_dir_to_filesystem(const char *dir_on_host, int32_t dir_inode_on_fs)
 
         build_full_path(full_path, dir_on_host, dir_entry->d_name);
         struct stat st;
-        if (stat(full_path, &st) < 0) return;
+        if (stat(full_path, &st) < 0) return false;
 
         if (S_ISDIR(st.st_mode))
         {
             uint32_t new_dir =
                 create_directory(dir_inode_on_fs, dir_entry->d_name);
-            copy_dir_to_filesystem(full_path, new_dir);
+
+            all_ok &= copy_dir_to_filesystem(full_path, new_dir);
         }
         else if (S_ISREG(st.st_mode))
         {
-            copy_file_to_filesystem(full_path, dir_entry->d_name,
-                                    dir_inode_on_fs);
+            all_ok &= copy_file_to_filesystem(full_path, dir_entry->d_name,
+                                              dir_inode_on_fs);
         }
     }
 
     closedir(dir);
+
+    return all_ok;
 }
 
 int32_t open_filesystem(const char *filename)
@@ -403,7 +410,7 @@ void copy_out_file(int32_t inode, const char *filename)
     free(buffer);
 }
 
-void copy_filesystem_to_dir(int32_t dir_inode_on_fs, const char *sub_path,
+bool copy_filesystem_to_dir(int32_t dir_inode_on_fs, const char *sub_path,
                             const char *dir_on_host)
 {
     char full_path_on_host[PATH_MAX];
@@ -455,6 +462,8 @@ void copy_filesystem_to_dir(int32_t dir_inode_on_fs, const char *sub_path,
             printf("ignore %s\n", full_file_path_on_host);
         }
     };
+
+    return true;
 }
 
 int main(int argc, char *argv[])
@@ -466,18 +475,18 @@ int main(int argc, char *argv[])
         {
             // --in: create a new fs and copy in a directory
             rootino = create_empty_filesystem(argv[1], 4 * 1024 * BLOCK_SIZE);
-            copy_dir_to_filesystem(argv[3], rootino);
+            bool ok = copy_dir_to_filesystem(argv[3], rootino);
             balloc(freeblock);
             close(g_filesystem_fd);
-            return 0;
+            return ok ? 0 : 1;
         }
         else if (strcmp(argv[2], "--out") == 0)
         {
             // --out: open an existing fs and copy out everything to a directory
             rootino = open_filesystem(argv[1]);
-            copy_filesystem_to_dir(rootino, "/", argv[3]);
+            bool ok = copy_filesystem_to_dir(rootino, "/", argv[3]);
             close(g_filesystem_fd);
-            return 0;
+            return ok ? 0 : 1;
         }
         else if (strcmp(argv[2], "--create") == 0)
         {
