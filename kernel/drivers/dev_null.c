@@ -11,7 +11,7 @@ struct
 } g_dev_null;
 
 ssize_t dev_null_read(struct Device *dev, bool addr_is_userspace, size_t addr,
-                      size_t len)
+                      size_t len, uint32_t unused_file_offset)
 {
     return 0;
 }

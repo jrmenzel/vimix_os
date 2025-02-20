@@ -87,7 +87,7 @@ void uart_init(struct Device_Init_Parameters *init_param, const char *name)
         init_param->reg_io_width == 1 || init_param->reg_io_width == 4,
         "unsupported IO width");
 
-    g_uart_16550.uart_base = init_param->mem_start;
+    g_uart_16550.uart_base = init_param->mem[0].start;
     g_uart_16550.reg_io_width = init_param->reg_io_width;
     g_uart_16550.reg_shift = init_param->reg_shift;
 

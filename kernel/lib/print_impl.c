@@ -295,3 +295,57 @@ int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char *format,
 
     return charsWritten;
 }
+
+struct sprintf_payload
+{
+    size_t n_left;
+    char *dst_pos;
+};
+
+static void put_char_in_buffer(const int32_t c, size_t payload)
+{
+    struct sprintf_payload *my_payload = (struct sprintf_payload *)payload;
+
+    // discarded chars are still counted (externally) for snprintf(), so no need
+    // to return success
+    if (my_payload->n_left == 0) return;
+
+    *(my_payload->dst_pos) = (char)c;
+    my_payload->dst_pos++;
+    my_payload->n_left--;
+}
+
+int vsnprintf(char *dst, size_t n, const char *format, va_list arg)
+{
+    struct sprintf_payload payload;
+    payload.dst_pos = dst;
+    payload.n_left = n;
+
+    int32_t ret = print_impl(put_char_in_buffer, (size_t)&payload, format, arg);
+
+    // 0-terminate, does not count as written char!
+    // n == 0 means nothing can be written -> skip
+    if (n > 0)
+    {
+        if (payload.n_left == 0)
+        {
+            *(payload.dst_pos - 1) = 0;
+        }
+        else
+        {
+            *(payload.dst_pos) = 0;
+        }
+    }
+
+    return ret;
+}
+
+int snprintf(char *dst, size_t n, const char *format, ...)
+{
+    va_list arg;
+
+    va_start(arg, format);
+    int32_t ret = vsnprintf(dst, n, format, arg);
+    va_end(arg);
+    return ret;
+}

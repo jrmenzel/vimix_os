@@ -9,8 +9,8 @@
  *
  * Linux also has a major.h with device number defines.
  */
-#define QEMU_VIRT_IO_DISK_MAJOR 2
-#define CONSOLE_DEVICE_MAJOR 1
+#define QEMU_VIRT_IO_DISK_MAJOR 1
+#define CONSOLE_DEVICE_MAJOR 2
 #define DEV_NULL_MAJOR 3
 #define DEV_ZERO_MAJOR 4
 #define RAMDISK_MAJOR 5
@@ -20,6 +20,8 @@
 #define CLINT_MAJOR 9
 #define HTIF_MAJOR 10
 #define DEV_RANDOM_MAJOR 12
+#define JH7110_CLK_MAJOR 13
+#define JH7110_TEMP_MAJOR 14
 
 // special case: not a device itself but needs a device number for its inodes
 #define DEVFS_MAJOR 11

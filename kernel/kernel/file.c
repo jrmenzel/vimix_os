@@ -248,7 +248,8 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
         {
             return -ENODEV;
         }
-        read_bytes = cdev->ops.read(&cdev->dev, true, addr, n);
+        read_bytes = cdev->ops.read(&cdev->dev, true, addr, n, f->off);
+        f->off += read_bytes;
     }
     else if (S_ISBLK(f->mode))
     {

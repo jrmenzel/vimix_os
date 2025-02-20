@@ -6,9 +6,6 @@
 #include <arch/platform.h>
 #include <arch/trap.h>
 #include <drivers/console.h>
-#include <drivers/dev_null.h>
-#include <drivers/dev_random.h>
-#include <drivers/dev_zero.h>
 #include <drivers/devices_list.h>
 #include <drivers/ramdisk.h>
 #include <drivers/virtio_disk.h>
@@ -91,22 +88,19 @@ void add_ramdisks_to_dev_list(struct Devices_List *dev_list,
                               struct Minimal_Memory_Map *memory_map)
 {
     struct Device_Init_Parameters init_params;
-#ifdef RAMDISK_EMBEDDED
     clear_init_parameters(&init_params);
-    init_params.mem_start = (size_t)ramdisk_fs;
-    init_params.mem_size = (size_t)ramdisk_fs_size;
-    dev_list_add_with_parameters(dev_list, "ramdisk_embedded", ramdisk_init,
-                                 init_params);
+#ifdef RAMDISK_EMBEDDED
+    init_params.mem[0].start = (size_t)ramdisk_fs;
+    init_params.mem[0].size = (size_t)ramdisk_fs_size;
+    dev_list_add_with_parameters(dev_list, &g_ramdisk_driver, init_params);
 #endif
     if (memory_map->initrd_begin != 0)
     {
         // boot loader provided ramdisk detected
-        clear_init_parameters(&init_params);
-        init_params.mem_start = memory_map->initrd_begin;
-        init_params.mem_size =
+        init_params.mem[0].start = memory_map->initrd_begin;
+        init_params.mem[0].size =
             memory_map->initrd_end - memory_map->initrd_begin;
-        dev_list_add_with_parameters(dev_list, "ramdisk_initrd", ramdisk_init,
-                                     init_params);
+        dev_list_add_with_parameters(dev_list, &g_ramdisk_driver, init_params);
     }
 }
 
@@ -139,7 +133,7 @@ void init_by_first_thread(void *dtb)
     }
     else
     {
-        printk("Console: %s\n", dev_list->dev[console_index].dtb_name);
+        printk("Console: %s\n", dev_list->dev[console_index].driver->dtb_name);
     }
 
     struct Minimal_Memory_Map memory_map;
@@ -148,10 +142,6 @@ void init_by_first_thread(void *dtb)
     // collect all found devices:
     add_ramdisks_to_dev_list(dev_list, &memory_map);
     dtb_add_devices_to_dev_list(dtb, get_generell_drivers(), dev_list);
-    dev_list_add(dev_list, "/dev/null", dev_null_init);
-    dev_list_add(dev_list, "/dev/zero", dev_zero_init);
-    dev_list_add(dev_list, "/dev/random",
-                 dev_random_init);  // init after the RTC (if present)
     dev_list_sort(dev_list,
                   "virtio,mmio");  // for predictable dev numbers on qemu
     // debug_dev_list_print(dev_list);
@@ -189,19 +179,13 @@ void init_by_first_thread(void *dtb)
 
     // find the device with the root file system:
     size_t device_of_root_fs = 0;
-    ssize_t ramdisk_index_0 =
-        dev_list_get_device_index(dev_list, "ramdisk_embedded");
-    ssize_t ramdisk_index_1 =
-        dev_list_get_device_index(dev_list, "ramdisk_initrd");
+    ssize_t ramdisk_index =
+        dev_list_get_first_device_index(dev_list, "ramdisk");
     ssize_t disk_index_0 =
         dev_list_get_first_device_index(dev_list, "virtio,mmio");
-    if (ramdisk_index_0 >= 0)
+    if (ramdisk_index >= 0)
     {
-        device_of_root_fs = ramdisk_index_0;
-    }
-    else if (ramdisk_index_1 >= 0)
-    {
-        device_of_root_fs = ramdisk_index_1;
+        device_of_root_fs = ramdisk_index;
     }
     else if (disk_index_0 >= 0)
     {
@@ -215,8 +199,8 @@ void init_by_first_thread(void *dtb)
     // store the device number of root:
     ROOT_DEVICE_NUMBER = dev_list->dev[device_of_root_fs].dev_num;
     printk("fs root device: %s (%d,%d)\n",
-           dev_list->dev[device_of_root_fs].dtb_name, MAJOR(ROOT_DEVICE_NUMBER),
-           MINOR(ROOT_DEVICE_NUMBER));
+           dev_list->dev[device_of_root_fs].driver->dtb_name,
+           MAJOR(ROOT_DEVICE_NUMBER), MINOR(ROOT_DEVICE_NUMBER));
 
     // e.g. boots other harts in SBI mode:
     init_platform();

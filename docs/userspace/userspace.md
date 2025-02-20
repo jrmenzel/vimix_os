@@ -75,6 +75,7 @@ Some user space apps compile also on Linux. See [build_instructions](../build_in
 - [/dev/null](dev/null.md)
 - [/dev/random](dev/random.md)
 - [/dev/zero](dev/zero.md)
+- [/dev/temp](dev/temp.md) (optional)
 
 **/home:**
 - [mount point](bin/mount.md) for an optional second file system

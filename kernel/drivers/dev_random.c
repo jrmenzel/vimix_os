@@ -40,7 +40,7 @@ int do_rand(unsigned long *ctx)
 int rand() { return (do_rand(&g_dev_random.rand_next)); }
 
 ssize_t dev_random_read(struct Device *dev, bool addr_is_userspace, size_t addr,
-                        size_t len)
+                        size_t len, uint32_t unused_file_offset)
 {
     for (size_t i = 0; i < len; ++i)
     {
@@ -52,12 +52,6 @@ ssize_t dev_random_read(struct Device *dev, bool addr_is_userspace, size_t addr,
     return len;
 }
 
-ssize_t dev_random_write(struct Device *dev, bool addr_is_userspace,
-                         size_t addr, size_t len)
-{
-    return len;
-}
-
 dev_t dev_random_init(struct Device_Init_Parameters *param, const char *name)
 {
     // init device and register it in the system
@@ -66,7 +60,7 @@ dev_t dev_random_init(struct Device_Init_Parameters *param, const char *name)
     g_dev_random.cdev.dev.type = CHAR;
     g_dev_random.cdev.dev.device_number = MKDEV(DEV_RANDOM_MAJOR, 0);
     g_dev_random.cdev.ops.read = dev_random_read;
-    g_dev_random.cdev.ops.write = dev_random_write;
+    g_dev_random.cdev.ops.write = character_device_write_unsupported;
     g_dev_random.cdev.ops.ioctl = NULL;
     dev_set_irq(&g_dev_random.cdev.dev, INVALID_IRQ_NUMBER, NULL);
     register_device(&g_dev_random.cdev.dev);

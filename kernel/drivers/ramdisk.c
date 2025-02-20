@@ -66,15 +66,15 @@ const char *ramdisk_names[MAX_MINOR_DEVICES] = {"ramdisk0", "ramdisk1",
 dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
                    const char *name)
 {
-    if (init_parameters->mem_start == 0 || init_parameters->mem_size == 0)
+    if (init_parameters->mem[0].start == 0 || init_parameters->mem[0].size == 0)
     {
         panic("invalid ramdisk_init parameters");
     }
     size_t minor = g_next_free_ramdisk++;
     // printk("ramdisk_init %zd\n", minor);
 
-    g_ramdisk[minor].start = (void *)init_parameters->mem_start;
-    g_ramdisk[minor].disk.bdev.size = init_parameters->mem_size;
+    g_ramdisk[minor].start = (void *)init_parameters->mem[0].start;
+    g_ramdisk[minor].disk.bdev.size = init_parameters->mem[0].size;
 
     // init device and register it in the system
     g_ramdisk[minor].disk.bdev.dev.name = ramdisk_names[minor];

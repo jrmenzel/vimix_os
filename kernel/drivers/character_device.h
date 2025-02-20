@@ -9,7 +9,7 @@ struct Character_Device;
 
 typedef ssize_t (*DEVICE_READ_FUNCTION)(struct Device *dev,
                                         bool addr_is_userspace, size_t addr,
-                                        size_t len);
+                                        size_t len, uint32_t file_offset);
 typedef ssize_t (*DEVICE_WRITE_FUNCTION)(struct Device *dev,
                                          bool addr_is_userspace, size_t addr,
                                          size_t len);
@@ -48,3 +48,15 @@ struct Character_Device *get_character_device(dev_t device_number);
 
 /// @brief returns a character device registered for that device major or NULL
 struct Character_Device *get_character_device_by_major(size_t major);
+
+/// @brief A char device which does not want to implement read support can use
+/// this default fallback as its implementation.
+ssize_t character_device_read_unsupported(struct Device *dev,
+                                          bool addr_is_userspace, size_t addr,
+                                          size_t len);
+
+/// @brief A char device which does not want to implement write support can use
+/// this default fallback as its implementation.
+ssize_t character_device_write_unsupported(struct Device *dev,
+                                           bool addr_is_userspace, size_t addr,
+                                           size_t len);

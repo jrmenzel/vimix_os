@@ -181,6 +181,11 @@ OBJS_ARCH := arch/riscv/asm/entry.o \
 	arch/riscv/timer.o \
 	arch/riscv/scause.o
 
+ifeq ($(PLATFORM), visionfive2)
+OBJS_ARCH += drivers/jh7110_clk.o \
+             drivers/jh7110_temp.o
+endif
+
 ifeq ($(BOOT_MODE), BOOT_M_MODE)
 OBJS_ARCH += arch/riscv/asm/m_mode_trap_vector.o
 OBJS_ARCH += arch/riscv/clint.o

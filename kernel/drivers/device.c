@@ -161,3 +161,17 @@ ssize_t block_device_write(struct Block_Device *bdev, size_t addr_u,
 {
     return block_device_rw(bdev, addr_u, offset, n, false);
 }
+
+ssize_t character_device_read_unsupported(struct Device *dev,
+                                          bool addr_is_userspace, size_t addr,
+                                          size_t len)
+{
+    return -1;
+}
+
+ssize_t character_device_write_unsupported(struct Device *dev,
+                                           bool addr_is_userspace, size_t addr,
+                                           size_t len)
+{
+    return len;
+}

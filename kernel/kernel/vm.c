@@ -62,11 +62,24 @@ pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
         struct Found_Device *dev = &(dev_list->dev[i]);
         if (dev->init_parameters.mmu_map_memory)
         {
-            // printk("mapping found device %s at 0x%zx size: 0x%zx\n",
-            //        dev->dtb_name, dev->mapping.mem_start,
-            //        dev->mapping.mem_size);
-            kvm_map_mmio(kpage_table, dev->init_parameters.mem_start,
-                         PAGE_ROUND_UP(dev->init_parameters.mem_size));
+            for (size_t i = 0; i < DEVICE_MAX_MEM_MAPS; ++i)
+            {
+                // memory size of 0 means end of the list
+                if (dev->init_parameters.mem[i].size == 0) break;
+
+                // printk("mapping found device %s at 0x%zx size: 0x%zx",
+                //        dev->driver->dtb_name,
+                //        dev->init_parameters.mem[i].start,
+                //        dev->init_parameters.mem[i].size);
+                // if (dev->init_parameters.mem[i].name)
+                //{
+                //     printk(" (%s)", dev->init_parameters.mem[i].name);
+                // }
+                // printk("\n");
+
+                kvm_map_mmio(kpage_table, dev->init_parameters.mem[i].start,
+                             PAGE_ROUND_UP(dev->init_parameters.mem[i].size));
+            }
         }
     }
 

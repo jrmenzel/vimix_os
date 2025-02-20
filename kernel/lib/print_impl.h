@@ -11,5 +11,5 @@ typedef void (*_PUT_CHAR_FP)(const int32_t c, size_t payload);
 /// returns EOF of failure
 typedef int32_t (*_GET_CHAR_FP)();
 
-int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char* format,
+int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char *format,
                    va_list vl);

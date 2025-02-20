@@ -22,7 +22,7 @@ dev_t clint_init(struct Device_Init_Parameters *init_parameters,
 // it has to run in M-Mode, this only works if the base address
 // is the same.
 #ifdef __TIMER_SOURCE_CLINT
-    if (CLINT_BASE != init_parameters->mem_start)
+    if (CLINT_BASE != init_parameters->mem[0].start)
     {
         panic("Unexpected CLINT address\n");
     }
@@ -32,7 +32,7 @@ dev_t clint_init(struct Device_Init_Parameters *init_parameters,
     {
         return 0;
     }
-    CLINT_BASE = init_parameters->mem_start;
+    CLINT_BASE = init_parameters->mem[0].start;
     clint_is_initialized = true;
     return MKDEV(CLINT_MAJOR, 0);
 }

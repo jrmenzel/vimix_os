@@ -38,7 +38,7 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     struct virtio_disk *disk = &g_virtio_disks[disk_index];
 
     spin_lock_init(&disk->vdisk_lock, "virtio_disk");
-    disk->mmio_base = mapping->mem_start;
+    disk->mmio_base = mapping->mem[0].start;
     size_t b = disk->mmio_base;
 
     uint32_t status = 0;
@@ -168,7 +168,7 @@ dev_t virtio_disk_init_internal(size_t disk_index,
 dev_t virtio_disk_init(struct Device_Init_Parameters *init_param,
                        const char *name)
 {
-    size_t b = init_param->mem_start;
+    size_t b = init_param->mem[0].start;
 
     if (*R(b, VIRTIO_MMIO_MAGIC_VALUE) != VIRTIO_DISK_MAGIC ||
         *R(b, VIRTIO_MMIO_VERSION) != 2 || *R(b, VIRTIO_MMIO_DEVICE_ID) != 2)

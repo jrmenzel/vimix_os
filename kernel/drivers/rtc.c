@@ -23,7 +23,8 @@ dev_t rtc_init(struct Device_Init_Parameters *init_parameters, const char *name)
 // https://android.googlesource.com/platform/external/qemu/+/master/docs/GOLDFISH-VIRTUAL-HARDWARE.TXT
 #define TIMER_TIME_LOW 0x00
 #define TIMER_TIME_HIGH 0x04
-#define TimeReg(reg) ((volatile uint32_t *)(goldfish_mapping.mem_start + reg))
+#define TimeReg(reg) \
+    ((volatile uint32_t *)(goldfish_mapping.mem[0].start + reg))
 #define ReadTimeReg(reg) (*(TimeReg(reg)))
 
 time_t rtc_get_time()

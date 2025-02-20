@@ -112,7 +112,7 @@ ssize_t console_write(struct Device *dev, bool addr_is_userspace, size_t src,
 /// user_dist indicates whether dst is a user
 /// or kernel address.
 ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
-                     size_t n)
+                     size_t n, uint32_t unused_file_offset)
 {
     size_t target = n;
     ssize_t termios_target = g_console.termios.c_cc[VMIN];

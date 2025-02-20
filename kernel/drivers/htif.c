@@ -94,7 +94,7 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
         return INVALID_DEVICE;
     }
 
-    if (init_parameters->mem_start == 0)
+    if (init_parameters->mem[0].start == 0)
     {
         // kernel defined tohost/fromhost
         htif_tohost = &tohost;
@@ -102,9 +102,9 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
     }
     else
     {
-        htif_tohost = (volatile uint64_t *)(init_parameters->mem_start +
+        htif_tohost = (volatile uint64_t *)(init_parameters->mem[0].start +
                                             HTIF_REGISTER_TOHOST);
-        htif_fromhost = (volatile uint64_t *)(init_parameters->mem_start +
+        htif_fromhost = (volatile uint64_t *)(init_parameters->mem[0].start +
                                               HTIF_REGISTER_FROMHOST);
     }
     printk("register HTIF shutdown function\n");

@@ -91,7 +91,7 @@ dev_t syscon_init(struct Device_Init_Parameters *init_parameters,
         return INVALID_DEVICE;
     }
 
-    g_syscon.mem_start = init_parameters->mem_start;
+    g_syscon.mem_start = init_parameters->mem[0].start;
     printk("register syscon reboot/shutdown functions\n");
     g_machine_power_off_func = &syscon_machine_power_off;
 
