@@ -107,6 +107,11 @@ void add_ramdisks_to_dev_list(struct Devices_List *dev_list,
 /// some init that only one thread should perform while all others wait
 void init_by_first_thread(void *dtb)
 {
+    if (fdt_magic(dtb) != FDT_MAGIC)
+    {
+        panic("No valid device tree found");
+    }
+
     // Collect all found devices in this list for later init:
     struct Devices_List *dev_list = get_devices_list();
 
@@ -203,7 +208,7 @@ void init_by_first_thread(void *dtb)
            MAJOR(ROOT_DEVICE_NUMBER), MINOR(ROOT_DEVICE_NUMBER));
 
     // e.g. boots other harts in SBI mode:
-    init_platform();
+    init_platform(dtb);
 
     // process 0:
     printk("init userspace...\n");

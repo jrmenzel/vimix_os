@@ -140,7 +140,7 @@ void sbi_machine_restart()
     sbi_system_reset(SBI_SRST_TYPE_WARM_REBOOT, SBI_SRST_REASON_NONE);
 }
 
-void init_sbi()
+void init_sbi(void *dtb)
 {
     long version = sbi_get_spec_version();
     long major =
@@ -192,7 +192,7 @@ void init_sbi()
             {
                 // start all other harts, trying to start a hart that does not
                 // exist in hardware will fail
-                long ret = sbi_hart_start(hartid, (size_t)_entry, 0);
+                long ret = sbi_hart_start(hartid, (size_t)_entry, (size_t)dtb);
                 if (ret != SBI_SUCCESS)
                 {
                     // printk("SBI HSM: starting hart %zd: FAILED\n", hartid);

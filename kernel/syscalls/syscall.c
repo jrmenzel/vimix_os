@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/trapframe.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>

@@ -22,13 +22,16 @@ static struct
 {
     struct spinlock lock;
     bool locking;
-} g_printk;
+    bool init;
+} g_printk = {0};
 
 void console_putc_dummy(int32_t c, size_t payload) { console_putc(c); }
 
 // Print to the console
 void printk(char* format, ...)
 {
+    if (g_printk.init == false) return;
+
     // error checks
     if (format == NULL)
     {
@@ -113,4 +116,5 @@ void printk_init()
 {
     spin_lock_init(&g_printk.lock, "pr");
     g_printk.locking = true;
+    g_printk.init = true;
 }

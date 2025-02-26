@@ -244,7 +244,8 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
     params.dev_offset = device_offset;
 
     int len;
-    const uint64_t *regs = fdt_getprop(dtb, device_offset, "reg", &len);
+    const dtb_aligned_uint64_t *regs =
+        fdt_getprop(dtb, device_offset, "reg", &len);
     int len_names;
     const char *reg_names =
         fdt_getprop(dtb, device_offset, "reg-names", &len_names);
@@ -295,9 +296,9 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
 
 void dev_list_sort(struct Devices_List *dev_list, const char *name)
 {
-    const size_t MAX_DEVICES_PER_TYPE =
-        16;  // can be more than MAX_MINOR_DEVICES, which is the limit for
-             // initialized devices
+    // can be more than MAX_MINOR_DEVICES, which is the limit for
+    // initialized devices
+    const size_t MAX_DEVICES_PER_TYPE = 32;
     ssize_t index[MAX_DEVICES_PER_TYPE];
     for (size_t i = 0; i < MAX_DEVICES_PER_TYPE; ++i)
     {

@@ -43,7 +43,7 @@ ssize_t dtb_add_driver_if_compatible(void *dtb, const char *device_name,
 void dtb_add_devices_to_dev_list(void *dtb, struct Device_Driver *driver_list,
                                  struct Devices_List *dev_list)
 {
-    if (dtb == NULL)
+    if (fdt_magic(dtb) != FDT_MAGIC)
     {
         return;
     }
@@ -82,8 +82,10 @@ void dtb_get_initrd(void *dtb, struct Minimal_Memory_Map *memory_map)
         else if (startp && endp && lenp == 8)
         {
             // 64 bit values
-            initrd_begin = (size_t)fdt64_to_cpu(*(const uint64_t *)startp);
-            initrd_end = (size_t)fdt64_to_cpu(*(const uint64_t *)endp);
+            initrd_begin =
+                (size_t)fdt64_to_cpu(*(const dtb_aligned_uint64_t *)startp);
+            initrd_end =
+                (size_t)fdt64_to_cpu(*(const dtb_aligned_uint64_t *)endp);
         }
     }
     memory_map->initrd_begin = initrd_begin;
@@ -97,14 +99,15 @@ void dtb_get_initrd(void *dtb, struct Minimal_Memory_Map *memory_map)
 void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map)
 {
     // fallback values
-    memory_map->ram_start = 0x80000000L;
+    memory_map->ram_start = (size_t)start_of_kernel;
     memory_map->kernel_start = (size_t)start_of_kernel;
     memory_map->kernel_end = (size_t)end_of_kernel;
-    memory_map->ram_end = (memory_map->ram_start + MEMORY_SIZE * 1024 * 1024);
+    memory_map->ram_end =
+        (memory_map->ram_start + (size_t)MEMORY_SIZE * 1024 * 1024);
     memory_map->dtb_file_start = 0;
     memory_map->dtb_file_end = 0;
 
-    if (dtb == NULL)
+    if (fdt_magic(dtb) != FDT_MAGIC)
     {
         return;
     }
@@ -117,15 +120,10 @@ void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map)
         printk("dtb error: %s\n", (char *)fdt_strerror(offset));
         return;
     }
-    int error;
-    const uint64_t *value = fdt_getprop(dtb, offset, "reg", &error);
-    if (value == NULL)
-    {
-        printk("dtb error: %s\n", (char *)fdt_strerror(error));
-        return;
-    }
-    uint64_t base = fdt64_to_cpu(value[0]);
-    uint64_t size = fdt64_to_cpu(value[1]);
+
+    size_t base;
+    size_t size;
+    dtb_get_reg(dtb, offset, &base, &size);
 
     memory_map->ram_start = base;
     memory_map->ram_end = base + size;
@@ -133,10 +131,52 @@ void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map)
     dtb_get_initrd(dtb, memory_map);
 }
 
+bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size)
+{
+    uint32_t size_cells = dtb_get_size_cells(dtb);
+    uint32_t address_cells = dtb_get_address_cells(dtb);
+
+    int len;
+    const uint32_t *value = fdt_getprop(dtb, offset, "reg", &len);
+    if (value == NULL)
+    {
+        printk("dtb error\n");
+        return false;
+    }
+    if (address_cells == 1)
+    {
+        // 32 bit address
+        *base = fdt32_to_cpu(value[0]);
+        value++;
+    }
+    else
+    {
+        // 64 bit address
+        const dtb_aligned_uint64_t *address64 =
+            (const dtb_aligned_uint64_t *)value;
+        *base = fdt64_to_cpu(address64[0]);
+        value += 2;
+    }
+    if (size_cells == 1)
+    {
+        // 32 bit size
+        *size = fdt32_to_cpu(value[0]);
+    }
+    else
+    {
+        // 64 bit size
+        const dtb_aligned_uint64_t *size64 =
+            (const dtb_aligned_uint64_t *)value;
+        *size = fdt64_to_cpu(size64[0]);
+    }
+
+    return true;
+}
+
 // note: gets called too early for printk...
 uint64_t dtb_get_timebase(void *dtb)
 {
-    if (dtb == NULL)
+    if (fdt_magic(dtb) != FDT_MAGIC)
     {
         return 0;
     }
@@ -209,4 +249,28 @@ int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
     }
 
     return fallback;
+}
+
+uint32_t dtb_get_size_cells(void *dtb)
+{
+    int root_offset = fdt_path_offset(dtb, "/");
+    if (root_offset < 0) return 1;  // default
+
+    const uint32_t *addr_prop =
+        fdt_getprop(dtb, root_offset, "#size-cells", NULL);
+    if (addr_prop == NULL) return 1;  // default
+
+    return fdt32_to_cpu(*addr_prop);
+}
+
+uint32_t dtb_get_address_cells(void *dtb)
+{
+    int root_offset = fdt_path_offset(dtb, "/");
+    if (root_offset < 0) return 1;  // default
+
+    const uint32_t *addr_prop =
+        fdt_getprop(dtb, root_offset, "#address-cells", NULL);
+    if (addr_prop == NULL) return 1;  // default
+
+    return fdt32_to_cpu(*addr_prop);
 }

@@ -39,10 +39,10 @@ _entry:
     # set up a stack for C.
     # g_kernel_cpu_stack is declared in start.c with one page per CPU
     la sp, g_kernel_cpu_stack    # sp = g_kernel_cpu_stack
-    li t0, PAGE_SIZE             # t0 = PAGE_SIZE, normally 4k
+    li t0, KERNEL_STACK_SIZE     # t0 = KERNEL_STACK_SIZE, multiple of PAGE_SIZE
     addi t1, a0, 1               # t1 = hartid + 1 (+1 as the stack grows down, so set sp to the "end" of the stack space, not the "begining")
-    mul t2, t0, t1               # t2 = ((hartid+1) * PAGE_SIZE)
-    add sp, sp, t2               # sp = g_kernel_cpu_stack + ((hartid+1) * PAGE_SIZE)
+    mul t2, t0, t1               # t2 = ((hartid+1) * KERNEL_STACK_SIZE)
+    add sp, sp, t2               # sp = g_kernel_cpu_stack + ((hartid+1) * KERNEL_STACK_SIZE)
     mv fp, zero
 
     # jump to start() in start.c

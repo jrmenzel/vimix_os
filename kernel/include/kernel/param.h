@@ -24,6 +24,9 @@
 /// all stacks start at one page and can grow to this
 #define USER_MAX_STACK_SIZE (16 * PAGE_SIZE)
 
+#define KERNEL_STACK_PAGES (1)
+#define KERNEL_STACK_SIZE (KERNEL_STACK_PAGES * PAGE_SIZE)
+
 #if defined(DEBUG)
 #define CONFIG_DEBUG
 #endif  // DEBUG

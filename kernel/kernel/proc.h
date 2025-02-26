@@ -110,10 +110,6 @@ int32_t either_copyout(bool addr_is_userspace, size_t dst, void *src,
 int32_t either_copyin(void *dst, bool addr_is_userspace, size_t src,
                       size_t len);
 
-/// @brief Prints the processes register state
-/// @param proc A not running process.
-void debug_print_process_registers(struct process *proc);
-
 /// @brief Prints the processes kernel call stack.
 /// @param proc A not running process.
 void debug_print_call_stack_kernel(struct process *proc);

@@ -6,6 +6,7 @@
 #include <arch/riscv/scause.h>
 #include <arch/riscv/timer.h>
 #include <arch/trap.h>
+#include <arch/trapframe.h>
 #include <drivers/device.h>
 #include <drivers/uart16550.h>
 #include <drivers/virtio_disk.h>
@@ -67,7 +68,7 @@ void dump_scause_and_kill_proc(struct process *proc)
         proc->pid);
     dump_scause();
     printk("Process: %s\n", proc->name);
-    debug_print_process_registers(proc);
+    debug_print_process_registers(proc->trapframe);
     printk("Call stack:\n");
     debug_print_call_stack_user(proc);
     printk("\n");
@@ -185,7 +186,7 @@ void return_to_user_mode()
     proc->trapframe->kernel_page_table =
         cpu_get_page_table();  // kernel page table
     proc->trapframe->kernel_sp =
-        proc->kstack + PAGE_SIZE;  // process's kernel stack
+        proc->kstack + KERNEL_STACK_SIZE;  // process's kernel stack
     proc->trapframe->kernel_trap = (size_t)user_mode_interrupt_handler;
     proc->trapframe->kernel_hartid = smp_processor_id();
 

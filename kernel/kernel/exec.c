@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/context.h>
+#include <arch/trapframe.h>
 #include <kernel/elf.h>
 #include <kernel/errno.h>
 #include <kernel/exec.h>

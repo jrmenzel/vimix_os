@@ -15,8 +15,8 @@
 /// Placed in section STACK to not be placed in .bss (see kernel.ld).
 /// This is because the .bss will be cleared by C code already relying on the
 /// stack.
-__attribute__((aligned(PAGE_SIZE)))
-__attribute__((section("STACK"))) char g_kernel_cpu_stack[PAGE_SIZE * MAX_CPUS];
+__attribute__((aligned(PAGE_SIZE))) __attribute__((
+    section("STACK"))) char g_kernel_cpu_stack[KERNEL_STACK_SIZE * MAX_CPUS];
 
 #ifdef __BOOT_M_MODE
 // Reset CPU to a known state for everything relevant that we can access
@@ -118,11 +118,11 @@ void reset_s_mode_cpu_state()
 }
 
 /// @brief entry.S jumps here in Supervisor Mode when run on SBI or Machine
-///        Mode otherwise. Stack is on g_kernel_cpu_stack[PAGE_SIZE * cpu_id].
-///        In M-Mode all cores start at the same time, pick ID 0 as the main
-///        thread.
-///        On SBI only one hart starts initially, all other harts are started
-///        explicitly via init_platform() - but those also call _entry->start().
+///        Mode otherwise. Stack is on g_kernel_cpu_stack[KERNEL_STACK_SIZE *
+///        cpu_id]. In M-Mode all cores start at the same time, pick ID 0 as the
+///        main thread. On SBI only one hart starts initially, all other harts
+///        are started explicitly via init_platform() - but those also call
+///        _entry->start().
 /// @param cpuid Hart ID
 /// @param device_tree set by SBI to the device tree file, not set for cores
 /// started by sbi_hart_start()

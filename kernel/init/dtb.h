@@ -5,6 +5,15 @@
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
 #include <kernel/vm.h>
+#include <libfdt.h>
+
+/// @brief 64 bit values in the device tree are 32 bit aligned! Use this type
+/// when casting void* from the device tree.
+typedef uint64_t __attribute__((__aligned__(4))) dtb_aligned_uint64_t;
+
+/// @brief 64 bit values in the device tree are 32 bit aligned! Use this type
+/// when casting void* from the device tree.
+typedef int64_t __attribute__((__aligned__(4))) dtb_aligned_int64_t;
 
 /// @brief Updates dev_list, sets found flag and updates memory map
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
@@ -26,3 +35,15 @@ ssize_t dtb_add_boot_console_to_dev_list(void *dtb,
 
 int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
                                     const char *name, int32_t fallback);
+
+/// @brief Returns #size-cells value: number of 32 bit values per size in a reg
+/// field.
+/// @param dtb Device tree
+uint32_t dtb_get_size_cells(void *dtb);
+
+/// @brief Returns #address-cells value: number of 32 bit values per address in
+/// a reg field.
+/// @param dtb Device tree
+uint32_t dtb_get_address_cells(void *dtb);
+
+bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size);

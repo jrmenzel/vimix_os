@@ -2,6 +2,7 @@
 
 #include <arch/cpu.h>
 #include <arch/trap.h>
+#include <arch/trapframe.h>
 #include <fs/xv6fs/xv6fs.h>
 #include <kernel/cpu.h>
 #include <kernel/errno.h>
@@ -50,7 +51,7 @@ extern char trampoline[];  // u_mode_trap_vector.S
 /// must be acquired before any p->lock.
 struct spinlock g_wait_lock;
 
-/// Allocate a page for each process's kernel stack.
+/// Allocate pages for each process's kernel stack.
 /// Map it high in memory, followed by an invalid
 /// guard page.
 void init_per_process_kernel_stack(pagetable_t kpage_table)
@@ -58,14 +59,17 @@ void init_per_process_kernel_stack(pagetable_t kpage_table)
     for (struct process *proc = g_process_list;
          proc < &g_process_list[MAX_PROCS]; proc++)
     {
-        char *pa = kalloc();
-        if (pa == NULL)
-        {
-            panic("kalloc: physical address == NULL");
-        }
         size_t va = KSTACK((size_t)(proc - g_process_list));
-        kvm_map_or_panic(kpage_table, va, (size_t)pa, PAGE_SIZE,
-                         PTE_KERNEL_STACK);
+        for (size_t i = 0; i < KERNEL_STACK_PAGES; ++i)
+        {
+            char *pa = kalloc();
+            if (pa == NULL)
+            {
+                panic("init_per_process_kernel_stack() kalloc failed");
+            }
+            kvm_map_or_panic(kpage_table, va + (i * PAGE_SIZE), (size_t)pa,
+                             PAGE_SIZE, PTE_KERNEL_STACK);
+        }
     }
 }
 
@@ -176,7 +180,7 @@ static struct process *alloc_process()
     // which returns to user space.
     memset(&proc->context, 0, sizeof(proc->context));
     context_set_return_register(&proc->context, (xlen_t)forkret);
-    context_set_stack_pointer(&proc->context, proc->kstack + PAGE_SIZE);
+    context_set_stack_pointer(&proc->context, proc->kstack + KERNEL_STACK_SIZE);
 
     DEBUG_ASSERT_CPU_HOLDS_LOCK(&proc->lock);
     return proc;
@@ -762,28 +766,12 @@ int either_copyin(void *dst, bool addr_is_userspace, size_t src, size_t len)
     }
 }
 
-void debug_print_process_registers(struct process *proc)
-{
-    struct trapframe *tf = proc->trapframe;
-    // clang-format off
-    printk("ra:  " FORMAT_REG_SIZE "; s0: " FORMAT_REG_SIZE "; a0: " FORMAT_REG_SIZE "; t0: " FORMAT_REG_SIZE "\n", tf->ra,  tf->s0, tf->a0, tf->t0);
-    printk("sp:  " FORMAT_REG_SIZE "; s1: " FORMAT_REG_SIZE "; a1: " FORMAT_REG_SIZE "; t1: " FORMAT_REG_SIZE "\n", tf->sp,  tf->s1, tf->a1, tf->t1);
-    printk("gp:  " FORMAT_REG_SIZE "; s2: " FORMAT_REG_SIZE "; a2: " FORMAT_REG_SIZE "; t2: " FORMAT_REG_SIZE "\n", tf->gp,  tf->s2, tf->a2, tf->t2);
-    printk("tp:  " FORMAT_REG_SIZE "; s3: " FORMAT_REG_SIZE "; a3: " FORMAT_REG_SIZE "; t3: " FORMAT_REG_SIZE "\n", tf->tp,  tf->s3, tf->a3, tf->t3);
-    printk("s8:  " FORMAT_REG_SIZE "; s4: " FORMAT_REG_SIZE "; a4: " FORMAT_REG_SIZE "; t4: " FORMAT_REG_SIZE "\n", tf->s8,  tf->s4, tf->a4, tf->t4);
-    printk("s9:  " FORMAT_REG_SIZE "; s5: " FORMAT_REG_SIZE "; a5: " FORMAT_REG_SIZE "; t5: " FORMAT_REG_SIZE "\n", tf->s9,  tf->s5, tf->a5, tf->t5);
-    printk("s10: " FORMAT_REG_SIZE "; s6: " FORMAT_REG_SIZE "; a6: " FORMAT_REG_SIZE "; t6: " FORMAT_REG_SIZE "\n", tf->s10, tf->s6, tf->a6, tf->t6);
-    printk("s11: " FORMAT_REG_SIZE "; s7: " FORMAT_REG_SIZE "; a7: " FORMAT_REG_SIZE "\n",               tf->s11, tf->s7, tf->a7);
-    // clang-format on
-}
-
 void debug_print_call_stack_kernel(struct process *proc)
 {
     size_t proc_stack = proc->kstack;
 
-    // size_t stack_pointer = proc->context.sp;
-    size_t frame_pointer = proc->context.s0;
-    size_t return_address = proc->context.ra;
+    size_t frame_pointer = context_get_frame_pointer(&proc->context);
+    size_t return_address = context_get_return_register(&proc->context);
 
     do {
         printk("  ra (kernel): " FORMAT_REG_SIZE "\n", return_address);
@@ -806,10 +794,10 @@ void debug_print_call_stack_user(struct process *proc)
     size_t proc_stack_pa =
         uvm_get_physical_addr(proc->pagetable, proc->stack_low, NULL);
 
-    size_t frame_pointer = proc->trapframe->s0;
+    size_t frame_pointer = trapframe_get_frame_pointer(proc->trapframe);
     size_t fp_physical =
         uvm_get_physical_addr(proc->pagetable, frame_pointer, NULL);
-    size_t return_address = proc->trapframe->ra;
+    size_t return_address = trapframe_get_return_address(proc->trapframe);
 
     while (address_is_in_page(fp_physical, proc_stack_pa))
     {
