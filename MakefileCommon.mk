@@ -75,16 +75,6 @@ CFLAGS_COMMON += -g # native format for debug info
 endif
 endif
 
-ifeq ($(PLATFORM), visionfive2)
-CFLAGS_COMMON += -D_PLATFORM_VISIONFIVE2
-endif
-ifeq ($(PLATFORM), spike32)
-CFLAGS_COMMON += -D_PLATFORM_SPIKE
-endif
-ifeq ($(PLATFORM), spike64)
-CFLAGS_COMMON += -D_PLATFORM_SPIKE
-endif
-
 CFLAGS_TARGET_ONLY += $(ARCH_CFLAGS)
 CFLAGS_TARGET_ONLY += -ffreestanding -fno-common -nostdlib
 CFLAGS_TARGET_ONLY += -nostdinc

@@ -2,8 +2,8 @@
 #pragma once
 
 #include <drivers/devices_list.h>
+#include <kernel/kernel.h>
 #include <kernel/spinlock.h>
-#include <kernel/types.h>
 
 /// @brief Inits the hardware, creates a uart_16550 object
 /// and adds it to the devices list.

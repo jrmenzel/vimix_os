@@ -2547,7 +2547,7 @@ void sbrkbasic(char *s)
 void sbrkmuch(char *s)
 {
     // half the physical memory
-    const size_t BIG = MEMORY_SIZE / 2 * 1024 * 1024;
+    const size_t BIG = MEMORY_SIZE / 2ul * 1024ul * 1024ul;
 
     char *oldbrk = sbrk(0);
 
@@ -2685,7 +2685,7 @@ void MAXVAplus(char *s)
 void sbrkfail(char *s)
 {
 #if (MEMORY_SIZE > 4)
-    const size_t BIG = (MEMORY_SIZE - 5) * 1024 * 1024;
+    const size_t BIG = (MEMORY_SIZE - 5ul) * 1024ul * 1024ul;
 #else
     _Static_assert(MEMORY_SIZE >= 2);
     const size_t BIG = (MEMORY_SIZE - 1) * 1024 * 1024;

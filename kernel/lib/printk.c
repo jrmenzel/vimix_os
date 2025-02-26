@@ -76,6 +76,7 @@ void panic(char* error_message)
         machine_power_off();
     }
 
+#if defined(_ARCH_riscv)
     // print the kernel call stack:
     size_t depth = 32;  // limit just in case of a corrupted stack
     printk(" Kernel call stack:\n");
@@ -95,6 +96,7 @@ void panic(char* error_message)
         printk(" Process %s (PID: %d) call stack:\n", proc->name, proc->pid);
         debug_print_call_stack_user(proc);
     }
+#endif
 
 #if defined(_SHUTDOWN_ON_PANIC)
     machine_power_off();

@@ -52,35 +52,35 @@ void print_kernel_info()
 }
 
 #ifdef __ENABLE_SBI__
-#define FEATURE_STRING "(SBI enabled)"
+#define FEATURE_STRING "(RISCV SBI)"
 #else
-#define FEATURE_STRING "(bare metal)"
+#define FEATURE_STRING "(RISCV bare metal)"
 #endif
 
 void print_memory_map(struct Minimal_Memory_Map *memory_map)
 {
-    printk("    RAM S: 0x%zx\n", memory_map->ram_start);
-    printk(" KERNEL S: 0x%zx\n", memory_map->kernel_start);
+    printk("    RAM S: 0x%08zx\n", memory_map->ram_start);
+    printk(" KERNEL S: 0x%08zx\n", memory_map->kernel_start);
 #ifdef RAMDISK_EMBEDDED
-    printk("RAMDISK S: 0x%zx\n", (size_t)ramdisk_fs);
-    printk("RAMDISK E: 0x%zx\n", (size_t)ramdisk_fs + ramdisk_fs_size);
+    printk("RAMDISK S: 0x%08zx\n", (size_t)ramdisk_fs);
+    printk("RAMDISK E: 0x%08zx\n", (size_t)ramdisk_fs + ramdisk_fs_size);
 #endif
-    // printk("    BSS S: 0x%zx\n", (size_t)bss_start);
-    // printk("    BSS E: 0x%zx\n", (size_t)bss_end);
-    printk(" KERNEL E: 0x%zx\n", memory_map->kernel_end);
+    // printk("    BSS S: 0x%08zx\n", (size_t)bss_start);
+    // printk("    BSS E: 0x%08zx\n", (size_t)bss_end);
+    printk(" KERNEL E: 0x%08zx\n", memory_map->kernel_end);
     if (memory_map->dtb_file_start != 0)
     {
-        printk("    DTB S: 0x%zx\n", memory_map->dtb_file_start);
-        printk("    DTB E: 0x%zx\n", memory_map->dtb_file_end);
+        printk("    DTB S: 0x%08zx\n", memory_map->dtb_file_start);
+        printk("    DTB E: 0x%08zx\n", memory_map->dtb_file_end);
     }
     if (memory_map->initrd_begin != 0)
     {
-        printk(" INITRD S: 0x%zx\n", memory_map->initrd_begin);
-        printk(" INITRD E: 0x%zx\n", memory_map->initrd_end);
+        printk(" INITRD S: 0x%08zx\n", memory_map->initrd_begin);
+        printk(" INITRD E: 0x%08zx\n", memory_map->initrd_end);
     }
     size_t ram_size_mb =
         (memory_map->ram_end - memory_map->ram_start) / (1024 * 1024);
-    printk("    RAM E: 0x%zx - size: %zd MB\n", memory_map->ram_end,
+    printk("    RAM E: 0x%08zx - size: %zd MB\n", memory_map->ram_end,
            ram_size_mb);
 }
 
@@ -149,10 +149,10 @@ void init_by_first_thread(void *dtb)
     // init memory management:
     printk("init memory management...\n");
 
-#ifdef _PLATFORM_VISIONFIVE2
-    // cap usable memory for performance reasons if MEMORY_SIZE is set
+#ifdef _LIMIT_MEMORY
+    //  cap usable memory for performance reasons if MEMORY_SIZE is set
     size_t ram_size = memory_map.ram_end - memory_map.ram_start;
-    size_t max_ram = 1024 * 1024 * MEMORY_SIZE;
+    size_t max_ram = 1024 * 1024 * (size_t)64;  // MEMORY_SIZE;
     if ((max_ram != 0) && (ram_size > max_ram))
     {
         memory_map.ram_end = memory_map.ram_start + max_ram;

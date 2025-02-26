@@ -13,7 +13,11 @@ all: directories userspace_lib userspace host $(BUILD_DIR)/filesystem.img kernel
 directories: # make build output directory
 	@mkdir -p $(BUILD_DIR);
 
-kernel: userspace $(BUILD_DIR)/filesystem.img # the kernel itself, depends on userspace for the embedded ram disk only
+# the kernel itself depends on userspace for the embedded ram disk only
+ifeq ($(RAMDISK_EMBEDDED), yes)
+KERNEL_REQS := userspace $(BUILD_DIR)/filesystem.img
+endif
+kernel: $(KERNEL_REQS)
 	@$(MAKE) -C kernel all;
 
 userspace_lib: # user space clib
@@ -61,14 +65,20 @@ endif
 # -s = alias for "-gdb tcp:localhost:1234"
 QEMU_DEBUG_OPTS := -S -gdb tcp:localhost:$(GDB_PORT)
 
+qemu-requirements: kernel $(BUILD_DIR)/filesystem.img
+
 # run in qemu
-qemu: kernel $(BUILD_DIR)/filesystem.img # run VIMIX in qemu
+qemu: qemu-requirements
 	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
 	$(QEMU) $(QEMU_OPTS)
 
+qemu-log: qemu-requirements
+	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
+	$(QEMU) $(QEMU_OPTS) -d cpu_reset -d int -d in_asm -D log_${PLATFORM}.txt
+
 # dump device tree
-qemu-dump-tree: kernel $(BUILD_DIR)/filesystem.img
-	$(QEMU) $(QEMU_OPTS) -M dumpdtb=tree_$(PLATFORM).dtb
+qemu-dump-tree: qemu-requirements
+	$(QEMU) $(QEMU_OPTS) -machine dumpdtb=tree_$(PLATFORM).dtb
 	dtc -o tree_$(PLATFORM).dts -O dts -I dtb tree_$(PLATFORM).dtb
 
 .gdbinit: tools/gdbinit Makefile MakefileCommon.mk
@@ -79,7 +89,7 @@ qemu-dump-tree: kernel $(BUILD_DIR)/filesystem.img
 
 
 # run in qemu waiting for a debugger
-qemu-gdb: kernel .gdbinit $(BUILD_DIR)/filesystem.img # run VIMIX in qemu waiting for a debugger
+qemu-gdb: qemu-requirements .gdbinit
 	@printf "\n$(YELLOW)CTRL+A X to close qemu\n"
 	@printf " Now run 'gdb' in another window.\n"
 	@printf " OR attach with VSCode for debugging.$(NO_COLOR)\n"
@@ -123,7 +133,7 @@ spike: spike-requirements
 	$(SPIKE) $(SPIKE_OPTIONS)
 
 spike-log: spike-requirements
-	$(SPIKE) -l --log=spike_log.txt $(SPIKE_OPTIONS) 
+	$(SPIKE) -l --log=log_${PLATFORM}.txt $(SPIKE_OPTIONS) 
 
 spike-gdb: spike-requirements
 	$(SPIKE) --rbb-port=9824 --halted $(SPIKE_OPTIONS)

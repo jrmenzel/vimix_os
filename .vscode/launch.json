@@ -4,8 +4,8 @@
     // run "make qemu-gdb" in a terminal, then "Run and Debug" in VSCode
     "configurations": [
         {
-            // debug the kernel in 64 bit
-            "name": "64 bit kernel",
+            // debug the kernel
+            "name": "kernel qemu RISCV",
             "type": "cppdbg",
             "request": "launch",
             "program": "build/kernel-vimix",
@@ -23,27 +23,8 @@
             ]
         },
         {
-            // call openocd -f spike.cfg
-            "name": "32 bit kernel Spike external OpenOCD",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "build/kernel-vimix",
-            "cwd": "${workspaceRoot}",
-            "miDebuggerPath": "riscv32-elf-gdb",
-            "miDebuggerServerAddress": "127.0.0.1:3333",
-            "MIMode": "gdb",
-            "stopAtEntry": true,
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": false
-                }
-            ]
-        },
-        {
-            // call openocd -f spike.cfg
-            "name": "64 bit kernel Spike external OpenOCD",
+            // call openocd -f tools/openocd/spike.cfg
+            "name": "kernel Spike external OpenOCD",
             "type": "cppdbg",
             "request": "launch",
             "program": "build/kernel-vimix",
@@ -62,7 +43,7 @@
         },
         {
             // debug a user space application
-            "name": "64 bit userspace: init",
+            "name": "userspace: init",
             "type": "cppdbg",
             "request": "launch",
             "program": "build/root/usr/bin/init",
@@ -81,7 +62,7 @@
         },
         {
             // debug a user space application
-            "name": "64 bit userspace: sh",
+            "name": "userspace: sh",
             "type": "cppdbg",
             "request": "launch",
             "program": "build/root/usr/bin/sh",
@@ -100,69 +81,12 @@
         },
         {
             // debug a user space application
-            "name": "64 bit userspace: usertests",
+            "name": "userspace: usertests",
             "type": "cppdbg",
             "request": "launch",
             "program": "build/root/usr/bin/usertests",
             "cwd": "${workspaceRoot}",
             "miDebuggerPath": "riscv64-elf-gdb",
-            "miDebuggerServerAddress": "127.0.0.1:26002",
-            "MIMode": "gdb",
-            "stopAtEntry": false,
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": false
-                }
-            ]
-        },
-        {
-            // debug the kernel in 32 bit
-            "name": "32 bit kernel",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "build/kernel-vimix",
-            "cwd": "${workspaceRoot}",
-            "miDebuggerPath": "riscv32-elf-gdb",
-            "miDebuggerServerAddress": "127.0.0.1:26002",
-            "MIMode": "gdb",
-            "stopAtEntry": false,
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": false
-                }
-            ]
-        },
-        {
-            // debug a user space application
-            "name": "32 bit userspace: init",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "build/root/usr/bin/init",
-            "cwd": "${workspaceRoot}",
-            "miDebuggerPath": "riscv32-elf-gdb",
-            "miDebuggerServerAddress": "127.0.0.1:26002",
-            "MIMode": "gdb",
-            "stopAtEntry": false,
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": false
-                }
-            ]
-        },
-        {
-            // debug a user space application
-            "name": "32 bit userspace: usertests",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "build/root/usertests",
-            "cwd": "${workspaceRoot}",
-            "miDebuggerPath": "riscv32-elf-gdb",
             "miDebuggerServerAddress": "127.0.0.1:26002",
             "MIMode": "gdb",
             "stopAtEntry": false,
@@ -208,7 +132,7 @@
         },
         {
             // debug a user space application on the host
-            "name": "host mkfs",
+            "name": "host: mkfs",
             "program": "${workspaceRoot}/build_host/root/usr/bin/mkfs",
             "args": ["fs.img", "--in", "foo"],
             "cwd": "${workspaceRoot}",
@@ -238,7 +162,7 @@
         },
         {
             // debug a user space application on the host
-            "name": "host fsck.xv6fs",
+            "name": "host: fsck.xv6fs",
             "program": "${workspaceRoot}/build_host/root/usr/bin/fsck.xv6fs",
             "args": ["build/filesystem.img"],
             "cwd": "${workspaceRoot}",

@@ -15,7 +15,9 @@ INIT_BUILD_DIR := $(K_BUILD_DIR)/$(ARCH_DIR)/asm
 OBJS := $(OBJS_ARCH)
 OBJS +=	$(ARCH_DIR)/context.o \
 	$(ARCH_DIR)/mm/vm.o \
-    drivers/device.o \
+	$(ARCH_DIR)/start.o \
+	$(ARCH_DIR)/trap.o \
+	drivers/device.o \
 	drivers/console.o \
 	drivers/uart16550.o \
 	drivers/dev_null.o \
@@ -104,7 +106,7 @@ CFLAGS += $(EXTERNAL_KERNEL_FLAGS) # can be set by external scripts
 CFLAGS += $(ARCH_KERNEL_CFLAGS)
 CFLAGS += -DMEMORY_SIZE=$(MEMORY_SIZE)
 CFLAGS += -DUSER_TEXT_START=$(USER_TEXT_START)
-CFLAGS += -D__ARCH_$(ARCH)
+CFLAGS += -D_ARCH_$(ARCH) 
 
 ifeq ($(RAMDISK_EMBEDDED), yes)
 CFLAGS += -DRAMDISK_EMBEDDED
@@ -130,7 +132,7 @@ ifeq ($(CREATE_ASSEMBLY), yes)
 endif
 
 # special case: initcode
-# ld flag --no-warn-rwx-segments requres newer linker versions (2.39 or later)
+# ld flag --no-warn-rwx-segments requires newer linker versions (2.39 or later)
 $(INIT_BUILD_DIR)/initcode.h: $(ARCH_DIR)/asm/initcode.S 
 	@printf "$(TASK_COLOR)Compile initcode and dump it into initcode.h\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(ARCH_DIR)/asm/initcode.S -o $(INIT_BUILD_DIR)/initcode.o
@@ -150,7 +152,6 @@ $(K_BUILD_DIR)/ramdisk_fs.h:
 	@echo "extern unsigned char ramdisk_fs[];" >> $(K_BUILD_DIR)/ramdisk_fs.h
 	@echo -n "#define ramdisk_fs_size " >> $(K_BUILD_DIR)/ramdisk_fs.h
 	@stat -c %s ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.h
-#	echo "extern const size_t ramdisk_fs_size;" >> $(K_BUILD_DIR)/ramdisk_fs.h
 
 $(K_BUILD_DIR)/ramdisk_fs.c:
 	@printf "$(TASK_COLOR)Creating ramdisk_fs.c\n$(NO_COLOR)"
@@ -158,7 +159,6 @@ $(K_BUILD_DIR)/ramdisk_fs.c:
 	@echo "unsigned char ramdisk_fs[] = {" >> $(K_BUILD_DIR)/ramdisk_fs.c
 	@xxd -i < ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.c
 	@echo "};" >> $(K_BUILD_DIR)/ramdisk_fs.c
-#	echo "size_t const ramdisk_fs_size = sizeof(ramdisk_fs);" >> $(K_BUILD_DIR)/ramdisk_fs.c
 
 $(K_BUILD_DIR)/ramdisk_fs.o: $(K_BUILD_DIR)/ramdisk_fs.c
 	@printf "$(TASK_COLOR)Compile ramdisk_fs\n$(NO_COLOR)"
@@ -169,13 +169,15 @@ $(K_BUILD_DIR)/ramdisk_fs.h:
 	@touch $(K_BUILD_DIR)/ramdisk_fs.h
 endif
 
-
 $(KERNEL_PATH): $(INIT_BUILD_DIR)/initcode.h $(K_BUILD_DIR)/ramdisk_fs.h $(OBJECT_FILES) $(ARCH_DIR)/kernel.ld # build kernel
 	@printf "$(TASK_COLOR)Link kernel: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) --defsym=KERNBASE=$(KERNBASE) $(ARCH_LD_FLAGS) -T $(ARCH_DIR)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
 ifeq ($(CREATE_ASSEMBLY), yes)
 	@printf "$(TASK_COLOR)Disassemble kernel: $(K_BUILD_DIR)/$(KERNEL_NAME).asm\n$(NO_COLOR)"
 	@$(OBJDUMP) -S $(KERNEL_PATH) > $(K_BUILD_DIR)/$(KERNEL_NAME).asm
+endif
+ifdef KERNEL_BINARY_NAME
+	@$(OBJCOPY) -O binary $(KERNEL_PATH) ../$(BUILD_DIR)/$(KERNEL_BINARY_NAME)
 endif
 
 clean:
@@ -184,4 +186,5 @@ clean:
 	-@rm -f $(ARCH_DIR)/asm/initcode.h
 	-@rm -f $(K_BUILD_DIR)/ramdisk_fs.h
 	-@rm -f $(RAMDISC_C)
+	-@rm -f ../$(BUILD_DIR)/*.img
 

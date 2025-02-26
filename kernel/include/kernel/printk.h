@@ -3,6 +3,12 @@
 
 #include <kernel/types.h>
 
+#if defined(_arch_is_32bit)
+#define FORMAT_REG_SIZE "0x%08zx"
+#else
+#define FORMAT_REG_SIZE "0x%016zx"
+#endif
+
 // call at boot as soon as possible
 void printk_init();
 

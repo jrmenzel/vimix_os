@@ -157,12 +157,21 @@ MABI := lp64
 endif
 
 ARCH_LFLAGS := -melf$(BITWIDTH)lriscv
-ARCH_CFLAGS := -march=$(MARCH) -mabi=$(MABI) -D_ARCH_$(BITWIDTH)BIT $(EXT_DEFINES)
+ARCH_CFLAGS := -march=$(MARCH) -mabi=$(MABI) $(EXT_DEFINES)
 ARCH_CFLAGS += -mcmodel=medany -mno-relax
-ARCH_CFLAGS += -DKERNBASE=$(KERNBASE) # for usertests on target
 
-ARCH_KERNEL_CFLAGS := -D__$(TIMER_SOURCE)
+ARCH_KERNEL_CFLAGS += -D__$(TIMER_SOURCE)
 ARCH_KERNEL_CFLAGS += -D__$(BOOT_MODE)
+
+ifeq ($(PLATFORM), visionfive2)
+ARCH_KERNEL_CFLAGS += -D_PLATFORM_VISIONFIVE2 -D_LIMIT_MEMORY
+endif
+ifeq ($(PLATFORM), spike32)
+ARCH_KERNEL_CFLAGS += -D_PLATFORM_SPIKE
+endif
+ifeq ($(PLATFORM), spike64)
+ARCH_KERNEL_CFLAGS += -D_PLATFORM_SPIKE
+endif
 
 ifeq ($(SBI_SUPPORT), yes)
 ARCH_KERNEL_CFLAGS += -D__ENABLE_SBI__
@@ -175,9 +184,7 @@ OBJS_ARCH := arch/riscv/asm/entry.o \
 	arch/riscv/asm/s_mode_trap_vector.o \
 	arch/riscv/asm/u_mode_trap_vector.o \
 	arch/riscv/asm/context_switch.o \
-	arch/riscv/start.o \
 	arch/riscv/plic.o \
-	arch/riscv/trap.o \
 	arch/riscv/timer.o \
 	arch/riscv/scause.o
 

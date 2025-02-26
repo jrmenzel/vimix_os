@@ -136,4 +136,4 @@ size_t trapframe_get_argument_register(struct trapframe *frame,
                                        size_t register_index);
 
 void trapframe_set_argument_register(struct trapframe *frame,
-                                     size_t register_index, xlen_t value);
+                                     size_t register_index, size_t value);

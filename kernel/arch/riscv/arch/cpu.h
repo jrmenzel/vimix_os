@@ -4,12 +4,6 @@
 #include <arch/riscv/riscv.h>
 #include <kernel/kernel.h>
 
-#if defined(_arch_is_32bit)
-#define FORMAT_REG_SIZE "0x%08zx"
-#else
-#define FORMAT_REG_SIZE "0x%016zx"
-#endif
-
 /// read and write tp, the thread pointer, which VIMIX uses to hold
 /// this core's hartid (core number), the index into g_cpus[].
 /// This is required as the Hart ID can only be read in Machine Mode, but

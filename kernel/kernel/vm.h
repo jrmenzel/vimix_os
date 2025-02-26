@@ -16,7 +16,8 @@ static const pagetable_t INVALID_PAGETABLE_T = NULL;
 // Memory map filled in main from a device tree and used to init the free memory
 struct Minimal_Memory_Map
 {
-    size_t ram_start;  // RAM could contain SBI before the kernel code starts
+    size_t ram_start;  // RAM could contain BIOS/bootloader code before the
+                       // kernel code starts
     size_t kernel_start;
     size_t kernel_end;  // after the kernel and its data incl BSS
     size_t ram_end;

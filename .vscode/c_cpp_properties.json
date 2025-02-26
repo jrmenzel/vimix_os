@@ -1,72 +1,75 @@
 {
+    "env": {
+        "kernel_inc_path": [
+            "${workspaceFolder}/kernel/include",
+            "${workspaceFolder}/kernel",
+            "${workspaceFolder}/kernel/lib/libfdt",
+            "${workspaceFolder}/usr/lib/libc",
+            "${workspaceFolder}/usr/include",
+            "${workspaceFolder}/build/kernel"
+        ],
+        "kernel_defines": [
+            "DEBUG",
+            "MEMORY_SIZE=64",
+            "USER_TEXT_START=0x1000"
+        ],
+        "kernel_defines_riscv": [
+            "_ARCH_riscv",
+            "__ENABLE_SBI__",
+            "__RISCV_EXT_SSTC",
+            "__BOOT_S_MODE",
+            "__TIMER_SOURCE_SSTC"
+        ],
+        "user_inc_path": [
+            "${workspaceFolder}/kernel/include",
+            "${workspaceFolder}/usr/lib/libc",
+            "${workspaceFolder}/usr/include"
+        ]
+      },
     "configurations": [
         {
-            "name": "64 bit SBI Kernel Dev",
+            "name": "64 bit RISCV Kernel Dev",
             "intelliSenseMode": "linux-gcc-x64",
             "cStandard": "c17",
             "compilerPath": "/usr/bin/riscv64-linux-gnu-gcc",
             "includePath": [
-                "${workspaceFolder}/kernel/include",
-                "${workspaceFolder}/kernel",
-                "${workspaceFolder}/kernel/arch/riscv",
-                "${workspaceFolder}/kernel/lib/libfdt",
-                "${workspaceFolder}/usr/lib/libc",
-                "${workspaceFolder}/usr/include",
-                "${workspaceFolder}/build/kernel"
+                "${kernel_inc_path}", 
+                "${workspaceFolder}/kernel/arch/riscv"
             ],
             "defines": [
-                "__riscv_xlen=64",
-                "__ARCH_riscv",
-                "__ENABLE_SBI__",
-                "__RISCV_EXT_SSTC",
-                "__BOOT_S_MODE",
-                "__TIMER_SOURCE_SSTC",
-                "DEBUG",
-                "USER_TEXT_START=0x1000",
-                "MEMORY_SIZE=64",
-                "_PLATFORM_VISIONFIVE2"
+                "${kernel_defines}",
+                "${kernel_defines_riscv}",
+                "__riscv_xlen=64"
             ],
             "compilerArgs": [
                 "-nostdinc"
             ]
         },
         {
-            "name": "32 bit non-SBI Kernel Dev",
+            "name": "32 bit RISCV Kernel Dev",
             "intelliSenseMode": "linux-gcc-x64",
             "cStandard": "c17",
             "compilerPath": "/usr/bin/riscv64-linux-gnu-gcc",
             "includePath": [
-                "${workspaceFolder}/kernel/include",
-                "${workspaceFolder}/kernel",
-                "${workspaceFolder}/kernel/arch/riscv",
-                "${workspaceFolder}/kernel/lib/libfdt",
-                "${workspaceFolder}/usr/lib/libc",
-                "${workspaceFolder}/usr/include",
-                "${workspaceFolder}/build/kernel"
+                "${kernel_inc_path}", 
+                "${workspaceFolder}/kernel/arch/riscv"
             ],
             "defines": [
-                "__riscv_xlen=32",
-                "__ARCH_riscv",
-                "__RISCV_EXT_SSTC",
-                "__BOOT_M_MODE",
-                "__TIMER_SOURCE_CLINT",
-                "DEBUG",
-                "MEMORY_SIZE=64",
-                "USER_TEXT_START=0x1000"
+                "${kernel_defines}",
+                "${kernel_defines_riscv}",
+                "__riscv_xlen=32"
             ],
             "compilerArgs": [
                 "-nostdinc"
             ]
         },
         {
-            "name": "64 bit userspace",
+            "name": "64 bit RISCV userspace",
             "intelliSenseMode": "linux-gcc-x64",
             "cStandard": "c17",
             "compilerPath": "/usr/bin/riscv64-linux-gnu-gcc",
             "includePath": [
-                "${workspaceFolder}/kernel/include",
-                "${workspaceFolder}/usr/lib/libc",
-                "${workspaceFolder}/usr/include"
+                "${user_inc_path}"
             ],
             "defines": [
                 "__riscv_xlen=64",

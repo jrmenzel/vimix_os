@@ -1,7 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
+#if defined(_ARCH_riscv)
 #include <arch/riscv/clint.h>
 #include <arch/riscv/plic.h>
+#endif  // _ARCH_riscv
+
 #include <drivers/console.h>
 #include <drivers/dev_null.h>
 #include <drivers/dev_random.h>
@@ -56,6 +59,7 @@ struct Device_Driver g_generell_drivers[] = {{"virtio,mmio", virtio_disk_init, R
                                              {"google,goldfish-rtc", rtc_init, CLOCK_DRIVER}, // init before /dev/random if present
                                              {"syscon", syscon_init, REGULAR_DEVICE},
                                              {"ucb,htif0", htif_init, REGULAR_DEVICE},
+#if defined(_ARCH_riscv)
                                              {"riscv,plic0", plic_init, INTERRUPT_CONTROLLER},
 #if defined(__TIMER_SOURCE_CLINT)
                                              {"riscv,clint0", clint_init, INTERRUPT_CONTROLLER},
@@ -63,7 +67,8 @@ struct Device_Driver g_generell_drivers[] = {{"virtio,mmio", virtio_disk_init, R
 #if defined(_PLATFORM_VISIONFIVE2)
                                              {"starfive,jh7110-clkgen", jh7110_clk_init, CLOCK_DRIVER},
 //                                           {"starfive,jh7110-temp", jh7110_temp_init, REGULAR_DEVICE}, // see below: not in device tree
-#endif
+#endif // __TIMER_SOURCE_CLINT
+#endif // _ARCH_riscv
                                              {NULL, NULL, 0}};
 
 // not found in the device tree, so added explicitly
