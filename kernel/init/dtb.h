@@ -27,7 +27,7 @@ void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map);
 
 /// @brief Returns the timebase frequency used by the timer.
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
-/// @return 0 on error or timebase frequency otherwise. In Hz.
+/// @return dtb based timebase frequency (or fallback on error) in Hz.
 uint64_t dtb_get_timebase(void *dtb);
 
 ssize_t dtb_add_boot_console_to_dev_list(void *dtb,
@@ -47,3 +47,14 @@ uint32_t dtb_get_size_cells(void *dtb);
 uint32_t dtb_get_address_cells(void *dtb);
 
 bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size);
+
+typedef uint32_t CPU_Features;
+#define RV_SV32_SUPPORTED 0x01
+#define RV_SV39_SUPPORTED 0x02
+#define RV_SV48_SUPPORTED 0x04
+#define RV_SV57_SUPPORTED 0x08
+#define RV_EXT_FLOAT 0x10
+#define RV_EXT_DOUBLE 0x20
+#define RV_EXT_SSTC 0x40
+
+CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id);

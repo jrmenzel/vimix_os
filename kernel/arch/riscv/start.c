@@ -40,8 +40,8 @@ void reset_m_mode_cpu_state()
     // allow supervisor to use stimecmp and time.
     rv_write_csr_mcounteren(rv_read_csr_mcounteren() | 2);
 
-#if defined(__TIMER_SOURCE_SSTC)
-    // enable supervisor-mode timer interrupts.
+#if defined(__RISCV_EXT_SSTC)
+    //  enable supervisor-mode timer interrupts.
     rv_write_csr_mie(rv_read_csr_mie() | MIE_STIE);
 
     // enable the sstc extension (i.e. stimecmp).
@@ -153,14 +153,19 @@ void start(xlen_t cpuid, void *device_tree)
     {
         kticks_init();
     }
+
+#if defined(__RISCV_EXT_SSTC)
+    CPU_Features features = dtb_get_cpu_features(device_tree, cpuid);
+    bool use_sstc_timer = features & RV_EXT_SSTC;
+#else
+    // ignore what the hardware can if no support was compiled in
+    bool use_sstc_timer = false;
+#endif
+
     // If using CLINT, timer init must be done in M-Mode before jumping to
     // main, also init S-Mode timers here.
     uint64_t timebase = dtb_get_timebase(device_tree);
-    if (timebase == 0)
-    {
-        timebase = 10000000ull;  // fallback
-    }
-    timer_init(timebase);
+    timer_init(timebase, use_sstc_timer);
 
     // enable external, timer, software interrupts
     rv_write_csr_sie(rv_read_csr_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);

@@ -41,14 +41,6 @@ void print_kernel_info()
     printk("%zdKB of read only data\n", (size_t)(size_of_rodata) / 1024);
     printk("%zdKB of data\n", (size_t)(size_of_data) / 1024);
     printk("%zdKB of bss / uninitialized data\n", (size_t)(size_of_bss) / 1024);
-
-#if defined(__TIMER_SOURCE_CLINT)
-    printk("Timer source: CLINT\n");
-#elif defined(__TIMER_SOURCE_SSTC)
-    printk("Timer source: Sstc extension\n");
-#elif defined(__TIMER_SOURCE_SBI)
-    printk("Timer source: SBI\n");
-#endif
 }
 
 #ifdef __ENABLE_SBI__
@@ -82,6 +74,29 @@ void print_memory_map(struct Minimal_Memory_Map *memory_map)
         (memory_map->ram_end - memory_map->ram_start) / (1024 * 1024);
     printk("    RAM E: 0x%08zx - size: %zd MB\n", memory_map->ram_end,
            ram_size_mb);
+}
+
+void print_timer_source(void *dtb)
+{
+#if defined(__BOOT_M_MODE)
+    printk("Timer source: CLINT\n");
+#else
+#if defined(__RISCV_EXT_SSTC)
+    CPU_Features features =
+        dtb_get_cpu_features(dtb, __arch_smp_processor_id());
+    bool use_sstc_timer = features & RV_EXT_SSTC;
+#else
+    bool use_sstc_timer = false;
+#endif
+    if (use_sstc_timer)
+    {
+        printk("Timer source: sstc extension\n");
+    }
+    else
+    {
+        printk("Timer source: SBI\n");
+    }
+#endif
 }
 
 void add_ramdisks_to_dev_list(struct Devices_List *dev_list,
@@ -140,6 +155,7 @@ void init_by_first_thread(void *dtb)
     {
         printk("Console: %s\n", dev_list->dev[console_index].driver->dtb_name);
     }
+    print_timer_source(dtb);
 
     struct Minimal_Memory_Map memory_map;
     dtb_get_memory(dtb, &memory_map);

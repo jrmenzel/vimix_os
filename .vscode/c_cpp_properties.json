@@ -17,8 +17,8 @@
             "_ARCH_riscv",
             "__ENABLE_SBI__",
             "__RISCV_EXT_SSTC",
-            "__BOOT_S_MODE",
-            "__TIMER_SOURCE_SSTC"
+            "__RISCV_CSR_TIME",
+            "__BOOT_S_MODE"
         ],
         "user_inc_path": [
             "${workspaceFolder}/kernel/include",

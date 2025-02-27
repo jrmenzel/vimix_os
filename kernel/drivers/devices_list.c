@@ -61,13 +61,13 @@ struct Device_Driver g_generell_drivers[] = {{"virtio,mmio", virtio_disk_init, R
                                              {"ucb,htif0", htif_init, REGULAR_DEVICE},
 #if defined(_ARCH_riscv)
                                              {"riscv,plic0", plic_init, INTERRUPT_CONTROLLER},
-#if defined(__TIMER_SOURCE_CLINT)
+#if defined(__BOOT_M_MODE)
                                              {"riscv,clint0", clint_init, INTERRUPT_CONTROLLER},
 #endif
 #if defined(_PLATFORM_VISIONFIVE2)
                                              {"starfive,jh7110-clkgen", jh7110_clk_init, CLOCK_DRIVER},
 //                                           {"starfive,jh7110-temp", jh7110_temp_init, REGULAR_DEVICE}, // see below: not in device tree
-#endif // __TIMER_SOURCE_CLINT
+#endif // _PLATFORM_VISIONFIVE2
 #endif // _ARCH_riscv
                                              {NULL, NULL, 0}};
 

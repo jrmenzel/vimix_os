@@ -176,24 +176,24 @@ bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size)
 // note: gets called too early for printk...
 uint64_t dtb_get_timebase(void *dtb)
 {
+    uint64_t fallback = 10000000ull;  // from qemu
+
     if (fdt_magic(dtb) != FDT_MAGIC)
     {
-        return 0;
+        return fallback;
     }
 
     int offset = fdt_path_offset(dtb, "/cpus");
     if (offset < 0)
     {
         // printk("dtb error: %s\n", (char *)fdt_strerror(offset));
-        return 0;
+        return fallback;
     }
-    int error;
     const uint32_t *value =
-        fdt_getprop(dtb, offset, "timebase-frequency", &error);
+        fdt_getprop(dtb, offset, "timebase-frequency", NULL);
     if (value == NULL)
     {
-        // printk("dtb error: %s\n", (char *)fdt_strerror(error));
-        return 0;
+        return fallback;
     }
     uint64_t timebase = fdt32_to_cpu(value[0]);
 
@@ -273,4 +273,107 @@ uint32_t dtb_get_address_cells(void *dtb)
     if (addr_prop == NULL) return 1;  // default
 
     return fdt32_to_cpu(*addr_prop);
+}
+
+/// @brief Checks if an extension is part of the riscv_isa string
+/// @param riscv_isa E.g. "rv64imafdc_zicsr_sstc"
+/// @param ext
+/// @return
+bool extension_is_supported(const char *riscv_isa, const char *ext)
+{
+    riscv_isa += 4;  // first 4 chars are "rv32" or "rv64"
+    // one char extensions are combined in the begining of the string:
+    size_t ext_len = strlen(ext);
+    if (ext_len == 1)
+    {
+        while (*riscv_isa != '_' && *riscv_isa != 0)
+        {
+            if (*riscv_isa == ext[0])
+            {
+                return true;
+            }
+            riscv_isa++;
+        }
+    }
+    else
+    {
+        char *pos;
+        while ((pos = strstr(riscv_isa, ext)) != NULL)
+        {
+            // potential match
+            pos -= 1;  // move pointer back (there is always a valid char as
+                       // riscv_isa was moved forward before)
+
+            // found location does not have a '_' before it: found a match
+            // inside of another ext ("ext" in "rv64imac_newext_foo")
+            if (*pos != '_') continue;
+
+            // also check end of _ext_ substring: can be '_' or end of string!
+            if (pos[ext_len + 1] != '_' && pos[ext_len + 2] != 0) continue;
+
+            return true;
+        }
+    }
+    return false;
+}
+
+CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id)
+{
+    CPU_Features featues = 0;
+
+    const size_t PATH_LEN = 16;
+    char path_name[PATH_LEN];
+    snprintf(path_name, PATH_LEN, "/cpus/cpu@%d", cpu_id);
+
+    int offset = fdt_path_offset(dtb, path_name);
+    if (offset < 0)
+    {
+        printk("dtb error: %s\n", (char *)fdt_strerror(offset));
+        return 0;
+    }
+
+    // parse MMU support
+    int mmu_type_len;
+    const char *mmu_type = fdt_getprop(dtb, offset, "mmu-type", &mmu_type_len);
+    if (mmu_type != NULL)
+    {
+        if (strcmp(mmu_type, "riscv,sv32") == 0)
+        {
+            featues |= RV_SV32_SUPPORTED;
+        }
+        else if (strcmp(mmu_type, "riscv,sv39") == 0)
+        {
+            featues |= RV_SV39_SUPPORTED;
+        }
+        else if (strcmp(mmu_type, "riscv,sv48") == 0)
+        {
+            featues |= RV_SV48_SUPPORTED;
+        }
+        else if (strcmp(mmu_type, "riscv,sv57") == 0)
+        {
+            featues |= RV_SV57_SUPPORTED;
+        }
+    }
+
+    // potentially relevant extensions
+    int riscv_isa_len;
+    const char *riscv_isa =
+        fdt_getprop(dtb, offset, "riscv,isa", &riscv_isa_len);
+    if (riscv_isa != NULL)
+    {
+        if (extension_is_supported(riscv_isa, "sstc"))
+        {
+            featues |= RV_EXT_SSTC;
+        }
+        if (extension_is_supported(riscv_isa, "f"))
+        {
+            featues |= RV_EXT_FLOAT;
+        }
+        if (extension_is_supported(riscv_isa, "d"))
+        {
+            featues |= RV_EXT_DOUBLE;
+        }
+    }
+
+    return featues;
 }
