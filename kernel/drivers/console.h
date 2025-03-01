@@ -4,7 +4,7 @@
 #include <drivers/devices_list.h>
 #include <kernel/types.h>
 
-extern bool g_console_poll_sbi;
+extern void (*g_console_poll_callback)();
 
 /// init console and console hardware (e.g. UART)
 dev_t console_init(struct Device_Init_Parameters *init_param, const char *name);

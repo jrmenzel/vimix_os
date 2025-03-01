@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <drivers/console.h>
 #include <drivers/htif.h>
 #include <kernel/major.h>
 #include <kernel/reset.h>
@@ -84,12 +85,36 @@ void htif_putc(int32_t c)
     htif_send_command(HTIF_DEVICE_CONSOLE, HTIF_CONSOLE_PUTCHAR, c);
 }
 
+ssize_t htif_getc()
+{
+    // 0 if nothing to read, char+1 otherwise -> -1 for char and -1 on error
+    uint64_t v =
+        htif_send_command(HTIF_DEVICE_CONSOLE, HTIF_CONSOLE_GETCHAR, 0);
+    return (ssize_t)v - 1;
+}
+
+void htif_console_poll_input()
+{
+    // read and process incoming characters.
+    while (true)
+    {
+        ssize_t c = htif_getc();
+        if (c == -1)
+        {
+            break;
+        }
+        console_interrupt_handler(c);
+    }
+}
+
 dev_t htif_init(struct Device_Init_Parameters *init_parameters,
                 const char *name)
 {
     if (htif_is_initialized)
     {
-        return INVALID_DEVICE;
+        // can happen as htif might get initialized as a boot console and later
+        // hoping to get reboot/halt functions
+        return MKDEV(HTIF_MAJOR, 0);
     }
 
     if (init_parameters->mem[0].start == 0)

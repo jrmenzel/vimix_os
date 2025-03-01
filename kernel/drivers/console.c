@@ -33,8 +33,9 @@
 void (*device_putc)(int32_t ch) = NULL;
 void (*device_putc_sync)(int32_t ch) = NULL;
 
-/// @brief true if the SBI fallback is used
-bool g_console_poll_sbi = false;
+/// @brief NULL if no regular callback to poll input is needed
+/// (used if no real console device is available)
+void (*g_console_poll_callback)() = NULL;
 
 /// @brief add a CR / 'r' for every '\n' written
 const bool g_console_add_cr = true;
@@ -383,6 +384,7 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
         {
             device_putc = htif_putc;
             device_putc_sync = htif_putc;
+            g_console_poll_callback = htif_console_poll_input;
 
             htif_init(init_param, name);
         }
@@ -396,7 +398,6 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
             dev_set_irq(&g_console.cdev.dev, init_param->interrupt,
                         uart_interrupt_handler);
         }
-        g_console_poll_sbi = false;
     }
     else
     {
@@ -411,8 +412,7 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
         // SBI console fallback
         device_putc = sbi_console_putchar;
         device_putc_sync = sbi_console_putchar;
-        g_console_poll_sbi = true;  // there is no IRQ, this var is a hack to
-                                    // poll the input via the timer
+        g_console_poll_callback = sbi_console_poll_input;
 #else
         // run with no input/output:
         device_putc = console_putc_noop;

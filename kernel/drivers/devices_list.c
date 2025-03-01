@@ -58,7 +58,7 @@ struct Device_Driver g_virtual_drivers[] = {{"/dev/null", dev_null_init, REGULAR
 struct Device_Driver g_generell_drivers[] = {{"virtio,mmio", virtio_disk_init, REGULAR_DEVICE},
                                              {"google,goldfish-rtc", rtc_init, CLOCK_DRIVER}, // init before /dev/random if present
                                              {"syscon", syscon_init, REGULAR_DEVICE},
-                                             {"ucb,htif0", htif_init, REGULAR_DEVICE},
+                                             {"ucb,htif0", htif_init, REGULAR_DEVICE}, // can be console and shutdown device
 #if defined(__ARCH_riscv)
                                              {"riscv,plic0", plic_init, INTERRUPT_CONTROLLER},
 #if defined(CONFIG_RISCV_BOOT_M_MODE)

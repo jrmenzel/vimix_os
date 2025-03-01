@@ -235,6 +235,10 @@ static inline ssize_t plic_get_this_harts_s_context()
 
 void plic_init_per_cpu()
 {
+    // happens on simple emulator (Spike in qemu) without PLIC and any devices
+    // which need interrupts
+    if (!g_plic.plic_is_initialized) return;
+
     uint32_t irq_enable_flags[ENABLE_BLOCKS];
     for (size_t block = 0; block < ENABLE_BLOCKS; ++block)
     {

@@ -12,3 +12,5 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
                 const char *name);
 
 void htif_putc(int32_t c);
+
+void htif_console_poll_input();

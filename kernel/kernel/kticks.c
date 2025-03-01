@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <arch/riscv/sbi.h>
 #include <drivers/console.h>
 #include <kernel/kticks.h>
 #include <kernel/proc.h>
@@ -27,14 +26,12 @@ void kticks_inc_ticks()
     wakeup(&g_ticks);
     spin_unlock(&g_tickslock);
 
-#ifdef CONFIG_RISCV_SBI
-    // the SBI console can be a fallback for UART,
+    // The htif and SBI consoles can be a fallback for UART,
     // but without IRQs we need to poll the input manually
-    if (g_console_poll_sbi)
+    if (g_console_poll_callback)
     {
-        sbi_console_poll_input();
+        g_console_poll_callback();
     }
-#endif
 }
 
 size_t kticks_get_ticks()
