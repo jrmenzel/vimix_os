@@ -4,7 +4,7 @@
 #include <kernel/kernel.h>
 #include <kernel/reset.h>
 
-#ifdef __ENABLE_SBI__
+#ifdef CONFIG_RISCV_SBI
 #include <arch/riscv/sbi.h>
 #endif
 

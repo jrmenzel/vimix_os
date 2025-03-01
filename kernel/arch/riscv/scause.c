@@ -41,7 +41,7 @@ void dump_scause()
         struct process *proc = get_current();
         if (proc)
         {
-#if defined(_arch_is_64bit)
+#if defined(__ARCH_is_64bit)
             if (stval >= MAXVA)
             {
                 printk("Address 0x%zx larger than supported\n", stval);

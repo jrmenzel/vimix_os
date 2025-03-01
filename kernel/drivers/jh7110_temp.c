@@ -21,7 +21,7 @@ struct
 {
     struct Character_Device cdev;  ///< derived from a character device
     bool is_initialized;
-    size_t mem_start;  ///< memory map start
+    size_t mmio_base;  ///< memory map start
 } g_jh7110_temp = {0};
 
 ssize_t copy_out_int(size_t value, bool addr_is_userspace, size_t addr,
@@ -52,7 +52,7 @@ ssize_t jh7110_temp_read(struct Device *dev, bool addr_is_userspace,
                          size_t addr, size_t len, uint32_t file_offset)
 {
     uint32_t dout =
-        *((volatile uint32_t *)(g_jh7110_temp.mem_start)) & SFCTEMP_DOUT_MSK;
+        *((volatile uint32_t *)(g_jh7110_temp.mmio_base)) & SFCTEMP_DOUT_MSK;
     dout >>= SFCTEMP_DOUT_POS;  // Shift to get the output value
     // Calculate the temperature in millidegrees Celsius (mC)
     long temp = (long)dout * SFCTEMP_Y1000 / SFCTEMP_Z - SFCTEMP_K1000;
@@ -74,7 +74,7 @@ dev_t jh7110_temp_init(struct Device_Init_Parameters *init_parameters,
         return INVALID_DEVICE;
     }
 
-    g_jh7110_temp.mem_start = init_parameters->mem[0].start;
+    g_jh7110_temp.mmio_base = init_parameters->mem[0].start;
 
     jh7110_clk_enable(SYSCLK_TEMP_APB);
     jh7110_clk_enable(SYSCLK_TEMP_CORE);
@@ -82,12 +82,12 @@ dev_t jh7110_temp_init(struct Device_Init_Parameters *init_parameters,
     jh7110_rst_deassert(RSTN_TEMP_APB);
     jh7110_rst_deassert(RSTN_TEMP_CORE);
 
-    _WriteReg(g_jh7110_temp.mem_start, 0,
+    _WriteReg(g_jh7110_temp.mmio_base, 0,
               SFCTEMP_PD);                     // Power down the thermal sensor
-    _WriteReg(g_jh7110_temp.mem_start, 0, 0);  // Power Up
-    _WriteReg(g_jh7110_temp.mem_start, 0, SFCTEMP_RSTN);  // De-assert reset
+    _WriteReg(g_jh7110_temp.mmio_base, 0, 0);  // Power Up
+    _WriteReg(g_jh7110_temp.mmio_base, 0, SFCTEMP_RSTN);  // De-assert reset
     // enable thermal sensor
-    _WriteReg(g_jh7110_temp.mem_start, 0, SFCTEMP_RUN | SFCTEMP_RSTN);
+    _WriteReg(g_jh7110_temp.mmio_base, 0, SFCTEMP_RUN | SFCTEMP_RSTN);
 
     // init device and register it in the system
     g_jh7110_temp.cdev.dev.name = "temp";

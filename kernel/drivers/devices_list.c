@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 
-#if defined(_ARCH_riscv)
+#if defined(__ARCH_riscv)
 #include <arch/riscv/clint.h>
 #include <arch/riscv/plic.h>
-#endif  // _ARCH_riscv
+#endif  // __ARCH_riscv
 
 #include <drivers/console.h>
 #include <drivers/dev_null.h>
@@ -21,12 +21,12 @@
 #include <lib/minmax.h>
 #include <libfdt.h>
 
-#if defined(_PLATFORM_VISIONFIVE2)
+#if defined(__PLATFORM_VISIONFIVE2)
 #include <drivers/jh7110_clk.h>
 #include <drivers/jh7110_temp.h>
 #endif
 
-#ifdef RAMDISK_EMBEDDED
+#if defined(__CONFIG_RAMDISK_EMBEDDED)
 #include <ramdisk_fs.h>
 #endif
 
@@ -59,21 +59,21 @@ struct Device_Driver g_generell_drivers[] = {{"virtio,mmio", virtio_disk_init, R
                                              {"google,goldfish-rtc", rtc_init, CLOCK_DRIVER}, // init before /dev/random if present
                                              {"syscon", syscon_init, REGULAR_DEVICE},
                                              {"ucb,htif0", htif_init, REGULAR_DEVICE},
-#if defined(_ARCH_riscv)
+#if defined(__ARCH_riscv)
                                              {"riscv,plic0", plic_init, INTERRUPT_CONTROLLER},
-#if defined(__BOOT_M_MODE)
+#if defined(CONFIG_RISCV_BOOT_M_MODE)
                                              {"riscv,clint0", clint_init, INTERRUPT_CONTROLLER},
 #endif
-#if defined(_PLATFORM_VISIONFIVE2)
+#if defined(__PLATFORM_VISIONFIVE2)
                                              {"starfive,jh7110-clkgen", jh7110_clk_init, CLOCK_DRIVER},
 //                                           {"starfive,jh7110-temp", jh7110_temp_init, REGULAR_DEVICE}, // see below: not in device tree
-#endif // _PLATFORM_VISIONFIVE2
-#endif // _ARCH_riscv
+#endif // __PLATFORM_VISIONFIVE2
+#endif // __ARCH_riscv
                                              {NULL, NULL, 0}};
 
 // not found in the device tree, so added explicitly
 struct Device_Driver g_ramdisk_driver = {"ramdisk", ramdisk_init, REGULAR_DEVICE};
-#if defined(_PLATFORM_VISIONFIVE2)
+#if defined(__PLATFORM_VISIONFIVE2)
 struct Device_Driver jh7110_temp = {"starfive,jh7110-temp", jh7110_temp_init, REGULAR_DEVICE};
 #endif
 // clang-format on
@@ -92,7 +92,7 @@ struct Devices_List *get_devices_list()
             driver++;
         }
 
-#if defined(_PLATFORM_VISIONFIVE2)
+#if defined(__PLATFORM_VISIONFIVE2)
         // This should be an entry in g_generell_drivers but the temp sensor is
         // not in the device tree file found on the visionfive2 board.
         struct Device_Init_Parameters jh7110_parameters;

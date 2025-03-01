@@ -18,7 +18,7 @@
 __attribute__((aligned(PAGE_SIZE))) __attribute__((
     section("STACK"))) char g_kernel_cpu_stack[KERNEL_STACK_SIZE * MAX_CPUS];
 
-#ifdef __BOOT_M_MODE
+#ifdef CONFIG_RISCV_BOOT_M_MODE
 // Reset CPU to a known state for everything relevant that we can access
 // from M-Mode. If the OS starts in S-Mode, the bios managed this low-level
 // stuff.
@@ -57,7 +57,7 @@ void reset_m_mode_cpu_state()
 void reset_m_mode_cpu_state() {}
 #endif
 
-#ifdef __BOOT_M_MODE
+#ifdef CONFIG_RISCV_BOOT_M_MODE
 // Jump to main() but in Supervisor Mode with the provided parameters
 void jump_to_main_in_s_mode(void *dtb, xlen_t is_first)
 {
@@ -128,7 +128,7 @@ void reset_s_mode_cpu_state()
 /// started by sbi_hart_start()
 void start(xlen_t cpuid, void *device_tree)
 {
-#ifdef _PLATFORM_VISIONFIVE2
+#ifdef __PLATFORM_VISIONFIVE2
     // device tree is not set as expected, but the location is static:
     device_tree = (void *)0xfffc6080;
 #endif
@@ -137,11 +137,11 @@ void start(xlen_t cpuid, void *device_tree)
     // - Based on global flag for SBI (no race condition thanks to how harts are
     // started in SBI mode)
     // - Based on CPU ID otherwise
-#ifdef __ENABLE_SBI__
+#ifdef CONFIG_RISCV_SBI
     bool is_first_thread = g_global_init_done == GLOBAL_INIT_NOT_STARTED;
 #else
     bool is_first_thread = (cpuid == 0);
-#endif
+#endif  // CONFIG_RISCV_SBI
 
     reset_m_mode_cpu_state();  ///< noop when booting in S-Mode
     reset_s_mode_cpu_state();
@@ -170,7 +170,7 @@ void start(xlen_t cpuid, void *device_tree)
     // enable external, timer, software interrupts
     rv_write_csr_sie(rv_read_csr_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
 
-#if defined(__BOOT_M_MODE)
+#if defined(CONFIG_RISCV_BOOT_M_MODE)
     jump_to_main_in_s_mode(device_tree, is_first_thread);
 #else
     main(device_tree, is_first_thread);

@@ -5,8 +5,8 @@
 // - kernel and userspace apps: they want to get the std defines from this file
 // - development PC apps like mkfs: they should include the platforms
 //   C std includes to avoid redefinition errors.
-//   -> set __USE_REAL_STDC__ for apps on real OSes which need this include
-#ifdef __USE_REAL_STDC__
+//   -> set __USE_REAL_STDC for apps on real OSes which need this include
+#ifdef __USE_REAL_STDC
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -31,7 +31,7 @@ typedef int FILE_DESCRIPTOR;
 /// access rights (rxwrxwrxw), see stat.h.
 typedef uint32_t mode_t;
 
-#endif  // __USE_REAL_STDC__
+#endif  // __USE_REAL_STDC
 
 #define INVALID_FILE_DESCRIPTOR (-1)
 

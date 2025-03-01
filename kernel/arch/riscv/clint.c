@@ -21,7 +21,7 @@ dev_t clint_init(struct Device_Init_Parameters *init_parameters,
 // TODO: clint_init_timer_interrupt() is called before this as
 // it has to run in M-Mode, this only works if the base address
 // is the same.
-#ifdef __BOOT_M_MODE
+#ifdef CONFIG_RISCV_BOOT_M_MODE
     if (CLINT_BASE != init_parameters->mem[0].start)
     {
         panic("Unexpected CLINT address\n");
@@ -37,7 +37,7 @@ dev_t clint_init(struct Device_Init_Parameters *init_parameters,
     return MKDEV(CLINT_MAJOR, 0);
 }
 
-#ifdef __BOOT_M_MODE
+#ifdef CONFIG_RISCV_BOOT_M_MODE
 
 /// a scratch area per CPU for machine-mode timer interrupts.
 size_t m_mode_interrupt_handler_scratchpads[MAX_CPUS][6];
@@ -75,4 +75,4 @@ void clint_init_timer_interrupt()
     cpu_enable_m_mode_timer_interrupt();
 }
 
-#endif  // __BOOT_M_MODE
+#endif  // CONFIG_RISCV_BOOT_M_MODE

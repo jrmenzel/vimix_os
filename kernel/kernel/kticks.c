@@ -27,7 +27,7 @@ void kticks_inc_ticks()
     wakeup(&g_ticks);
     spin_unlock(&g_tickslock);
 
-#ifdef __ENABLE_SBI__
+#ifdef CONFIG_RISCV_SBI
     // the SBI console can be a fallback for UART,
     // but without IRQs we need to poll the input manually
     if (g_console_poll_sbi)

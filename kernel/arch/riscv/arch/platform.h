@@ -3,7 +3,7 @@
 
 #include <sbi.h>
 
-#ifdef __ENABLE_SBI__
+#ifdef CONFIG_RISCV_SBI
 static inline void init_platform(void *dtb) { init_sbi(dtb); }
 #else
 static inline void init_platform(void *dtb) {}

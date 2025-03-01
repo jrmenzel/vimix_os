@@ -21,7 +21,7 @@
 #include <kernel/scheduler.h>
 #include <kernel/smp.h>
 
-#ifdef RAMDISK_EMBEDDED
+#if defined(__CONFIG_RAMDISK_EMBEDDED)
 #include <ramdisk_fs.h>
 #endif
 
@@ -43,7 +43,7 @@ void print_kernel_info()
     printk("%zdKB of bss / uninitialized data\n", (size_t)(size_of_bss) / 1024);
 }
 
-#ifdef __ENABLE_SBI__
+#ifdef CONFIG_RISCV_SBI
 #define FEATURE_STRING "(RISCV SBI)"
 #else
 #define FEATURE_STRING "(RISCV bare metal)"
@@ -53,7 +53,7 @@ void print_memory_map(struct Minimal_Memory_Map *memory_map)
 {
     printk("    RAM S: 0x%08zx\n", memory_map->ram_start);
     printk(" KERNEL S: 0x%08zx\n", memory_map->kernel_start);
-#ifdef RAMDISK_EMBEDDED
+#if defined(__CONFIG_RAMDISK_EMBEDDED)
     printk("RAMDISK S: 0x%08zx\n", (size_t)ramdisk_fs);
     printk("RAMDISK E: 0x%08zx\n", (size_t)ramdisk_fs + ramdisk_fs_size);
 #endif
@@ -78,12 +78,12 @@ void print_memory_map(struct Minimal_Memory_Map *memory_map)
 
 void print_timer_source(void *dtb)
 {
-#if defined(__BOOT_M_MODE)
+#if defined(CONFIG_RISCV_BOOT_M_MODE)
     printk("Timer source: CLINT\n");
 #else
 #if defined(__RISCV_EXT_SSTC)
     CPU_Features features =
-        dtb_get_cpu_features(dtb, __arch_smp_processor_id());
+        dtb_get_cpu_features(dtb, ___ARCH_smp_processor_id());
     bool use_sstc_timer = features & RV_EXT_SSTC;
 #else
     bool use_sstc_timer = false;
@@ -104,7 +104,7 @@ void add_ramdisks_to_dev_list(struct Devices_List *dev_list,
 {
     struct Device_Init_Parameters init_params;
     clear_init_parameters(&init_params);
-#ifdef RAMDISK_EMBEDDED
+#if defined(__CONFIG_RAMDISK_EMBEDDED)
     init_params.mem[0].start = (size_t)ramdisk_fs;
     init_params.mem[0].size = (size_t)ramdisk_fs_size;
     dev_list_add_with_parameters(dev_list, &g_ramdisk_driver, init_params);
@@ -144,7 +144,7 @@ void init_by_first_thread(void *dtb)
     printk_init();
 
     printk("\n");
-    printk("VIMIX OS " _arch_bits_string " bit " FEATURE_STRING
+    printk("VIMIX OS " __ARCH_bits_string " bit " FEATURE_STRING
            " kernel version " str_from_define(GIT_HASH) " is booting\n");
     print_kernel_info();
     if (console_index < 0)
@@ -170,7 +170,7 @@ void init_by_first_thread(void *dtb)
     // init memory management:
     printk("init memory management...\n");
 
-#ifdef _LIMIT_MEMORY
+#ifdef __LIMIT_MEMORY
     //  cap usable memory for performance reasons if MEMORY_SIZE is set
     size_t ram_size = memory_map.ram_end - memory_map.ram_start;
     size_t max_ram = 1024 * 1024 * (size_t)64;  // MEMORY_SIZE;

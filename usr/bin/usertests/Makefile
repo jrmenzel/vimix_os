@@ -22,7 +22,7 @@ $(B_DEPLOY_DIR)/usertests: $(B_BUILD_DIR)/usertests.o $(B_BUILD_DIR)/vimix_only.
 
 $(B_BUILD_DIR)/%.o: %.c 
 	@printf "$(TASK_COLOR)Compile with extra flags: $(@)\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -D_ARCH_$(BITWIDTH)BIT -DKERNBASE=$(KERNBASE) -DMEMORY_SIZE=$(MEMORY_SIZE) -I.. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
+	@$(CC) $(CFLAGS) -D__ARCH_$(BITWIDTH)BIT -DKERNBASE=$(KERNBASE) -DMEMORY_SIZE=$(MEMORY_SIZE) -I.. $(USER_SPACE_INC_PARAMS) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 vimix: directories $(B_DEPLOY_DIR)/usertests
 

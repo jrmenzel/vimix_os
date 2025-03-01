@@ -83,7 +83,7 @@ CFLAGS_TARGET_ONLY += -fno-stack-protector
 # c flags for the kernel and user space apps on the target OS:
 CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_TARGET_ONLY)
 # c flags for the user space apps on the host OS (with host stdlib):
-CFLAGS_HOST := $(CFLAGS_COMMON) -DBUILD_ON_HOST -D__USE_REAL_STDC__ 
+CFLAGS_HOST := $(CFLAGS_COMMON) -DBUILD_ON_HOST -D__USE_REAL_STDC 
 
 #####
 # linker flags

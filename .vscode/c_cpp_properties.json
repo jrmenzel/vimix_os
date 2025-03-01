@@ -14,8 +14,8 @@
             "USER_TEXT_START=0x1000"
         ],
         "kernel_defines_riscv": [
-            "_ARCH_riscv",
-            "__ENABLE_SBI__",
+            "__ARCH_riscv",
+            "CONFIG_RISCV_SBI",
             "__RISCV_EXT_SSTC",
             "__RISCV_CSR_TIME",
             "__BOOT_S_MODE"

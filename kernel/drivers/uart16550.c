@@ -15,10 +15,10 @@
 #include <mm/memlayout.h>
 
 #define Reg(uart, reg) \
-    ((volatile unsigned char *)(uart->uart_base + (reg << uart->reg_shift)))
+    ((volatile unsigned char *)(uart->mmio_base + (reg << uart->reg_shift)))
 
 #define Reg32(uart, reg) \
-    ((volatile uint32_t *)(uart->uart_base + (reg << uart->reg_shift)))
+    ((volatile uint32_t *)(uart->mmio_base + (reg << uart->reg_shift)))
 
 /// the UART control registers.
 /// some have different meanings for
@@ -87,14 +87,14 @@ void uart_init(struct Device_Init_Parameters *init_param, const char *name)
         init_param->reg_io_width == 1 || init_param->reg_io_width == 4,
         "unsupported IO width");
 
-    g_uart_16550.uart_base = init_param->mem[0].start;
+    g_uart_16550.mmio_base = init_param->mem[0].start;
     g_uart_16550.reg_io_width = init_param->reg_io_width;
     g_uart_16550.reg_shift = init_param->reg_shift;
 
     //   disable interrupts.
     write_register(&g_uart_16550, IER, 0x00);
 
-#ifndef _PLATFORM_VISIONFIVE2
+#ifndef __PLATFORM_VISIONFIVE2
     uart_set_baud_rate(BAUD_115200);
 #endif
 
@@ -102,7 +102,7 @@ void uart_init(struct Device_Init_Parameters *init_param, const char *name)
     write_register(&g_uart_16550, FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
     //  enable receive/send interrupts
-#ifdef _PLATFORM_SPIKE
+#ifdef __PLATFORM_SPIKE
     // somehow TX interrupts break Vimix on Spike
     write_register(&g_uart_16550, IER, IER_RX_ENABLE);
 #else

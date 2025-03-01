@@ -92,7 +92,7 @@ void kvm_init(struct Minimal_Memory_Map *memory_map,
     g_kernel_pagetable = kvm_make_kernel_pagetable(memory_map, dev_list);
 }
 
-#if defined(_arch_is_32bit)
+#if defined(__ARCH_is_32bit)
 const size_t MAX_LEVELS_IN_PAGE_TABLE = 2;
 const size_t MAX_PTES_PER_PAGE_TABLE = 1024;
 #else
@@ -121,7 +121,7 @@ const size_t MAX_PTES_PER_PAGE_TABLE = 512;
 ///    0..11 -- 12 bits of byte offset within the page.
 pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc)
 {
-#if defined(_arch_is_64bit)
+#if defined(__ARCH_is_64bit)
     if (va >= MAXVA)
     {
         panic("vm_walk: virtual address is larger than supported");
@@ -164,7 +164,7 @@ size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va,
 size_t uvm_get_physical_paddr(pagetable_t pagetable, size_t va,
                               bool *is_writeable)
 {
-#if defined(_arch_is_64bit)
+#if defined(__ARCH_is_64bit)
     if (va >= MAXVA)
     {
         return 0;

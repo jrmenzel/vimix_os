@@ -16,7 +16,7 @@ typedef          int        int32_t;
 typedef          long long  int64_t;
 
 
-#if defined(_arch_is_32bit)
+#if defined(__ARCH_is_32bit)
 typedef unsigned int  size_t;
 typedef          int ssize_t;
 #else

@@ -26,9 +26,9 @@ _entry:
     #       a0 will be set to the hartid if not set already.
 
     # a0 = hartid; already set in SBI mode
-#ifndef __ENABLE_SBI__
+#ifndef CONFIG_RISCV_SBI
     csrr a0, mhartid     # only works in Machine Mode
-#endif // __ENABLE_SBI__
+#endif // CONFIG_RISCV_SBI
     // keep each CPU's hartid in its tp register, for smp_processor_id().
     mv tp, a0
 

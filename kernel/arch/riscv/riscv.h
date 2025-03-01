@@ -32,7 +32,7 @@ typedef size_t xlen_t;
 #define SIE_STIE (1L << 5)  // timer
 #define SIE_SSIE (1L << 1)  // software
 
-#ifdef __BOOT_M_MODE
+#ifdef CONFIG_RISCV_BOOT_M_MODE
 // (When running in an SBI environment the kernel has no
 // direct access to M-Mode. Hide all M-Mode defines to prevent accidental
 // usage as it will result in runtime issues.)
@@ -49,9 +49,9 @@ typedef size_t xlen_t;
 #define MIE_MTIE (1L << 7)   // timer
 #define MIE_MSIE (1L << 3)   // software
 #define MIE_STIE (1L << 5)   // supervisor timer
-#endif                       // __BOOT_M_MODE
+#endif                       // CONFIG_RISCV_BOOT_M_MODE
 
-#if defined(_arch_is_32bit)
+#if defined(__ARCH_is_32bit)
 // use riscv's sv32 page table scheme.
 #define SATP_SV32 (1L << 31)
 #define MAKE_SATP(pagetable) (SATP_SV32 | (((uint32_t)pagetable) >> 12))
@@ -60,7 +60,7 @@ typedef size_t xlen_t;
 #define SATP_SV39 (8L << 60)
 #define SATP_SV48 (9L << 60)
 #define MAKE_SATP(pagetable) (SATP_SV39 | (((uint64_t)pagetable) >> 12))
-#endif  // _arch_is_32bit
+#endif  // __ARCH_is_32bit
 
 /// physical memory protection CSR read access
 #define PMP_R (1L << 0)
@@ -87,7 +87,7 @@ typedef size_t xlen_t;
         asm volatile("csrw " #name ", %0" : : "r"(x)); \
     }
 
-#ifdef __BOOT_M_MODE
+#ifdef CONFIG_RISCV_BOOT_M_MODE
 // machine mode CSR read / write functions
 
 rv_read_csr_(mhartid);  // hard-id
@@ -136,7 +136,7 @@ rv_read_csr_(menvcfgh);
 rv_write_csr_(menvcfgh);
 #endif
 
-#endif  // __BOOT_M_MODE
+#endif  // CONFIG_RISCV_BOOT_M_MODE
 
 //
 // supervisor mode (OS mode)

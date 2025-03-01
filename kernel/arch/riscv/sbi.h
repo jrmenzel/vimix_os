@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
-#ifdef __ENABLE_SBI__
+#ifdef CONFIG_RISCV_SBI
 
 #include <kernel/kernel.h>
 
@@ -117,4 +117,4 @@ void sbi_system_reset(uint32_t reset_type, uint32_t reset_reason);
 /// @return 1 if the extension is available, 0 otherwise
 long sbi_probe_extension(int32_t extid);
 
-#endif  // __ENABLE_SBI__
+#endif  // CONFIG_RISCV_SBI

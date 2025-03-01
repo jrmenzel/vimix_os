@@ -16,7 +16,7 @@ extern uint64_t g_boot_time;
 
 void no_op() {}
 
-#if defined(__ENABLE_SBI__)
+#if defined(CONFIG_RISCV_SBI)
 void sbi_schedule_interrupt(uint64_t next_timer_intr)
 {
     sbi_set_timer(next_timer_intr);
@@ -40,12 +40,12 @@ void timer_init(uint64_t timebase_frequency, bool use_sstc)
     g_timebase_frequency = timebase_frequency;
     g_boot_time = rv_get_time();
 
-#if defined(__BOOT_M_MODE)
+#if defined(CONFIG_RISCV_BOOT_M_MODE)
     // bare metal environment
     // ask for clock interrupts.
     clint_init_timer_interrupt();
     timer_schedule_interrupt = no_op;
-#elif defined(__ENABLE_SBI__)
+#elif defined(CONFIG_RISCV_SBI)
     // SBI environment
     if (use_sstc)
     {

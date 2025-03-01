@@ -400,7 +400,7 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
     }
     else
     {
-#ifdef __ENABLE_SBI__
+#ifdef CONFIG_RISCV_SBI
         if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) <= 0)
         {
             panic(

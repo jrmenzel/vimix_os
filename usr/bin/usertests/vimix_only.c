@@ -20,7 +20,7 @@
 #define SHORT_SLEEP_MS 100
 
 const size_t TEST_PTR_RAM_BEGIN = 0x80000000LL;
-#ifdef _ARCH_32BIT
+#ifdef __ARCH_32BIT
 // 32 bit
 const size_t TEST_PTR_MAX_ADDRESS = 0xffffffff;
 const size_t TEST_PTR_0 = 0x3fffffe0;
@@ -2468,7 +2468,7 @@ void forktest(char *s)
 
 void sbrkbasic(char *s)
 {
-#ifdef _ARCH_32BIT
+#ifdef __ARCH_32BIT
     const size_t TOOMUCH = 1024 * 1024 * 1024;
 #else
     const size_t TOOMUCH = 512ull * 1024ull * 1024ull * 1024ull;
@@ -2651,7 +2651,7 @@ void kernmem(char *s)
 // only on 64 bit where addresses above MAXVA are possible
 void MAXVAplus(char *s)
 {
-#ifdef _ARCH_32BIT
+#ifdef __ARCH_32BIT
     return;
 #else
     volatile size_t a = MAXVA;

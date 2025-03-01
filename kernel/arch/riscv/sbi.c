@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT */
-#ifdef __ENABLE_SBI__
+#ifdef CONFIG_RISCV_SBI
 
 #include <clint.h>
 #include <drivers/console.h>
@@ -227,4 +227,4 @@ void init_sbi(void *dtb)
     printk("\n");
 }
 
-#endif  // __ENABLE_SBI__
+#endif  // CONFIG_RISCV_SBI

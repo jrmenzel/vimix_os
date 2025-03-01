@@ -8,7 +8,7 @@
 struct syscon
 {
     bool is_initialized;
-    size_t mem_start;         ///< memory map start
+    size_t mmio_base;         ///< memory map start
     size_t poweroff_offset;   ///< expected: 0 (but read from device tree)
     size_t reboot_offset;     ///< expected: 0
     uint32_t poweroff_value;  ///< expected: 0x5555
@@ -91,7 +91,7 @@ dev_t syscon_init(struct Device_Init_Parameters *init_parameters,
         return INVALID_DEVICE;
     }
 
-    g_syscon.mem_start = init_parameters->mem[0].start;
+    g_syscon.mmio_base = init_parameters->mem[0].start;
     printk("register syscon reboot/shutdown functions\n");
     g_machine_power_off_func = &syscon_machine_power_off;
 
@@ -108,7 +108,7 @@ void syscon_write_reg(size_t reg, uint32_t value)
 {
     if (!g_syscon.is_initialized) return;
 
-    (*(volatile uint32_t *)(g_syscon.mem_start + reg)) = value;
+    (*(volatile uint32_t *)(g_syscon.mmio_base + reg)) = value;
 }
 
 void syscon_machine_power_off()

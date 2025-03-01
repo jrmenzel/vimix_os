@@ -119,7 +119,7 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     *R(b, VIRTIO_MMIO_QUEUE_NUM) = VIRTIO_DESCRIPTORS;
 
     // write physical addresses.
-#if defined(_arch_is_32bit)
+#if defined(__ARCH_is_32bit)
     *R(b, VIRTIO_MMIO_QUEUE_DESC_LOW) = (size_t)disk->desc;
     *R(b, VIRTIO_MMIO_DRIVER_DESC_LOW) = (size_t)disk->avail;
     *R(b, VIRTIO_MMIO_DEVICE_DESC_LOW) = (size_t)disk->used;

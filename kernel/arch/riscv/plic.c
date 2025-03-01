@@ -15,10 +15,10 @@
 // Each has a 32 bit priority and a pending bit.
 
 /// 32 bit priority per interrupt, int 0 is reserved -> 1023 IRQs
-#define PLIC_PRIORITY (PLIC_BASE + 0x00)
+#define PLIC_PRIORITY (g_plic.mmio_base + 0x00)
 
 /// 32x 32 bit ints encoding 1024 interrupt pending bits
-#define PLIC_PENDING (PLIC_BASE + 0x1000)
+#define PLIC_PENDING (g_plic.mmio_base + 0x1000)
 
 //
 // Interrupts can be organized in Contexts, each enabling their own
@@ -27,19 +27,21 @@
 
 /// address of one 32 bit int encoding 32 interrupt enable bits
 #define PLIC_ENABLE(context, block) \
-    (PLIC_BASE + 0x2000 + (context) * 0x80 + (block) * 4)
+    (g_plic.mmio_base + 0x2000 + (context) * 0x80 + (block) * 4)
 
 /// if set prio of context is > prio of interrupt, then it is ignored
 #define PLIC_PRIORITY_THRESHOLD(context) \
-    (PLIC_BASE + 0x200000 + (context) * 0x1000)
+    (g_plic.mmio_base + 0x200000 + (context) * 0x1000)
 
 /// address contains IRQ number of latext interrupt of context
 /// write IRQ back to clear IRQ.
-#define PLIC_CLAIM(context) (PLIC_BASE + 0x200004 + (context) * 0x1000)
+#define PLIC_CLAIM(context) (g_plic.mmio_base + 0x200004 + (context) * 0x1000)
 
-/// Size and addess of the memory map
-size_t PLIC_BASE = 0xc000000L;
-bool plic_is_initialized = false;
+struct
+{
+    size_t mmio_base;
+    bool plic_is_initialized;
+} g_plic = {0xc000000, false};
 
 //
 // the riscv Platform Level Interrupt Controller (PLIC).
@@ -48,18 +50,18 @@ bool plic_is_initialized = false;
 dev_t plic_init(struct Device_Init_Parameters *init_parameters,
                 const char *name)
 {
-    if (plic_is_initialized)
+    if (g_plic.plic_is_initialized)
     {
         return 0;
     }
-    PLIC_BASE = init_parameters->mem[0].start;
-    plic_is_initialized = true;
+    g_plic.mmio_base = init_parameters->mem[0].start;
+    g_plic.plic_is_initialized = true;
     return MKDEV(PLIC_MAJOR, 0);
 }
 
 void plic_set_interrupt_priority(uint32_t irq, uint32_t priority)
 {
-    *(uint32_t *)(PLIC_BASE + (irq * sizeof(uint32_t))) = priority;
+    *(uint32_t *)(g_plic.mmio_base + (irq * sizeof(uint32_t))) = priority;
 }
 
 const size_t ENABLE_BLOCKS = 32;  ///< # of int32 -> 1024 bits total
@@ -83,7 +85,7 @@ void plic_enable_interrupts(size_t context,
 size_t plic_get_this_harts_s_context()
 {
     size_t hart = smp_processor_id();
-#if defined(_PLATFORM_VISIONFIVE2)
+#if defined(__PLATFORM_VISIONFIVE2)
     // first context is reserved for the S7 core which has no S mode (and VIMIX
     // wont boot there)
     return 1 + (2 * hart + 1);

@@ -63,7 +63,7 @@ struct uart_16550
     size_t uart_tx_r;
 
     /// the UART control registers are memory-mapped to this address
-    size_t uart_base;
+    size_t mmio_base;
 
     int32_t reg_io_width;
 

@@ -13,7 +13,7 @@ struct ramdisk
 
     struct spinlock vdisk_lock;
 
-    void *start;
+    void *ram_base;
 } g_ramdisk[MAX_MINOR_DEVICES];
 
 size_t g_next_free_ramdisk = 0;
@@ -21,7 +21,7 @@ size_t g_next_free_ramdisk = 0;
 void *get_address_from_buffer(struct buf *b, struct ramdisk *disk)
 {
     size_t disk_address = b->blockno * BLOCK_SIZE;
-    void *addr = disk->start + disk_address;
+    void *addr = disk->ram_base + disk_address;
 
     if (disk_address > disk->disk.bdev.size)
     {
@@ -73,7 +73,7 @@ dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
     size_t minor = g_next_free_ramdisk++;
     // printk("ramdisk_init %zd\n", minor);
 
-    g_ramdisk[minor].start = (void *)init_parameters->mem[0].start;
+    g_ramdisk[minor].ram_base = (void *)init_parameters->mem[0].start;
     g_ramdisk[minor].disk.bdev.size = init_parameters->mem[0].size;
 
     // init device and register it in the system

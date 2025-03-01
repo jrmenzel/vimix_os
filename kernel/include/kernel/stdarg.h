@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#ifdef __USE_REAL_STDC__
+#ifdef __USE_REAL_STDC
 // This file can get included by apps compiled for the host (e.g. tools that
 // need VIMIX includes). Those should use the host headers to avoid
 // redefinitions.
@@ -30,4 +30,4 @@ typedef void *va_list;
 
 #endif  // __GNUC__
 
-#endif  // __USE_REAL_STDC__
+#endif  // __USE_REAL_STDC

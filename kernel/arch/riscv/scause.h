@@ -19,7 +19,7 @@
 #define SCAUSE_SOFTWARE_CHECK 18
 #define SCAUSE_HARDWARE_CHECK 19
 
-#if defined(_arch_is_32bit)
+#if defined(__ARCH_is_32bit)
 #define SCAUSE_INTERRUPT_BIT 0x80000000L
 #else
 #define SCAUSE_INTERRUPT_BIT 0x8000000000000000L

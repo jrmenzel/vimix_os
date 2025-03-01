@@ -44,7 +44,7 @@ uint64_t htif_send_command(uint32_t device, uint32_t command, uint64_t data)
 {
     // upper 8 bit device
     uint64_t request = 0;
-#if defined(_arch_is_32bit)
+#if defined(__ARCH_is_32bit)
     // on 32 bit the upper 32 bits of the tohost/fromhost
     // registers are set to 0. So only the halt device with the halt command
     // are supported.

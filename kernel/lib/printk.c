@@ -79,7 +79,7 @@ void panic(char* error_message)
         machine_power_off();
     }
 
-#if defined(_ARCH_riscv)
+#if defined(__ARCH_riscv)
     // print the kernel call stack:
     size_t depth = 32;  // limit just in case of a corrupted stack
     printk(" Kernel call stack:\n");

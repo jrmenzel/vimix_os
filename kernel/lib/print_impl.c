@@ -45,7 +45,7 @@ int32_t print_signed_long_long(_PUT_CHAR_FP func, size_t payload,
         value *= -1;
     }
 
-#if defined(_arch_is_32bit)
+#if defined(__ARCH_is_32bit)
     const size_t MAX_LEN = 10;  // -2,147,483,648..2,147,483,647
 #else
     const size_t MAX_LEN =
@@ -82,7 +82,7 @@ int32_t print_unsigned_long_long(_PUT_CHAR_FP func, size_t payload,
 {
     int32_t charsWritten = 0;
 
-#if defined(_arch_is_32bit)
+#if defined(__ARCH_is_32bit)
     const size_t MAX_LEN = 10;  // 4,294,967,295
 #else
     const size_t MAX_LEN = 20;  // 18,446,744,073,709,551,615
@@ -123,7 +123,7 @@ int32_t print_unsigned_hex(_PUT_CHAR_FP func, size_t payload, ssize_t padding,
     int32_t asciiOffset = upperCase ? 'A' : 'a';
     int32_t charsWritten = 0;
 
-#if defined(_arch_is_32bit)
+#if defined(__ARCH_is_32bit)
     const size_t MAX_LEN = 8;  // FFFF FFFF
 #else
     const size_t MAX_LEN = 16;  // FFFF FFFF FFFF FFFF
