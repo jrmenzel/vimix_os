@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
-#include "plic.h"
-
+#include <arch/riscv/plic.h>
 #include <drivers/device.h>
+#include <drivers/mmio_access.h>
 #include <kernel/kernel.h>
 #include <kernel/smp.h>
-
 #include <mm/memlayout.h>
 
 //
@@ -13,12 +12,8 @@
 //
 // It supports 1023 interrupts (as int 0 is reserved).
 // Each has a 32 bit priority and a pending bit.
-
-/// 32 bit priority per interrupt, int 0 is reserved -> 1023 IRQs
-#define PLIC_PRIORITY (g_plic.mmio_base + 0x00)
-
-/// 32x 32 bit ints encoding 1024 interrupt pending bits
-#define PLIC_PENDING (g_plic.mmio_base + 0x1000)
+// 32 bit priority per interrupt, int 0 is reserved -> 1023 IRQs
+// 32x 32 bit ints encoding 1024 interrupt pending bits
 
 //
 // Interrupts can be organized in Contexts, each enabling their own
@@ -26,16 +21,12 @@
 //
 
 /// address of one 32 bit int encoding 32 interrupt enable bits
-#define PLIC_ENABLE(context, block) \
-    (g_plic.mmio_base + 0x2000 + (context) * 0x80 + (block) * 4)
+#define PLIC_ENABLE_REG_OFFSET(context, block) \
+    (0x2000 + (context) * 0x80 + (block) * 4)
 
 /// if set prio of context is > prio of interrupt, then it is ignored
-#define PLIC_PRIORITY_THRESHOLD(context) \
-    (g_plic.mmio_base + 0x200000 + (context) * 0x1000)
-
-/// address contains IRQ number of latext interrupt of context
-/// write IRQ back to clear IRQ.
-#define PLIC_CLAIM(context) (g_plic.mmio_base + 0x200004 + (context) * 0x1000)
+#define PLIC_PRIORITY_THRESHOLD_REG_OFFSET(context) \
+    (0x200000 + (context) * 0x1000)
 
 struct
 {
@@ -72,12 +63,15 @@ void plic_enable_interrupts(size_t context,
     // Step 1: Set the enable bit
     for (size_t block = 0; block < ENABLE_BLOCKS; ++block)
     {
-        *(uint32_t *)PLIC_ENABLE(context, block) = irq_enable_flags[block];
+        size_t reg_offset = PLIC_ENABLE_REG_OFFSET(context, block);
+        MMIO_WRITE_UINT_32(g_plic.mmio_base, reg_offset,
+                           irq_enable_flags[block]);
     }
 
     // Step 2: set the priority threshold to 0,
     // enabling all interrupts with a higher priority (and set enable bit)
-    *(uint32_t *)PLIC_PRIORITY_THRESHOLD(context) = 0;
+    size_t reg_offset = PLIC_PRIORITY_THRESHOLD_REG_OFFSET(context);
+    MMIO_WRITE_UINT_32(g_plic.mmio_base, reg_offset, 0);
 }
 
 /// @brief The index of the context to set s mode interrupt enable bits etc.
@@ -120,12 +114,14 @@ void plic_init_per_cpu()
 int32_t plic_claim()
 {
     size_t context = plic_get_this_harts_s_context();
-    int32_t irq = *(uint32_t *)PLIC_CLAIM(context);
+    int32_t irq =
+        MMIO_READ_UINT_32(g_plic.mmio_base, 0x200004 + (context) * 0x1000);
     return irq;
 }
 
 void plic_complete(int32_t irq)
 {
     size_t context = plic_get_this_harts_s_context();
-    *(uint32_t *)PLIC_CLAIM(context) = irq;
+    // write IRQ back to clear IRQ.
+    MMIO_WRITE_UINT_32(g_plic.mmio_base, 0x200004 + (context) * 0x1000, irq);
 }

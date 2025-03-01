@@ -3,6 +3,7 @@
 #include <drivers/character_device.h>
 #include <drivers/jh7110_clk.h>
 #include <drivers/jh7110_temp.h>
+#include <drivers/mmio_access.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
@@ -51,9 +52,10 @@ ssize_t copy_out_int(size_t value, bool addr_is_userspace, size_t addr,
 ssize_t jh7110_temp_read(struct Device *dev, bool addr_is_userspace,
                          size_t addr, size_t len, uint32_t file_offset)
 {
-    uint32_t dout =
-        *((volatile uint32_t *)(g_jh7110_temp.mmio_base)) & SFCTEMP_DOUT_MSK;
+    uint32_t dout = MMIO_READ_UINT_32(g_jh7110_temp.mmio_base, 0);
+    dout &= SFCTEMP_DOUT_MSK;
     dout >>= SFCTEMP_DOUT_POS;  // Shift to get the output value
+
     // Calculate the temperature in millidegrees Celsius (mC)
     long temp = (long)dout * SFCTEMP_Y1000 / SFCTEMP_Z - SFCTEMP_K1000;
 
@@ -61,10 +63,6 @@ ssize_t jh7110_temp_read(struct Device *dev, bool addr_is_userspace,
 }
 
 void jh7110_temp_interrupt(dev_t dev) {}
-
-#define _Reg(reg) ((volatile unsigned char *)((reg)))
-#define _ReadReg(base, reg) (*(_Reg(base + reg)))
-#define _WriteReg(base, reg, v) (*(_Reg(base + reg)) = (v))
 
 dev_t jh7110_temp_init(struct Device_Init_Parameters *init_parameters,
                        const char *name)
@@ -82,12 +80,13 @@ dev_t jh7110_temp_init(struct Device_Init_Parameters *init_parameters,
     jh7110_rst_deassert(RSTN_TEMP_APB);
     jh7110_rst_deassert(RSTN_TEMP_CORE);
 
-    _WriteReg(g_jh7110_temp.mmio_base, 0,
-              SFCTEMP_PD);                     // Power down the thermal sensor
-    _WriteReg(g_jh7110_temp.mmio_base, 0, 0);  // Power Up
-    _WriteReg(g_jh7110_temp.mmio_base, 0, SFCTEMP_RSTN);  // De-assert reset
+    MMIO_WRITE_UINT_8(g_jh7110_temp.mmio_base, 0,
+                      SFCTEMP_PD);  // Power down the thermal sensor
+    MMIO_WRITE_UINT_8(g_jh7110_temp.mmio_base, 0, 0);  // Power Up
+    MMIO_WRITE_UINT_8(g_jh7110_temp.mmio_base, 0,
+                      SFCTEMP_RSTN);  // De-assert reset
     // enable thermal sensor
-    _WriteReg(g_jh7110_temp.mmio_base, 0, SFCTEMP_RUN | SFCTEMP_RSTN);
+    MMIO_WRITE_UINT_8(g_jh7110_temp.mmio_base, 0, SFCTEMP_RUN | SFCTEMP_RSTN);
 
     // init device and register it in the system
     g_jh7110_temp.cdev.dev.name = "temp";

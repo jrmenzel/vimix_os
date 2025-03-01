@@ -27,8 +27,6 @@ bool htif_is_initialized = false;
 #define HTIF_CONSOLE_GETCHAR 0
 #define HTIF_CONSOLE_PUTCHAR 1
 
-#define Reg64(base, reg) ((volatile uint64_t *)(base + (reg)))
-
 /// Instead of providing a memory map, a simulator can require the app
 /// to contain the symbols "tohost" and "fromhost" and will use these
 /// locations to communicate.

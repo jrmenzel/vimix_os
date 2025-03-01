@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <drivers/mmio_access.h>
 #include <drivers/syscon.h>
 #include <kernel/major.h>
 #include <kernel/reset.h>
@@ -108,7 +109,7 @@ void syscon_write_reg(size_t reg, uint32_t value)
 {
     if (!g_syscon.is_initialized) return;
 
-    (*(volatile uint32_t *)(g_syscon.mmio_base + reg)) = value;
+    MMIO_WRITE_UINT_32(g_syscon.mmio_base, reg, value);
 }
 
 void syscon_machine_power_off()

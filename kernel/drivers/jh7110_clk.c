@@ -2,6 +2,7 @@
 // based on a xv6 driver from Luc Videau (https://github.com/GerfautGE/xv6-mars)
 
 #include <drivers/jh7110_clk.h>
+#include <drivers/mmio_access.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <libfdt.h>
@@ -61,10 +62,10 @@ void jh7110_clk_enable(int num_clk)
         panic("clk_enable: jh7110 clk is not initialized");
     }
     size_t reg_offset = num_clk * sizeof(int32_t);
-    volatile uint32_t *addr =
-        (volatile uint32_t *)(g_jh7110_clk.sys_ctl_base + reg_offset);
 
-    *addr |= CLK_ENABLE;
+    uint32_t setting = MMIO_READ_UINT_32(g_jh7110_clk.sys_ctl_base, reg_offset);
+    setting |= CLK_ENABLE;
+    MMIO_WRITE_UINT_32(g_jh7110_clk.sys_ctl_base, reg_offset, setting);
 }
 
 void jh7110_rst_deassert(int num_rst)
@@ -75,9 +76,8 @@ void jh7110_rst_deassert(int num_rst)
     }
 
     size_t reg_offset = sizeof(int32_t) * (RSTN_BASE + num_rst / 32);
-    volatile uint32_t *addr =
-        (volatile uint32_t *)(g_jh7110_clk.sys_ctl_base + reg_offset);
-
+    uint32_t setting = MMIO_READ_UINT_32(g_jh7110_clk.sys_ctl_base, reg_offset);
     // set only the id%32 bit to 0
-    *addr &= ~(1 << (num_rst % 32));
+    setting &= ~(1 << (num_rst % 32));
+    MMIO_WRITE_UINT_32(g_jh7110_clk.sys_ctl_base, reg_offset, setting);
 }

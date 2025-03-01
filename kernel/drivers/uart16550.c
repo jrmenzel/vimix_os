@@ -4,21 +4,15 @@
 // low-level driver routines for 16550a UART.
 //
 
-#include "uart16550.h"
-
 #include <drivers/console.h>
+#include <drivers/mmio_access.h>
+#include <drivers/uart16550.h>
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <mm/memlayout.h>
-
-#define Reg(uart, reg) \
-    ((volatile unsigned char *)(uart->mmio_base + (reg << uart->reg_shift)))
-
-#define Reg32(uart, reg) \
-    ((volatile uint32_t *)(uart->mmio_base + (reg << uart->reg_shift)))
 
 /// the UART control registers.
 /// some have different meanings for
@@ -57,11 +51,11 @@ int32_t read_register(struct uart_16550 *uart, size_t reg)
 {
     if (uart->reg_io_width == 1)
     {
-        return (int32_t)*Reg(uart, reg);
+        return MMIO_READ_UINT_8_SHIFT(uart->mmio_base, reg, uart->reg_shift);
     }
     else  // uart->reg_io_width == 4, only two supported options
     {
-        return *Reg32(uart, reg);
+        return MMIO_READ_UINT_32_SHIFT(uart->mmio_base, reg, uart->reg_shift);
     }
 }
 
@@ -69,11 +63,11 @@ void write_register(struct uart_16550 *uart, size_t reg, uint32_t value)
 {
     if (uart->reg_io_width == 1)
     {
-        *Reg(uart, reg) = (uint8_t)value;
+        MMIO_WRITE_UINT_8_SHIFT(uart->mmio_base, reg, uart->reg_shift, value);
     }
     else  // uart->reg_io_width == 4, only two supported options
     {
-        *Reg32(uart, reg) = value;
+        MMIO_WRITE_UINT_32_SHIFT(uart->mmio_base, reg, uart->reg_shift, value);
     }
 }
 
