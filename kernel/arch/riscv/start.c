@@ -128,11 +128,6 @@ void reset_s_mode_cpu_state()
 /// started by sbi_hart_start()
 void start(xlen_t cpuid, void *device_tree)
 {
-#ifdef __PLATFORM_VISIONFIVE2
-    // device tree is not set as expected, but the location is static:
-    device_tree = (void *)0xfffc6080;
-#endif
-
     // Pick thread for all non-parallel init stuff:
     // - Based on global flag for SBI (no race condition thanks to how harts are
     // started in SBI mode)

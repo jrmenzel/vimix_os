@@ -3,9 +3,11 @@
 
 #include <clint.h>
 #include <drivers/console.h>
+#include <init/dtb.h>
 #include <kernel/kernel.h>
 #include <kernel/reset.h>
 #include <kernel/smp.h>
+#include <plic.h>
 #include <riscv.h>
 #include <sbi.h>
 
@@ -159,26 +161,6 @@ void init_sbi(void *dtb)
         g_machine_restart_func = &sbi_machine_restart;
     }
 
-    /*
-            if (sbi_probe_extension(SBI_EXT_ID_TIME) > 0)
-            {
-                // timer extension
-                printk("SBI TIME extension detected\n");
-            }
-
-            if (sbi_probe_extension(SBI_EXT_ID_IPI) > 0)
-            {
-                // inter processor interrupts
-                printk("SBI IPI extension detected\n");
-            }
-
-            if (sbi_probe_extension(SBI_EXT_ID_RFNC) > 0)
-            {
-                // remote fences
-                printk("SBI RFNC extension detected\n");
-            }
-        */
-
     if (sbi_probe_extension(SBI_EXT_ID_HSM) > 0)
     {
         //   hart state management
@@ -190,16 +172,19 @@ void init_sbi(void *dtb)
         {
             if (hartid != this_hart)
             {
-                // start all other harts, trying to start a hart that does not
-                // exist in hardware will fail
-                long ret = sbi_hart_start(hartid, (size_t)_entry, (size_t)dtb);
-                if (ret != SBI_SUCCESS)
+                if (plic_get_hart_s_context(hartid) != -1)
                 {
-                    // printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
-                }
-                else
-                {
-                    printk("SBI HSM: starting hart %zd: OK\n", hartid);
+                    // CPU exists in device tree and supports s mode interrupts
+                    long ret =
+                        sbi_hart_start(hartid, (size_t)_entry, (size_t)dtb);
+                    if (ret != SBI_SUCCESS)
+                    {
+                        printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
+                    }
+                    else
+                    {
+                        printk("SBI HSM: starting hart %zd: OK\n", hartid);
+                    }
                 }
             }
             else
@@ -209,21 +194,6 @@ void init_sbi(void *dtb)
             hartid++;
         }
     }
-    /*
-        if (sbi_probe_extension(SBI_EXT_ID_SRST) > 0)
-        {
-            printk("SBI SRST extension detected\n");
-        }
-
-        if (sbi_probe_extension(SBI_EXT_ID_PMU) > 0)
-        {
-            //
-       github.com/riscv-software-src/opensbi/blob/master/docs/pmu_support.md
-            // "SBI PMU extension supports allow supervisor software to
-            // configure/start/stop any performance counter at anytime."
-            printk("SBI PMU extension detected\n");
-        }
-    */
     printk("\n");
 }
 

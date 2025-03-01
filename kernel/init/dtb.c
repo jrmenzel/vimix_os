@@ -317,20 +317,26 @@ bool extension_is_supported(const char *riscv_isa, const char *ext)
     return false;
 }
 
-CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id)
+int dtb_get_cpu_offset(void *dtb, size_t cpu_id, bool print_errors)
 {
-    CPU_Features featues = 0;
-
     const size_t PATH_LEN = 16;
     char path_name[PATH_LEN];
     snprintf(path_name, PATH_LEN, "/cpus/cpu@%d", cpu_id);
 
     int offset = fdt_path_offset(dtb, path_name);
-    if (offset < 0)
+    if (offset < 0 && print_errors)
     {
         printk("dtb error: %s\n", (char *)fdt_strerror(offset));
-        return 0;
     }
+    return offset;
+}
+
+CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id)
+{
+    CPU_Features featues = 0;
+
+    int offset = dtb_get_cpu_offset(dtb, cpu_id, true);
+    if (offset < 0) return 0;
 
     // parse MMU support
     int mmu_type_len;

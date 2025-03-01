@@ -213,9 +213,9 @@ void dev_list_init_all_devices_of_init_order(struct Devices_List *dev_list,
 void dev_list_init_all_devices(struct Devices_List *dev_list)
 {
     // EARLY_CONSOLE is already done here
+    dev_list_init_all_devices_of_init_order(dev_list, INTERRUPT_CONTROLLER);
     dev_list_init_all_devices_of_init_order(dev_list, CLOCK_DRIVER);
     dev_list_init_all_devices_of_init_order(dev_list, REGULAR_DEVICE);
-    dev_list_init_all_devices_of_init_order(dev_list, INTERRUPT_CONTROLLER);
 }
 
 ssize_t dev_list_add_with_parameters(
@@ -288,6 +288,9 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
         params.reg_shift = dtb_getprop32_with_fallback(
             dtb, device_offset, "reg-shift", params.reg_shift);
     }
+
+    // assumes a single interrupt, when parsing a list also parse
+    // #interrupt-cells
     params.interrupt = dtb_getprop32_with_fallback(
         dtb, device_offset, "interrupts", params.interrupt);
 

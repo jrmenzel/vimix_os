@@ -14,8 +14,12 @@ dev_t plic_init(struct Device_Init_Parameters *init_parameters,
 
 /// @brief Enables an interrupt if priority > 0.
 /// @param irq The IRQ to enable.
-/// @param priority 0 disables the interrupt.
+/// @param priority 0 disables the interrupt. Lower values have higher priority.
 void plic_set_interrupt_priority(uint32_t irq, uint32_t priority);
+
+/// @brief The index of the context to set s mode interrupt enable bits etc.
+/// @return -1 if the hart has no s mode context (unusable for VIMUX)
+ssize_t plic_get_hart_s_context(size_t hart_id);
 
 /// @brief Called once per CPU core. Assumes that all devices that require
 /// interrupts have already been created (otherwise no interrupts would get

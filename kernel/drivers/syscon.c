@@ -38,22 +38,19 @@ bool parse_dtb_node(void *dtb, const char *node_name,
 
     // it's compatible, from now on complain if the dtb has unexpected data
 
-    int error;
-    const uint32_t *value_dtb = fdt_getprop(dtb, offset, "value", &error);
+    const uint32_t *value_dtb = fdt_getprop(dtb, offset, "value", NULL);
     if (value_dtb == NULL)
     {
-        printk("dtb error parsing %s: %s\n", node_name,
-               (char *)fdt_strerror(error));
+        printk("dtb error parsing %s\n", node_name);
         return false;
     }
     uint32_t value = fdt32_to_cpu(value_dtb[0]);
     *value_out = value;
 
-    const uint32_t *offset_dtb = fdt_getprop(dtb, offset, "offset", &error);
+    const uint32_t *offset_dtb = fdt_getprop(dtb, offset, "offset", NULL);
     if (offset_dtb == NULL)
     {
-        printk("dtb error parsing %s: %s\n", node_name,
-               (char *)fdt_strerror(error));
+        printk("dtb error parsing %s\n", node_name);
         return false;
     }
     uint32_t register_offset = fdt32_to_cpu(offset_dtb[0]);

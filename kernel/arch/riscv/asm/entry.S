@@ -29,7 +29,18 @@ _entry:
 #ifndef CONFIG_RISCV_SBI
     csrr a0, mhartid     # only works in Machine Mode
 #endif // CONFIG_RISCV_SBI
-    // keep each CPU's hartid in its tp register, for smp_processor_id().
+#ifdef __PLATFORM_VISIONFIVE2
+    # cpu id and device tree is not set as expected.
+    # Fix for boot hart only (g_global_init_done == 1)
+    la t0, g_global_init_done
+    ld t1, 0(t0)
+    li t2, 1
+    bne t1, t2, 1f
+        li a0, 1  # starfive,boot-hart-id in device tree
+        li a1, 0xfffc6080 # device tree
+1:
+#endif
+    # keep each CPU's hartid in its tp register, for smp_processor_id().
     mv tp, a0
 
     # CPU ID >= MAX_CPU -> infinite loop for you

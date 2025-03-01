@@ -50,13 +50,13 @@ struct Devices_List *get_devices_list();
 
 enum Init_Order
 {
-    EARLY_CONSOLE = 0,   ///< The boot console for kernel printk() is first, no
-                         ///< memory management st this point.
-    CLOCK_DRIVER = 1,    ///< Clocks init before regular devices
-    REGULAR_DEVICE = 2,  ///< Most devices
+    EARLY_CONSOLE = 0,  ///< The boot console for kernel printk() is first, no
+                        ///< memory management at this point.
     INTERRUPT_CONTROLLER =
-        3  ///< The interrupt controller is last, it will enable interrupts for
-           ///< all initialized devices.
+        1,  ///< The interrupt controller is first (after the
+            ///< boot console) to be set up when devices register interrupts.
+    CLOCK_DRIVER = 2,    ///< Clocks init before regular devices
+    REGULAR_DEVICE = 3,  ///< Most devices
 };
 
 struct Device_Driver

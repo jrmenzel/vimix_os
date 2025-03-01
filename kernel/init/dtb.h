@@ -48,6 +48,8 @@ uint32_t dtb_get_address_cells(void *dtb);
 
 bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size);
 
+int dtb_get_cpu_offset(void *dtb, size_t cpu_id, bool print_errors);
+
 typedef uint32_t CPU_Features;
 #define RV_SV32_SUPPORTED 0x01
 #define RV_SV39_SUPPORTED 0x02
