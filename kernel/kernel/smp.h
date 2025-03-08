@@ -9,4 +9,4 @@
 /// to prevent race with process being moved
 /// to a different CPU.
 /// Implemented per CPU architecture.
-#define smp_processor_id ___ARCH_smp_processor_id
+#define smp_processor_id __arch_smp_processor_id

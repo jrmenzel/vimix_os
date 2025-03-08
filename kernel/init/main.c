@@ -43,10 +43,12 @@ void print_kernel_info()
     printk("%zdKB of bss / uninitialized data\n", (size_t)(size_of_bss) / 1024);
 }
 
+#ifdef __ARCH_riscv
 #ifdef CONFIG_RISCV_SBI
 #define FEATURE_STRING "(RISCV SBI)"
 #else
 #define FEATURE_STRING "(RISCV bare metal)"
+#endif
 #endif
 
 void print_memory_map(struct Minimal_Memory_Map *memory_map)
@@ -83,7 +85,7 @@ void print_timer_source(void *dtb)
 #else
 #if defined(__RISCV_EXT_SSTC)
     CPU_Features features =
-        dtb_get_cpu_features(dtb, ___ARCH_smp_processor_id());
+        dtb_get_cpu_features(dtb, __arch_smp_processor_id());
     bool use_sstc_timer = features & RV_EXT_SSTC;
 #else
     bool use_sstc_timer = false;
@@ -129,12 +131,15 @@ void init_by_first_thread(void *dtb)
 
     // Collect all found devices in this list for later init:
     struct Devices_List *dev_list = get_devices_list();
+    dtb_add_devices_to_dev_list(dtb, get_generell_drivers(), dev_list);
 
     // init a way to print, starts uart (unless the SBI console is used):
-    ssize_t console_index = dtb_add_boot_console_to_dev_list(dtb, dev_list);
-    if (console_index >= 0)
+    ssize_t con_idx = dtb_find_boot_console_in_dev_list(dtb, dev_list);
+    if (con_idx >= 0)
     {
-        init_device(&(dev_list->dev[console_index]));
+        dev_t con_dev = console_init(&(dev_list->dev[con_idx].init_parameters),
+                                     dev_list->dev[con_idx].driver->dtb_name);
+        if (con_dev == INVALID_DEVICE) panic("no console");
     }
     else
     {
@@ -147,22 +152,21 @@ void init_by_first_thread(void *dtb)
     printk("VIMIX OS " __ARCH_bits_string " bit " FEATURE_STRING
            " kernel version " str_from_define(GIT_HASH) " is booting\n");
     print_kernel_info();
-    if (console_index < 0)
+    if (con_idx < 0)
     {
         printk("Console: SBI\n");
     }
     else
     {
-        printk("Console: %s\n", dev_list->dev[console_index].driver->dtb_name);
+        printk("Console: %s\n", dev_list->dev[con_idx].driver->dtb_name);
     }
     print_timer_source(dtb);
 
     struct Minimal_Memory_Map memory_map;
     dtb_get_memory(dtb, &memory_map);
 
-    // collect all found devices:
+    // add ramdisk if present:
     add_ramdisks_to_dev_list(dev_list, &memory_map);
-    dtb_add_devices_to_dev_list(dtb, get_generell_drivers(), dev_list);
     dev_list_sort(dev_list,
                   "virtio,mmio");  // for predictable dev numbers on qemu
     // debug_dev_list_print(dev_list);

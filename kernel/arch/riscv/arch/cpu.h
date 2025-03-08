@@ -8,7 +8,7 @@
 /// this core's hartid (core number), the index into g_cpus[].
 /// This is required as the Hart ID can only be read in Machine Mode, but
 /// the OS needs to know the ID in Supervisor Mode.
-static inline xlen_t ___ARCH_smp_processor_id()
+static inline xlen_t __arch_smp_processor_id()
 {
     xlen_t x;
     asm volatile("mv %0, tp" : "=r"(x));

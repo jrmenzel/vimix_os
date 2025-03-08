@@ -3,6 +3,10 @@
 #if defined(__ARCH_riscv)
 #include <arch/riscv/clint.h>
 #include <arch/riscv/plic.h>
+#if defined(__PLATFORM_VISIONFIVE2)
+#include <drivers/jh7110_clk.h>
+#include <drivers/jh7110_temp.h>
+#endif  // __PLATFORM_VISIONFIVE2
 #endif  // __ARCH_riscv
 
 #include <drivers/console.h>
@@ -14,17 +18,13 @@
 #include <drivers/ramdisk.h>
 #include <drivers/rtc.h>
 #include <drivers/syscon.h>
+#include <drivers/uart16550.h>
 #include <drivers/virtio_disk.h>
 #include <init/dtb.h>
 #include <kernel/major.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
 #include <libfdt.h>
-
-#if defined(__PLATFORM_VISIONFIVE2)
-#include <drivers/jh7110_clk.h>
-#include <drivers/jh7110_temp.h>
-#endif
 
 #if defined(__CONFIG_RAMDISK_EMBEDDED)
 #include <ramdisk_fs.h>
@@ -36,45 +36,40 @@
 //   found should be false for everything intended to be read from the dtb
 //   found can be true if a device should always be initialized with the
 //   provided values / init function.
-// Devices are initialized in array order, all devices with interrupts have to
-// come before the CLINT.
 struct Found_Device g_found_devices[MAX_DEV_LIST_LENGTH] = {0};
 
 struct Devices_List g_devices_list = {g_found_devices, 0};
 bool g_devices_list_is_initialized = false;
 
 // clang-format off
-struct Device_Driver g_console_drivers[] = {{"ns16550a", console_init, EARLY_CONSOLE},
-                                            {"snps,dw-apb-uart", console_init, EARLY_CONSOLE},
-                                            {"ucb,htif0", console_init, EARLY_CONSOLE},
-                                            {NULL, NULL, 0}};
+struct Device_Driver g_virtual_drivers[] = {{"/dev/null", dev_null_init},
+                                            {"/dev/zero", dev_zero_init},
+                                            {"/dev/random", dev_random_init},
+                                            {NULL, NULL }};
 
-// don't need any specific hardware
-struct Device_Driver g_virtual_drivers[] = {{"/dev/null", dev_null_init, REGULAR_DEVICE},
-                                            {"/dev/zero", dev_zero_init, REGULAR_DEVICE},
-                                            {"/dev/random", dev_random_init, REGULAR_DEVICE},
-                                            {NULL, NULL, 0}};
+struct Device_Driver g_generell_drivers[] = {{"ns16550a", uart_init},
+                                             {"snps,dw-apb-uart", uart_init},
+                                             {"ucb,htif0", htif_init},
+                                             {"virtio,mmio", virtio_disk_init},
+                                             {"google,goldfish-rtc", rtc_init},
+                                             {"syscon", syscon_init},
 
-struct Device_Driver g_generell_drivers[] = {{"virtio,mmio", virtio_disk_init, REGULAR_DEVICE},
-                                             {"google,goldfish-rtc", rtc_init, CLOCK_DRIVER}, // init before /dev/random if present
-                                             {"syscon", syscon_init, REGULAR_DEVICE},
-                                             {"ucb,htif0", htif_init, REGULAR_DEVICE}, // can be console and shutdown device
 #if defined(__ARCH_riscv)
-                                             {"riscv,plic0", plic_init, INTERRUPT_CONTROLLER},
+                                             {"riscv,plic0", plic_init},
 #if defined(CONFIG_RISCV_BOOT_M_MODE)
-                                             {"riscv,clint0", clint_init, INTERRUPT_CONTROLLER},
+                                             {"riscv,clint0", clint_init},
 #endif
 #if defined(__PLATFORM_VISIONFIVE2)
-                                             {"starfive,jh7110-clkgen", jh7110_clk_init, CLOCK_DRIVER},
-//                                           {"starfive,jh7110-temp", jh7110_temp_init, REGULAR_DEVICE}, // see below: not in device tree
+                                             {"starfive,jh7110-clkgen", jh7110_clk_init},
+//                                           {"starfive,jh7110-temp", jh7110_temp_init}, // see below: not in device tree
 #endif // __PLATFORM_VISIONFIVE2
 #endif // __ARCH_riscv
-                                             {NULL, NULL, 0}};
+                                             {NULL, NULL}};
 
 // not found in the device tree, so added explicitly
-struct Device_Driver g_ramdisk_driver = {"ramdisk", ramdisk_init, REGULAR_DEVICE};
+struct Device_Driver g_ramdisk_driver = {"ramdisk", ramdisk_init};
 #if defined(__PLATFORM_VISIONFIVE2)
-struct Device_Driver jh7110_temp = {"starfive,jh7110-temp", jh7110_temp_init, REGULAR_DEVICE};
+struct Device_Driver jh7110_temp = {"starfive,jh7110-temp", jh7110_temp_init};
 #endif
 // clang-format on
 
@@ -112,30 +107,75 @@ struct Devices_List *get_devices_list()
     return &g_devices_list;
 }
 
-struct Device_Driver *get_console_drivers() { return g_console_drivers; }
 struct Device_Driver *get_generell_drivers() { return g_generell_drivers; }
 
-void init_device(struct Found_Device *dev)
+dev_t init_device_by_phandle(struct Devices_List *dev_list, int phandle)
 {
-    // found, double check pointer, not already initialized
-    if (dev->driver->init_func != NULL && dev->dev_num == 0)
+    for (size_t i = 0; i < dev_list->dev_array_length; ++i)
     {
-        // NOTE: the first device to init is the console for boot
-        // messages. No printk before the init function in case this is the
-        // first console
+        if (dev_list->dev[i].init_parameters.phandle == phandle)
+        {
+            return init_device(dev_list, i);
+        }
+    }
+    return INVALID_DEVICE;
+}
+
+dev_t init_device(struct Devices_List *dev_list, size_t index)
+{
+    struct Found_Device *dev = &(dev_list->dev[index]);
+
+    // already initialized:
+    if (dev->dev_num != INVALID_DEVICE) return dev->dev_num;
+
+    // found, double check pointer
+    if (dev->driver->init_func != NULL)
+    {
+        // init required other drivers first:
+        int32_t parent_int_ctl = dev->init_parameters.interrupt_parent_phandle;
+        if (parent_int_ctl != 0)
+        {
+            // make sure the interrupt controller is initialized:
+            init_device_by_phandle(dev_list, parent_int_ctl);
+        }
+        // init clocks:
+        for (size_t i = 0; i < DEVICE_MAX_CLOCKS; ++i)
+        {
+            uint32_t clock_phandle = dev->init_parameters.clock_phandles[i];
+            if (clock_phandle != 0)
+            {
+                init_device_by_phandle(dev_list, clock_phandle);
+            }
+        }
+
+        printk("init device %s... ", dev->driver->dtb_name);
         dev_t dev_num = dev->driver->init_func(&(dev->init_parameters),
                                                dev->driver->dtb_name);
         dev->dev_num = dev_num;
-        printk("init device %s... ", dev->driver->dtb_name);
         if (dev_num == 0)
         {
             printk("FAILED\n");
+            return INVALID_DEVICE;
         }
         else
         {
             printk("OK (%d,%d)\n", MAJOR(dev_num), MINOR(dev_num));
+            return dev_num;
         }
     }
+    return INVALID_DEVICE;
+}
+
+dev_t init_device_by_name(struct Devices_List *dev_list, const char *dtb_name)
+{
+    for (size_t i = 0; i < dev_list->dev_array_length; ++i)
+    {
+        if (strcmp(dev_list->dev[i].driver->dtb_name, dtb_name) == 0)
+        {
+            return init_device(dev_list, i);
+        }
+    }
+    return INVALID_DEVICE;
 }
 
 void clear_init_parameters(struct Device_Init_Parameters *param)
@@ -147,6 +187,9 @@ void clear_init_parameters(struct Device_Init_Parameters *param)
     param->reg_io_width = 1;
     param->reg_shift = 0;
     param->dtb = NULL;
+    param->phandle = 0;
+    param->interrupt_parent_phandle = 0;
+    memset(param->clock_phandles, 0, sizeof(uint32_t) * DEVICE_MAX_CLOCKS);
 }
 
 ssize_t dev_list_get_first_device_index(struct Devices_List *dev_list,
@@ -198,24 +241,12 @@ struct Found_Device *dev_list_get_free_device(struct Devices_List *dev_list,
     return dev;
 }
 
-void dev_list_init_all_devices_of_init_order(struct Devices_List *dev_list,
-                                             enum Init_Order init_order)
+void dev_list_init_all_devices(struct Devices_List *dev_list)
 {
     for (size_t i = 0; i < dev_list->dev_array_length; ++i)
     {
-        if (dev_list->dev[i].driver->init_order == init_order)
-        {
-            init_device(&(dev_list->dev[i]));
-        }
+        init_device(dev_list, i);
     }
-}
-
-void dev_list_init_all_devices(struct Devices_List *dev_list)
-{
-    // EARLY_CONSOLE is already done here
-    dev_list_init_all_devices_of_init_order(dev_list, INTERRUPT_CONTROLLER);
-    dev_list_init_all_devices_of_init_order(dev_list, CLOCK_DRIVER);
-    dev_list_init_all_devices_of_init_order(dev_list, REGULAR_DEVICE);
 }
 
 ssize_t dev_list_add_with_parameters(
@@ -228,7 +259,7 @@ ssize_t dev_list_add_with_parameters(
 
     dev->init_parameters = init_parameters;
     dev->driver = driver;
-    dev->dev_num = 0;  // to be set in init
+    dev->dev_num = INVALID_DEVICE;  // to be set in init
 
     return idx;
 }
@@ -243,50 +274,31 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
     params.dtb = dtb;
     params.dev_offset = device_offset;
 
-    int len;
-    const dtb_aligned_uint64_t *regs =
-        fdt_getprop(dtb, device_offset, "reg", &len);
-    int len_names;
-    const char *reg_names =
-        fdt_getprop(dtb, device_offset, "reg-names", &len_names);
-    if (regs != NULL)
+    // query memory mapped registers
+    dtb_get_regs(dtb, device_offset, &params);
+
+    // get own phandle, set to 0 if there is none defined:
+    params.phandle = fdt_get_phandle(dtb, device_offset);
+
+    params.interrupt_parent_phandle =
+        dtb_getprop32_with_fallback(dtb, device_offset, "interrupt-parent", 0);
+
+    // 0 = no parameter, one int per clock; 1 = + parameter = 2 ints
+    size_t clock_cells =
+        dtb_getprop32_with_fallback(dtb, device_offset, "#clock-cells", 1);
+    clock_cells++;  // actual int count
+    int clocks_len;
+    const uint32_t *clocks =
+        fdt_getprop(dtb, device_offset, "clocks", &clocks_len);
+    if (clocks != NULL)
     {
-        // len is in bytes, reg_size is the count of ints per register map:
-        size_t reg_size = (2 + 2) * sizeof(uint32_t);
-        size_t regs_to_read = min(len / reg_size, DEVICE_MAX_MEM_MAPS);
-        size_t reg_idx_start = 0;
-        size_t reg_idx_size = 1;
-        for (size_t i = 0; i < regs_to_read; ++i)
+        for (size_t i = 0;
+             (i < clocks_len / clock_cells) && (i < DEVICE_MAX_CLOCKS);
+             i += clock_cells)
         {
-            params.mem[i].start = fdt64_to_cpu(regs[reg_idx_start]);
-            params.mem[i].size = fdt64_to_cpu(regs[reg_idx_size]);
-            reg_idx_start += reg_size / sizeof(uint64_t);
-            reg_idx_size += reg_size / sizeof(uint64_t);
-
-            // store name if available:
-            if (reg_names && len_names > 0)
-            {
-                params.mem[i].name = reg_names;
-
-                // reg_names is a list of len_names 0-terminated strings,
-                // find the next one:
-                do {
-                    reg_names++;
-                    len_names--;
-                } while (*reg_names != 0);
-                reg_names++;
-                len_names--;
-            }
+            uint32_t phandle_clock = fdt32_to_cpu(clocks[i]);
+            params.clock_phandles[i] = phandle_clock;
         }
-
-        params.mmu_map_memory = true;
-
-        // might also have reg-shift
-        params.reg_io_width = dtb_getprop32_with_fallback(
-            dtb, device_offset, "reg-io-width", params.reg_io_width);
-
-        params.reg_shift = dtb_getprop32_with_fallback(
-            dtb, device_offset, "reg-shift", params.reg_shift);
     }
 
     // assumes a single interrupt, when parsing a list also parse
@@ -360,9 +372,25 @@ void debug_dev_list_print(struct Devices_List *dev_list)
                    dev->init_parameters.reg_io_width,
                    dev->init_parameters.reg_shift);
         }
-        if (dev->init_parameters.interrupt != -1)
+        if (dev->init_parameters.interrupt != INVALID_IRQ_NUMBER)
         {
-            printk("interrupt: %d", dev->init_parameters.interrupt);
+            printk("interrupt: %d ", dev->init_parameters.interrupt);
+        }
+        if (dev->init_parameters.phandle)
+        {
+            printk("phandle: %d ", dev->init_parameters.phandle);
+        }
+        if (dev->init_parameters.interrupt_parent_phandle)
+        {
+            printk("int-parent phandle: %d ",
+                   dev->init_parameters.interrupt_parent_phandle);
+        }
+
+        for (size_t c = 0; dev->init_parameters.clock_phandles[c] != 0 &&
+                           c < DEVICE_MAX_CLOCKS;
+             ++c)
+        {
+            printk("clock: %d ", dev->init_parameters.clock_phandles[c]);
         }
         printk("\n");
     }

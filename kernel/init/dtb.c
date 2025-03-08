@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/platform.h>
 #include <drivers/device.h>
-#include <drivers/devices_list.h>
 #include <init/dtb.h>
 #include <init/main.h>
+#include <lib/minmax.h>
 #include <libfdt.h>
 
 bool is_compatible_device(const char *dtb_dev, const char *dev)
@@ -92,10 +93,6 @@ void dtb_get_initrd(void *dtb, struct Minimal_Memory_Map *memory_map)
     memory_map->initrd_end = initrd_end;
 }
 
-#ifndef MEMORY_SIZE
-#error "define a fallback memory size"
-#endif
-
 void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map)
 {
     // fallback values
@@ -125,50 +122,188 @@ void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map)
     size_t size;
     dtb_get_reg(dtb, offset, &base, &size);
 
+    if (size == 0)
+    {
+        panic("No valid memory size read from device tree");
+    }
+
     memory_map->ram_start = base;
     memory_map->ram_end = base + size;
 
     dtb_get_initrd(dtb, memory_map);
 }
 
+uint32_t *dtb_parse_cell(int cells_per_value, uint32_t *cells,
+                         size_t *value_out)
+{
+    if (cells_per_value == 0)
+    {
+        *value_out = 0;
+        return cells;
+    }
+
+    if (cells_per_value == 1)
+    {
+        *value_out = (size_t)fdt32_to_cpu(*cells);
+        cells += 1;
+    }
+
+    if (cells_per_value == 2)
+    {
+        const dtb_aligned_uint64_t *cells_64 = (dtb_aligned_uint64_t *)(cells);
+        uint64_t value = fdt64_to_cpu(*cells_64);
+        *value_out = (size_t)value;
+        cells += 2;
+    }
+
+    return cells;
+}
+
+struct Address_Range
+{
+    size_t child_addr;
+    size_t parent_addr;
+    size_t child_size;
+};
+
+#define MAX_ADDRESS_RAGES (8)
+
+size_t get_address_ranges(void *dtb, int parent_offset, int addr_cells,
+                          int size_cells, struct Address_Range *range,
+                          size_t range_array_size)
+
+{
+    memset(range, 0, sizeof(struct Address_Range) * range_array_size);
+    size_t range_count = 0;
+
+    int ranges_len;
+    const uint32_t *ranges =
+        fdt_getprop(dtb, parent_offset, "ranges", &ranges_len);
+    if (ranges != NULL)
+    {
+        int p_parent_offset = fdt_parent_offset(dtb, parent_offset);
+
+        int child_addr_cells = addr_cells;
+        int parent_addr_cells = fdt_address_cells(dtb, p_parent_offset);
+        int child_size_cells = size_cells;
+
+        uint32_t *range_index = (uint32_t *)ranges;
+        uint32_t *range_end = range_index + (ranges_len / sizeof(uint32_t));
+        while ((range_index != range_end) && (range_count < range_array_size))
+        {
+            range_index = dtb_parse_cell(child_addr_cells, range_index,
+                                         &(range[range_count].child_addr));
+            range_index = dtb_parse_cell(parent_addr_cells, range_index,
+                                         &(range[range_count].parent_addr));
+            range_index = dtb_parse_cell(child_size_cells, range_index,
+                                         &(range[range_count].child_size));
+            range_count++;
+        }
+    }
+
+    return range_count;
+}
+
+size_t map_mmio_address(size_t addr, struct Address_Range *range, size_t ranges)
+{
+    for (size_t i = 0; i < ranges; ++i)
+    {
+        if (addr > range[i].child_addr &&
+            addr < (range[i].child_addr + range[i].child_size))
+        {
+            // addr falls within this address range
+            // the mapping maps child_addr to parent_addr
+            size_t offset = range[i].parent_addr - range[i].child_addr;
+            return addr + offset;
+        }
+    }
+    panic("map_mmio_address: can't map, address out of range");
+    return addr;
+}
+
+bool dtb_get_regs(void *dtb, int offset, struct Device_Init_Parameters *params)
+{
+    int len;
+    const char *regs_raw = fdt_getprop(dtb, offset, "reg", &len);
+    if (regs_raw == NULL) return false;
+
+    int len_names;
+    const char *reg_names = fdt_getprop(dtb, offset, "reg-names", &len_names);
+
+    int parent_offset = fdt_parent_offset(dtb, offset);
+    int addr_cells = fdt_address_cells(dtb, parent_offset);
+    int size_cells = fdt_size_cells(dtb, parent_offset);
+
+    struct Address_Range range[MAX_ADDRESS_RAGES];
+    size_t range_count = get_address_ranges(
+        dtb, parent_offset, addr_cells, size_cells, range, MAX_ADDRESS_RAGES);
+
+    uint32_t *reg_index = (uint32_t *)regs_raw;
+    uint32_t *reg_end = reg_index + (len / sizeof(uint32_t));
+
+    size_t map_idx = 0;
+    while ((reg_index != reg_end) && (map_idx < DEVICE_MAX_MEM_MAPS))
+    {
+        // get address and size:
+        reg_index = dtb_parse_cell(addr_cells, reg_index,
+                                   &(params->mem[map_idx].start));
+        reg_index =
+            dtb_parse_cell(size_cells, reg_index, &(params->mem[map_idx].size));
+
+        if (range_count > 0)
+        {
+            // address mapping if the device tree stores bus local addresses
+            // convert those to CPU mapped addresses
+            params->mem[map_idx].start = map_mmio_address(
+                params->mem[map_idx].start, range, range_count);
+        }
+
+        // get optional name:
+        if (reg_names && len_names > 0)
+        {
+            params->mem[map_idx].name = reg_names;
+
+            // reg_names is a list of len_names 0-terminated strings,
+            // find the next one:
+            do {
+                reg_names++;
+                len_names--;
+            } while (*reg_names != 0);
+            reg_names++;
+            len_names--;
+        }
+
+        map_idx++;
+    }
+
+    params->mmu_map_memory = true;
+
+    // might also have reg-shift
+    params->reg_io_width = dtb_getprop32_with_fallback(
+        dtb, offset, "reg-io-width", params->reg_io_width);
+
+    params->reg_shift = dtb_getprop32_with_fallback(dtb, offset, "reg-shift",
+                                                    params->reg_shift);
+
+    return true;
+}
+
 bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size)
 {
-    uint32_t size_cells = dtb_get_size_cells(dtb);
-    uint32_t address_cells = dtb_get_address_cells(dtb);
+    int parent_offset = fdt_parent_offset(dtb, offset);
+    uint32_t address_cells = fdt_address_cells(dtb, parent_offset);
+    uint32_t size_cells = fdt_size_cells(dtb, parent_offset);
 
     int len;
-    const uint32_t *value = fdt_getprop(dtb, offset, "reg", &len);
-    if (value == NULL)
+    const uint32_t *regs = fdt_getprop(dtb, offset, "reg", &len);
+    if (regs == NULL)
     {
         printk("dtb error\n");
         return false;
     }
-    if (address_cells == 1)
-    {
-        // 32 bit address
-        *base = fdt32_to_cpu(value[0]);
-        value++;
-    }
-    else
-    {
-        // 64 bit address
-        const dtb_aligned_uint64_t *address64 =
-            (const dtb_aligned_uint64_t *)value;
-        *base = fdt64_to_cpu(address64[0]);
-        value += 2;
-    }
-    if (size_cells == 1)
-    {
-        // 32 bit size
-        *size = fdt32_to_cpu(value[0]);
-    }
-    else
-    {
-        // 64 bit size
-        const dtb_aligned_uint64_t *size64 =
-            (const dtb_aligned_uint64_t *)value;
-        *size = fdt64_to_cpu(size64[0]);
-    }
+    uint32_t *reg_index = (uint32_t *)regs;
+    reg_index = dtb_parse_cell(address_cells, reg_index, base);
+    reg_index = dtb_parse_cell(size_cells, reg_index, size);
 
     return true;
 }
@@ -200,8 +335,8 @@ uint64_t dtb_get_timebase(void *dtb)
     return timebase;
 }
 
-ssize_t dtb_add_boot_console_to_dev_list(void *dtb,
-                                         struct Devices_List *dev_list)
+ssize_t dtb_find_boot_console_in_dev_list(void *dtb,
+                                          struct Devices_List *dev_list)
 {
     // find /chosen/stdout-path
     int offset = fdt_path_offset(dtb, "/chosen");
@@ -234,14 +369,22 @@ ssize_t dtb_add_boot_console_to_dev_list(void *dtb,
     const char *value = fdt_getprop(dtb, console_offset, "compatible", NULL);
     if (value == NULL) return -1;
 
-    return dtb_add_driver_if_compatible(dtb, value, console_offset,
-                                        get_console_drivers(), dev_list);
+    // find the device:
+    for (size_t i = 0; i < dev_list->dev_array_length; ++i)
+    {
+        if (strcmp(value, dev_list->dev[i].driver->dtb_name) == 0)
+        {
+            return i;
+        }
+    }
+
+    return -1;
 }
 
 int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
                                     const char *name, int32_t fallback)
 {
-    const fdt32_t *intp = (fdt32_t *)fdt_getprop(dtb, node_offset, name, NULL);
+    const int32_t *intp = (int32_t *)fdt_getprop(dtb, node_offset, name, NULL);
     if (intp != NULL)
     {
         int32_t value = fdt32_to_cpu(*intp);
@@ -249,30 +392,6 @@ int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
     }
 
     return fallback;
-}
-
-uint32_t dtb_get_size_cells(void *dtb)
-{
-    int root_offset = fdt_path_offset(dtb, "/");
-    if (root_offset < 0) return 1;  // default
-
-    const uint32_t *addr_prop =
-        fdt_getprop(dtb, root_offset, "#size-cells", NULL);
-    if (addr_prop == NULL) return 1;  // default
-
-    return fdt32_to_cpu(*addr_prop);
-}
-
-uint32_t dtb_get_address_cells(void *dtb)
-{
-    int root_offset = fdt_path_offset(dtb, "/");
-    if (root_offset < 0) return 1;  // default
-
-    const uint32_t *addr_prop =
-        fdt_getprop(dtb, root_offset, "#address-cells", NULL);
-    if (addr_prop == NULL) return 1;  // default
-
-    return fdt32_to_cpu(*addr_prop);
 }
 
 /// @brief Checks if an extension is part of the riscv_isa string
@@ -308,7 +427,8 @@ bool extension_is_supported(const char *riscv_isa, const char *ext)
             // inside of another ext ("ext" in "rv64imac_newext_foo")
             if (*pos != '_') continue;
 
-            // also check end of _ext_ substring: can be '_' or end of string!
+            // also check end of _ext_ substring: can be '_' or end of
+            // string!
             if (pos[ext_len + 1] != '_' && pos[ext_len + 2] != 0) continue;
 
             return true;

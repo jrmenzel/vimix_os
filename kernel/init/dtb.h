@@ -30,21 +30,15 @@ void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map);
 /// @return dtb based timebase frequency (or fallback on error) in Hz.
 uint64_t dtb_get_timebase(void *dtb);
 
-ssize_t dtb_add_boot_console_to_dev_list(void *dtb,
-                                         struct Devices_List *dev_list);
+ssize_t dtb_find_boot_console_in_dev_list(void *dtb,
+                                          struct Devices_List *dev_list);
 
 int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
                                     const char *name, int32_t fallback);
 
-/// @brief Returns #size-cells value: number of 32 bit values per size in a reg
-/// field.
-/// @param dtb Device tree
-uint32_t dtb_get_size_cells(void *dtb);
+struct Device_Init_Parameters;
 
-/// @brief Returns #address-cells value: number of 32 bit values per address in
-/// a reg field.
-/// @param dtb Device tree
-uint32_t dtb_get_address_cells(void *dtb);
+bool dtb_get_regs(void *dtb, int offset, struct Device_Init_Parameters *params);
 
 bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size);
 

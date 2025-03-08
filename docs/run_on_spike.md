@@ -2,13 +2,11 @@
 
 **Pre-requirement:** 
 1. Install Spike (https://github.com/riscv-software-src/riscv-isa-sim).
-	1. Note that Spike can be build with [SBI](riscv/SBI.md) support, see https://github.com/riscv-software-src/opensbi/blob/master/docs/platform/spike.md . This requires to build OpenSBI (e.g. `make CROSS_COMPILE=riscv64-linux-gnu- PLATFORM=generic`) from https://github.com/riscv-software-src/opensbi/tree/master . Configure [VIMIX](build_instructions.md) accordingly.
-	2. Set the correct Spike binary in the Makefile.
+	1. Note that Spike can be build with [SBI](riscv/SBI.md) support, see https://github.com/riscv-software-src/opensbi/blob/master/docs/platform/spike.md . This requires to build OpenSBI (e.g. `make CROSS_COMPILE=riscv64-linux-gnu- PLATFORM=generic`) from https://github.com/riscv-software-src/opensbi/tree/master . 
 2. Optional: Install OpenOCD (for debugging)
 3. Configure VIMIX:
-	1. Set `PLATFORM` in `MakefileArch.mk` to `spike`. This will set:
+	1. Set `PLATFORM` in `MakefileArch.mk` to `spike32` or `spike64`. This will set:
 		1. to use a [ramdisk](kernel/devices/ramdisk.md) (initrd or embedded)
-		2. 32-bit build (64-bit defaults to a SV57 MMU, VIMIX needs a SV39 MMU. Spike can be modified to support SV39: Look for SV57 in `riscv/dts.cc` and `riscv/processor.cc`)
 	2. Clean and rebuild after switching the `PLATFORM`!
 
 

@@ -40,7 +40,7 @@ $(BUILD_DIR)/filesystem.img: README.md userspace host
 
 ###
 # qemu
-GDB_PORT := 26002
+GDB_PORT := 26000
 
 QEMU_OPTS := $(QEMU_OPTS_ARCH) -kernel $(KERNEL_FILE) -m $(MEMORY_SIZE)M -smp $(CPUS) -nographic
 
@@ -49,7 +49,7 @@ QEMU_OPTS += -drive file=$(BUILD_DIR)/filesystem.img,if=none,format=raw,id=x0
 QEMU_OPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 # add a second file system if it is present
 ifneq ("$(wildcard home.img)","")
-    QEMU_OPTS += -drive file=home.img,if=none,format=raw,id=x1
+	QEMU_OPTS += -drive file=home.img,if=none,format=raw,id=x1
 	QEMU_OPTS += -device virtio-blk-device,drive=x1,bus=virtio-mmio-bus.1
 endif
 endif
@@ -135,7 +135,7 @@ spike: spike-requirements
 spike-log: spike-requirements
 	$(SPIKE) -l --log=log_${PLATFORM}.txt $(SPIKE_OPTIONS) 
 
-spike-gdb: spike-requirements
+spike-gdb: spike-requirements .gdbinit
 	$(SPIKE) --rbb-port=9824 --halted $(SPIKE_OPTIONS)
 
 # dump device tree

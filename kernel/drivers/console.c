@@ -362,6 +362,16 @@ void console_putc_noop(int32_t ch) {}
 
 dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
 {
+    // already initialized with another device
+    if (device_putc != NULL)
+    {
+        return INVALID_DEVICE;
+    }
+
+    struct Devices_List *dev_list = get_devices_list();
+    dev_t uart_dev = init_device_by_name(dev_list, name);
+    if (uart_dev == INVALID_DEVICE) return INVALID_DEVICE;
+
     spin_lock_init(&g_console.lock, "cons");
 
     // init device and register it in the system
@@ -386,7 +396,7 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
             device_putc_sync = htif_putc;
             g_console_poll_callback = htif_console_poll_input;
 
-            htif_init(init_param, name);
+            // htif_init(init_param, name);
         }
         else
         {
@@ -394,7 +404,7 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
             device_putc = uart_putc;
             device_putc_sync = uart_putc_sync;
 
-            uart_init(init_param, name);
+            // uart_init(init_param, name);
             dev_set_irq(&g_console.cdev.dev, init_param->interrupt,
                         uart_interrupt_handler);
         }

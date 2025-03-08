@@ -22,6 +22,7 @@
 #define DEV_RANDOM_MAJOR 12
 #define JH7110_CLK_MAJOR 13
 #define JH7110_TEMP_MAJOR 14
+#define UART_16550_MAJOR 15
 
 // special case: not a device itself but needs a device number for its inodes
 #define DEVFS_MAJOR 11

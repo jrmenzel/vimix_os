@@ -7,7 +7,7 @@
 
 /// @brief Inits the hardware, creates a uart_16550 object
 /// and adds it to the devices list.
-void uart_init(struct Device_Init_Parameters *init_param, const char *name);
+dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name);
 
 enum UART_BAUD_RATE
 {
@@ -70,10 +70,4 @@ struct uart_16550
     /// @brief Register addresses are shifted by this amount of bits to allow
     /// different register width
     int32_t reg_shift;
-
-    enum UART_Variant
-    {
-        NS16550,
-        DW_APT
-    } uart_variant;
 };

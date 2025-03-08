@@ -74,6 +74,13 @@ dev_t jh7110_temp_init(struct Device_Init_Parameters *init_parameters,
 
     g_jh7110_temp.mmio_base = init_parameters->mem[0].start;
 
+    // needs the clock device, but as jh7110-temp isn't in the device tree to
+    // generate an automatic dependency to jh7110-clkgen, we request to init it
+    // here:
+    struct Devices_List *dev_list = get_devices_list();
+    dev_t clk_gen_dev = init_device_by_name(dev_list, "starfive,jh7110-clkgen");
+    if (clk_gen_dev == INVALID_DEVICE) return INVALID_DEVICE;
+
     jh7110_clk_enable(SYSCLK_TEMP_APB);
     jh7110_clk_enable(SYSCLK_TEMP_CORE);
 

@@ -5,34 +5,15 @@
     "configurations": [
         {
             // debug the kernel
-            "name": "kernel qemu RISCV",
+            "name": "kernel RISC V",
             "type": "cppdbg",
             "request": "launch",
             "program": "build/kernel-vimix",
             "cwd": "${workspaceRoot}",
             "miDebuggerPath": "riscv64-elf-gdb",
-            "miDebuggerServerAddress": "127.0.0.1:26002",
+            "miDebuggerServerAddress": "127.0.0.1:26000",
             "MIMode": "gdb",
             "stopAtEntry": false,
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": false
-                }
-            ]
-        },
-        {
-            // call openocd -f tools/openocd/spike.cfg
-            "name": "kernel Spike external OpenOCD",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "build/kernel-vimix",
-            "cwd": "${workspaceRoot}",
-            "miDebuggerPath": "riscv64-elf-gdb",
-            "miDebuggerServerAddress": "127.0.0.1:3333",
-            "MIMode": "gdb",
-            "stopAtEntry": true,
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -49,7 +30,7 @@
             "program": "build/root/usr/bin/init",
             "cwd": "${workspaceRoot}",
             "miDebuggerPath": "riscv64-elf-gdb",
-            "miDebuggerServerAddress": "127.0.0.1:26002",
+            "miDebuggerServerAddress": "127.0.0.1:26000",
             "MIMode": "gdb",
             "stopAtEntry": false,
             "setupCommands": [
@@ -68,7 +49,7 @@
             "program": "build/root/usr/bin/sh",
             "cwd": "${workspaceRoot}",
             "miDebuggerPath": "riscv64-elf-gdb",
-            "miDebuggerServerAddress": "127.0.0.1:26002",
+            "miDebuggerServerAddress": "127.0.0.1:26000",
             "MIMode": "gdb",
             "stopAtEntry": false,
             "setupCommands": [
@@ -87,7 +68,7 @@
             "program": "build/root/usr/bin/usertests",
             "cwd": "${workspaceRoot}",
             "miDebuggerPath": "riscv64-elf-gdb",
-            "miDebuggerServerAddress": "127.0.0.1:26002",
+            "miDebuggerServerAddress": "127.0.0.1:26000",
             "MIMode": "gdb",
             "stopAtEntry": false,
             "setupCommands": [

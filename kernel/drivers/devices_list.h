@@ -6,6 +6,7 @@
 struct Device_Driver;
 
 #define DEVICE_MAX_MEM_MAPS (4)
+#define DEVICE_MAX_CLOCKS (4)
 struct Memory_Mapped_Registers
 {
     size_t start;
@@ -16,14 +17,15 @@ struct Memory_Mapped_Registers
 struct Device_Init_Parameters
 {
     struct Memory_Mapped_Registers mem[DEVICE_MAX_MEM_MAPS];
-    // size_t mem_start;
-    // size_t mem_size;
     bool mmu_map_memory;
     int32_t reg_io_width;
     int32_t reg_shift;
     int32_t interrupt;
-    void *dtb;       ///< device tree pointer
-    int dev_offset;  ///< in the dtb file
+    void *dtb;         ///< device tree pointer
+    int dev_offset;    ///< in the dtb file
+    uint32_t phandle;  ///< 0 if device has no phandle in the device tree
+    uint32_t interrupt_parent_phandle;  ///< or 0 if not present
+    uint32_t clock_phandles[DEVICE_MAX_CLOCKS];
 };
 
 typedef dev_t (*init_func_p)(struct Device_Init_Parameters *, const char *name);
@@ -48,26 +50,11 @@ struct Devices_List
 
 struct Devices_List *get_devices_list();
 
-enum Init_Order
-{
-    EARLY_CONSOLE = 0,  ///< The boot console for kernel printk() is first, no
-                        ///< memory management at this point.
-    INTERRUPT_CONTROLLER =
-        1,  ///< The interrupt controller is first (after the
-            ///< boot console) to be set up when devices register interrupts.
-    CLOCK_DRIVER = 2,    ///< Clocks init before regular devices
-    REGULAR_DEVICE = 3,  ///< Most devices
-};
-
 struct Device_Driver
 {
     const char *dtb_name;
     init_func_p init_func;
-    enum Init_Order init_order;
 };
-
-/// @brief Return drivers which can be used for the console
-struct Device_Driver *get_console_drivers();
 
 /// @brief A list of all drivers expected and supported in the device tree
 struct Device_Driver *get_generell_drivers();
@@ -75,8 +62,17 @@ struct Device_Driver *get_generell_drivers();
 extern struct Device_Driver g_ramdisk_driver;
 
 /// @brief Init one individual device.
-/// @param dev Uninitialized device.
-void init_device(struct Found_Device *dev);
+/// @param dev_list devices list (to also find dependencies)
+/// @param index index into the device list of device to initialize
+/// @return valid device number if the device was initialized
+dev_t init_device(struct Devices_List *dev_list, size_t index);
+
+/// @brief Init one individual device with a certain name. Used by devices to
+/// init dependencies that are not found in the device tree.
+/// @param dev_list devices list (to also find dependencies)
+/// @param dtb_name name of the device to initialize
+/// @return valid device number if the device was initialized
+dev_t init_device_by_name(struct Devices_List *dev_list, const char *dtb_name);
 
 /// @brief Returns the index of the initialized device with the lowest memory
 /// init_parameters with a given name. Good to find the first qemu disk.

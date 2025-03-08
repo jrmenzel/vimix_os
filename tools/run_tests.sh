@@ -116,6 +116,8 @@ function test_boot {
 
     test_config spike32 debug   spike echo "ALL TESTS PASSED" 1
     test_config spike32 release spike echo "ALL TESTS PASSED" 2
+    test_config spike64 debug   spike echo "ALL TESTS PASSED" 3
+    test_config spike64 release spike echo "ALL TESTS PASSED" 4
 }
 
 function test_grind {

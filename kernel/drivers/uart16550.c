@@ -4,11 +4,13 @@
 // low-level driver routines for 16550a UART.
 //
 
+#include <arch/asm.h>
 #include <drivers/console.h>
 #include <drivers/mmio_access.h>
 #include <drivers/uart16550.h>
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
+#include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
@@ -26,7 +28,15 @@
 #define IER_RLS_ENABLE (1 << 2)  //< Receiver line status interrupt
 #define IER_MS_ENABLE (1 << 3)   //< Modem status interrupt
 #define ISR 2  //< interrupt status register: which interrupt occured, read only
-#define FCR 2  //< FIFO control register, write only
+#define ISR_INT_NONE (1)             ///< No interrrupt pending
+#define ISR_INT_RX_STATUS (0x06)     ///<
+#define ISR_INT_RX_DATA (0x04)       ///< Data is ready to read
+#define ISR_INT_RX_TIMEOUT (0x0C)    ///<
+#define ISR_INT_TX_EMPTY (0x02)      ///<
+#define ISR_INT_MODEM_STATUS (0x00)  ///<
+#define ISR_INT_DMA_RX_END (0x0E)    ///<
+#define ISR_INT_DMA_TX_END (0x0A)    ///<
+#define FCR 2                        //< FIFO control register, write only
 #define FCR_FIFO_ENABLE (1 << 0)
 #define FCR_FIFO_CLEAR (3 << 1)  //< clear the content of the two FIFOs
 #define LCR 3                    //< line control register
@@ -72,14 +82,18 @@ void write_register(struct uart_16550 *uart, size_t reg, uint32_t value)
 }
 
 struct uart_16550 g_uart_16550;
+bool g_uart_16550_initialized = false;
 
 void uartstart();
 
-void uart_init(struct Device_Init_Parameters *init_param, const char *name)
+dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name)
 {
     DEBUG_EXTRA_ASSERT(
         init_param->reg_io_width == 1 || init_param->reg_io_width == 4,
         "unsupported IO width");
+
+    if (g_uart_16550_initialized)
+        return INVALID_DEVICE;  // only one instance for now
 
     g_uart_16550.mmio_base = init_param->mem[0].start;
     g_uart_16550.reg_io_width = init_param->reg_io_width;
@@ -97,7 +111,8 @@ void uart_init(struct Device_Init_Parameters *init_param, const char *name)
 
     //  enable receive/send interrupts
 #ifdef __PLATFORM_SPIKE
-    // somehow TX interrupts break Vimix on Spike
+    // somehow TX interrupts break Vimix on Spike: the interrupt does not get
+    // cleared
     write_register(&g_uart_16550, IER, IER_RX_ENABLE);
 #else
     write_register(&g_uart_16550, IER, IER_RX_ENABLE | IER_TX_ENABLE);
@@ -105,6 +120,9 @@ void uart_init(struct Device_Init_Parameters *init_param, const char *name)
 
     // init uart_16550 object
     spin_lock_init(&g_uart_16550.uart_tx_lock, "uart");
+
+    g_uart_16550_initialized = true;
+    return MKDEV(UART_16550_MAJOR, 0);
 }
 
 bool uart_set_baud_rate(enum UART_BAUD_RATE rate)
@@ -164,6 +182,7 @@ void uart_putc_sync(int32_t c)
     while ((read_register(&g_uart_16550, LSR) & LSR_TX_IDLE) == 0)
     {
         // wait for Transmit Holding Empty to be set in LSR.
+        ARCH_ASM_NOP;
     }
     write_register(&g_uart_16550, THR, c);
 
@@ -223,22 +242,36 @@ int32_t uart_getc()
 /// both. called from interrupt_handler().
 void uart_interrupt_handler(dev_t dev)
 {
-    // unsigned char int_status =
-    read_register(&g_uart_16550, ISR);  // clears the interrupt source
-
-    // read and process incoming characters.
-    while (true)
-    {
-        int c = uart_getc();
-        if (c == -1)
-        {
-            break;
-        }
-        console_interrupt_handler(c);
-    }
-
-    // send buffered characters.
     spin_lock(&g_uart_16550.uart_tx_lock);
-    uartstart();
+    // reading the register clears the interrupt source
+    uint8_t int_status = read_register(&g_uart_16550, ISR);
+    uint8_t interrupt = int_status & 0x0F;
+
+    switch (interrupt)
+    {
+        case ISR_INT_NONE: break;  // panic("no int pending");
+        case ISR_INT_RX_DATA:
+        {
+            // read and process incoming characters.
+            while (true)
+            {
+                int c = uart_getc();
+                if (c == -1)
+                {
+                    break;
+                }
+                console_interrupt_handler(c);
+            }
+        }
+        break;
+        case ISR_INT_TX_EMPTY: uartstart(); break;
+        case ISR_INT_MODEM_STATUS: break;
+        case ISR_INT_DMA_RX_END: break;
+        case ISR_INT_DMA_TX_END: break;
+        case ISR_INT_RX_STATUS: break;
+        default: panic("unknown interrupt");
+    }
+    uartstart();  // in case no TX empty interrupts are coming, currently on
+                  // Spike
     spin_unlock(&g_uart_16550.uart_tx_lock);
 }

@@ -84,6 +84,7 @@ SUB_DIRS := \
   lib/libfdt \
   syscalls \
   $(ARCH_DIR) \
+  $(ARCH_DIR)/arch \
   $(ARCH_DIR)/mm \
   $(ARCH_DIR)/asm
 
