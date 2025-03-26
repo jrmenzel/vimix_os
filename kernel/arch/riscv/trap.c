@@ -43,7 +43,7 @@ void dump_pre_int_kthread_state(size_t *stack)
     printk("stack: " FORMAT_REG_SIZE " | CPU ID (tp): %zd\n", (size_t)stack,
            stack[IDX_TP]);
     printk("ra  = " FORMAT_REG_SIZE "\n", stack[IDX_RA]);
-    printk("sp  = " FORMAT_REG_SIZE "\n", stack[IDX_SP]);
+    printk("sp  = " FORMAT_REG_SIZE "\n", (size_t)stack);
     printk("gp  = " FORMAT_REG_SIZE "\n", stack[IDX_GP]);
 
     printk("a0  = " FORMAT_REG_SIZE "\n", stack[IDX_A0]);
