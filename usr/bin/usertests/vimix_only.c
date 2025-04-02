@@ -2750,18 +2750,27 @@ void sbrkfail(char *s)
     if (pid == 0)
     {
         // allocate a lot of memory.
-        // this should produce a page fault,
-        // and thus not complete.
+        // this should fail
         char *a = sbrk(0);
-        sbrk(10 * BIG);
-        int32_t n = 0;
+        void *tmp = sbrk(10 * BIG);
+        if (tmp != (void *)(-1))
+        {
+            printf("%s: Error: allocation should have failed\n", s);
+            exit(1);
+        }
+        assert_errno(ENOMEM);
+
+        printf("%s: A page fault is now expected:\n", s);
+        // just to be sure: try to read the memory which should trigger a page
+        // fault:
+        size_t n = 0;
         for (size_t i = 0; i < 10 * BIG; i += page_size)
         {
             n += *(a + i);
         }
         // print n so the compiler doesn't optimize away
         // the for loop.
-        printf("%s: allocate a lot of memory succeeded %d\n", s, n);
+        printf("%s: allocate a lot of memory succeeded %zd\n", s, n);
         exit(1);
     }
 

@@ -27,11 +27,13 @@
 #define IER_TX_ENABLE (1 << 1)  //< THR empty interrupt
 #define IER_RLS_ENABLE (1 << 2)  //< Receiver line status interrupt
 #define IER_MS_ENABLE (1 << 3)   //< Modem status interrupt
-#define ISR 2  //< interrupt status register: which interrupt occured, read only
-#define ISR_INT_NONE (1)             ///< No interrrupt pending
+#define ISR \
+    2  //< interrupt status register: which interrupt occured, read only - also
+       // called IIR (Interrupt Identification Register)
+#define ISR_INT_NONE (1)             ///< No interrupt pending
 #define ISR_INT_RX_STATUS (0x06)     ///<
 #define ISR_INT_RX_DATA (0x04)       ///< Data is ready to read
-#define ISR_INT_RX_TIMEOUT (0x0C)    ///<
+#define ISR_INT_RX_TIMEOUT (0x0C)    ///< Data is ready and the FIFO is full!
 #define ISR_INT_TX_EMPTY (0x02)      ///<
 #define ISR_INT_MODEM_STATUS (0x00)  ///<
 #define ISR_INT_DMA_RX_END (0x0E)    ///<
@@ -84,7 +86,7 @@ void write_register(struct uart_16550 *uart, size_t reg, uint32_t value)
 struct uart_16550 g_uart_16550;
 bool g_uart_16550_initialized = false;
 
-void uartstart();
+void uart_send_buffer();
 
 dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name)
 {
@@ -166,12 +168,12 @@ void uart_putc(int32_t c)
     while (g_uart_16550.uart_tx_w == g_uart_16550.uart_tx_r + UART_TX_BUF_SIZE)
     {
         // buffer is full.
-        // wait for uartstart() to open up space in the buffer.
+        // wait for uart_send_buffer() to open up space in the buffer.
         sleep(&g_uart_16550.uart_tx_r, &g_uart_16550.uart_tx_lock);
     }
     g_uart_16550.uart_tx_buf[g_uart_16550.uart_tx_w % UART_TX_BUF_SIZE] = c;
     g_uart_16550.uart_tx_w += 1;
-    uartstart();
+    uart_send_buffer();
     spin_unlock(&g_uart_16550.uart_tx_lock);
 }
 
@@ -193,7 +195,7 @@ void uart_putc_sync(int32_t c)
 /// in the transmit buffer, send it.
 /// Caller must hold uart_tx_lock.
 /// Called from both the top- and bottom-half.
-void uartstart()
+void uart_send_buffer()
 {
     while (true)
     {
@@ -237,6 +239,20 @@ int32_t uart_getc()
     }
 }
 
+void uart_handle_input()
+{
+    // read and process incoming characters.
+    while (true)
+    {
+        int c = uart_getc();
+        if (c == -1)
+        {
+            break;
+        }
+        console_interrupt_handler(c);
+    }
+}
+
 /// @brief Handle a uart interrupt, raised because input has
 /// arrived, or the uart is ready for more output, or
 /// both. called from interrupt_handler().
@@ -247,31 +263,25 @@ void uart_interrupt_handler(dev_t dev)
     uint8_t int_status = read_register(&g_uart_16550, ISR);
     uint8_t interrupt = int_status & 0x0F;
 
-    switch (interrupt)
+    if ((interrupt & 0x01) == 0)
     {
-        case ISR_INT_NONE: break;  // panic("no int pending");
-        case ISR_INT_RX_DATA:
+        // if bit 0 is un-set, an interrupt is pending
+
+        switch (interrupt)
         {
-            // read and process incoming characters.
-            while (true)
+            case ISR_INT_RX_DATA: uart_handle_input(); break;
+            case ISR_INT_TX_EMPTY: uart_send_buffer(); break;
+            case ISR_INT_MODEM_STATUS: break;
+            case ISR_INT_DMA_RX_END: break;
+            case ISR_INT_DMA_TX_END: break;
+            case ISR_INT_RX_STATUS: break;
+            case ISR_INT_RX_TIMEOUT: uart_handle_input(); break;
+            default:
             {
-                int c = uart_getc();
-                if (c == -1)
-                {
-                    break;
-                }
-                console_interrupt_handler(c);
+                printk("16550 UART: unknown interrupt %d\n", interrupt);
             }
         }
-        break;
-        case ISR_INT_TX_EMPTY: uartstart(); break;
-        case ISR_INT_MODEM_STATUS: break;
-        case ISR_INT_DMA_RX_END: break;
-        case ISR_INT_DMA_TX_END: break;
-        case ISR_INT_RX_STATUS: break;
-        default: panic("unknown interrupt");
     }
-    uartstart();  // in case no TX empty interrupts are coming, currently on
-                  // Spike
+
     spin_unlock(&g_uart_16550.uart_tx_lock);
 }
