@@ -37,6 +37,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	fs/xv6fs/xv6fs.o \
 	init/dtb.o \
 	init/main.o \
+	init/start.o \
 	ipc/pipe.o \
 	kernel/cpu.o \
 	kernel/kalloc.o \
@@ -47,6 +48,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/exec.o \
 	kernel/reset.o \
 	kernel/scheduler.o \
+	kernel/trap.o \
 	kernel/kticks.o \
 	syscalls/sys_device.o \
 	syscalls/sys_file.o \
@@ -113,6 +115,9 @@ ifeq ($(RAMDISK_EMBEDDED), yes)
 CFLAGS += -D__CONFIG_RAMDISK_EMBEDDED
 endif
 
+# assembler flags
+AFLAGS := -D__ASSEMBLY__ $(CFLAGS)
+
 .PHONY: all directories clean
 all: directories $(INIT_BUILD_DIR)/initcode.h $(KERNEL_PATH) # build all
 
@@ -121,7 +126,7 @@ directories: # create temp build directories
 
 # compile assembly
 $(K_BUILD_DIR)/%.o: %.S
-	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
+	@$(CC) $(AFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 # compile C, also create assembly listing
 $(K_BUILD_DIR)/%.o: %.c $(INIT_BUILD_DIR)/initcode.h

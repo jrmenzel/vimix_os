@@ -290,13 +290,13 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
     int clocks_len;
     const uint32_t *clocks =
         fdt_getprop(dtb, device_offset, "clocks", &clocks_len);
+    clocks_len /= sizeof(uint32_t);  // in cells
     if (clocks != NULL)
     {
         for (size_t i = 0;
-             (i < clocks_len / clock_cells) && (i < DEVICE_MAX_CLOCKS);
-             i += clock_cells)
+             (i < clocks_len / clock_cells) && (i < DEVICE_MAX_CLOCKS); i++)
         {
-            uint32_t phandle_clock = fdt32_to_cpu(clocks[i]);
+            uint32_t phandle_clock = fdt32_to_cpu(clocks[i * clock_cells]);
             params.clock_phandles[i] = phandle_clock;
         }
     }

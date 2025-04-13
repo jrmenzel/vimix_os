@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <kernel/page.h>
+
 #define MAX_PROCS 64                 ///< maximum number of processes
 #define MAX_CPUS 8                   ///< maximum number of CPUs
 #define MAX_FILES_PER_PROCESS 16     ///< open files per process
@@ -12,14 +14,6 @@
 #define MAX_OP_BLOCKS 10             ///< max # of blocks any FS op writes
 #define LOGSIZE (MAX_OP_BLOCKS * 3)  ///< max data blocks in on-disk log
 #define NUM_BUFFERS_IN_CACHE (MAX_OP_BLOCKS * 3)  ///< size of disk block cache
-
-#define PAGE_SIZE 4096  ///< bytes per page
-
-/// rounds up an address to the next page address
-#define PAGE_ROUND_UP(sz) (((sz) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
-
-/// rounds down an address to the next lower page address
-#define PAGE_ROUND_DOWN(a) (((a)) & ~(PAGE_SIZE - 1))
 
 /// all stacks start at one page and can grow to this
 #define USER_MAX_STACK_SIZE (16 * PAGE_SIZE)

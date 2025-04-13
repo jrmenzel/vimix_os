@@ -75,7 +75,7 @@ CFLAGS_COMMON += -g # native format for debug info
 endif
 endif
 
-CFLAGS_TARGET_ONLY += $(ARCH_CFLAGS)
+CFLAGS_TARGET_ONLY += $(ARCH_CFLAGS) -D__ARCH_$(BITWIDTH)BIT
 CFLAGS_TARGET_ONLY += -ffreestanding -fno-common -nostdlib
 CFLAGS_TARGET_ONLY += -nostdinc
 CFLAGS_TARGET_ONLY += -fno-stack-protector

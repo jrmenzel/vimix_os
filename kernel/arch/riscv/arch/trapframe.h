@@ -17,7 +17,7 @@
 /// return_to_user_mode() doesn't return through the entire kernel call stack.
 struct trapframe
 {
-    size_t kernel_page_table;  // kernel page table
+    size_t kernel_page_table;  // kernel page table (satp value, not pointer)
     size_t kernel_sp;          // top of process's kernel stack
     size_t kernel_trap;        // user_mode_interrupt_handler()
     size_t epc;                // saved user program counter

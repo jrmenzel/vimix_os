@@ -5,8 +5,11 @@
 // Reads are line at a time.
 //
 
+#ifdef CONFIG_RISCV_SBI
 #include <arch/riscv/sbi.h>
-#include <arch/riscv/timer.h>
+#endif
+
+#include <arch/timer.h>
 #include <drivers/character_device.h>
 #include <drivers/console.h>
 #include <drivers/htif.h>

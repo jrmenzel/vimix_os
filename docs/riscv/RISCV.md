@@ -2,6 +2,7 @@
 
 
 Platform:
+- VIMIX [boot](boot.md) requirements.
 - Supervisor Binary Interface [SBI](SBI.md)
 - Execution modes from high privileged to low privileged: 
 	- [M-mode](M-mode.md) (for the [user space](../userspace/userspace.md))

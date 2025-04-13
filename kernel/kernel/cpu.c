@@ -5,9 +5,9 @@
 
 void cpu_push_disable_device_interrupt_stack()
 {
-    bool old = cpu_is_device_interrupts_enabled();
+    bool old = cpu_is_interrupts_enabled();
 
-    cpu_disable_device_interrupts();
+    cpu_disable_interrupts();
     struct cpu *cpu = get_cpu();
 
     if (cpu->disable_dev_int_stack_depth == 0)
@@ -19,7 +19,7 @@ void cpu_push_disable_device_interrupt_stack()
 
 void cpu_pop_disable_device_interrupt_stack()
 {
-    if (cpu_is_device_interrupts_enabled())
+    if (cpu_is_interrupts_enabled())
     {
         panic("cpu_pop_disable_device_interrupt_stack - interruptible");
     }
@@ -34,6 +34,6 @@ void cpu_pop_disable_device_interrupt_stack()
     if (cpu->disable_dev_int_stack_depth == 0 &&
         cpu->disable_dev_int_stack_original_state)
     {
-        cpu_enable_device_interrupts();
+        cpu_enable_interrupts();
     }
 }

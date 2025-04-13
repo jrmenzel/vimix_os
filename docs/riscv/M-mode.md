@@ -7,6 +7,7 @@ Highest privilege mode.
 - The timer [interrupts](../kernel/interrupts/interrupts.md) runs in M-mode (see `m_mode_trap_vector.S`).
 
 **If VIMIX runs on OpenSBI:**
+- The [kernel](../kernel/kernel.md) boots in [S-mode](S-mode.md).
 - Only [OpenSBI](SBI.md) runs in M-mode and provides e.g. timer interrupts to [S-mode](S-mode.md).
 
 

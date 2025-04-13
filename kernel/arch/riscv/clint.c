@@ -2,7 +2,7 @@
 #include "clint.h"
 
 #include <arch/cpu.h>
-#include <arch/riscv/timer.h>
+#include <arch/timer.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 

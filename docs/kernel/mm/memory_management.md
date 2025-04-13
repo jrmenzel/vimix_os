@@ -28,7 +28,8 @@ Page table: `pagetable_t`. An array of 1024 `pagetable_element` which are just 3
 
 All harts use the same kernel page table:
 - all memory is mapped to the physical location
-- UART, VIRTIO, [PLIC](../../riscv/PLIC.md) are mapped
+	- 2MB blocks can be mapped as one super page
+- [devices](../devices/devices.md) are mapped
 - the trampoline function gets mapped to the highest address
 See [memory_map_kernel](memory_map_kernel.md) for details.
 

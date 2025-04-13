@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <arch/riscv/timer.h>
+#include <arch/timer.h>
 #include <arch/trap.h>
 #include <kernel/exec.h>
 #include <kernel/kalloc.h>

@@ -2,11 +2,12 @@
 #pragma once
 
 #include <arch/fence.h>
-#include <kernel/types.h>
+#include <arch/riscv/asm/satp.h>
+#include <kernel/kernel.h>
 
 #if !defined(__RISCV_CSR_TIME)
+#include <arch/timer.h>
 #include <kernel/kticks.h>
-#include <timer.h>
 #endif
 
 //
@@ -50,17 +51,6 @@ typedef size_t xlen_t;
 #define MIE_MSIE (1L << 3)   // software
 #define MIE_STIE (1L << 5)   // supervisor timer
 #endif                       // CONFIG_RISCV_BOOT_M_MODE
-
-#if defined(__ARCH_is_32bit)
-// use riscv's sv32 page table scheme.
-#define SATP_SV32 (1L << 31)
-#define MAKE_SATP(pagetable) (SATP_SV32 | (((uint32_t)pagetable) >> 12))
-#else
-// use riscv's sv39 page table scheme.
-#define SATP_SV39 (8L << 60)
-#define SATP_SV48 (9L << 60)
-#define MAKE_SATP(pagetable) (SATP_SV39 | (((uint64_t)pagetable) >> 12))
-#endif  // __ARCH_is_32bit
 
 /// physical memory protection CSR read access
 #define PMP_R (1L << 0)
@@ -279,33 +269,3 @@ static inline void rv_set_stimecmp(uint64_t new_value)
 #endif
 
 #endif
-
-//
-// zifencei Extension
-//
-#if defined(__RISCV_EXT_ZIFENCEI)
-// flush the TLB.
-static inline void rv_sfence_vma()
-{
-    // the zero, zero means flush all TLB entries.
-    asm volatile("sfence.vma zero, zero");
-}
-#endif
-
-static inline void cpu_set_page_table(xlen_t addr)
-{
-    // wait for any previous writes to the page table memory to finish.
-    rv_sfence_vma();
-
-    rv_write_csr_satp(addr);
-
-    // Depending on the cpu implementation a memory barrier might
-    // not affect the instruction caches, so after loading executable
-    // code an instruction memory barrier is needed.
-    instruction_memory_barrier();
-
-    // flush stale entries from the TLB.
-    rv_sfence_vma();
-}
-
-static inline xlen_t cpu_get_page_table() { return rv_read_csr_satp(); }

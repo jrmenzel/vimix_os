@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+#pragma once
 
 #include <arch/riscv/riscv.h>
 #include <kernel/kernel.h>
@@ -19,7 +20,7 @@
 #define SCAUSE_SOFTWARE_CHECK 18
 #define SCAUSE_HARDWARE_CHECK 19
 
-#if defined(__ARCH_is_32bit)
+#if defined(__ARCH_32BIT)
 #define SCAUSE_INTERRUPT_BIT 0x80000000L
 #else
 #define SCAUSE_INTERRUPT_BIT 0x8000000000000000L
@@ -30,9 +31,6 @@
 #define SCAUSE_SUPERVISOR_TIMER_INTERRUPT (SCAUSE_INTERRUPT_BIT | 5L)
 #define SCAUSE_SUPERVISOR_EXTERNAL_INTERRUPT (SCAUSE_INTERRUPT_BIT | 9L)
 #define SCAUSE_COUNTER_OVERFLOW_INTERRUPT (SCAUSE_INTERRUPT_BIT | 13L)
-
-/// @brief Prints the scause name and other scause specific info
-void dump_scause();
 
 /// @brief Returns a string to the scause name
 const char *scause_exception_code_to_string(xlen_t scause);

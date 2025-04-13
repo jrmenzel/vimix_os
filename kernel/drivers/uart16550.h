@@ -5,10 +5,6 @@
 #include <kernel/kernel.h>
 #include <kernel/spinlock.h>
 
-/// @brief Inits the hardware, creates a uart_16550 object
-/// and adds it to the devices list.
-dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name);
-
 enum UART_BAUD_RATE
 {
     BAUD_1200,
@@ -20,6 +16,10 @@ enum UART_BAUD_RATE
     BAUD_57600,
     BAUD_115200
 };
+
+/// @brief Inits the hardware, creates a uart_16550 object
+/// and adds it to the devices list.
+dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name);
 
 bool uart_set_baud_rate(enum UART_BAUD_RATE rate);
 

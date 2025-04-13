@@ -1,5 +1,4 @@
 /* SPDX-License-Identifier: MIT */
-
 #pragma once
 
 /// Per-CPU process scheduler.

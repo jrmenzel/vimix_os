@@ -1,15 +1,14 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <arch/riscv/clint.h>
-#include <arch/riscv/plic.h>
 #include <kernel/elf.h>
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
+#include <kernel/memlayout.h>
+#include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
 #include <kernel/vm.h>
-#include <mm/memlayout.h>
 #include <mm/mm.h>
 
 //
@@ -19,6 +18,12 @@ pagetable_t g_kernel_pagetable;
 extern char end_of_text[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[];  // u_mode_trap_vector.S
+
+void mmu_set_page_table(size_t addr_of_first_block, uint32_t asid)
+{
+    size_t reg_value = mmu_make_page_table_reg(addr_of_first_block, asid);
+    mmu_set_page_table_reg_value(reg_value);
+}
 
 /// @brief Map MMIO device to kernel page.
 /// @param k_pagetable Page table to add mapping to.
@@ -77,8 +82,13 @@ pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
                 // }
                 // printk("\n");
 
-                kvm_map_mmio(kpage_table, dev->init_parameters.mem[i].start,
-                             PAGE_ROUND_UP(dev->init_parameters.mem[i].size));
+                size_t map_start =
+                    PAGE_ROUND_DOWN(dev->init_parameters.mem[i].start);
+                size_t map_end =
+                    PAGE_ROUND_UP(dev->init_parameters.mem[i].start +
+                                  dev->init_parameters.mem[i].size);
+
+                kvm_map_mmio(kpage_table, map_start, map_end - map_start);
             }
         }
     }
@@ -92,11 +102,9 @@ void kvm_init(struct Minimal_Memory_Map *memory_map,
     g_kernel_pagetable = kvm_make_kernel_pagetable(memory_map, dev_list);
 }
 
-#if defined(__ARCH_is_32bit)
-const size_t MAX_LEVELS_IN_PAGE_TABLE = 2;
+#if defined(__ARCH_32BIT)
 const size_t MAX_PTES_PER_PAGE_TABLE = 1024;
 #else
-const size_t MAX_LEVELS_IN_PAGE_TABLE = 3;
 const size_t MAX_PTES_PER_PAGE_TABLE = 512;
 #endif
 
@@ -119,33 +127,69 @@ const size_t MAX_PTES_PER_PAGE_TABLE = 512;
 ///   22..31 -- 10 bits of level-1 index.
 ///   12..21 -- 10 bits of level-0 index.
 ///    0..11 -- 12 bits of byte offset within the page.
-pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc)
+
+pte_t *vm_walk2(pagetable_t pagetable, size_t va, bool *is_super_page,
+                bool alloc)
 {
-#if defined(__ARCH_is_64bit)
-    if (va >= MAXVA)
+#if defined(__ARCH_64BIT)
+    if ((ssize_t)va >= MAXVA)
     {
+        printk("vm_walk: virtual address 0x%zx is larger than supported\n", va);
         panic("vm_walk: virtual address is larger than supported");
     }
 #endif
 
-    for (size_t level = (MAX_LEVELS_IN_PAGE_TABLE - 1); level > 0; level--)
+    if (alloc && is_super_page == NULL)
+    {
+        panic(
+            "vm_walk: super page flag must be set when potentially allocating "
+            "a mapping");
+    }
+
+    for (size_t level = (PAGE_TABLE_MAX_LEVELS - 1); level > 0; level--)
     {
         pte_t *pte = &pagetable[PAGE_TABLE_INDEX(level, va)];
-        if (*pte & PTE_V)
+
+        if (!PTE_IS_VALID_NODE(*pte))
         {
-            pagetable = (pagetable_t)PTE2PA(*pte);
-        }
-        else
-        {
-            if (!alloc || (pagetable = (pagetable_t)kalloc()) == NULL)
+            // empty -> alloc or fail
+            if (alloc)
+            {
+                if (level == 1 && *is_super_page)
+                {
+                    return pte;
+                }
+                pagetable = (pagetable_t)kalloc();
+                if (pagetable == NULL) return NULL;
+
+                memset(pagetable, 0, PAGE_SIZE);
+                *pte = PTE_BUILD(pagetable, 0);
+                PTE_MAKE_VALID_TABLE(*pte);
+            }
+            else
             {
                 return NULL;
             }
-            memset(pagetable, 0, PAGE_SIZE);
-            *pte = PA2PTE(pagetable) | PTE_V;
+        }
+        else
+        {
+            // a valid / already in use PTE
+            if (PTE_IS_LEAF(*pte))
+            {
+                *is_super_page = true;
+                return pte;
+            }
+            // else it's pointing to the next level of the tree:
+            pagetable = (pagetable_t)PTE_GET_PA(*pte);
         }
     }
     return &pagetable[PAGE_TABLE_INDEX(0, va)];
+}
+
+pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc)
+{
+    bool super = false;
+    return vm_walk2(pagetable, va, &super, alloc);
 }
 
 size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va,
@@ -164,84 +208,103 @@ size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va,
 size_t uvm_get_physical_paddr(pagetable_t pagetable, size_t va,
                               bool *is_writeable)
 {
-#if defined(__ARCH_is_64bit)
-    if (va >= MAXVA)
+#if defined(__ARCH_64BIT)
+    if ((ssize_t)va >= MAXVA)
     {
         return 0;
     }
 #endif
 
-    pte_t *pte = vm_walk(pagetable, va, false);
+    pte_t *pte = vm_walk2(pagetable, va, NULL, false);
     if (pte == NULL) return 0;
-    if ((*pte & PTE_V) == 0) return 0;
-    if ((*pte & PTE_U) == 0) return 0;
+    if (PTE_IS_VALID_USER(*pte) == false) return 0;
 
     // optionally pass out if the page can be written to
     if (is_writeable) *is_writeable = PTE_IS_WRITEABLE(*pte);
 
-    size_t pa = PTE2PA(*pte);
+    size_t pa = PTE_GET_PA(*pte);
     return pa;
 }
 
 int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
                          size_t size, pte_t perm)
 {
-    if (kvm_map(k_pagetable, va, pa, size, perm) != 0)
+    if (vm_map(k_pagetable, va, pa, size, perm, true) != 0)
     {
         panic("kvm_map_or_panic failed");
     }
     return 0;
 }
 
-int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
-                pte_t perm)
+int32_t vm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
+               pte_t perm, bool allow_super_pages)
 {
     perm |= PTE_MAP_DEFAULT_FLAGS;
 
     /*
     // useful debug prints
-    printk("mapping (physical 0x%x) to 0x%x - 0x%x (size: %d pages) (", pa, va,
-           va + size - 1, size / PAGE_SIZE);
+    printk("mapping (physical 0x%zx) to 0x%zx - 0x%zx (size: %zd pages) (", pa,
+           va, va + size - 1, size / PAGE_SIZE);
     debug_vm_print_pte_flags(perm);
     printk(")\n");
     */
 
     if ((va % PAGE_SIZE) != 0)
     {
-        panic("kvm_map: va not aligned");
+        panic("vm_map: va not aligned");
     }
 
     if ((size % PAGE_SIZE) != 0)
     {
-        panic("kvm_map: size not aligned");
+        panic("vm_map: size not aligned");
     }
 
     if (size == 0)
     {
-        panic("kvm_map: size == 0");
+        panic("vm_map: size == 0");
     }
 
     size_t current_va = va;
-    size_t last_va = va + size - PAGE_SIZE;
-    while (true)
+    size_t remaining_size = size;
+    while (remaining_size > 0)
     {
-        pte_t *pte = vm_walk(pagetable, current_va, true);
+        bool alloc_super_page = false;
+        size_t bytes_mapped = PAGE_SIZE;
+        if (allow_super_pages && (current_va % MEGA_PAGE_SIZE == 0) &&
+            (remaining_size >= MEGA_PAGE_SIZE))
+        {
+            alloc_super_page = true;
+            bytes_mapped = MEGA_PAGE_SIZE;
+        }
+        pte_t *pte = vm_walk2(pagetable, current_va, &alloc_super_page, true);
         if (pte == NULL)
         {
             // out of memory
             return -1;
         }
-        if (PTE_IS_IN_USE(*pte) & PTE_V)
+
+        pte_t new_value = PTE_BUILD(pa, perm);
+        PTE_MAKE_VALID_LEAF(new_value);
+
+        if (*pte == new_value)
         {
-            panic("kvm_map: remap");
+            // Ignore remapping if the target address and the flags match
+            // the new mapping. This can happen when the MMIO devices are
+            // mapped and multiple devices share the same pages.
         }
-        *pte = PA2PTE(pa) | perm;
-        if (current_va == last_va)
+        else
         {
-            break;
+            if (PTE_IS_VALID_NODE(*pte))
+            {
+                panic("vm_map: remap");
+            }
+
+            *pte = new_value;
         }
-        current_va += PAGE_SIZE;
-        pa += PAGE_SIZE;
+
+        current_va += bytes_mapped;
+        pa += bytes_mapped;
+        remaining_size -= bytes_mapped;
     }
     return 0;
 }
@@ -261,17 +324,17 @@ void uvm_unmap(pagetable_t pagetable, size_t va, size_t npages, bool do_free)
         {
             panic("uvm_unmap: vm_walk");
         }
-        if ((*pte & PTE_V) == 0)
+        if (PTE_IS_VALID_NODE(*pte) == false)
         {
             panic("uvm_unmap: not mapped");
         }
-        if (PTE_FLAGS(*pte) == PTE_V)
+        if (PTE_IS_LEAF(*pte) == false)
         {
             panic("uvm_unmap: not a leaf");
         }
         if (do_free)
         {
-            size_t pa = PTE2PA(*pte);
+            size_t pa = PTE_GET_PA(*pte);
             kfree((void *)pa);
         }
         *pte = 0;
@@ -311,8 +374,7 @@ size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
         // handle BSS sections in a special way, it only works rigth by clearing
         // all memory.
         memset(mem, 0, PAGE_SIZE);
-        if (kvm_map(pagetable, va, (size_t)mem, PAGE_SIZE,
-                    PTE_USER_RAM | perm) != 0)
+        if (vm_map(pagetable, va, (size_t)mem, PAGE_SIZE, perm, false) != 0)
         {
             kfree(mem);
             uvm_dealloc_heap(pagetable, va, va - start_va);
@@ -412,8 +474,8 @@ size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low)
 
     memset(mem, 0, PAGE_SIZE);
     size_t new_stack_low = stack_low - PAGE_SIZE;
-    if (kvm_map(pagetable, new_stack_low, (size_t)mem, PAGE_SIZE,
-                PTE_RW | PTE_U) != 0)
+    if (vm_map(pagetable, new_stack_low, (size_t)mem, PAGE_SIZE, PTE_USER_RAM,
+               false) != 0)
     {
         kfree(mem);
         return 0;
@@ -429,7 +491,7 @@ void uvm_free_pagetable(pagetable_t pagetable)
     for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
     {
         pte_t pte = pagetable[i];
-        size_t child = PTE2PA(pte);
+        size_t child = PTE_GET_PA(pte);
 
         if (PTE_IS_VALID_NODE(pte))
         {
@@ -463,12 +525,12 @@ int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
         {
             panic("uvm_copy: pte should exist");
         }
-        if ((*pte & PTE_V) == 0)
+        if (PTE_IS_VALID_NODE(*pte) == false)
         {
             panic("uvm_copy: page not present");
         }
-        pte_t pa = PTE2PA(*pte);
-        uint32_t flags = PTE_FLAGS(*pte);
+        pte_t pa = PTE_GET_PA(*pte);
+        pte_t flags = PTE_FLAGS(*pte);
 
         char *mem = kalloc();
         if (mem == NULL)
@@ -478,7 +540,7 @@ int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
         }
 
         memmove(mem, (char *)pa, PAGE_SIZE);
-        if (kvm_map(dst_page, va, (size_t)mem, PAGE_SIZE, flags) != 0)
+        if (vm_map(dst_page, va, (size_t)mem, PAGE_SIZE, flags, false) != 0)
         {
             kfree(mem);
             fatal_error_happened = true;
@@ -505,7 +567,7 @@ void uvm_clear_user_access_bit(pagetable_t pagetable, size_t va)
     {
         panic("uvm_clear_user_access_bit");
     }
-    *pte &= ~PTE_U;
+    *pte = pte_clear_user_access(*pte);
 }
 
 int32_t uvm_copy_out(pagetable_t pagetable, size_t dst_va, char *src_pa,
@@ -628,29 +690,49 @@ int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
 void debug_print_pt_level(pagetable_t pagetable, size_t level,
                           size_t partial_va)
 {
+    if (level >= PAGE_TABLE_MAX_LEVELS)
+    {
+        printk("ERROR, malformatted page table\n");
+        return;
+    }
+
     for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
     {
         pte_t pte = pagetable[i];
-        if (pte & PTE_V)
+        if (PTE_IS_VALID_NODE(pte))
         {
             for (size_t j = 0; j < PAGE_TABLE_MAX_LEVELS - level; ++j)
             {
                 printk("-");
             }
-            printk(" %zd: pa: 0x%zx ", i, PTE2PA(pte));
+            printk(" %zd: pa: 0x%zx ", i, PTE_GET_PA(pte));
             debug_vm_print_pte_flags(pte);
 
             size_t va = partial_va | VA_FROM_PAGE_TABLE_INDEX(level, i);
-            if (level > 0)
+            if (PTE_IS_LEAF(pte))
             {
-                printk("\n");
+                printk(" - va: 0x%zx ", va);
 
-                pagetable_t sub_pagetable = (pagetable_t)PTE2PA(pte);
-                debug_print_pt_level(sub_pagetable, level - 1, va);
+                if (level == 0)
+                {
+                    printk("(4 KB page)\n");
+                }
+                else if (level == 1)
+                {
+                    printk("(%zd MB super page)\n",
+                           (size_t)MEGA_PAGE_SIZE / (1024 * 1024));
+                }
+                else
+                {
+                    printk("(unexpected leaf)\n");
+                }
             }
             else
             {
-                printk(" - va: 0x%zx\n", va);
+                printk("\n");
+
+                pagetable_t sub_pagetable = (pagetable_t)PTE_GET_PA(pte);
+                debug_print_pt_level(sub_pagetable, level - 1, va);
             }
         }
         else
@@ -672,7 +754,7 @@ size_t debug_vm_get_size_level(pagetable_t pagetable, size_t level)
     for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
     {
         pte_t pte = pagetable[i];
-        if (pte & PTE_V)
+        if (PTE_IS_VALID_NODE(pte))
         {
             size++;  // count the page this pte points to
 
@@ -680,7 +762,7 @@ size_t debug_vm_get_size_level(pagetable_t pagetable, size_t level)
             // to additional allocations
             if (level > 1)
             {
-                pagetable_t sub_pagetable = (pagetable_t)PTE2PA(pte);
+                pagetable_t sub_pagetable = (pagetable_t)PTE_GET_PA(pte);
                 size += debug_vm_get_size_level(sub_pagetable, level - 1);
             }
         }
@@ -692,6 +774,23 @@ size_t debug_vm_get_size(pagetable_t pagetable)
 {
     // +1 to count the page pagetable points to itself.
     return 1 + debug_vm_get_size_level(pagetable, PAGE_TABLE_MAX_LEVELS - 1);
+}
+
+void debug_vm_print_pte_flags(size_t flags)
+{
+    printk("%c", PTE_IS_VALID_NODE(flags) ? 'v' : '_');
+    printk("%c", PTE_IS_LEAF(flags) ? 'p' : 't');
+    printk("-");
+    printk("%c", PTE_IS_USER_ACCESSIBLE(flags) ? 'u' : 'k');
+    printk("%c%c%c", PTE_IS_READABLE(flags) ? 'r' : '_',
+           PTE_IS_WRITEABLE(flags) ? 'w' : '_',
+           PTE_IS_EXECUTABLE(flags) ? 'x' : '_');
+
+    printk("-");
+    printk("%c", PTE_WAS_ACCESSED(flags) ? 'a' : '_');
+    printk("%c", PTE_IS_GLOBAL(flags) ? 'g' : '_');
+    printk("-");
+    DEBUG_VM_PRINT_ARCH_PTE_FLAGS(flags);
 }
 
 #endif  // DEBUG

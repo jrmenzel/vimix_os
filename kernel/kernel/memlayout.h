@@ -6,12 +6,12 @@
 //          use asm compatible macros only.
 //
 
-#include <kernel/param.h>
+#include <kernel/page.h>
 #include <mm/mm.h>
 
 /// map the trampoline page to the highest address,
 /// in both user and kernel space.
-#if (__riscv_xlen == 32)
+#if defined(__ARCH_32BIT)
 #define TRAMPOLINE (0xFFFFF000)
 #else
 #define TRAMPOLINE (MAXVA - PAGE_SIZE)

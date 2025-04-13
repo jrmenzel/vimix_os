@@ -3,7 +3,7 @@
 
 #include <kernel/file.h>
 #include <kernel/kernel.h>
-#include <kernel/param.h>
+#include <kernel/page.h>
 #include <kernel/spinlock.h>
 
 #define PIPE_SIZE 512

@@ -14,7 +14,6 @@
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
-#include <mm/memlayout.h>
 
 /// the UART control registers.
 /// some have different meanings for

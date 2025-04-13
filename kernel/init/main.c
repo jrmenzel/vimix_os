@@ -20,6 +20,7 @@
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
 #include <kernel/smp.h>
+#include <kernel/vm.h>
 
 #if defined(__CONFIG_RAMDISK_EMBEDDED)
 #include <ramdisk_fs.h>
@@ -265,8 +266,8 @@ void main(void *device_tree, size_t is_first_thread)
     printk("hart %zd starting %s\n", smp_processor_id(),
            (is_first_thread ? "(init hart)" : ""));
 
-    kvm_init_per_cpu();        // turn on paging
-    set_s_mode_trap_vector();  // install kernel trap vector
+    mmu_set_page_table((size_t)g_kernel_pagetable, 0);  // turn on paging
+    set_supervisor_trap_vector();  // install kernel trap vector
     init_interrupt_controller_per_hart();
 
     scheduler();

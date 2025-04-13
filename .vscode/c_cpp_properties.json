@@ -39,7 +39,8 @@
             "defines": [
                 "${kernel_defines}",
                 "${kernel_defines_riscv}",
-                "__riscv_xlen=64"
+                "__riscv_xlen=64",
+                "__ARCH_64BIT"
             ],
             "compilerArgs": [
                 "-nostdinc"
@@ -57,7 +58,8 @@
             "defines": [
                 "${kernel_defines}",
                 "${kernel_defines_riscv}",
-                "__riscv_xlen=32"
+                "__riscv_xlen=32",
+                "__ARCH_32BIT"
             ],
             "compilerArgs": [
                 "-nostdinc"
@@ -73,6 +75,7 @@
             ],
             "defines": [
                 "__riscv_xlen=64",
+                "__ARCH_64BIT",
                 "DEBUG"
             ],
             "compilerArgs": [

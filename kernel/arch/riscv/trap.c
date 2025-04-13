@@ -4,7 +4,7 @@
 #include <arch/interrupts.h>
 #include <arch/riscv/asm/registers.h>
 #include <arch/riscv/scause.h>
-#include <arch/riscv/timer.h>
+#include <arch/timer.h>
 #include <arch/trap.h>
 #include <arch/trapframe.h>
 #include <drivers/device.h>
@@ -13,11 +13,12 @@
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
+#include <kernel/memlayout.h>
 #include <kernel/proc.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
+#include <kernel/trap.h>
 #include <kernel/vm.h>
-#include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
 extern char trampoline[], u_mode_trap_vector[], return_to_user_mode_asm[];
@@ -27,12 +28,8 @@ extern void s_mode_trap_vector();
 
 extern size_t g_boot_hart;
 
-void set_s_mode_trap_vector()
-{
-    cpu_set_s_mode_trap_vector(s_mode_trap_vector);
-}
+void set_supervisor_trap_vector() { cpu_set_trap_vector(s_mode_trap_vector); }
 
-/// @brief Dump kernel thread state from before the interrupt.
 void dump_pre_int_kthread_state(size_t *stack)
 {
     // The kernel trap vector (s_mode_trap_vector) is using the same stack as
@@ -56,122 +53,67 @@ void dump_pre_int_kthread_state(size_t *stack)
     printk("a7  = " FORMAT_REG_SIZE "\n", stack[IDX_A7]);
 }
 
-void handle_timer_interrupt();
-void handle_plic_device_interrupt();
-
-void dump_scause_and_kill_proc(struct process *proc)
+void dump_exception_cause(struct Interrupt_Context *ctx)
 {
-    printk(
-        "\nFatal: unexpected scause/exception in "
-        "user_mode_interrupt_handler()\n"
-        "Killing process with pid=%d\n",
-        proc->pid);
-    dump_scause();
-    printk("Process: %s\n", proc->name);
-    debug_print_process_registers(proc->trapframe);
-    printk("Call stack:\n");
-    debug_print_call_stack_user(proc);
-    printk("\n");
-    proc_set_killed(proc);
-}
+    printk("scause (0x%zx): %s\n", ctx->scause,
+           scause_exception_code_to_string(ctx->scause));
+    printk("sepc: " FORMAT_REG_SIZE " stval: 0x%zx\n", rv_read_csr_sepc(),
+           ctx->stval);
 
-/// Handle an interrupt, exception, or system call from user space.
-/// called from u_mode_trap_vector.S, first C function after storing the
-/// CPU state / registers in assembly.
-void user_mode_interrupt_handler()
-{
-    if ((rv_read_csr_sstatus() & SSTATUS_SPP) != 0)
+    if (ctx->scause == SCAUSE_INSTRUCTION_PAGE_FAULT ||
+        ctx->scause == SCAUSE_LOAD_PAGE_FAULT ||
+        ctx->scause == SCAUSE_STORE_AMO_PAGE_FAULT)
     {
-        panic("user_mode_interrupt_handler was *not* called from user mode");
-    }
-
-    // send interrupts and exceptions to kernel_mode_interrupt_handler(),
-    // since we're now in the kernel.
-    set_s_mode_trap_vector();
-
-    // save user program counter.
-    struct process *proc = get_current();
-    trapframe_set_program_counter(proc->trapframe, rv_read_csr_sepc());
-
-    // exception / interrupt cause
-    xlen_t scause = rv_read_csr_scause();
-    bool yield_process = false;
-
-    if (scause == SCAUSE_ECALL_FROM_U_MODE)
-    {
-        // system call
-        if (proc_is_killed(proc)) exit(-1);
-
-        // sepc points to the ecall instruction,
-        // but we want to return to the next instruction.
-        proc->trapframe->epc += 4;
-
-        // an interrupt will change sepc, scause, and sstatus,
-        // so enable only now that we're done with those registers.
-        cpu_enable_device_interrupts();
-
-        syscall(proc);
-    }
-    else if (scause == SCAUSE_SUPERVISOR_SOFTWARE_INTERRUPT ||
-             scause == SCAUSE_SUPERVISOR_TIMER_INTERRUPT)
-    {
-        handle_timer_interrupt();
-        yield_process = true;
-    }
-    else if (scause == SCAUSE_SUPERVISOR_EXTERNAL_INTERRUPT)
-    {
-        handle_plic_device_interrupt();
-    }
-    else if (scause == SCAUSE_STORE_AMO_PAGE_FAULT)
-    {
-        xlen_t stval = rv_read_csr_stval();
-        size_t sp = proc->trapframe->sp;
-
-        // If the app tried to write between the stack pointer and its stack
-        // -> stack overflow. Also test if the sp isn't more than one page away
-        // from the current stack as we will provide only one additional page.
-        if ((sp <= stval && stval < proc->stack_low) &&
-            (sp >= (proc->stack_low - PAGE_SIZE)))
+        printk("Tried to ");
+        if (ctx->scause == SCAUSE_INSTRUCTION_PAGE_FAULT)
         {
-            if (!proc_grow_stack(proc))
+            printk("execute from");
+        }
+        else if (ctx->scause == SCAUSE_LOAD_PAGE_FAULT)
+        {
+            printk("read from");
+        }
+        else if (ctx->scause == SCAUSE_STORE_AMO_PAGE_FAULT)
+        {
+            printk("write to");
+        }
+        // stval is set to the offending memory address
+        printk(" address 0x%zx %s\n", ctx->stval,
+               (ctx->stval ? "" : "(dereferenced NULL pointer)"));
+
+        struct process *proc = get_current();
+        if (proc)
+        {
+#if defined(__ARCH_64BIT)
+            if (ctx->stval >= MAXVA)
             {
-                // growing the stack failed
-                dump_scause_and_kill_proc(proc);
+                printk("Address 0x%zx larger than supported\n", ctx->stval);
+                return;
+            }
+#endif
+
+            pte_t *pte = vm_walk(proc->pagetable, ctx->stval, false);
+            if (!pte)
+            {
+                printk("Page of address 0x%zx is not mapped\n", ctx->stval);
+            }
+            else
+            {
+                printk("Page of address 0x%zx access: ", ctx->stval);
+                debug_vm_print_pte_flags(*pte);
+                printk("\n");
             }
         }
-        else
-        {
-            // some other page fault
-            dump_scause_and_kill_proc(proc);
-        }
     }
-    else
-    {
-        // some other scause
-        dump_scause_and_kill_proc(proc);
-    }
-
-    if (proc_is_killed(proc))
-    {
-        exit(-1);
-    }
-
-    if (yield_process)
-    {
-        yield();
-    }
-
-    return_to_user_mode();
 }
 
-/// return to user space
 void return_to_user_mode()
 {
     // we're about to switch the destination of traps from
     // kernel_mode_interrupt_handler() to user_mode_interrupt_handler(), so turn
     // off interrupts until we're back in user space, where
     // user_mode_interrupt_handler() is correct.
-    cpu_disable_device_interrupts();
+    cpu_disable_interrupts();
 
     struct process *proc = get_current();
 
@@ -179,12 +121,13 @@ void return_to_user_mode()
     // u_mode_trap_vector.S
     size_t trampoline_u_mode_trap_vector =
         TRAMPOLINE + (u_mode_trap_vector - trampoline);
-    rv_write_csr_stvec(trampoline_u_mode_trap_vector);
+
+    cpu_set_trap_vector((void *)trampoline_u_mode_trap_vector);
 
     // set up trapframe values that u_mode_trap_vector will need when
     // the process next traps into the kernel.
-    proc->trapframe->kernel_page_table =
-        cpu_get_page_table();  // kernel page table
+    proc->trapframe->kernel_page_table =  // mmu_get_page_table_address();
+        mmu_get_page_table_reg_value();   // kernel page table
     proc->trapframe->kernel_sp =
         proc->kstack + KERNEL_STACK_SIZE;  // process's kernel stack
     proc->trapframe->kernel_trap = (size_t)user_mode_interrupt_handler;
@@ -203,7 +146,8 @@ void return_to_user_mode()
     rv_write_csr_sepc(trapframe_get_program_counter(proc->trapframe));
 
     // tell u_mode_trap_vector.S the user page table to switch to.
-    size_t satp = MAKE_SATP(proc->pagetable);
+    // size_t satp = MAKE_SATP(proc->pagetable);
+    size_t satp = mmu_make_page_table_reg((size_t)proc->pagetable, 0);
 
     // jump to return_to_user_mode_asm in u_mode_trap_vector.S at the top of
     // memory, which switches to the user page table, restores user registers,
@@ -213,65 +157,7 @@ void return_to_user_mode()
     ((void (*)(size_t))return_to_user_mode_asm_ptr)(satp);
 }
 
-/// Interrupts and exceptions go here via s_mode_trap_vector,
-/// on whatever the current kernel stack is.
-void kernel_mode_interrupt_handler(size_t *stack)
-{
-    xlen_t sepc = rv_read_csr_sepc();
-    xlen_t sstatus = rv_read_csr_sstatus();
-
-    if ((sstatus & SSTATUS_SPP) == 0)
-    {
-        panic(
-            "kernel_mode_interrupt_handler was *not* called from supervisor "
-            "mode");
-    }
-    if (cpu_is_device_interrupts_enabled())
-    {
-        panic("kernel_mode_interrupt_handler: interrupts are still enabled");
-    }
-
-    xlen_t scause = rv_read_csr_scause();
-    bool yield_process = false;
-
-    if (scause == SCAUSE_SUPERVISOR_SOFTWARE_INTERRUPT ||
-        scause == SCAUSE_SUPERVISOR_TIMER_INTERRUPT)
-    {
-        handle_timer_interrupt();
-        yield_process = true;
-    }
-    else if (scause == SCAUSE_SUPERVISOR_EXTERNAL_INTERRUPT)
-    {
-        handle_plic_device_interrupt();
-    }
-    else
-    {
-        printk(
-            "\nFatal: unhandled interrupt in "
-            "kernel_mode_interrupt_handler()\n");
-        dump_scause();
-        dump_pre_int_kthread_state(stack);
-        panic("kernel_mode_interrupt_handler");
-    }
-
-    if (yield_process)
-    {
-        // give up the CPU if a process is running
-        struct process *proc = get_current();
-        if (proc != NULL && proc->state == RUNNING)
-        {
-            yield();
-        }
-    }
-
-    // the yield() may have caused some traps to occur,
-    // so restore trap registers for use by s_mode_trap_vector.S's sepc
-    // instruction.
-    rv_write_csr_sepc(sepc);
-    rv_write_csr_sstatus(sstatus);
-}
-
-void handle_plic_device_interrupt()
+void handle_device_interrupt()
 {
     // this is a supervisor external interrupt, via PLIC.
 

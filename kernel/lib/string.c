@@ -5,10 +5,33 @@
 
 void *memset(void *dst, int c, size_t n)
 {
-    char *cdst = (char *)dst;
-    for (size_t i = 0; i < n; i++)
+    // copy unaligned bytes:
+    char *pos = (char *)dst;
+    while ((size_t)pos % sizeof(size_t) != 0 && n > 0)
     {
-        cdst[i] = (char)c;
+        *pos++ = (char)c;
+        n--;
+    }
+
+    // copy as many as possible as aligned size_t memory accesses
+    size_t *dst_s = (size_t *)pos;
+    size_t n_word = n / sizeof(size_t);
+    size_t remaining_bytes = n % sizeof(size_t);
+    size_t value = 0;
+    for (size_t i = 0; i < sizeof(size_t); ++i)
+    {
+        value = value << 8 | (char)c;
+    }
+    for (size_t i = 0; i < n_word; i++)
+    {
+        dst_s[i] = value;
+    }
+    pos += n_word * sizeof(size_t);
+
+    // trailing unaligned bytes:
+    for (size_t i = 0; i < remaining_bytes; i++)
+    {
+        *pos++ = (char)c;
     }
     return dst;
 }

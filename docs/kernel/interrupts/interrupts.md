@@ -34,7 +34,7 @@ A Timer Interrupt can cause a `yield` and hand over the CPU to the scheduler.
 
 ### Enabling / Disabling
 
-`cpu_enable_device_interrupts` / `cpu_disable_device_interrupts`
+`cpu_enable_interrupts` / `cpu_disable_interrupts`
 `cpu_push_disable_device_interrupt_stack` / `cpu_pop_disable_device_interrupt_stack`
 
 Always disabled when a `spin_lock` is held.

@@ -63,7 +63,7 @@ void panic(char* error_message)
     g_printk.locking = false;
     g_kernel_panicked++;  // freeze scheduling on other CPUs
     __sync_synchronize();
-    cpu_disable_device_interrupts();
+    cpu_disable_interrupts();
 
     printk("\n\nKernel PANIC on CPU %zd: %s\n", smp_processor_id(),
            error_message);

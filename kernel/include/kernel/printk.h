@@ -3,7 +3,7 @@
 
 #include <kernel/types.h>
 
-#if defined(__ARCH_is_32bit)
+#if defined(__ARCH_32BIT)
 #define FORMAT_REG_SIZE "0x%08zx"
 #else
 #define FORMAT_REG_SIZE "0x%016zx"

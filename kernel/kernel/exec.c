@@ -19,6 +19,19 @@
 static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,
                        size_t offset, size_t sz);
 
+/// @brief Converts access flags from an ELF file to VM access permissions.
+/// @param elf_flags Flags from an ELF file
+/// @param flags_in pte flags in to modify
+/// @return A pte with matching access flags
+pte_t elf_flags_to_perm(int32_t elf_flags, pte_t flags_in)
+{
+    flags_in = (elf_flags & 0x1) ? pte_set_executable(flags_in)
+                                 : pte_unset_executable(flags_in);
+    flags_in = (elf_flags & 0x2) ? pte_set_writeable(flags_in)
+                                 : pte_unset_writeable(flags_in);
+    return flags_in;
+}
+
 bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
                             pagetable_t pagetable, size_t *last_va)
 {
@@ -44,8 +57,9 @@ bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
 
         // allocate pages and update last_va
         size_t alloc_size = (ph.vaddr + ph.memsz) - *last_va;
-        size_t sz = uvm_alloc_heap(pagetable, *last_va, alloc_size,
-                                   elf_flags_to_perm(ph.flags));
+        pte_t flags = PTE_USER_RAM;
+        flags = elf_flags_to_perm(ph.flags, flags);
+        size_t sz = uvm_alloc_heap(pagetable, *last_va, alloc_size, flags);
         if (sz != alloc_size)
         {
             return false;

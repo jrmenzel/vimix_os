@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <kernel/limits.h>
+#include <kernel/page.h>
 #include <kernel/param.h>
 #include <stdlib.h>
 #include <termios.h>

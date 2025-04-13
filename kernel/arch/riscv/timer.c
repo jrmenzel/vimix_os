@@ -2,7 +2,8 @@
 
 #include <arch/riscv/clint.h>
 #include <arch/riscv/sbi.h>
-#include <arch/riscv/timer.h>
+#include <arch/timer.h>
+#include <init/dtb.h>
 
 timer_schedule_interrupt_p *timer_schedule_interrupt = NULL;
 
@@ -35,7 +36,7 @@ void sstc_schedule_interrupt(uint64_t) { panic("sstc unsupported"); }
 //
 // init one of the supported timers
 
-void timer_init(uint64_t timebase_frequency, bool use_sstc)
+void timer_init(uint64_t timebase_frequency, void *dtb, size_t cpuid)
 {
     g_timebase_frequency = timebase_frequency;
     g_boot_time = rv_get_time();
@@ -46,8 +47,9 @@ void timer_init(uint64_t timebase_frequency, bool use_sstc)
     clint_init_timer_interrupt();
     timer_schedule_interrupt = no_op;
 #elif defined(CONFIG_RISCV_SBI)
+    CPU_Features features = dtb_get_cpu_features(dtb, cpuid);
     // SBI environment
-    if (use_sstc)
+    if (features & RV_EXT_SSTC)
     {
         // preferred: sstc extension
         timer_schedule_interrupt = sstc_schedule_interrupt;

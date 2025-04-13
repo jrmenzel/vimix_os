@@ -12,13 +12,13 @@
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
 #include <kernel/major.h>
+#include <kernel/memlayout.h>
 #include <kernel/proc.h>
 #include <kernel/signal.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <kernel/vm.h>
-#include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
 /// a user program that calls execv("/usr/bin/init")
@@ -94,7 +94,7 @@ void proc_init()
 struct cpu *get_cpu()
 {
 #if defined(CONFIG_DEBUG_EXTRA_RUNTIME_TESTS)
-    if (cpu_is_device_interrupts_enabled())
+    if (cpu_is_interrupts_enabled())
     {
         panic("interrupts must be disabled when calling get_cpu");
     }
@@ -233,8 +233,8 @@ pagetable_t proc_pagetable(struct process *proc)
     // at the highest user virtual address.
     // only the supervisor uses it, on the way
     // to/from user space, so not PTE_U.
-    if (kvm_map(pagetable, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
-                PTE_RO_TEXT) < 0)
+    if (vm_map(pagetable, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
+               PTE_RO_TEXT, false) < 0)
     {
         uvm_free_pagetable(pagetable);
         return INVALID_PAGETABLE_T;
@@ -242,8 +242,8 @@ pagetable_t proc_pagetable(struct process *proc)
 
     // map the trapframe page just below the trampoline page, for
     // u_mode_trap_vector.S.
-    if (kvm_map(pagetable, TRAPFRAME, (size_t)(proc->trapframe), PAGE_SIZE,
-                PTE_RW_RAM) < 0)
+    if (vm_map(pagetable, TRAPFRAME, (size_t)(proc->trapframe), PAGE_SIZE,
+               PTE_RW_RAM, false) < 0)
     {
         uvm_unmap(pagetable, TRAMPOLINE, 1, 0);
         uvm_free_pagetable(pagetable);
@@ -274,8 +274,8 @@ void userspace_init()
     // address USER_TEXT_START of pagetable
     char *mem = kalloc();
     memset(mem, 0, PAGE_SIZE);
-    kvm_map(proc->pagetable, USER_TEXT_START, (size_t)mem, PAGE_SIZE,
-            PTE_INITCODE);
+    vm_map(proc->pagetable, USER_TEXT_START, (size_t)mem, PAGE_SIZE,
+           PTE_INITCODE, false);
     memmove(mem, g_initcode, sizeof(g_initcode));
 
     proc->heap_begin = USER_TEXT_START + PAGE_SIZE;
@@ -562,7 +562,7 @@ void sched()
         panic("sched running");
     }
 
-    if (cpu_is_device_interrupts_enabled())
+    if (cpu_is_interrupts_enabled())
     {
         panic("sched interruptible");
     }

@@ -3,66 +3,7 @@
 #include "scause.h"
 
 #include <arch/cpu.h>
-#include <kernel/proc.h>
-#include <kernel/vm.h>
-#include <mm/mm.h>
-
-void dump_scause()
-{
-    xlen_t scause = rv_read_csr_scause();
-    xlen_t stval = rv_read_csr_stval();
-
-    printk("scause (0x%zx): %s\n", scause,
-           scause_exception_code_to_string(scause));
-    printk("sepc: " FORMAT_REG_SIZE " stval: 0x%zx\n", rv_read_csr_sepc(),
-           stval);
-
-    if (scause == SCAUSE_INSTRUCTION_PAGE_FAULT ||
-        scause == SCAUSE_LOAD_PAGE_FAULT ||
-        scause == SCAUSE_STORE_AMO_PAGE_FAULT)
-    {
-        printk("Tried to ");
-        if (scause == SCAUSE_INSTRUCTION_PAGE_FAULT)
-        {
-            printk("execute from");
-        }
-        else if (scause == SCAUSE_LOAD_PAGE_FAULT)
-        {
-            printk("read from");
-        }
-        else if (scause == SCAUSE_STORE_AMO_PAGE_FAULT)
-        {
-            printk("write to");
-        }
-        // stval is set to the offending memory address
-        printk(" address 0x%zx %s\n", stval,
-               (stval ? "" : "(dereferenced NULL pointer)"));
-
-        struct process *proc = get_current();
-        if (proc)
-        {
-#if defined(__ARCH_is_64bit)
-            if (stval >= MAXVA)
-            {
-                printk("Address 0x%zx larger than supported\n", stval);
-                return;
-            }
-#endif
-
-            pte_t *pte = vm_walk(proc->pagetable, stval, false);
-            if (!pte)
-            {
-                printk("Page of address 0x%zx is not mapped\n", stval);
-            }
-            else
-            {
-                printk("Page of address 0x%zx access: ", stval);
-                debug_vm_print_pte_flags(*pte);
-                printk("\n");
-            }
-        }
-    }
-}
+#include <kernel/kernel.h>
 
 const char *scause_exception_code_to_string(xlen_t scause)
 {

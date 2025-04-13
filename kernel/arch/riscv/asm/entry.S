@@ -7,8 +7,8 @@
 # kernel.ld causes the following code to
 # be placed at this kernel start location.
 
+#include <kernel/page.h>
 #include <kernel/param.h>
-#include <arch/riscv/mm/mm.h>
 
 #
 # All harts (CPU threads) start here:

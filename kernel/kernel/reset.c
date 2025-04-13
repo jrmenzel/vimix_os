@@ -1,12 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/syscon.h>
 #include <kernel/kernel.h>
 #include <kernel/reset.h>
-
-#ifdef CONFIG_RISCV_SBI
-#include <arch/riscv/sbi.h>
-#endif
 
 void (*g_machine_restart_func)() = NULL;
 void (*g_machine_power_off_func)() = NULL;

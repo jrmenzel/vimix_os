@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/timer.h>
 #include <drivers/console.h>
 #include <kernel/kticks.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
-#include <timer.h>
 
 // each call to the timer interrupt is one tick
 struct spinlock g_tickslock;

@@ -12,8 +12,12 @@
 # a page boundary.
 #
 
-#include <mm/memlayout.h>
+#include <kernel/memlayout.h>
+#include <arch/riscv/asm/satp.h>
 
+# Define a section for this code to place it in the linker script at the end of the kernel,
+# page aligned. proc_pagetable() will map only this page into the users page table (so this
+# code must set the kernels pagetable before calling functions.
 .section trampsec
 .globl trampoline
 trampoline:
@@ -96,26 +100,40 @@ u_mode_trap_vector:
     LOAD_REG_FROM_TRAP_FRAME(tp, 4)
 
     # load the address of user_mode_interrupt_handler(), from p->trapframe->kernel_trap
-    LOAD_REG_FROM_TRAP_FRAME(t0, 2)
+    LOAD_REG_FROM_TRAP_FRAME(s0, 2)
 
-    # fetch the kernel page table address, from p->trapframe->kernel_page_table.
-    LOAD_REG_FROM_TRAP_FRAME(t1, 0)
-
-    # wait for any previous memory operations to complete, so that
-    # they use the user page table.
-    sfence.vma zero, zero
-
-    # install the kernel page table.
-    csrw satp, t1
-
-    # flush the instruction cache now that the code changed by updating the page tabe
-    fence.i
-
-    # flush now-stale user entries from the TLB.
-    sfence.vma zero, zero
+    # fetch the kernel page table register value, from p->trapframe->kernel_page_table.
+    # mmu_set_page_table_reg_value(p->trapframe->kernel_page_table)
+    LOAD_REG_FROM_TRAP_FRAME(a0, 0)
+    jal mmu_set_page_table_reg_value
 
     # jump to user_mode_interrupt_handler(), which does not return
-    jr t0
+    jr s0
+
+# Sets satp register including all required barriers.
+# Implemented in assembly to share code with the other kernel code.
+# param a0 = size_t satp register value to set.
+.globl mmu_set_page_table_reg_value
+mmu_set_page_table_reg_value:
+    li t0, SATP_ASID_MASK
+    and a1, a1, t0
+    li t0, SATP_ASID_POS
+    srl a1, a1, t0
+    # a1 is now the ASID
+
+    # redundant?
+    sfence.vma zero, a1
+
+    # install the page table
+    csrw satp, a0
+
+    # flush the instruction cache now that the code changed by updating the page table
+    fence.i
+
+    # flush now-stale entries from the TLB
+    sfence.vma zero, a1
+
+    ret
 
 .globl return_to_user_mode_asm
 return_to_user_mode_asm:
@@ -123,18 +141,7 @@ return_to_user_mode_asm:
     # called by return_to_user_mode() in trap.c to
     # switch from kernel to user.
     # a0: user page table, for satp.
-
-    # switch to the user page table.
-    sfence.vma zero, zero
-    
-    # install user page table
-    csrw satp, a0
-
-    # flush the instruction cache now that the code changed by updating the page tabe
-    fence.i
-
-    # flush now-stale user entries from the TLB.
-    sfence.vma zero, zero
+    jal mmu_set_page_table_reg_value
 
     li a0, TRAPFRAME
 

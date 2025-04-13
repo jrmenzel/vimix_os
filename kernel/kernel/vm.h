@@ -3,15 +3,11 @@
 
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
+#include <kernel/page.h>
 #include <mm/pte.h>
 #include <mm/vm.h>
 
-/// @brief in the end a pagetable_t is a:
-///  "size_t tagetable[512]" (64 bit RISC V)
-///  "size_t tagetable[1024]" (32 bit RISC V)
-/// Each entry encodes (access) flags and a pointer to the lower level page.
-typedef pte_t *pagetable_t;
-static const pagetable_t INVALID_PAGETABLE_T = NULL;
+extern pagetable_t g_kernel_pagetable;
 
 // Memory map filled in main from a device tree and used to init the free memory
 struct Minimal_Memory_Map
@@ -26,6 +22,37 @@ struct Minimal_Memory_Map
     size_t dtb_file_start;
     size_t dtb_file_end;
 };
+
+/// @brief Enables paging with the page table pointed to and sets the ASID.
+/// @param addr_of_first_block Pointer to page table.
+/// @param asid ASID to use.
+void mmu_set_page_table(size_t addr_of_first_block, uint32_t asid);
+
+/// @brief Construct the page table enable register value. It encodes the page
+/// table address, the ASID and flags. The format is ARCH specific.
+/// @param addr_of_first_block Pointer to page table.
+/// @param asid ASID to use.
+/// @return The register value for mmu_set_page_table_reg_value()
+size_t mmu_make_page_table_reg(size_t addr_of_first_block, uint32_t asid);
+
+/// @brief Sets paging register including all required barriers.
+/// Implemented in assembly to share code with the user mode trap vector.
+/// @param reg_value Register value to set.
+void mmu_set_page_table_reg_value(size_t reg_value);
+
+/// @brief Returns the current page table settings.
+/// @return The register value for a future mmu_set_page_table_reg_value()
+size_t mmu_get_page_table_reg_value();
+
+/// @brief Extracts the pointer value to the page table.
+/// @param reg_value from mmu_get_page_table_reg_value()
+/// @return Address of page table
+size_t mmu_get_page_table_address(size_t reg_value);
+
+/// @brief Extracts the ASID.
+/// @param reg_value from mmu_get_page_table_reg_value()
+/// @return ASID
+size_t mmu_get_page_table_asid(size_t reg_value);
 
 /// Initialize the one g_kernel_pagetable
 void kvm_init(struct Minimal_Memory_Map *memory_map,
@@ -43,16 +70,18 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
                          size_t size, pte_t perm);
 
 /// @brief Create PTEs for virtual addresses starting at va that refer to
-/// physical addresses starting at pa. va and size might not
-/// be page-aligned. Returns 0 on success, -1 if vm_walk() couldn't
-/// allocate a needed page-table page.
-/// @param pagetable page table to modify
+/// physical addresses starting at pa. va and size must be page-aligned.
+/// @param pagetable kernel page table to modify
 /// @param va virtual address
 /// @param pa physical address
 /// @param size size in bytes
 /// @param perm access permission
-int32_t kvm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
-                pte_t perm);
+/// @param allow_super_pages If the mapping can be (partially) done with super
+/// pages, those will be allocated (e.g. 2 MB alligned 2 MB blocks on 64 bit).
+/// @return Returns 0 on success, -1 if vm_walk() couldn't allocate a needed
+/// page-table page.
+int32_t vm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
+               pte_t perm, bool allow_super_pages);
 
 /// @brief create an empty user page table.
 /// @return new pagetable or NULL if out of memory.
@@ -127,19 +156,25 @@ void uvm_unmap(pagetable_t pagetable, size_t va, size_t npages, bool do_free);
 /// Used by execv for the user stack guard page.
 void uvm_clear_user_access_bit(pagetable_t pagetable, size_t va);
 
-/// Return the address of the PTE in page table pagetable
-/// that corresponds to virtual address va.  If alloc!=0,
+/// @brief Return PTE in pagetable which maps the given address va. Optionally
 /// create any required page-table pages.
-///
-/// The risc-v Sv39 scheme (64bit) has three levels of page-table
-/// pages. A page-table page contains 512 64-bit PTEs.
-/// A 64-bit virtual address is split into five fields:
-///   39..63 -- must be zero.
-///   30..38 -- 9 bits of level-2 index.
-///   21..29 -- 9 bits of level-1 index.
-///   12..20 -- 9 bits of level-0 index.
-///    0..11 -- 12 bits of byte offset within the page.
+/// @param pagetable The page table to look-up in or extend (see alloc)
+/// @param va virtual address to look up PTE for
+/// @param alloc if true extend page table to map the given address
+/// @return PTE or NULL if va is not mapped and alloc == FALSE.
 pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc);
+
+/// @brief Return PTE in pagetable which maps the given address va. Optionally
+/// create any required page-table pages.
+/// @param pagetable The page table to look-up in or extend (see alloc)
+/// @param va virtual address to look up PTE for
+/// @param is_super_page Set to true if the PTE maps a (usually) 2MB region
+/// instead of a 4KB page. Must also be true to allow super page creation at
+/// alloc.
+/// @param alloc if true extend page table to map the given address
+/// @return PTE or NULL if va is not mapped and alloc == FALSE.
+pte_t *vm_walk2(pagetable_t pagetable, size_t va, bool *is_super_page,
+                bool alloc);
 
 /// @brief Look up the physical address behind a virtual address.
 ///        Can only be used to look up user pages.
@@ -191,11 +226,6 @@ int32_t uvm_copy_in(pagetable_t pagetable, char *dst_pa, size_t src_va,
 int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
                         size_t max);
 
-/// @brief Converts access flags from an ELF file to VM access permissions.
-/// @param flags Flags from an ELF file
-/// @return A pte with matching access flags
-pte_t elf_flags_to_perm(int32_t flags);
-
 #if defined(DEBUG)
 /// @brief Debug print of the pagetable.
 /// @param pagetable Table to print.
@@ -205,7 +235,13 @@ void debug_vm_print_page_table(pagetable_t pagetable);
 /// @param pagetable The page table.
 /// @return Number of allocations, size in byte = return value * PAGE_SIZE
 size_t debug_vm_get_size(pagetable_t pagetable);
+
+/// @brief Prints the flags from the PTE
+/// @param flags ARCH specific flags or a full PTE (addr will be ignored)
+void debug_vm_print_pte_flags(size_t flags);
+
 #else
 static inline void debug_vm_print_page_table(pagetable_t) {}
 static inline size_t debug_vm_get_size(pagetable_t pagetable) { return 0; }
+static inline void debug_vm_print_pte_flags(size_t flags) {}
 #endif  // DEBUG

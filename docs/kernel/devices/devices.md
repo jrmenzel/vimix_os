@@ -36,7 +36,7 @@ Access to a device / driver via [file](../file_system/file.md) operations is the
 
 #### Device Interrupts
 
-All devices can have a `dev->irq_number` to get interrupts for that number (`dev->dev_ops.interrupt_handler`). See `handle_plic_device_interrupt()`.
+All devices can have a `dev->irq_number` to get interrupts for that number (`dev->dev_ops.interrupt_handler`). See `handle_device_interrupt()`.
 
 
 ### Block Devices

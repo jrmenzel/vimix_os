@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
-#include "scheduler.h"
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/process.h>
+#include <kernel/scheduler.h>
 #include <kernel/spinlock.h>
 
 void scheduler()
@@ -15,7 +15,7 @@ void scheduler()
     while (true)
     {
         // Avoid deadlock by ensuring that devices can interrupt.
-        cpu_enable_device_interrupts();
+        cpu_enable_interrupts();
         bool found_runnable = false;
 
         for (struct process *proc = g_process_list;
@@ -47,7 +47,7 @@ void scheduler()
 
         if (!found_runnable)
         {
-            cpu_enable_device_interrupts();
+            cpu_enable_interrupts();
             wait_for_interrupt();
         }
     }
@@ -55,7 +55,7 @@ void scheduler()
 KERNEL_PANIC:
     while (true)
     {
-        cpu_enable_device_interrupts();
+        cpu_enable_interrupts();
         wait_for_interrupt();
     }
 }

@@ -116,7 +116,7 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_QUEUE_NUM, VIRTIO_DESCRIPTORS);
 
     // write physical addresses.
-#if defined(__ARCH_is_32bit)
+#if defined(__ARCH_32BIT)
     MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_QUEUE_DESC_LOW, (size_t)disk->desc);
     MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DRIVER_DESC_LOW, (size_t)disk->avail);
     MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DEVICE_DESC_LOW, (size_t)disk->used);

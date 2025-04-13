@@ -5,7 +5,7 @@
 #include <arch/cpu.h>
 
 /// cpu_push_disable_device_interrupt_stack/cpu_pop_disable_device_interrupt_stack
-/// are like cpu_disable_device_interrupts()/cpu_enable_device_interrupts()
+/// are like cpu_disable_interrupts()/cpu_enable_interrupts()
 /// except that they are matched: it takes two
 /// cpu_pop_disable_device_interrupt_stack()s to undo two
 /// cpu_push_disable_device_interrupt_stack()s.  Also, if interrupts are

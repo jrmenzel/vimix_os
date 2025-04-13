@@ -3,16 +3,25 @@
 
 #include <kernel/kernel.h>
 #include <mm/pte.h>
+#include "asm/satp.h"
 
-/// Switch h/w page table register to the kernel's page table
-/// and enable paging.
-void kvm_init_per_cpu();
+#define DEBUG_VM_PRINT_ARCH_PTE_FLAGS(pte) \
+    printk("%c", PTE_IS_DIRTY(flags) ? 'd' : '_');
 
-static inline void debug_vm_print_pte_flags(size_t flags)
+static inline void mmu_flush_tlb()
 {
-    printk("%c%c%c%c%c%c%c%c", (flags & PTE_V) ? 'v' : '_',
-           (flags & PTE_R) ? 'r' : '_', (flags & PTE_W) ? 'w' : '_',
-           (flags & PTE_X) ? 'x' : '_', (flags & PTE_U) ? 'u' : '_',
-           (flags & PTE_G) ? 'g' : '_', (flags & PTE_A) ? 'a' : '_',
-           (flags & PTE_D) ? 'd' : '_');
+// flush TLB if zifencei extension is supported, noop otherwise
+#if defined(__RISCV_EXT_ZIFENCEI)
+    // the zero, zero means flush all TLB entries.
+    asm volatile("sfence.vma zero, zero");
+#endif
+}
+
+static inline void mmu_flush_tlb_asid(uint32_t asid)
+{
+// flush TLB if zifencei extension is supported, noop otherwise
+#if defined(__RISCV_EXT_ZIFENCEI)
+    // the zero, zero means flush all TLB entries.
+    asm volatile("sfence.vma zero, %0" ::"r"(asid));
+#endif
 }
