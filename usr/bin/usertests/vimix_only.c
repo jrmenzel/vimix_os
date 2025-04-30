@@ -4,7 +4,7 @@
 
 #include <kernel/param.h>
 #include <kernel/xv6fs.h>
-#include <mm/mm.h>  // for MAXVA
+#include <mm/mm.h>  // for USER_VA_END
 
 //
 // Tests VIMIX system calls.  usertests without arguments runs them all
@@ -2647,14 +2647,14 @@ void kernmem(char *s)
     }
 }
 
-// user code should not be able to write to addresses above MAXVA.
-// only on 64 bit where addresses above MAXVA are possible
-void MAXVAplus(char *s)
+// user code should not be able to write to addresses above USER_VA_END.
+// only on 64 bit where addresses above USER_VA_END are possible
+void USER_VA_ENDplus(char *s)
 {
 #ifdef __ARCH_32BIT
     return;
 #else
-    volatile size_t a = MAXVA;
+    volatile size_t a = USER_VA_END;
     for (; a != 0; a <<= 1)
     {
         pid_t pid = fork();
@@ -3565,7 +3565,7 @@ struct test quicktests[] = {
     {sbrkbasic, "sbrkbasic"},
     {sbrkmuch, "sbrkmuch"},
     {kernmem, "kernmem"},
-    {MAXVAplus, "MAXVAplus"},
+    {USER_VA_ENDplus, "USER_VA_ENDplus"},
     {sbrkfail, "sbrkfail"},
     {sbrkarg, "sbrkarg"},
     {validatetest, "validatetest"},

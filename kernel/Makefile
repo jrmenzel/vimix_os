@@ -105,18 +105,20 @@ KERNEL_SPACE_INC += $(K_BUILD_DIR)
 endif
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I$d)
 
-CFLAGS += $(EXTERNAL_KERNEL_FLAGS) # can be set by external scripts
-CFLAGS += $(ARCH_KERNEL_CFLAGS)
-CFLAGS += -DMEMORY_SIZE=$(MEMORY_SIZE)
-CFLAGS += -DUSER_TEXT_START=$(USER_TEXT_START)
-CFLAGS += -D__ARCH_$(ARCH) 
+KBUILD_CFLAGS := $(CFLAGS)
+KBUILD_CFLAGS += $(EXTERNAL_KERNEL_FLAGS) # can be set by external scripts
+KBUILD_CFLAGS += $(ARCH_KERNEL_CFLAGS)
+KBUILD_CFLAGS += -DMEMORY_SIZE=$(MEMORY_SIZE)
+KBUILD_CFLAGS += -DUSER_TEXT_START=$(USER_TEXT_START)
+KBUILD_CFLAGS += -D__ARCH_$(ARCH)
+#KBUILD_CFLAGS += -fpic -fpie
 
 ifeq ($(RAMDISK_EMBEDDED), yes)
-CFLAGS += -D__CONFIG_RAMDISK_EMBEDDED
+KBUILD_CFLAGS += -D__CONFIG_RAMDISK_EMBEDDED
 endif
 
 # assembler flags
-AFLAGS := -D__ASSEMBLY__ $(CFLAGS)
+KBUILD_AFLAGS := -D__ASSEMBLY__ $(KBUILD_CFLAGS)
 
 .PHONY: all directories clean
 all: directories $(INIT_BUILD_DIR)/initcode.h $(KERNEL_PATH) # build all
@@ -126,22 +128,22 @@ directories: # create temp build directories
 
 # compile assembly
 $(K_BUILD_DIR)/%.o: %.S
-	@$(CC) $(AFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
+	@$(CC) $(KBUILD_AFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 # compile C, also create assembly listing
 $(K_BUILD_DIR)/%.o: %.c $(INIT_BUILD_DIR)/initcode.h
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
+	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 ifeq ($(CREATE_ASSEMBLY), yes)
 	@printf "$(TASK_COLOR)Assembly $(basename $@).s\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -S $< -g -o $(basename $@).s
+	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -S $< -g -o $(basename $@).s
 endif
 
 # special case: initcode
 # ld flag --no-warn-rwx-segments requires newer linker versions (2.39 or later)
 $(INIT_BUILD_DIR)/initcode.h: $(ARCH_DIR)/asm/initcode.S 
 	@printf "$(TASK_COLOR)Compile initcode and dump it into initcode.h\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(ARCH_DIR)/asm/initcode.S -o $(INIT_BUILD_DIR)/initcode.o
+	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(ARCH_DIR)/asm/initcode.S -o $(INIT_BUILD_DIR)/initcode.o
 	@$(LD) $(LDFLAGS) -N -e start -Ttext $(USER_TEXT_START) -o $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode.o
 	@$(OBJCOPY) -S -O binary $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode
 	@echo "unsigned char g_initcode[] = {" > $(INIT_BUILD_DIR)/initcode.h
@@ -168,7 +170,7 @@ $(K_BUILD_DIR)/ramdisk_fs.c:
 
 $(K_BUILD_DIR)/ramdisk_fs.o: $(K_BUILD_DIR)/ramdisk_fs.c
 	@printf "$(TASK_COLOR)Compile ramdisk_fs\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(K_BUILD_DIR)/ramdisk_fs.c -o $(K_BUILD_DIR)/ramdisk_fs.o
+	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(K_BUILD_DIR)/ramdisk_fs.c -o $(K_BUILD_DIR)/ramdisk_fs.o
 
 else
 $(K_BUILD_DIR)/ramdisk_fs.h:

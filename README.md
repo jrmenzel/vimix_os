@@ -84,3 +84,4 @@ $
 - [xv6 file system](docs/kernel/file_system/xv6fs/xv6fs.md) was changed to differentiate between character and block devices. It was also moved behind a [virtual file system](docs/kernel/file_system/vfs.md) abstraction.
 - Parse the [device tree](docs/misc/device_tree.md) at [boot](docs/kernel/overview/boot_process.md).
 - Added [/dev](docs/kernel/file_system/devfs/devfs.md) as a special file system exposing all devices.
+- Boot in [M-mode](docs/riscv/M-mode.md) now mimics [SBI](docs/riscv/SBI.md) to the [S-mode](docs/riscv/S-mode.md) kernel.

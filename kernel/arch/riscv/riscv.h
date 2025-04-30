@@ -1,14 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#ifndef __ASSEMBLY__
 #include <arch/fence.h>
 #include <arch/riscv/asm/satp.h>
 #include <kernel/kernel.h>
-
-#if !defined(__RISCV_CSR_TIME)
-#include <arch/timer.h>
-#include <kernel/kticks.h>
-#endif
 
 //
 // xlen is the RISC-V register width
@@ -16,6 +12,14 @@
 // it has the same size as size_t
 //
 typedef size_t xlen_t;
+
+#endif  // __ASSEMBLY__
+
+#if defined(__ARCH_32BIT)
+#define HIGHEST_BIT (1L << 31)
+#else
+#define HIGHEST_BIT (1L << 63)
+#endif
 
 // mandatory extensions
 #define __RISCV_EXT_ZICSR
@@ -33,24 +37,10 @@ typedef size_t xlen_t;
 #define SIE_STIE (1L << 5)  // timer
 #define SIE_SSIE (1L << 1)  // software
 
-#ifdef CONFIG_RISCV_BOOT_M_MODE
-// (When running in an SBI environment the kernel has no
-// direct access to M-Mode. Hide all M-Mode defines to prevent accidental
-// usage as it will result in runtime issues.)
-
-// Machine Status Register, mstatus
-#define MSTATUS_MPP_MASK (3L << 11)  // previous mode mask.
-#define MSTATUS_MPP_M (3L << 11)     // mret will go to Machine Mode
-#define MSTATUS_MPP_S (1L << 11)     // mret will go to Supervisor Mode
-#define MSTATUS_MPP_U (0L << 11)     // mret will go to User Mode
-#define MSTATUS_MIE (1L << 3)        // machine-mode interrupt enable.
-
-// Machine-mode Interrupt Enable
-#define MIE_MEIE (1L << 11)  // external
-#define MIE_MTIE (1L << 7)   // timer
-#define MIE_MSIE (1L << 3)   // software
-#define MIE_STIE (1L << 5)   // supervisor timer
-#endif                       // CONFIG_RISCV_BOOT_M_MODE
+// Supervisor Interrupt Pending, sip csr uses same bits as sie csr!
+#define SIP_SEIP SIE_SEIE  // external
+#define SIP_STIP SIE_STIE  // timer
+#define SIP_SSIP SIE_SSIE  // software
 
 /// physical memory protection CSR read access
 #define PMP_R (1L << 0)
@@ -60,6 +50,15 @@ typedef size_t xlen_t;
 #define PMP_X (1L << 2)
 /// physical memory protection CSR naturally aligned power of two
 #define PMP_MATCH_NAPOT (3L << 3)
+
+#define PMP_RANGE_BOTTOM 0
+#if (__riscv_xlen == 32)
+#define PMP_RANGE_TOP 0xffffffff
+#else
+#define PMP_RANGE_TOP 0x3fffffffffffffull
+#endif
+
+#ifndef __ASSEMBLY__
 
 // CSR read macro:
 #define rv_read_csr_(name)                         \
@@ -76,57 +75,6 @@ typedef size_t xlen_t;
     {                                                  \
         asm volatile("csrw " #name ", %0" : : "r"(x)); \
     }
-
-#ifdef CONFIG_RISCV_BOOT_M_MODE
-// machine mode CSR read / write functions
-
-rv_read_csr_(mhartid);  // hard-id
-
-rv_read_csr_(pmpcfg0);  // Physical Memory Protection
-rv_write_csr_(pmpcfg0);
-
-rv_read_csr_(mstatus);
-rv_write_csr_(mstatus);
-
-// machine exception program counter, holds the
-// instruction address to which a return from
-// exception will go.
-rv_write_csr_(mepc);
-
-rv_read_csr_(mie);  // machine-mode Interrupt Enable
-rv_write_csr_(mie);
-
-// Machine Exception Delegation
-rv_read_csr_(medeleg);
-rv_write_csr_(medeleg);
-
-// Machine Interrupt Delegation
-rv_read_csr_(mideleg);
-rv_write_csr_(mideleg);
-
-rv_read_csr_(mscratch);
-rv_write_csr_(mscratch);
-
-// Machine mode trap vectors
-rv_read_csr_(mtvec);
-rv_write_csr_(mtvec);
-
-// Machine-mode Counter-Enable
-rv_read_csr_(mcounteren);
-rv_write_csr_(mcounteren);
-
-// physical memory protection register 0
-rv_write_csr_(pmpaddr0);
-
-// environment config register
-rv_read_csr_(menvcfg);
-rv_write_csr_(menvcfg);
-#if (__riscv_xlen == 32)
-rv_read_csr_(menvcfgh);
-rv_write_csr_(menvcfgh);
-#endif
-
-#endif  // CONFIG_RISCV_BOOT_M_MODE
 
 //
 // supervisor mode (OS mode)
@@ -161,35 +109,31 @@ rv_read_csr_(scause);
 // Supervisor Trap Value
 rv_read_csr_(stval);
 
-#if defined(__RISCV_CSR_TIME)
 // Time CSRs: it's a 64bit value so 32bit mode needs two CSRs to get the full
 // value
 rv_read_csr_(time);
+
 #if (__riscv_xlen == 32)
 rv_read_csr_(timeh);
-#endif
 
-#if (__riscv_xlen == 32)
 static inline uint64_t rv_get_time()
 {
-    uint32_t time_low = rv_read_csr_time();
-    uint32_t time_high = rv_read_csr_timeh();
+    uint32_t time_high_0;
+    uint32_t time_low;
+    uint32_t time_high_1;
 
-    return ((uint64_t)time_high << 32) + (uint64_t)time_low;
+    do {
+        // read the high value twice to detect an overflow
+        time_high_0 = rv_read_csr_timeh();
+        time_low = rv_read_csr_time();
+        time_high_1 = rv_read_csr_timeh();
+    } while (time_high_0 != time_high_1);
+
+    return ((uint64_t)time_high_0 << 32) + (uint64_t)time_low;
 }
 #else
 static inline uint64_t rv_get_time() { return rv_read_csr_time(); }
 #endif
-
-#else   // __RISCV_CSR_TIME
-static inline uint64_t rv_get_time()
-{
-    // hack for platforms without time CSRs (Spike without SBI)
-    uint64_t now =
-        kticks_get_ticks() * g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
-    return now;
-}
-#endif  // __RISCV_CSR_TIME
 
 // read cycle counter
 rv_read_csr_(cycle);
@@ -201,9 +145,18 @@ rv_read_csr_(cycleh);
 /// @brief get current cycle count as 64 bit value
 static inline uint64_t rv_get_cycles()
 {
-    uint32_t cycle_low = rv_read_csr_cycle();
-    uint32_t cycle_high = rv_read_csr_cycleh();
-    return ((uint64_t)cycle_high << 32) + (uint64_t)cycle_low;
+    uint32_t cycle_high_0;
+    uint32_t cycle_low;
+    uint32_t cycle_high_1;
+
+    do {
+        // read the high value twice to detect an overflow
+        cycle_high_0 = rv_read_csr_cycleh();
+        cycle_low = rv_read_csr_cycle();
+        cycle_high_1 = rv_read_csr_cycleh();
+    } while (cycle_high_0 != cycle_high_1);
+
+    return ((uint64_t)cycle_high_0 << 32) + (uint64_t)cycle_low;
 }
 #else
 /// @brief get current cycle count as 64 bit value
@@ -237,12 +190,11 @@ static inline uint64_t rv_get_instret() { return rv_read_csr_instret(); }
 /// @brief stime compare register for extension Sstc
 rv_read_csr_(stimecmp);
 rv_write_csr_(stimecmp);
+
 #if (__riscv_xlen == 32)
 rv_read_csr_(stimecmph);
 rv_write_csr_(stimecmph);
-#endif
 
-#if (__riscv_xlen == 32)
 /// @brief get Sstc stimecmp register
 static inline uint64_t rv_get_stimecmp()
 {
@@ -255,8 +207,8 @@ static inline void rv_set_stimecmp(uint64_t new_value)
 {
     uint32_t low = new_value & 0xFFFFFFFF;
     uint32_t high = new_value >> 32;
-    rv_write_csr_stimecmp(low);
     rv_write_csr_stimecmph(high);
+    rv_write_csr_stimecmp(low);
 }
 #else
 /// @brief get Sstc stimecmp register
@@ -266,6 +218,8 @@ static inline void rv_set_stimecmp(uint64_t new_value)
 {
     return rv_write_csr_stimecmp(new_value);
 }
-#endif
+#endif  // __riscv_xlen
 
-#endif
+#endif  // __RISCV_EXT_SSTC
+
+#endif  // __ASSEMBLY__

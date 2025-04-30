@@ -487,10 +487,12 @@ CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id)
         fdt_getprop(dtb, offset, "riscv,isa", &riscv_isa_len);
     if (riscv_isa != NULL)
     {
+#if defined(__RISCV_EXT_SSTC)
         if (extension_is_supported(riscv_isa, "sstc"))
         {
             featues |= RV_EXT_SSTC;
         }
+#endif
         if (extension_is_supported(riscv_isa, "f"))
         {
             featues |= RV_EXT_FLOAT;

@@ -12,7 +12,7 @@ USER_SPACE_INC_HOST_PARAMS := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
 .PHONY: all directories clean usertests
 
 # usertest includes internal kernel API and needs more include search paths
-KERNEL_SPACE_INC := ./arch/$(ARCH) # selected architecture, needed for MAXVA
+KERNEL_SPACE_INC := ./arch/$(ARCH) # selected architecture, needed for USER_VA_END
 KERNEL_SPACE_INC += ./include # public kernel API
 KERNEL_SPACE_INC_PARAMS := $(foreach d, $(KERNEL_SPACE_INC), -I../../../kernel/$d)
 

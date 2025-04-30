@@ -14,7 +14,7 @@
 #if defined(__ARCH_32BIT)
 #define TRAMPOLINE (0xFFFFF000)
 #else
-#define TRAMPOLINE (MAXVA - PAGE_SIZE)
+#define TRAMPOLINE (USER_VA_END - PAGE_SIZE)
 #endif
 
 /// map kernel stacks beneath the trampoline,
@@ -22,19 +22,19 @@
 #define KSTACK(p) (TRAMPOLINE - ((p) + 1) * (PAGE_SIZE + KERNEL_STACK_SIZE))
 
 /// User memory layout.
-/// Address zero first:
+/// Address 400000:
 ///   text
 ///   original data and bss
-///   fixed-size stack
 ///   expandable heap
 ///   ...
+///   stack
 ///   TRAPFRAME (p->trapframe, used by the trampoline)
 ///   TRAMPOLINE (the same page as in the kernel)
+// #define TRAPFRAME (USER_VA_END - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
 
 /// Highest address of the user stack.
 /// Could be placed anywhere. The highest position possible is just below the
 /// TRAPFRAME (setting USER_STACK_HIGH to TRAPFRAME - remember the stack grows
-/// down!). But moving it a bit lower gives nicer stack addresses during
-/// debugging :-)
-#define USER_STACK_HIGH (TRAPFRAME - 13 * PAGE_SIZE)
+/// down!).
+#define USER_STACK_HIGH (USER_VA_END - 16 * PAGE_SIZE)

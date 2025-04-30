@@ -42,7 +42,7 @@ For RISC V either 32-bit or 64-bit target can get selected in `MakefileArch.mk`.
 
 The use of the RISC V compressed instruction extension can be disabled by setting `RV_ENABLE_EXT_C=no`.
 
-When `RV_ENABLE_EXT_SSTC` is set, the timer will be based on this extension instead of using the [SBI](riscv/SBI.md) or [M-mode](riscv/M-mode.md) timers.
+When `RV_ENABLE_EXT_SSTC` is set, the timer will be based on this extension (if available) instead of using the [SBI](riscv/SBI.md) timer.
 
 
 ### SBI

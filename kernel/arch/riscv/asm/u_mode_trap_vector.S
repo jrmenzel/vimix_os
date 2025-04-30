@@ -12,6 +12,7 @@
 # a page boundary.
 #
 
+#include <arch/riscv/asm/registers.h>
 #include <kernel/memlayout.h>
 #include <arch/riscv/asm/satp.h>
 
@@ -24,16 +25,8 @@ trampoline:
 .align 4
 .globl u_mode_trap_vector
 
-#if (__riscv_xlen == 32)
-#define SIZE_OF_REG 4
-#define SAVE_REG_TO_TRAP_FRAME(REGISTER, OFFSET) sw REGISTER, (OFFSET*SIZE_OF_REG)(a0)
-#define LOAD_REG_FROM_TRAP_FRAME(REGISTER, OFFSET) lw REGISTER, (OFFSET*SIZE_OF_REG)(a0)
-#else 
-# 64 bit
-#define SIZE_OF_REG 8
-#define SAVE_REG_TO_TRAP_FRAME(REGISTER, OFFSET) sd REGISTER, (OFFSET*SIZE_OF_REG)(a0)
-#define LOAD_REG_FROM_TRAP_FRAME(REGISTER, OFFSET) ld REGISTER, (OFFSET*SIZE_OF_REG)(a0)
-#endif
+#define SAVE_REG_TO_TRAP_FRAME(REGISTER, OFFSET) SAVE_REG_TO_ARRAY(REGISTER, OFFSET, a0)
+#define LOAD_REG_FROM_TRAP_FRAME(REGISTER, OFFSET) LOAD_REG_FROM_ARRAY(REGISTER, OFFSET, a0)
 
 u_mode_trap_vector:    
     #

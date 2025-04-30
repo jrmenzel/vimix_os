@@ -42,7 +42,6 @@ void dump_pre_int_kthread_state(size_t *stack)
     printk("ra  = " FORMAT_REG_SIZE "\n", stack[IDX_RA]);
     printk("sp  = " FORMAT_REG_SIZE "\n", (size_t)stack);
     printk("gp  = " FORMAT_REG_SIZE "\n", stack[IDX_GP]);
-
     printk("a0  = " FORMAT_REG_SIZE "\n", stack[IDX_A0]);
     printk("a1  = " FORMAT_REG_SIZE "\n", stack[IDX_A1]);
     printk("a2  = " FORMAT_REG_SIZE "\n", stack[IDX_A2]);
@@ -84,13 +83,11 @@ void dump_exception_cause(struct Interrupt_Context *ctx)
         struct process *proc = get_current();
         if (proc)
         {
-#if defined(__ARCH_64BIT)
-            if (ctx->stval >= MAXVA)
+            if (!VA_IS_IN_RANGE(ctx->stval))
             {
-                printk("Address 0x%zx larger than supported\n", ctx->stval);
+                printk("Address 0x%zx out of range\n", ctx->stval);
                 return;
             }
-#endif
 
             pte_t *pte = vm_walk(proc->pagetable, ctx->stval, false);
             if (!pte)
@@ -193,6 +190,11 @@ void handle_device_interrupt()
 
 void handle_timer_interrupt()
 {
+    // acknowledge the software interrupt by clearing
+    // the SSIP bit in sip before scheduling the next interrupt
+    // in case it schedules the int instantly
+    rv_write_csr_sip(rv_read_csr_sip() & ~SIP_SSIP);
+
     uint64_t timer_interrupt_interval =
         g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
     uint64_t now = rv_get_time();
@@ -203,8 +205,4 @@ void handle_timer_interrupt()
     {
         kticks_inc_ticks();
     }
-
-    // acknowledge the software interrupt by clearing
-    // the SSIP bit in sip.
-    rv_write_csr_sip(rv_read_csr_sip() & ~2);
 }

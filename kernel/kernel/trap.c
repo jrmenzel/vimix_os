@@ -112,6 +112,7 @@ void user_mode_interrupt_handler(size_t *stack)
         yield();
     }
 
+    int_ctx_restore(&ctx);
     return_to_user_mode();
 }
 

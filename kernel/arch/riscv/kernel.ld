@@ -22,6 +22,11 @@ SECTIONS
     PROVIDE(end_of_text = .);
   }
 
+    /* keep m mode data out of BSS */
+  M_MODE : {
+    *(.M_MODE)
+  }
+
   .rodata : ALIGN(CONSTANT(MAXPAGESIZE)) {
     . = ALIGN(16);
     *(.srodata .srodata.*) /* do not need to distinguish this from .rodata */
@@ -53,7 +58,7 @@ SECTIONS
   /* keep the kernel stack out of .bss to allow clearing the .bss
      early from C instead of from entry.S */
   STACK : {
-    g_kernel_cpu_stack = .;
+    *(.STACK)
   }
 
   PROVIDE(end_of_kernel = .);

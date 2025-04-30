@@ -122,7 +122,7 @@ SPIKE_OPTIONS += --initrd=$(BUILD_DIR)/filesystem.img
 endif
 SPIKE_OPTIONS += --kernel=$(KERNEL_FILE) $(KERNEL_FILE)
 
-ifeq ($(SBI_SUPPORT), yes)
+ifeq ($(BOOT_MODE), BOOT_S_MODE)
 SPIKE_OPTIONS := $(SPIKE_SBI_FW) $(SPIKE_OPTIONS)
 endif
 

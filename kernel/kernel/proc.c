@@ -783,6 +783,18 @@ void debug_print_call_stack_kernel(struct process *proc)
              (frame_pointer > proc_stack));
 }
 
+void debug_print_call_stack_kernel_fp(size_t frame_pointer)
+{
+    size_t depth = 32;  // limit just in case of a corrupted stack
+    while (depth-- != 0)
+    {
+        size_t ra = *((size_t *)(frame_pointer - 1 * sizeof(size_t)));
+        frame_pointer = *((size_t *)(frame_pointer - 2 * sizeof(size_t)));
+        printk("  ra: " FORMAT_REG_SIZE "\n", ra);
+        if (frame_pointer == 0) break;
+    };
+}
+
 static inline bool address_is_in_page(size_t addr, size_t page_address)
 {
     return (addr >= page_address && addr < (page_address + PAGE_SIZE));

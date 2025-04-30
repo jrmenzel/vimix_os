@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: MIT */
-#ifdef CONFIG_RISCV_SBI
 
-#include <clint.h>
 #include <drivers/console.h>
 #include <init/dtb.h>
 #include <kernel/kernel.h>
@@ -11,7 +9,7 @@
 #include <riscv.h>
 #include <sbi.h>
 
-void _entry();
+void _entry_s_mode();
 
 struct sbiret sbi_ecall(int32_t ext, int32_t fid, xlen_t arg0, xlen_t arg1,
                         xlen_t arg2, xlen_t arg3, xlen_t arg4, xlen_t arg5)
@@ -75,6 +73,17 @@ static inline long sbi_get_spec_version()
     return ret.value;
 }
 
+static inline struct sbiret sbi_get_impl_id()
+{
+    return sbi_ecall(SBI_EXT_ID_BASE, SBI_BASE_GET_IMPL_ID, 0, 0, 0, 0, 0, 0);
+}
+
+static inline struct sbiret sbi_get_impl_version()
+{
+    return sbi_ecall(SBI_EXT_ID_BASE, SBI_BASE_GET_IMPL_VERSION, 0, 0, 0, 0, 0,
+                     0);
+}
+
 /// @brief Tests if a SBI extension is available.
 /// See https://www.scs.stanford.edu/~zyedidia/docs/riscv/riscv-sbi.pdf
 /// @param extid Extension ID from the SBI spec
@@ -87,6 +96,21 @@ long sbi_probe_extension(int32_t extid)
                     0, 0);
     // no error check as base extension functions can not fail
     return ret.value;
+}
+
+static inline struct sbiret sbi_get_mvendorid()
+{
+    return sbi_ecall(SBI_EXT_ID_BASE, SBI_BASE_GET_MVENDORID, 0, 0, 0, 0, 0, 0);
+}
+
+static inline struct sbiret sbi_get_marchid()
+{
+    return sbi_ecall(SBI_EXT_ID_BASE, SBI_BASE_GET_MARCHID, 0, 0, 0, 0, 0, 0);
+}
+
+static inline struct sbiret sbi_get_mimpid()
+{
+    return sbi_ecall(SBI_EXT_ID_BASE, SBI_BASE_GET_MIMPID, 0, 0, 0, 0, 0, 0);
 }
 
 /// @brief Starts a hart
@@ -142,7 +166,7 @@ void sbi_machine_restart()
     sbi_system_reset(SBI_SRST_TYPE_WARM_REBOOT, SBI_SRST_REASON_NONE);
 }
 
-void init_sbi(void *dtb)
+void init_sbi()
 {
     long version = sbi_get_spec_version();
     long major =
@@ -150,51 +174,74 @@ void init_sbi(void *dtb)
     long minor = version & SBI_SPEC_VERSION_MINOR_MASK;
     printk("SBI specification v%ld.%ld detected\n", major, minor);
 
+    struct sbiret ret;
+    ret = sbi_get_impl_id();
+    printk(" SBI implementation: ");
+    switch (ret.value)
+    {
+        case SBI_IMPL_ID_BBL: printk("Berkley Boot Loader"); break;
+        case SBI_IMPL_ID_OPENSBI: printk("OpenSBI"); break;
+        case SBI_IMPL_ID_XVISOR: printk("Xvisor"); break;
+        case SBI_IMPL_ID_KVM: printk("KVM"); break;
+        case SBI_IMPL_ID_RUSTSBI: printk("RustSBI"); break;
+        case SBI_IMPL_ID_DIOSIX: printk("Diosix"); break;
+        case SBI_IMPL_ID_COFFER: printk("Coffer"); break;
+        case SBI_IMPL_ID_XEN: printk("Xen Project"); break;
+        case SBI_IMPL_ID_POLARFIRE_HSS:
+            printk("Polar Fire Hart Software Services");
+            break;
+        case SBI_IMPL_ID_COREBOOT: printk("coreboot"); break;
+        case SBI_IMPL_ID_OREBOOT: printk("oreboot"); break;
+        case SBI_IMPL_ID_BHYVE: printk("bhyve"); break;
+        case SBI_IMPL_ID_VIMIX: printk("VIMIX build-in"); break;
+        default: printk("0x%lx", ret.value);
+    }
+    ret = sbi_get_impl_version();
+    printk(" (version %ld)\n", ret.value);
+
     if (!EXT_SRST_QUERIED)
     {
         EXT_SRST_SUPPORTED = (sbi_probe_extension(SBI_EXT_ID_SRST) > 0);
     }
     if (EXT_SRST_SUPPORTED)
     {
-        printk("register SBI reboot/shutdown functions\n");
+        printk(
+            " with SRST extension: register SBI reboot/shutdown functions\n");
         g_machine_power_off_func = &sbi_machine_power_off;
         g_machine_restart_func = &sbi_machine_restart;
     }
-
-    if (sbi_probe_extension(SBI_EXT_ID_HSM) > 0)
-    {
-        //   hart state management
-        printk("SBI HSM extension detected, starting additional harts\n");
-
-        size_t this_hart = smp_processor_id();
-        size_t hartid = 0;
-        while (hartid < MAX_CPUS)
-        {
-            if (hartid != this_hart)
-            {
-                if (plic_get_hart_s_context(hartid) != -1)
-                {
-                    // CPU exists in device tree and supports s mode interrupts
-                    long ret =
-                        sbi_hart_start(hartid, (size_t)_entry, (size_t)dtb);
-                    if (ret != SBI_SUCCESS)
-                    {
-                        printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
-                    }
-                    else
-                    {
-                        printk("SBI HSM: starting hart %zd: OK\n", hartid);
-                    }
-                }
-            }
-            else
-            {
-                printk("SBI HSM: hart %zd already running\n", hartid);
-            }
-            hartid++;
-        }
-    }
-    printk("\n");
 }
 
-#endif  // CONFIG_RISCV_SBI
+void sbi_start_harts(size_t opaque)
+{
+    if (sbi_probe_extension(SBI_EXT_ID_HSM) <= 0)
+    {
+        return;
+    }
+
+    printk("SBI HSM extension detected, starting additional harts\n");
+
+    size_t this_hart = smp_processor_id();
+    size_t hartid = 0;
+    while (hartid < MAX_CPUS)
+    {
+        if (hartid != this_hart)
+        {
+            if (plic_get_hart_s_context(hartid) != -1)
+            {
+                // CPU exists in device tree and supports s mode interrupts
+                long ret =
+                    sbi_hart_start(hartid, (size_t)_entry_s_mode, opaque);
+                if (ret != SBI_SUCCESS)
+                {
+                    printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
+                }
+                else
+                {
+                    // printk("SBI HSM: starting hart %zd: OK\n", hartid);
+                }
+            }
+        }
+        hartid++;
+    }
+}

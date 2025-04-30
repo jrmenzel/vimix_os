@@ -1,11 +1,6 @@
 # Supported Architectures and Arch Specifics
 
-VIMIX supports [RISC V](riscv/RISCV.md) 32- and 64-bit.
-
-
-## SBI
-
-Booting from a [SBI](riscv/SBI.md) bootloader works (at least in `qemu`), to enable this see [build_instructions](build_instructions.md). 
+VIMIX supports [RISC V](riscv/RISCV.md) 32- and 64-bit. It can boot in [M-Mode](riscv/M-mode.md) (providing a minimal subset of [SBI](riscv/SBI.md) ecalls) or on [SBI](riscv/SBI.md) in [S-Mode](riscv/S-mode.md).
 
 
 ## 32-bit RISC V

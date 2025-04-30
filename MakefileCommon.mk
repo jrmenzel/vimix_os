@@ -33,7 +33,8 @@ KERNEL_FILE := $(BUILD_DIR)/$(KERNEL_NAME)
 
 # First page of the user space apps. Needed by user.ld and the kernel source
 # so defined here. Don't place at 0 to make NULL pointer dereferences illegal.
-USER_TEXT_START := "0x1000"
+# 0x400000 = 4MB in aligns with super pages and is also used in Linux
+USER_TEXT_START := "0x400000"
 
 #####
 # tools

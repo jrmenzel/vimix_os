@@ -81,16 +81,7 @@ void panic(char* error_message)
 
 #if defined(__ARCH_riscv)
     // print the kernel call stack:
-    size_t depth = 32;  // limit just in case of a corrupted stack
-    printk(" Kernel call stack:\n");
-    size_t frame_pointer = (size_t)__builtin_frame_address(0);
-    while (depth-- != 0)
-    {
-        size_t ra = *((size_t*)(frame_pointer - 1 * sizeof(size_t)));
-        frame_pointer = *((size_t*)(frame_pointer - 2 * sizeof(size_t)));
-        printk("  ra: " FORMAT_REG_SIZE "\n", ra);
-        if (frame_pointer == 0) break;
-    };
+    debug_print_call_stack_kernel_fp((size_t)__builtin_frame_address(0));
 
     struct cpu* this_cpu = get_cpu();
     if (this_cpu && this_cpu->proc)

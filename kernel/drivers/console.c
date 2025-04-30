@@ -5,10 +5,7 @@
 // Reads are line at a time.
 //
 
-#ifdef CONFIG_RISCV_SBI
 #include <arch/riscv/sbi.h>
-#endif
-
 #include <arch/timer.h>
 #include <drivers/character_device.h>
 #include <drivers/console.h>
@@ -261,6 +258,7 @@ void console_debug_print_help()
     printk("CTRL+P: Print process list\n");
     printk("CTRL+L: Print process list\n");
     printk("CTRL+T: Print process list with page tables\n");
+    printk("CTRL+B: Print kernel page table (warning, long!)\n");
     printk("CTRL+U: Print process list with user call stack\n");
     printk("CTRL+S: Print process list with kernel call stack\n");
     printk("CTRL+O: Print process list with open files\n");
@@ -292,6 +290,11 @@ bool console_handle_control_keys(int32_t c)
             break;
         case CONTROL_KEY('N'):  // print i_N_odes
             debug_print_inodes();
+            break;
+        case CONTROL_KEY('B'):  // kernel page table - running out of memorable
+                                // key combos don't collide with VSCode
+            printk("Kernel process table:\n");
+            debug_vm_print_page_table(g_kernel_pagetable);
             break;
         case DELETE_KEY:  // Delete key
             if (g_console.e != g_console.w)
@@ -414,23 +417,21 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
     }
     else
     {
-#ifdef CONFIG_RISCV_SBI
-        if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) <= 0)
+#ifdef ARCH_riscv
+        if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) > 0)
         {
-            panic(
-                "Error: support for the SBI legacy console extension "
-                "missing\n");
+            // SBI console fallback
+            device_putc = sbi_console_putchar;
+            device_putc_sync = sbi_console_putchar;
+            g_console_poll_callback = sbi_console_poll_input;
         }
-
-        // SBI console fallback
-        device_putc = sbi_console_putchar;
-        device_putc_sync = sbi_console_putchar;
-        g_console_poll_callback = sbi_console_poll_input;
-#else
-        // run with no input/output:
-        device_putc = console_putc_noop;
-        device_putc_sync = console_putc_noop;
+        else
 #endif
+        {
+            // run with no input/output:
+            device_putc = console_putc_noop;
+            device_putc_sync = console_putc_noop;
+        }
     }
 
     register_device(&g_console.cdev.dev);

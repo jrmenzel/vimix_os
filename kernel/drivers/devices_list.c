@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
 #if defined(__ARCH_riscv)
-#include <arch/riscv/clint.h>
 #include <arch/riscv/plic.h>
 #if defined(__PLATFORM_VISIONFIVE2)
 #include <drivers/jh7110_clk.h>
@@ -56,9 +55,6 @@ struct Device_Driver g_generell_drivers[] = {{"ns16550a", uart_init},
 
 #if defined(__ARCH_riscv)
                                              {"riscv,plic0", plic_init},
-#if defined(CONFIG_RISCV_BOOT_M_MODE)
-                                             {"riscv,clint0", clint_init},
-#endif
 #if defined(__PLATFORM_VISIONFIVE2)
                                              {"starfive,jh7110-clkgen", jh7110_clk_init},
 //                                           {"starfive,jh7110-temp", jh7110_temp_init}, // see below: not in device tree

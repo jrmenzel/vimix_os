@@ -245,3 +245,17 @@ static inline void debug_vm_print_page_table(pagetable_t) {}
 static inline size_t debug_vm_get_size(pagetable_t pagetable) { return 0; }
 static inline void debug_vm_print_pte_flags(size_t flags) {}
 #endif  // DEBUG
+
+/// the va is in the range of a valid user virtual address (starting at 0)
+#define VA_IS_IN_RANGE_FOR_USER(va) (va < USER_VA_END)
+
+// TODO: set after remapping
+#define KERNEL_VA_START 0
+
+/// the va is in the range of a valid kernel virtual address (ending at
+/// FFFFF...)
+#define VA_IS_IN_RANGE_FOR_KERNEL(va) (va >= KERNEL_VA_START)
+
+/// va is valid either for the user or the kernel
+#define VA_IS_IN_RANGE(va) \
+    (VA_IS_IN_RANGE_FOR_USER(va) || VA_IS_IN_RANGE_FOR_KERNEL(va))

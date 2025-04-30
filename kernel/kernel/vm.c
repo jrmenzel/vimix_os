@@ -53,6 +53,16 @@ pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
                      (size_t)memory_map->ram_end - (size_t)end_of_text,
                      PTE_RW_RAM);
 
+    if (memory_map->dtb_file_start < memory_map->ram_start)
+    {
+        // dtb is not in RAM but some flash, map that too
+        size_t map_start = PAGE_ROUND_DOWN(memory_map->dtb_file_start);
+        size_t map_end = PAGE_ROUND_UP(memory_map->dtb_file_end);
+
+        kvm_map_or_panic(kpage_table, map_start, map_start, map_end - map_start,
+                         PTE_RW_RAM);
+    }
+
     // map the trampoline for trap entry/exit to
     // the highest virtual address in the kernel.
     kvm_map_or_panic(kpage_table, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
@@ -131,13 +141,11 @@ const size_t MAX_PTES_PER_PAGE_TABLE = 512;
 pte_t *vm_walk2(pagetable_t pagetable, size_t va, bool *is_super_page,
                 bool alloc)
 {
-#if defined(__ARCH_64BIT)
-    if ((ssize_t)va >= MAXVA)
+    if (!VA_IS_IN_RANGE(va))
     {
-        printk("vm_walk: virtual address 0x%zx is larger than supported\n", va);
-        panic("vm_walk: virtual address is larger than supported");
+        printk("vm_walk: virtual address 0x%zx is not supported\n", va);
+        panic("vm_walk: virtual address is out of range");
     }
-#endif
 
     if (alloc && is_super_page == NULL)
     {
@@ -208,12 +216,10 @@ size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va,
 size_t uvm_get_physical_paddr(pagetable_t pagetable, size_t va,
                               bool *is_writeable)
 {
-#if defined(__ARCH_64BIT)
-    if ((ssize_t)va >= MAXVA)
+    if (!VA_IS_IN_RANGE_FOR_USER(va))
     {
         return 0;
     }
-#endif
 
     pte_t *pte = vm_walk2(pagetable, va, NULL, false);
     if (pte == NULL) return 0;

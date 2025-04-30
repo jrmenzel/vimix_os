@@ -10,18 +10,10 @@
 # C interrupt vector
 .globl kernel_mode_interrupt_handler
 
-#include "registers.h"
+#include <arch/riscv/asm/registers.h>
 
-#if (__riscv_xlen == 32)
-#define SIZE_OF_REG 4
-#define SAVE_REG_TO_STACK(REGISTER, OFFSET) sw REGISTER, (OFFSET*SIZE_OF_REG)(sp)
-#define LOAD_REG_FROM_STACK(REGISTER, OFFSET) lw REGISTER, (OFFSET*SIZE_OF_REG)(sp)
-#else 
-# 64 bit
-#define SIZE_OF_REG 8
-#define SAVE_REG_TO_STACK(REGISTER, OFFSET) sd REGISTER, (OFFSET*SIZE_OF_REG)(sp)
-#define LOAD_REG_FROM_STACK(REGISTER, OFFSET) ld REGISTER, (OFFSET*SIZE_OF_REG)(sp)
-#endif
+#define SAVE_REG_TO_STACK(REGISTER, OFFSET) SAVE_REG_TO_ARRAY(REGISTER, OFFSET, sp)
+#define LOAD_REG_FROM_STACK(REGISTER, OFFSET) LOAD_REG_FROM_ARRAY(REGISTER, OFFSET, sp)
 
 .globl s_mode_trap_vector
 # the address of this function must be 4 byte aligned because the lowest 

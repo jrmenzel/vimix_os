@@ -1,34 +1,24 @@
 # Interrupts
 
-Without [SBI](../../riscv/SBI.md) support, there are [M-mode](../../riscv/M-mode.md) and [S-mode](../../riscv/S-mode.md) interrupts.
-With [SBI](../../riscv/SBI.md) support, there are only [S-mode](../../riscv/S-mode.md) interrupts.
+Without [SBI](../../riscv/SBI.md) support, there are [M-Mode](../../riscv/M-mode.md) and [S-Mode](../../riscv/S-mode.md) interrupts.
+With [SBI](../../riscv/SBI.md) support, there are only [S-Mode](../../riscv/S-mode.md) interrupts.
 
 
 ## Machine Mode (NON SBI ONLY)
 
-**Interrupts:**
--  Timer via [PLIC](../../riscv/PLIC.md)
-
-At boot while still in [M-mode](../../riscv/M-mode.md), the [CLINT](../../riscv/CLINT.md) timer interrupt gets enabled. It will trigger `m_mode_trap_vector`. 
-
-This assembly routine will save a few registers, reprogram the timer for the next interrupt and trigger a [S-mode](../../riscv/S-mode.md) software interrupt to handle the timer.
-
-Then it returns. 
-
-### Enabling / Disabling
-
-[M-mode](../../riscv/M-mode.md) / Timer Interrupts stay enabled once they are enabled (but Timer interrupts are handled in [S-mode](../../riscv/S-mode.md), where they can be suppressed).
+In [M-Mode](../../riscv/M-mode.md) (call to `m_mode_trap_vector` via [SBI](../../riscv/SBI.md) ecalls), the [CLINT](../../riscv/CLINT.md) timer interrupt can get enabled.
+When the timer interrupt gets triggered, it will set an [S-Mode](../../riscv/S-mode.md) software interrupt pending.
 
 
 ## Supervisor Mode
 
 **Interrupts:**
 - From [devices](../devices/devices.md)
-- Forwarded timer interrupts from [M-mode](../../riscv/M-mode.md) or [SBI](../../riscv/SBI.md).
+- Forwarded timer interrupts from [M-Mode](../../riscv/M-mode.md) or [SBI](../../riscv/SBI.md).
 
 At boot main will enable interrupts and set the interrupt vector `s_mode_trap_vector`.
 
-When `s_mode_trap_vector` is called, the CPU is in [S-mode](../../riscv/S-mode.md). It will save all registers on the stack, call `kernel_mode_interrupt_handler` and return after restoring the registers.
+When `s_mode_trap_vector` is called, the CPU is in [S-Mode](../../riscv/S-mode.md). It will save all registers on the stack, call `kernel_mode_interrupt_handler` and return after restoring the registers.
 
 A Timer Interrupt can cause a `yield` and hand over the CPU to the scheduler.
 

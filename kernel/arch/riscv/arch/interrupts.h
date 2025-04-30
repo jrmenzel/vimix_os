@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#include "clint.h"
 #include "plic.h"
 #include "riscv.h"
 #include "sbi.h"

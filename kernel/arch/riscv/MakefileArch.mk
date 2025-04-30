@@ -27,15 +27,13 @@ CPUS := 4
 # compile with compressed instructions:
 RV_ENABLE_EXT_C := yes
 
-# compile with sstc timer, only used the support is detected at runtime
+# compile with sstc timer, only used if the support is detected at runtime
+# so only set to "no" if SBI timers should be enforced for testing
 RV_ENABLE_EXT_SSTC := yes
 
 ifeq ($(PLATFORM), qemu64)
 BITWIDTH := 64
-# with and without SBI supported
-SBI_SUPPORT := yes
-RV_ENABLE_CSR_TIME := yes
-# use this or a ramdisk
+BOOT_MODE := BOOT_S_MODE
 VIRTIO_DISK := yes
 #RAMDISK_EMBEDDED := yes
 #RAMDISK_BOOTLOADER := yes
@@ -43,24 +41,21 @@ QEMU_MACHINE := virt
 else ifeq ($(PLATFORM), qemu32)
 # test config
 BITWIDTH := 32
-SBI_SUPPORT := no
-RV_ENABLE_CSR_TIME := yes
+BOOT_MODE := BOOT_M_MODE
 RAMDISK_BOOTLOADER := yes
 QEMU_MACHINE := virt
 else ifeq ($(PLATFORM), spike32)
 BITWIDTH := 32
-RV_ENABLE_CSR_TIME := no
+BOOT_MODE := BOOT_M_MODE
 #RAMDISK_EMBEDDED := yes
 RAMDISK_BOOTLOADER := yes
 else ifeq ($(PLATFORM), spike64)
-# 64 fails if Spike defaults to a Sv48 MMU
 BITWIDTH := 64
-RV_ENABLE_CSR_TIME := no
+BOOT_MODE := BOOT_M_MODE
 RAMDISK_BOOTLOADER := yes
 else ifeq ($(PLATFORM), visionfive2)
 BITWIDTH := 64
-SBI_SUPPORT := yes
-RV_ENABLE_CSR_TIME := yes
+BOOT_MODE := BOOT_S_MODE
 RAMDISK_EMBEDDED := yes
 else
 $(error PLATFORM not set)
@@ -70,18 +65,11 @@ ifeq ($(PLATFORM), visionfive2)
 KERNBASE := 0x40200000
 else
 # qemu & spike:
-ifeq ($(SBI_SUPPORT), yes)
+ifeq ($(BOOT_MODE), BOOT_S_MODE)
 KERNBASE := 0x80200000
 else
 KERNBASE := 0x80000000
 endif
-endif
-
-# pick boot mode
-ifeq ($(SBI_SUPPORT), yes)
-BOOT_MODE := BOOT_S_MODE
-else
-BOOT_MODE := BOOT_M_MODE
 endif
 
 #####
@@ -137,9 +125,6 @@ endif
 ifeq ($(RV_ENABLE_EXT_SSTC), yes)
 EXT_DEFINES += -D__RISCV_EXT_SSTC
 endif
-ifeq ($(RV_ENABLE_CSR_TIME), yes)
-EXT_DEFINES += -D__RISCV_CSR_TIME
-endif
 
 # calling convention
 ifeq ($(BITWIDTH), 32)
@@ -164,10 +149,6 @@ ifeq ($(PLATFORM), spike64)
 ARCH_KERNEL_CFLAGS += -D__PLATFORM_SPIKE
 endif
 
-ifeq ($(SBI_SUPPORT), yes)
-ARCH_KERNEL_CFLAGS += -DCONFIG_RISCV_SBI
-endif
-
 #
 # Arch specific files
 #
@@ -177,7 +158,8 @@ OBJS_ARCH := arch/riscv/asm/entry.o \
 	arch/riscv/asm/context_switch.o \
 	arch/riscv/plic.o \
 	arch/riscv/timer.o \
-	arch/riscv/scause.o
+	arch/riscv/scause.o \
+	arch/riscv/sbi.o
 
 ifeq ($(PLATFORM), visionfive2)
 OBJS_ARCH += drivers/jh7110_clk.o \
@@ -186,11 +168,8 @@ endif
 
 ifeq ($(BOOT_MODE), BOOT_M_MODE)
 OBJS_ARCH += arch/riscv/asm/m_mode_trap_vector.o
-OBJS_ARCH += arch/riscv/clint.o
-endif
-
-ifeq ($(SBI_SUPPORT), yes)
-OBJS_ARCH += arch/riscv/sbi.o
+OBJS_ARCH += arch/riscv/asm/m_mode.o
+OBJS_ARCH += arch/riscv/m_mode.o
 endif
 
 
@@ -199,10 +178,10 @@ endif
 #
 QEMU := qemu-system-riscv$(BITWIDTH)
 
-ifeq ($(SBI_SUPPORT), yes)
-QEMU_BIOS := default
-else
+ifeq ($(BOOT_MODE), BOOT_M_MODE)
 QEMU_BIOS := none
+else
+QEMU_BIOS := default
 endif
 
 QEMU_OPTS_ARCH := -machine $(QEMU_MACHINE) -bios $(QEMU_BIOS)

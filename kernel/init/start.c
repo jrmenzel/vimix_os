@@ -2,7 +2,6 @@
 
 #include <arch/cpu.h>
 #include <arch/start.h>
-#include <arch/timer.h>
 #include <init/dtb.h>
 #include <init/main.h>
 #include <init/start.h>
@@ -18,29 +17,11 @@
 __attribute__((aligned(PAGE_SIZE))) __attribute__((
     section("STACK"))) char g_kernel_cpu_stack[KERNEL_STACK_SIZE * MAX_CPUS];
 
-void wait_on_bss_clear(bool this_thread_clears)
-{
-    if (this_thread_clears)
-    {
-        // clears the .bss section with zeros
-        size_t size = (size_t)bss_end - (size_t)bss_start;
-        memset((void *)bss_start, 0, size);
-
-        g_global_init_done = GLOBAL_INIT_BSS_CLEAR;
-    }
-    else
-    {
-        while (g_global_init_done < GLOBAL_INIT_BSS_CLEAR)
-        {
-            __sync_synchronize();
-        }
-    }
-}
-
+// All CPU threads start here after setting up the stack for C.
+// The boot CPU runs first and starts all others explicitly,
+// so there wont be race conditions checking g_global_init_done
 void start(size_t cpuid, void *device_tree)
 {
-    bool is_first_thread = is_first_thread(cpuid);
-
     cpu_set_boot_state();
 
     // disable paging for now.
@@ -50,17 +31,15 @@ void start(size_t cpuid, void *device_tree)
     cpu_disable_interrupts();
 
     // clear BSS
-    wait_on_bss_clear(is_first_thread);
-
+    bool is_first_thread = (g_global_init_done == GLOBAL_INIT_NOT_STARTED);
     if (is_first_thread)
     {
-        kticks_init();
+        size_t size = (size_t)bss_end - (size_t)bss_start;
+        memset((void *)bss_start, 0, size);
     }
-    uint64_t timebase = dtb_get_timebase(device_tree);
-    timer_init(timebase, device_tree, cpuid);
 
     // define what interrupts should arrive, DOES NOT enable interrupts
     cpu_set_interrupt_mask();
 
-    jump_to_main(device_tree, is_first_thread);
+    main(device_tree, is_first_thread);
 }

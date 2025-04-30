@@ -4,6 +4,7 @@
 
 #include <arch/interrupts.h>
 #include <arch/platform.h>
+#include <arch/timer.h>
 #include <arch/trap.h>
 #include <drivers/console.h>
 #include <drivers/devices_list.h>
@@ -45,11 +46,7 @@ void print_kernel_info()
 }
 
 #ifdef __ARCH_riscv
-#ifdef CONFIG_RISCV_SBI
-#define FEATURE_STRING "(RISCV SBI)"
-#else
-#define FEATURE_STRING "(RISCV bare metal)"
-#endif
+#define FEATURE_STRING "(RISC V)"
 #endif
 
 void print_memory_map(struct Minimal_Memory_Map *memory_map)
@@ -81,17 +78,10 @@ void print_memory_map(struct Minimal_Memory_Map *memory_map)
 
 void print_timer_source(void *dtb)
 {
-#if defined(CONFIG_RISCV_BOOT_M_MODE)
-    printk("Timer source: CLINT\n");
-#else
-#if defined(__RISCV_EXT_SSTC)
     CPU_Features features =
         dtb_get_cpu_features(dtb, __arch_smp_processor_id());
-    bool use_sstc_timer = features & RV_EXT_SSTC;
-#else
-    bool use_sstc_timer = false;
-#endif
-    if (use_sstc_timer)
+
+    if (features & RV_EXT_SSTC)
     {
         printk("Timer source: sstc extension\n");
     }
@@ -99,7 +89,6 @@ void print_timer_source(void *dtb)
     {
         printk("Timer source: SBI\n");
     }
-#endif
 }
 
 void add_ramdisks_to_dev_list(struct Devices_List *dev_list,
@@ -161,6 +150,7 @@ void init_by_first_thread(void *dtb)
     {
         printk("Console: %s\n", dev_list->dev[con_idx].driver->dtb_name);
     }
+    kticks_init();
     print_timer_source(dtb);
 
     struct Minimal_Memory_Map memory_map;
@@ -228,8 +218,8 @@ void init_by_first_thread(void *dtb)
            dev_list->dev[device_of_root_fs].driver->dtb_name,
            MAJOR(ROOT_DEVICE_NUMBER), MINOR(ROOT_DEVICE_NUMBER));
 
-    // e.g. boots other harts in SBI mode:
-    init_platform(dtb);
+    // e.g. check SBI extension
+    init_platform();
 
     // process 0:
     printk("init userspace...\n");
@@ -246,6 +236,8 @@ void init_by_first_thread(void *dtb)
     // full memory barrier (gcc buildin):
     __sync_synchronize();
     g_global_init_done = GLOBAL_INIT_DONE;
+
+    platform_boot_other_cpus(dtb);
 }
 
 /// start() jumps here in supervisor mode on all CPUs.
@@ -255,19 +247,15 @@ void main(void *device_tree, size_t is_first_thread)
     {
         g_boot_hart = smp_processor_id();
         init_by_first_thread(device_tree);
+        g_timebase_frequency = dtb_get_timebase(device_tree);
     }
-    else
-    {
-        while (g_global_init_done != GLOBAL_INIT_DONE)
-        {
-            __sync_synchronize();
-        }
-    }
-    printk("hart %zd starting %s\n", smp_processor_id(),
-           (is_first_thread ? "(init hart)" : ""));
+
+    printk("CPU %zd starting %s\n", smp_processor_id(),
+           (is_first_thread ? "(boot CPU)" : ""));
 
     mmu_set_page_table((size_t)g_kernel_pagetable, 0);  // turn on paging
     set_supervisor_trap_vector();  // install kernel trap vector
+    timer_init(device_tree, smp_processor_id());
     init_interrupt_controller_per_hart();
 
     scheduler();

@@ -9,13 +9,15 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# platform debug|release
+# $1 = arch 
+# $2 = platform 
+# $3 = debug | release
 function build_config {
     # build VIMIX
-    echo -e "${YELLOW}Build config: $1 $2${NC}"
-    BUILD_DIR=${BUILD_ROOT}/build_$1_$2
+    echo -e "${YELLOW}Build config: $1 $2 $3${NC}"
+    BUILD_DIR=${BUILD_ROOT}/build_$1_$2_$3
     make clean BUILD_DIR=${BUILD_DIR}
-    make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} || exit 1
+    make -j $(nproc) ARCH=$1 PLATFORM=$2 BUILD_TYPE=$3 BUILD_DIR=${BUILD_DIR} || exit 1
 }
 
 # platform debug|release|compiler
@@ -28,9 +30,11 @@ function build_config_compiler {
     make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} TOOLPREFIX=riscv64-linux-gnu- GCCPOSTFIX=-$3 || exit 1
 }
 
+# $1 = arch
+# $2 = platfrom
 function build_config_release_debug {
-    build_config $1 debug
-    build_config $1 release
+    build_config $1 $2 debug
+    build_config $1 $2 release
 }
 
 function build_compiler_versions {
@@ -54,7 +58,7 @@ function test_build_compiler_versions {
 
 # platform debug|release emulator testname expected_result CPUs
 function test_config {
-    BUILD_DIR=${BUILD_ROOT}/build_$1_$2
+    BUILD_DIR=${BUILD_ROOT}/build_riscv_$1_$2
     RESULT_FILE=${BUILD_ROOT}/testrun_$1_$2_$4_on_$3_$6_CPUs.txt
     EXPECTED_RESULT="$5"
     echo -e "${YELLOW}Test config: $1 $2 ${NC}"
@@ -93,16 +97,16 @@ function prepare_tests {
 }
 
 function test_build_qemu {
-    build_config_release_debug qemu32
-    build_config_release_debug qemu64
+    build_config_release_debug riscv qemu32
+    build_config_release_debug riscv qemu64
 }
 
 function test_build {
     test_build_qemu
 
-    build_config_release_debug spike32
-    build_config_release_debug spike64
-    build_config_release_debug visionfive2
+    build_config_release_debug riscv spike32
+    build_config_release_debug riscv spike64
+    build_config_release_debug riscv visionfive2
 
     echo "Compiling done"
 }
