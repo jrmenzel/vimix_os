@@ -53,9 +53,10 @@ pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
                      (size_t)memory_map->ram_end - (size_t)end_of_text,
                      PTE_RW_RAM);
 
-    if (memory_map->dtb_file_start < memory_map->ram_start)
+    // map dtb (unless it is mapped in RAM)
+    if ((memory_map->dtb_file_start < memory_map->ram_start) ||
+        (memory_map->dtb_file_start > memory_map->ram_end))
     {
-        // dtb is not in RAM but some flash, map that too
         size_t map_start = PAGE_ROUND_DOWN(memory_map->dtb_file_start);
         size_t map_end = PAGE_ROUND_UP(memory_map->dtb_file_end);
 

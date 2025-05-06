@@ -168,15 +168,9 @@ void sbi_machine_restart()
 
 void init_sbi()
 {
-    long version = sbi_get_spec_version();
-    long major =
-        (version >> SBI_SPEC_VERSION_MAJOR_SHIFT) & SBI_SPEC_VERSION_MAJOR_MASK;
-    long minor = version & SBI_SPEC_VERSION_MINOR_MASK;
-    printk("SBI specification v%ld.%ld detected\n", major, minor);
-
     struct sbiret ret;
     ret = sbi_get_impl_id();
-    printk(" SBI implementation: ");
+    printk("SBI implementation: ");
     switch (ret.value)
     {
         case SBI_IMPL_ID_BBL: printk("Berkley Boot Loader"); break;
@@ -199,6 +193,12 @@ void init_sbi()
     ret = sbi_get_impl_version();
     printk(" (version %ld)\n", ret.value);
 
+    long version = sbi_get_spec_version();
+    long major =
+        (version >> SBI_SPEC_VERSION_MAJOR_SHIFT) & SBI_SPEC_VERSION_MAJOR_MASK;
+    long minor = version & SBI_SPEC_VERSION_MINOR_MASK;
+    printk("SBI specification: v%ld.%ld\n", major, minor);
+
     if (!EXT_SRST_QUERIED)
     {
         EXT_SRST_SUPPORTED = (sbi_probe_extension(SBI_EXT_ID_SRST) > 0);
@@ -206,7 +206,8 @@ void init_sbi()
     if (EXT_SRST_SUPPORTED)
     {
         printk(
-            " with SRST extension: register SBI reboot/shutdown functions\n");
+            "SBI extension SRST detected: register SBI reboot/shutdown "
+            "functions\n");
         g_machine_power_off_func = &sbi_machine_power_off;
         g_machine_restart_func = &sbi_machine_restart;
     }
@@ -219,7 +220,7 @@ void sbi_start_harts(size_t opaque)
         return;
     }
 
-    printk("SBI HSM extension detected, starting additional harts\n");
+    printk("starting additional harts via SBI HSM extension\n");
 
     size_t this_hart = smp_processor_id();
     size_t hartid = 0;
@@ -235,10 +236,6 @@ void sbi_start_harts(size_t opaque)
                 if (ret != SBI_SUCCESS)
                 {
                     printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
-                }
-                else
-                {
-                    // printk("SBI HSM: starting hart %zd: OK\n", hartid);
                 }
             }
         }

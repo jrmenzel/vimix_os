@@ -39,7 +39,7 @@
 
 /// fill all allocated pages from kalloc with garbage data
 /// also fill all freed pages with garbage
-#define CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
+// #define CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
 
 /// some extra API usage tests
 #define CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
