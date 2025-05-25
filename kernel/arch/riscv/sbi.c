@@ -131,6 +131,21 @@ static inline long sbi_hart_start(size_t hartid, size_t saddr, size_t opaque)
     return ret.value;
 }
 
+static inline struct sbiret sbi_hart_get_status(size_t hartid)
+{
+    return sbi_ecall(SBI_EXT_ID_HSM, SBI_HSM_HART_STATUS, hartid, 0, 0, 0, 0,
+                     0);
+}
+
+void sbi_print_hart_stati()
+{
+    for (size_t i = 0; i < MAX_CPUS; ++i)
+    {
+        struct sbiret ret = sbi_hart_get_status(i);
+        printk("hart %zd status: %ld %ld\n", i, ret.error, ret.value);
+    }
+}
+
 void sbi_set_timer(uint64_t stime_value)
 {
 #if (__riscv_xlen == 32)
@@ -217,6 +232,7 @@ void sbi_start_harts(size_t opaque)
 {
     if (sbi_probe_extension(SBI_EXT_ID_HSM) <= 0)
     {
+        printk("SBI HSM extension not present, staying single core\n");
         return;
     }
 
@@ -230,12 +246,22 @@ void sbi_start_harts(size_t opaque)
         {
             if (plic_get_hart_s_context(hartid) != -1)
             {
-                // CPU exists in device tree and supports s mode interrupts
+                //  CPU exists in device tree and supports s mode interrupts
                 long ret =
                     sbi_hart_start(hartid, (size_t)_entry_s_mode, opaque);
                 if (ret != SBI_SUCCESS)
                 {
                     printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
+                }
+
+                // busy wait for the core to have started before requesting the
+                // next one, but don't wait forever. Without this not all cores
+                // on Orange Pi RV2 start completely (they get stuck in
+                // SBI_HSM_HART_START_PENDING).
+                for (size_t loop = 0; loop < 1024; ++loop)
+                {
+                    struct sbiret sret = sbi_hart_get_status(hartid);
+                    if (sret.value == SBI_HSM_HART_STARTED) break;
                 }
             }
         }

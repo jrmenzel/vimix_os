@@ -103,9 +103,7 @@ dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name)
     //   disable interrupts.
     write_register(&g_uart_16550, IER, 0x00);
 
-#ifndef __PLATFORM_VISIONFIVE2
     uart_set_baud_rate(BAUD_115200);
-#endif
 
     // reset and enable FIFOs.
     write_register(&g_uart_16550, FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);

@@ -16,6 +16,7 @@ struct m_code_cpu_data
     size_t start_addr;
     size_t opaque;
     size_t int_cause;
+    size_t hart_status;
 };
 
 __attribute__((
@@ -77,6 +78,7 @@ void m_mode_start(size_t hart_id)
     g_m_mode_cpu_data[hart_id].start_addr = 0;
     g_m_mode_cpu_data[hart_id].opaque = 0;
     g_m_mode_cpu_data[hart_id].int_cause = INT_CAUSE_NONE;
+    g_m_mode_cpu_data[hart_id].hart_status = SBI_HSM_HART_STOPPED;
 
     // delegate all interrupts and exceptions to supervisor mode except
     // ecalls from the kernel and illegal instructions
@@ -119,6 +121,7 @@ void m_mode_boot_hart_setup(size_t hart_id, size_t dtb)
 {
     g_m_mode_cpu_data[hart_id].start_addr = (size_t)_entry_s_mode;
     g_m_mode_cpu_data[hart_id].opaque = dtb;
+    g_m_mode_cpu_data[hart_id].hart_status = SBI_HSM_HART_STARTED;
     __sync_synchronize();
 }
 
@@ -149,6 +152,8 @@ struct ret_value m_mode_prepare_start_hart(xlen_t *stack)
         stack[IDX_ALL_A0] = hart_id;
         stack[IDX_ALL_A1] = g_m_mode_cpu_data[hart_id].opaque;
     }
+
+    g_m_mode_cpu_data[hart_id].hart_status = SBI_HSM_HART_STARTED;
 
     // return values will end up in a0 / a1 which will become the parameters of
     // the called function (needed for the first hart to boot)
@@ -232,11 +237,18 @@ struct sbiret m_mode_handle_sbi_call(xlen_t arg0, xlen_t arg1, xlen_t arg2,
             g_m_mode_cpu_data[hart_id].start_addr = start_addr;
             g_m_mode_cpu_data[hart_id].opaque = arg2;
             g_m_mode_cpu_data[hart_id].int_cause = INT_CAUSE_START;
+            g_m_mode_cpu_data[hart_id].hart_status = SBI_HSM_HART_START_PENDING;
             __sync_synchronize();
             ret.error = SBI_SUCCESS;
 
             // Trigger software interrupt on remote hart
             CLINT_MSIP(hart_id) = 1;
+        }
+        else if (fid == SBI_HSM_HART_STATUS)
+        {
+            __sync_synchronize();
+            ret.value = g_m_mode_cpu_data[arg0].hart_status;
+            ret.error = SBI_SUCCESS;
         }
     }
     return ret;

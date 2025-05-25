@@ -8,7 +8,7 @@
             "name": "kernel RISC V",
             "type": "cppdbg",
             "request": "launch",
-            "program": "build/kernel-vimix",
+            "program": "build/boot/kernel-vimix",
             "cwd": "${workspaceRoot}",
             "miDebuggerPath": "riscv64-elf-gdb",
             "miDebuggerServerAddress": "127.0.0.1:26000",

@@ -50,7 +50,8 @@ void kalloc_init(struct Minimal_Memory_Map *memory_map)
 
     // The available memory after kernel_end can have up to two holes:
     // the dtb file and a initrd ramdisk, both are optional.
-    // The dtb could also be outside of the RAM area (e.g. in flash).
+    // The dtb could also be outside of the RAM area (e.g. in flash)
+    // or inside of the kernel (if it's compiled in).
 
     size_t region_start = memory_map->kernel_end;
     while (true)

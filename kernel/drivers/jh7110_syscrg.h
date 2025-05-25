@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-// Driver for the starfive,jh7110-clkgen clock controller.
+// Driver for the starfive,jh7110-syscrg clock controller.
 // Used by the jh7110_temp sensor driver.
-// based on a xv6 driver from Luc Videau (https://github.com/GerfautGE/xv6-mars)
 
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
@@ -20,8 +19,8 @@
 #define RSTN_TEMP_APB 123   // Bus
 #define RSTN_TEMP_CORE 124  // Sense
 
-dev_t jh7110_clk_init(struct Device_Init_Parameters *init_parameters,
-                      const char *name);
+dev_t jh7110_syscrg_init(struct Device_Init_Parameters *init_parameters,
+                         const char *name);
 
-void jh7110_clk_enable(int num_clk);
-void jh7110_rst_deassert(int num_rst);
+void jh7110_syscrg_enable(int num_clk);
+void jh7110_syscrg_deassert(int num_rst);

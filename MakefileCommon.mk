@@ -26,7 +26,7 @@ include $(ROOT_DIR_MK_COMMON)kernel/arch/$(ARCH)/MakefileArch.mk
 BUILD_DIR := build
 
 KERNEL_NAME := kernel-vimix
-KERNEL_FILE := $(BUILD_DIR)/$(KERNEL_NAME)
+KERNEL_FILE := $(BUILD_DIR)/boot/$(KERNEL_NAME)
 
 # create assembly files from C, can be compared with the VSCode extension "Disassembly Explorer"
 #CREATE_ASSEMBLY=yes

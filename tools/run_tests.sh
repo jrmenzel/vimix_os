@@ -153,7 +153,7 @@ function test_functional {
 function print_stats {
     # print stats
     echo "Kernels:"
-    ls -lh ${BUILD_ROOT}/*/kernel-vimix
+    ls -lh ${BUILD_ROOT}/*/boot/kernel-vimix
 
     echo "Passed:"
     ls ${BUILD_ROOT} | grep PASS

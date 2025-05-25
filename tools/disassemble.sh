@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BINARY=build/kernel-vimix
+BINARY=build/boot/kernel-vimix
 BINARY_SEARCH_PATH=build/root/usr/bin
 BINARY_SEARCH_PATH_HOST=build_host/root/usr/bin
 OBJDUMP=riscv64-elf-objdump

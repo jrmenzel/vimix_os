@@ -21,20 +21,35 @@
 .global _entry
 _entry:
     # a0 = hartid; already set in SBI mode
+
+    # code0/code1 = 64 bits for code to jump over header
+    c.li    s4, -13              # generates "MZ", needed by some boot loaders
 #ifdef CONFIG_RISCV_BOOT_M_MODE
     j _entry_m_mode
+#else
+    j _behind_header
 #endif // CONFIG_RISCV_BOOT_M_MODE
-#ifdef __PLATFORM_VISIONFIVE2
-    # cpu id and device tree is not set as expected.
-    # Fix for boot hart only (g_global_init_done == 1)
-    la t0, g_global_init_done
-    ld t1, 0(t0)
-    li t2, 1
-    bne t1, t2, 1f
-        li a0, 1  # starfive,boot-hart-id in device tree
-        li a1, 0xfffc6080 # device tree
-1:
+    .byte 0, 0, 0, 0             # each jump is only 2 bytes, fill up code0/code1
+    .quad 0                      # text offset: 0x200000?
+    .quad end_of_kernel - _entry # image_size
+    .quad 0                      # flags: little endian
+    .long 2                      # version
+    .long 0                      # reserved
+    .quad 0                      # reserved
+    .ascii  "RISCV\x00\x00\x00"  # magic number 1, "RISCV" (8 bytes)
+    .ascii  "RSC\x05"            # magic number 2, "RSC\x05" (4 bytes)
+    .long 0                      # reserved
+
+_behind_header:
+#if defined(__PLATFORM_VISIONFIVE2)
+    li a0, 1  # starfive,boot-hart-id in device tree
+    #li a1, 0xfffc6080 # in firmware device tree
+    li a1, 0x41000000 # set in boot.cmd: dtb was explicitly loaded to that location
 #endif
+#if defined(__CONFIG_DTB_EMBEDDED)
+    la a1, dtb_embedded
+#endif
+    #li a1, 0x50000000 # device tree loaded by u-boot
 .global _entry_s_mode
 _entry_s_mode:
     # Thanks to the boot loader (like OpenSBI) or our _entry_m_mode we now have 

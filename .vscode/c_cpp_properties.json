@@ -59,7 +59,8 @@
                 "${kernel_defines}",
                 "${kernel_defines_riscv}",
                 "__riscv_xlen=32",
-                "__ARCH_32BIT"
+                "__ARCH_32BIT",
+                "CONFIG_RISCV_BOOT_M_MODE"
             ],
             "compilerArgs": [
                 "-nostdinc"

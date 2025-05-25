@@ -79,16 +79,8 @@ bool get_hart_int_controller_phandles(void *dtb,
 #define MAX_CONTEXTS (MAX_CPUS * 2)
 void plic_init_hart_context_lookup(void *dtb, size_t plic_offset)
 {
-    // unless read differently from the device tree:
-    for (size_t i = 0; i < MAX_CPUS; ++i)
-    {
-        // [context m mode cpu 0][context s mode cpu 0][context m mode cpu
-        // 1]... Only the S Mode contexts are relevant:
-        g_plic.hart_context[i] = 2 * i + 1;
-    }
-
     // invalid dtb
-    if (dtb == NULL && plic_offset == 0) return;
+    if ((fdt_check_header(dtb) < 0) && plic_offset == 0) return;
 
     int int_ext_len;
     const uint32_t *int_ext =
@@ -115,7 +107,7 @@ void plic_init_hart_context_lookup(void *dtb, size_t plic_offset)
     size_t hart_for_context[MAX_CONTEXTS];
     for (size_t i = 0; i < MAX_CONTEXTS; ++i)
     {
-        // for every context the hart reference and some adittional data is
+        // for every context the hart reference and some additional data is
         // stored
         size_t idx = i * 2;
         if (idx >= int_ext_len)

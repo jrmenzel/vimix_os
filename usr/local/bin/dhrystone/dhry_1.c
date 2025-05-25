@@ -51,7 +51,7 @@ extern int times();
 /* Measurements should last at least about 2 seconds */
 #endif
 #ifdef TIME
-extern long time();
+extern long time(long *);
 /* see library function "time"  */
 #define Too_Small_Time 2
 /* Measurements should last at least 2 seconds */
@@ -295,10 +295,8 @@ int main()
     return 0;
 }
 
-void Proc_1(Ptr_Val_Par)
-    /******************/
-
-    REG Rec_Pointer Ptr_Val_Par;
+void Proc_1(REG Rec_Pointer Ptr_Val_Par)
+/******************/
 /* executed once */
 {
     REG Rec_Pointer Next_Record = Ptr_Val_Par->Ptr_Comp;
@@ -326,12 +324,10 @@ void Proc_1(Ptr_Val_Par)
         structassign(*Ptr_Val_Par, *Ptr_Val_Par->Ptr_Comp);
 } /* Proc_1 */
 
-void Proc_2(Int_Par_Ref)
-    /******************/
-    /* executed once */
-    /* *Int_Par_Ref == 1, becomes 4 */
-
-    One_Fifty *Int_Par_Ref;
+void Proc_2(One_Fifty *Int_Par_Ref)
+/******************/
+/* executed once */
+/* *Int_Par_Ref == 1, becomes 4 */
 {
     One_Fifty Int_Loc;
     Enumeration Enum_Loc;
@@ -347,13 +343,10 @@ void Proc_2(Int_Par_Ref)
     while (Enum_Loc != Ident_1); /* true */
 } /* Proc_2 */
 
-void Proc_3(Ptr_Ref_Par)
-    /******************/
-    /* executed once */
-    /* Ptr_Ref_Par becomes Ptr_Glob */
-
-    Rec_Pointer *Ptr_Ref_Par;
-
+void Proc_3(Rec_Pointer *Ptr_Ref_Par)
+/******************/
+/* executed once */
+/* Ptr_Ref_Par becomes Ptr_Glob */
 {
     if (Ptr_Glob != Null) /* then, executed */
         *Ptr_Ref_Par = Ptr_Glob->Ptr_Comp;

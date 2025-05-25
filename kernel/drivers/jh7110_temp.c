@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <drivers/character_device.h>
-#include <drivers/jh7110_clk.h>
+#include <drivers/jh7110_syscrg.h>
 #include <drivers/jh7110_temp.h>
 #include <drivers/mmio_access.h>
 #include <kernel/kernel.h>
@@ -69,23 +69,17 @@ dev_t jh7110_temp_init(struct Device_Init_Parameters *init_parameters,
 {
     if (g_jh7110_temp.is_initialized || !init_parameters)
     {
+        printk("temp: already initialized\n");
         return INVALID_DEVICE;
     }
 
     g_jh7110_temp.mmio_base = init_parameters->mem[0].start;
 
-    // needs the clock device, but as jh7110-temp isn't in the device tree to
-    // generate an automatic dependency to jh7110-clkgen, we request to init it
-    // here:
-    struct Devices_List *dev_list = get_devices_list();
-    dev_t clk_gen_dev = init_device_by_name(dev_list, "starfive,jh7110-clkgen");
-    if (clk_gen_dev == INVALID_DEVICE) return INVALID_DEVICE;
+    jh7110_syscrg_enable(SYSCLK_TEMP_APB);
+    jh7110_syscrg_enable(SYSCLK_TEMP_CORE);
 
-    jh7110_clk_enable(SYSCLK_TEMP_APB);
-    jh7110_clk_enable(SYSCLK_TEMP_CORE);
-
-    jh7110_rst_deassert(RSTN_TEMP_APB);
-    jh7110_rst_deassert(RSTN_TEMP_CORE);
+    jh7110_syscrg_deassert(RSTN_TEMP_APB);
+    jh7110_syscrg_deassert(RSTN_TEMP_CORE);
 
     MMIO_WRITE_UINT_8(g_jh7110_temp.mmio_base, 0,
                       SFCTEMP_PD);  // Power down the thermal sensor

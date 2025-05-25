@@ -2,10 +2,8 @@
 
 #if defined(__ARCH_riscv)
 #include <arch/riscv/plic.h>
-#if defined(__PLATFORM_VISIONFIVE2)
-#include <drivers/jh7110_clk.h>
+#include <drivers/jh7110_syscrg.h>
 #include <drivers/jh7110_temp.h>
-#endif  // __PLATFORM_VISIONFIVE2
 #endif  // __ARCH_riscv
 
 #include <drivers/console.h>
@@ -55,18 +53,14 @@ struct Device_Driver g_generell_drivers[] = {{"ns16550a", uart_init},
 
 #if defined(__ARCH_riscv)
                                              {"riscv,plic0", plic_init},
-#if defined(__PLATFORM_VISIONFIVE2)
-                                             {"starfive,jh7110-clkgen", jh7110_clk_init},
-//                                           {"starfive,jh7110-temp", jh7110_temp_init}, // see below: not in device tree
-#endif // __PLATFORM_VISIONFIVE2
+                                             {"sifive,plic-1.0.0", plic_init},
+                                             {"starfive,jh7110-syscrg", jh7110_syscrg_init},
+                                             {"starfive,jh7110-temp", jh7110_temp_init},
 #endif // __ARCH_riscv
                                              {NULL, NULL}};
 
 // not found in the device tree, so added explicitly
 struct Device_Driver g_ramdisk_driver = {"ramdisk", ramdisk_init};
-#if defined(__PLATFORM_VISIONFIVE2)
-struct Device_Driver jh7110_temp = {"starfive,jh7110-temp", jh7110_temp_init};
-#endif
 // clang-format on
 
 struct Devices_List *get_devices_list()
@@ -82,21 +76,6 @@ struct Devices_List *get_devices_list()
             dev_list_add_with_parameters(&g_devices_list, driver, defaults);
             driver++;
         }
-
-#if defined(__PLATFORM_VISIONFIVE2)
-        // This should be an entry in g_generell_drivers but the temp sensor is
-        // not in the device tree file found on the visionfive2 board.
-        struct Device_Init_Parameters jh7110_parameters;
-        clear_init_parameters(&jh7110_parameters);
-        jh7110_parameters.mem[0].start = 0x120e0000;
-        jh7110_parameters.mem[0].size = 0x10000;
-        jh7110_parameters.mmu_map_memory = true;
-        jh7110_parameters.reg_shift = 0;
-        jh7110_parameters.reg_io_width = 1;
-        jh7110_parameters.interrupt = 81;
-        dev_list_add_with_parameters(&g_devices_list, &jh7110_temp,
-                                     jh7110_parameters);
-#endif
 
         g_devices_list_is_initialized = true;
     }

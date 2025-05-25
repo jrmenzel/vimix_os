@@ -81,11 +81,6 @@ $(B_BUILD_DIR_HOST)/%.o: %.c
 	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_HOST_PARAMS) -c $< -o $@
 
 ###########################################################
-#scripts: # copy shell scripts
-#	@cp *.sh $(B_DEPLOY_DIR)
-
-#scripts_host: # copy shell scripts host
-#	@cp *.sh $(B_DEPLOY_DIR_HOST)
 
 directories: # make temp build directories
 	@mkdir -p $(B_BUILD_DIR)

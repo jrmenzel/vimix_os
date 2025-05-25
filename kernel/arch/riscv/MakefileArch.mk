@@ -21,15 +21,15 @@ PLATFORM := qemu64
 # - Of course used to set up the emulators with the same amount of memory
 MEMORY_SIZE := 64
 
-# for qemu and Spike
-CPUS := 4
-
 # compile with compressed instructions:
 RV_ENABLE_EXT_C := yes
 
 # compile with sstc timer, only used if the support is detected at runtime
 # so only set to "no" if SBI timers should be enforced for testing
 RV_ENABLE_EXT_SSTC := yes
+
+# for emulation only
+CPUS := 4
 
 ifeq ($(PLATFORM), qemu64)
 BITWIDTH := 64
@@ -54,9 +54,11 @@ BITWIDTH := 64
 BOOT_MODE := BOOT_M_MODE
 RAMDISK_BOOTLOADER := yes
 else ifeq ($(PLATFORM), visionfive2)
+DTB_FILE := boot/dtb/jh7110-starfive-visionfive-2-v1.3b.dtb
+#DTB_EMBEDDED := yes
 BITWIDTH := 64
 BOOT_MODE := BOOT_S_MODE
-RAMDISK_EMBEDDED := yes
+RAMDISK_BOOTLOADER := yes
 else
 $(error PLATFORM not set)
 endif
@@ -159,12 +161,9 @@ OBJS_ARCH := arch/riscv/asm/entry.o \
 	arch/riscv/plic.o \
 	arch/riscv/timer.o \
 	arch/riscv/scause.o \
-	arch/riscv/sbi.o
-
-ifeq ($(PLATFORM), visionfive2)
-OBJS_ARCH += drivers/jh7110_clk.o \
-             drivers/jh7110_temp.o
-endif
+	arch/riscv/sbi.o \
+	drivers/jh7110_temp.o \
+	drivers/jh7110_syscrg.o
 
 ifeq ($(BOOT_MODE), BOOT_M_MODE)
 OBJS_ARCH += arch/riscv/asm/m_mode_trap_vector.o

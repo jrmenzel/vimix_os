@@ -503,5 +503,33 @@ CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id)
         }
     }
 
+    int riscv_isa_ext_len;
+    const char *riscv_isa_ext =
+        fdt_getprop(dtb, offset, "riscv,isa-extensions", &riscv_isa_ext_len);
+    if (riscv_isa_ext != NULL)
+    {
+        while (true)
+        {
+            // printk("ext: %s\n", riscv_isa_ext);
+#if defined(__RISCV_EXT_SSTC)
+            if (strcmp(riscv_isa_ext, "sstc"))
+            {
+                featues |= RV_EXT_SSTC;
+            }
+#endif
+            if (strcmp(riscv_isa_ext, "f"))
+            {
+                featues |= RV_EXT_FLOAT;
+            }
+            if (strcmp(riscv_isa_ext, "d"))
+            {
+                featues |= RV_EXT_DOUBLE;
+            }
+
+            riscv_isa_ext += strlen(riscv_isa_ext) + 1;
+            if (riscv_isa_ext[0] == 0) break;
+        }
+    }
+
     return featues;
 }

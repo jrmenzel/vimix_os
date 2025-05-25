@@ -46,6 +46,10 @@ void timer_init(void *dtb, size_t cpuid)
         // fallback: SBI timer
         timer_schedule_interrupt = sbi_schedule_interrupt;
     }
+    else
+    {
+        panic("no timer source found");
+    }
 
     uint64_t timer_interrupt_interval =
         g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;

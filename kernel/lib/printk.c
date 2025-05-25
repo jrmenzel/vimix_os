@@ -30,7 +30,10 @@ void console_putc_dummy(int32_t c, size_t payload) { console_putc(c); }
 // Print to the console
 void printk(char* format, ...)
 {
-    if (g_printk.init == false) return;
+    if (g_printk.init == false)
+    {
+        // return;
+    }
 
     // error checks
     if (format == NULL)

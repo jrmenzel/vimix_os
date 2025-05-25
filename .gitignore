@@ -12,8 +12,8 @@ build_host/*
 utests-tmp/*
 
 # device tree files
-*.dts
-*.dtb
+#*.dts
+#*.dtb
 
 # auto generated:
 kernel/arch/riscv/asm/initcode.h

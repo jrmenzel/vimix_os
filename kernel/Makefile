@@ -71,6 +71,11 @@ OBJS += ramdisk_fs.o
 RAMDISC_C := $(K_BUILD_DIR)/ramdisk_fs.c
 endif
 
+ifeq ($(DTB_EMBEDDED), yes)
+OBJS += dtb_embedded.o
+DTB_C := $(K_BUILD_DIR)/dtb_embedded.c
+endif
+
 # add libfdt for Device Tree parsing
 OBJS += $(addprefix lib/libfdt/, $(LIBFDT_OBJS))
 
@@ -103,6 +108,9 @@ KERNEL_SPACE_INC += $(K_BUILD_DIR)/$(ARCH_DIR) # for initcode.h
 ifeq ($(RAMDISK_EMBEDDED), yes)
 KERNEL_SPACE_INC += $(K_BUILD_DIR)
 endif
+ifeq ($(DTB_EMBEDDED), yes)
+KERNEL_SPACE_INC += $(K_BUILD_DIR)
+endif
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I$d)
 
 KBUILD_CFLAGS := $(CFLAGS)
@@ -115,6 +123,9 @@ KBUILD_CFLAGS += -D__ARCH_$(ARCH)
 
 ifeq ($(RAMDISK_EMBEDDED), yes)
 KBUILD_CFLAGS += -D__CONFIG_RAMDISK_EMBEDDED
+endif
+ifeq ($(DTB_EMBEDDED), yes)
+KBUILD_CFLAGS += -D__CONFIG_DTB_EMBEDDED
 endif
 
 # assembler flags
@@ -177,22 +188,48 @@ $(K_BUILD_DIR)/ramdisk_fs.h:
 	@touch $(K_BUILD_DIR)/ramdisk_fs.h
 endif
 
-$(KERNEL_PATH): $(INIT_BUILD_DIR)/initcode.h $(K_BUILD_DIR)/ramdisk_fs.h $(OBJECT_FILES) $(ARCH_DIR)/kernel.ld # build kernel
+# embedd the device tree binary into the kernel as an array:
+ifeq ($(DTB_EMBEDDED), yes)
+$(K_BUILD_DIR)/dtb_embedded.h:
+	@printf "$(TASK_COLOR)Creating dtb_embedded.h\n$(NO_COLOR)"
+	@echo "#pragma once" > $(K_BUILD_DIR)/dtb_embedded.h
+	@echo "#include <kernel/kernel.h>" >> $(K_BUILD_DIR)/dtb_embedded.h
+	@echo "extern unsigned char dtb_embedded[];" >> $(K_BUILD_DIR)/dtb_embedded.h
+	@echo -n "#define dtb_embedded_size " >> $(K_BUILD_DIR)/dtb_embedded.h
+	@stat -c %s ../$(DTB_FILE) >> $(K_BUILD_DIR)/dtb_embedded.h
+
+$(K_BUILD_DIR)/dtb_embedded.c:
+	@printf "$(TASK_COLOR)Creating dtb_embedded.c\n$(NO_COLOR)"
+	@echo "#include \"dtb_embedded.h\"" > $(K_BUILD_DIR)/dtb_embedded.c
+	@echo "unsigned char dtb_embedded[] = {" >> $(K_BUILD_DIR)/dtb_embedded.c
+	@xxd -i < ../$(DTB_FILE) >> $(K_BUILD_DIR)/dtb_embedded.c
+	@echo "};" >> $(K_BUILD_DIR)/dtb_embedded.c
+
+$(K_BUILD_DIR)/dtb_embedded.o: $(K_BUILD_DIR)/dtb_embedded.c
+	@printf "$(TASK_COLOR)Compile dtb_embedded\n$(NO_COLOR)"
+	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(K_BUILD_DIR)/dtb_embedded.c -o $(K_BUILD_DIR)/dtb_embedded.o
+
+else
+$(K_BUILD_DIR)/dtb_embedded.h:
+	@touch $(K_BUILD_DIR)/dtb_embedded.h
+endif
+
+$(KERNEL_PATH): $(INIT_BUILD_DIR)/initcode.h $(K_BUILD_DIR)/ramdisk_fs.h $(K_BUILD_DIR)/dtb_embedded.h $(OBJECT_FILES) $(ARCH_DIR)/kernel.ld # build kernel
 	@printf "$(TASK_COLOR)Link kernel: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) --defsym=KERNBASE=$(KERNBASE) $(ARCH_LD_FLAGS) -T $(ARCH_DIR)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
 ifeq ($(CREATE_ASSEMBLY), yes)
 	@printf "$(TASK_COLOR)Disassemble kernel: $(K_BUILD_DIR)/$(KERNEL_NAME).asm\n$(NO_COLOR)"
 	@$(OBJDUMP) -S $(KERNEL_PATH) > $(K_BUILD_DIR)/$(KERNEL_NAME).asm
 endif
-ifdef KERNEL_BINARY_NAME
-	@$(OBJCOPY) -O binary $(KERNEL_PATH) ../$(BUILD_DIR)/$(KERNEL_BINARY_NAME)
-endif
+	@$(OBJCOPY) -O binary $(KERNEL_PATH) $(KERNEL_PATH).bin
 
 clean:
 	-@rm -f $(KERNEL_PATH)
+	-@rm -f $(KERNEL_PATH).bin
 	-@rm -rf $(K_BUILD_DIR)
 	-@rm -f $(ARCH_DIR)/asm/initcode.h
 	-@rm -f $(K_BUILD_DIR)/ramdisk_fs.h
 	-@rm -f $(RAMDISC_C)
+	-@rm -f $(DTB_C)
 	-@rm -f ../$(BUILD_DIR)/*.img
 

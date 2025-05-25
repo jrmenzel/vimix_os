@@ -3,6 +3,8 @@
 A device tree is a hardware description passed on from the bootloader to the [kernel](../kernel/kernel.md).
 Spec: https://www.devicetree.org/
 
+The device tree can also be embedded into the VIMIX kernel image (useful for simple emulators).
+
 Parsing is done with libfdt from https://github.com/dgibson/dtc (see `kernel/lib/libfdt/readme.txt` for details).
 
 The device tree gets parsed early in the boot process in [main()](../kernel/overview/init_overview.md). This defines the [memory_map_kernel](../kernel/mm/memory_map_kernel.md) (total RAM, mapped devices) and a list of [devices](../kernel/devices/devices.md) to init (it also tries to find init order dependencies).
@@ -28,7 +30,7 @@ To dump the device tree of [Spike](../run_on_spike.md) run:
 Both will generate `*.dtb` and `*.dts` files named after the current platform. Requires the dtc app.
 
 
-### VisionFive 2
+### U-Boot
 
 On a real device like the [VisionFive 2](../run_on_visionfive2.md) enter U-Boot and print the device tree with:
 
