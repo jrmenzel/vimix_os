@@ -62,10 +62,10 @@ void init_per_process_kernel_stack(pagetable_t kpage_table)
         size_t va = KSTACK((size_t)(proc - g_process_list));
         for (size_t i = 0; i < KERNEL_STACK_PAGES; ++i)
         {
-            char *pa = kalloc();
+            char *pa = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
             if (pa == NULL)
             {
-                panic("init_per_process_kernel_stack() kalloc failed");
+                panic("init_per_process_kernel_stack() alloc_page failed");
             }
             kvm_map_or_panic(kpage_table, va + (i * PAGE_SIZE), (size_t)pa,
                              PAGE_SIZE, PTE_KERNEL_STACK);
@@ -159,7 +159,7 @@ static struct process *alloc_process()
     proc->state = USED;
 
     // Allocate a trapframe page.
-    proc->trapframe = (struct trapframe *)kalloc();
+    proc->trapframe = (struct trapframe *)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
     if (proc->trapframe == NULL)
     {
         free_process(proc);
@@ -195,7 +195,7 @@ static void free_process(struct process *proc)
 
     if (proc->trapframe)
     {
-        kfree((void *)proc->trapframe);
+        free_page((void *)proc->trapframe);
     }
     proc->trapframe = NULL;
 
@@ -223,7 +223,7 @@ static void free_process(struct process *proc)
 pagetable_t proc_pagetable(struct process *proc)
 {
     // An empty page table.
-    pagetable_t pagetable = uvm_create();
+    pagetable_t pagetable = (pagetable_t)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
     if (pagetable == INVALID_PAGETABLE_T)
     {
         return INVALID_PAGETABLE_T;
@@ -272,8 +272,7 @@ void userspace_init()
 
     // Allocate one user page and load the user initcode into
     // address USER_TEXT_START of pagetable
-    char *mem = kalloc();
-    memset(mem, 0, PAGE_SIZE);
+    char *mem = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
     vm_map(proc->pagetable, USER_TEXT_START, (size_t)mem, PAGE_SIZE,
            PTE_INITCODE, false);
     memmove(mem, g_initcode, sizeof(g_initcode));

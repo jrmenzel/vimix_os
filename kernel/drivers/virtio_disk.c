@@ -97,14 +97,14 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     }
 
     // allocate and zero queue memory.
-    disk->desc = kalloc();
-    disk->avail = kalloc();
-    disk->used = kalloc();
+    disk->desc = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
+    disk->avail = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
+    disk->used = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
     if (!disk->desc || !disk->avail || !disk->used)
     {
-        if (disk->desc) kfree(disk->desc);
-        if (disk->avail) kfree(disk->avail);
-        if (disk->used) kfree(disk->used);
+        if (disk->desc) free_page(disk->desc);
+        if (disk->avail) free_page(disk->avail);
+        if (disk->used) free_page(disk->used);
         printk("ERROR: virtio disk kalloc failed\n");
         return INVALID_DEVICE;
     }

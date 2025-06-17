@@ -77,23 +77,18 @@ endif
 #####
 # TOOLPREFIX, e.g. riscv64-unknown-elf-
 # Set explicitly or try to infer the correct TOOLPREFIX
-# first look for matching bit width in toolset, then try the 64 bit versions
 #TOOLPREFIX = 
 ifndef TOOLPREFIX
-TOOLPREFIX := $(shell if riscv$(BITWIDTH)-unknown-elf-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
-	then echo 'riscv$(BITWIDTH)-unknown-elf-'; \
-	elif riscv$(BITWIDTH)-linux-gnu-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
-	then echo 'riscv$(BITWIDTH)-linux-gnu-'; \
-	elif riscv$(BITWIDTH)-unknown-linux-gnu-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
-	then echo 'riscv$(BITWIDTH)-unknown-linux-gnu-'; \
-	elif riscv$(BITWIDTH)-elf-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
-	then echo 'riscv$(BITWIDTH)-elf-'; \
-	elif riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
+TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
 	then echo 'riscv64-unknown-elf-'; \
+	elif riscv64-linux-gnu-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
+	then echo 'riscv64-linux-gnu-'; \
+	elif riscv64-unknown-linux-gnu-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
+	then echo 'riscv64-unknown-linux-gnu-'; \
 	elif riscv64-elf-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
 	then echo 'riscv64-elf-'; \
 	else echo "***" 1>&2; \
-	echo "*** Error: Couldn't find a riscv$(BITWIDTH) version of GCC/binutils." 1>&2; \
+	echo "*** Error: Couldn't find a $(BITWIDTH) bit version of GCC/binutils." 1>&2; \
 	echo "*** To turn off this error, set TOOLPREFIX in MakefileArch.mk." 1>&2; \
 	echo "***" 1>&2; exit 1; fi)
 endif

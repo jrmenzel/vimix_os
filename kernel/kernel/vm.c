@@ -40,8 +40,7 @@ void kvm_map_mmio(pagetable_t k_pagetable, size_t address, size_t size)
 pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
                                       struct Devices_List *dev_list)
 {
-    pagetable_t kpage_table = (pagetable_t)kalloc();
-    memset(kpage_table, 0, PAGE_SIZE);
+    pagetable_t kpage_table = (pagetable_t)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
 
     // map kernel text as executable and read-only.
     kvm_map_or_panic(
@@ -168,10 +167,9 @@ pte_t *vm_walk2(pagetable_t pagetable, size_t va, bool *is_super_page,
                 {
                     return pte;
                 }
-                pagetable = (pagetable_t)kalloc();
+                pagetable = (pagetable_t)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
                 if (pagetable == NULL) return NULL;
 
-                memset(pagetable, 0, PAGE_SIZE);
                 *pte = PTE_BUILD(pagetable, 0);
                 PTE_MAKE_VALID_TABLE(*pte);
             }
@@ -342,21 +340,10 @@ void uvm_unmap(pagetable_t pagetable, size_t va, size_t npages, bool do_free)
         if (do_free)
         {
             size_t pa = PTE_GET_PA(*pte);
-            kfree((void *)pa);
+            free_page((void *)pa);
         }
         *pte = 0;
     }
-}
-
-pagetable_t uvm_create()
-{
-    pagetable_t pagetable = (pagetable_t)kalloc();
-    if (pagetable == NULL)
-    {
-        return NULL;
-    }
-    memset(pagetable, 0, PAGE_SIZE);
-    return pagetable;
 }
 
 size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
@@ -364,26 +351,24 @@ size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
 {
     size_t end_va = start_va + alloc_size;
     start_va = PAGE_ROUND_UP(start_va);
-    size_t n = 0;
     for (size_t va = start_va; va < end_va; va += PAGE_SIZE)
     {
-        char *mem = kalloc();
-        if (mem == 0)
-        {
-            uvm_dealloc_heap(pagetable, va, va - start_va);
-            return 0;
-        }
-        n++;
         // All memory that the kernel makes availabe to user apps gets
         // cleared. In a real OS this is a security feature to prevent apps
         // from reading private data previously owned by another app.
         // It is also required for the apps BSS section. As we don't
         // handle BSS sections in a special way, it only works rigth by clearing
         // all memory.
-        memset(mem, 0, PAGE_SIZE);
+        char *mem = (char *)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
+        if (mem == NULL)
+        {
+            uvm_dealloc_heap(pagetable, va, va - start_va);
+            return 0;
+        }
+
         if (vm_map(pagetable, va, (size_t)mem, PAGE_SIZE, perm, false) != 0)
         {
-            kfree(mem);
+            free_page(mem);
             uvm_dealloc_heap(pagetable, va, va - start_va);
             return 0;
         }
@@ -473,18 +458,17 @@ int32_t uvm_create_stack(pagetable_t pagetable, char **argv,
 
 size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low)
 {
-    char *mem = kalloc();
+    char *mem = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
     if (mem == NULL)
     {
         return 0;
     }
 
-    memset(mem, 0, PAGE_SIZE);
     size_t new_stack_low = stack_low - PAGE_SIZE;
     if (vm_map(pagetable, new_stack_low, (size_t)mem, PAGE_SIZE, PTE_USER_RAM,
                false) != 0)
     {
-        kfree(mem);
+        free_page(mem);
         return 0;
     }
 
@@ -505,7 +489,7 @@ void uvm_free_pagetable(pagetable_t pagetable)
             if (PTE_IS_LEAF(pte))
             {
                 // a leaf pointing to a mapped page
-                kfree((void *)child);
+                free_page((void *)child);
             }
             else
             {
@@ -515,7 +499,7 @@ void uvm_free_pagetable(pagetable_t pagetable)
         }
         pagetable[i] = 0;
     }
-    kfree((void *)pagetable);
+    free_page((void *)pagetable);
 }
 
 int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
@@ -539,7 +523,7 @@ int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
         pte_t pa = PTE_GET_PA(*pte);
         pte_t flags = PTE_FLAGS(*pte);
 
-        char *mem = kalloc();
+        char *mem = (char *)alloc_page(ALLOC_FLAG_NONE);
         if (mem == NULL)
         {
             fatal_error_happened = true;
@@ -549,7 +533,7 @@ int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
         memmove(mem, (char *)pa, PAGE_SIZE);
         if (vm_map(dst_page, va, (size_t)mem, PAGE_SIZE, flags, false) != 0)
         {
-            kfree(mem);
+            free_page(mem);
             fatal_error_happened = true;
             break;
         }

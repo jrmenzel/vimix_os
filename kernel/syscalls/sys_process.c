@@ -120,7 +120,7 @@ ssize_t sys_execv()
             argv[i] = 0;
             break;
         }
-        argv[i] = kalloc();
+        argv[i] = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
         if (argv[i] == NULL)
         {
             error_code = -ENOMEM;
@@ -142,7 +142,7 @@ ssize_t sys_execv()
     // cleanup on error and success:
     for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     {
-        kfree(argv[i]);
+        free_page(argv[i]);
     }
     return error_code;
 }

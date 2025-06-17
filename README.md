@@ -85,3 +85,4 @@ $
 - Parse the [device tree](docs/misc/device_tree.md) at [boot](docs/kernel/overview/boot_process.md).
 - Added [/dev](docs/kernel/file_system/devfs/devfs.md) as a special file system exposing all devices.
 - Boot in [M-mode](docs/riscv/M-mode.md) now mimics [SBI](docs/riscv/SBI.md) to the [S-mode](docs/riscv/S-mode.md) kernel.
+- Added a [buddy allocator](docs/kernel/mm/memory_management.md).

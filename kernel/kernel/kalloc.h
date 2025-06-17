@@ -4,6 +4,30 @@
 #include <kernel/kernel.h>
 #include <kernel/vm.h>
 
+#define ALLOC_FLAG_NONE 0
+#define ALLOC_FLAG_ZERO_MEMORY 1
+
+/// @brief Allocate a power of two number of pages
+/// @param flags Returns zeroes memory if ALLOC_FLAG_ZERO_MEMORY is set.
+/// @param order Number of pages to allocate as 2^order
+/// @return Pointer to the allocation or NULL if out of
+/// (enough continuous) memory.
+void* alloc_pages(int32_t flags, size_t order);
+
+/// @brief Allocate one page.
+/// @param flags To zero or not
+/// @return A page or NULL
+static inline void* alloc_page(int32_t flags) { return alloc_pages(flags, 0); }
+
+/// @brief Free an allocation done with alloc_pages
+/// @param pa Pointer to allocation
+/// @param order Same value as used during allocation
+void free_pages(void* pa, size_t order);
+
+/// @brief Free one page allocated by alloc_page()
+/// @param pa Address of page to free
+static inline void free_page(void* pa) { free_pages(pa, 0); }
+
 /// @brief Allocate one 4096-byte page of physical memory.
 /// Returns a pointer that the kernel can use.
 /// @return One 4k page or NULL if the memory cannot be allocated.
@@ -28,3 +52,5 @@ size_t kalloc_debug_get_allocation_count();
 
 /// @brief Returns free memory in bytes
 size_t kalloc_get_free_memory();
+
+void kalloc_dump_free_memory();

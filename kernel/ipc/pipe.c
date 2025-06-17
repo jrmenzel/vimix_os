@@ -32,7 +32,7 @@ ssize_t pipe_alloc(struct file **f0, struct file **f1)
     }
 
     // create the pipe
-    struct pipe *new_pipe = (struct pipe *)kalloc();
+    struct pipe *new_pipe = (struct pipe *)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
     if (new_pipe == NULL)
     {
         file_close(*f0);

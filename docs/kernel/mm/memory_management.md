@@ -1,17 +1,20 @@
 # Memory Management
 
 
-## kalloc / kfree
+The kernel manages free pages (normally `4KB`) with a buddy allocator in blocks of 1 page, 2 pages, 4, 8 etc.
 
-- `4KB` allocations only
-- in physical memory space
+## Allocate memory in kernel
 
-There is no malloc/free in the kernel, it can only kalloc/kfree full pages of memory (`4KB`).
-Free pages are used to form a linked list for finding a free page (kalloc) or adding a previously allocated page (kfree).
+### One or more pages
+
+Allocate N pages (with N being a power of 2 up to a limit defined by `PAGE_ALLOC_MAX_ORDER` as N = 2 ^ `order`) with `alloc_pages()` (or `alloc_page()` for just one). Free them with `free_pages()` / `free_page()`. Note that if more than one page is allocated, the caller must remember the amount requested and provide the same value to `free_pages()`.
+
+The allocation is optionally zeroed based on the passed flags.
+
+Per supported size of the buddy allocator, one linked list of free blocks is maintained. The pointers for the linked list are stored in the free pages, so no memory is wasted.
 
 This has the following limitations:
-- No allocation can be > 4KB as there is no way to guarantee the allocation of free pages with consecutive physical memory locations.
-- Even if only a few bytes are needed, each allocation will use up one full 4KB page.
+- Even if only a few bytes are needed, each allocation will use up at least one full `4KB` page.
 
 
 ## Virtual Memory

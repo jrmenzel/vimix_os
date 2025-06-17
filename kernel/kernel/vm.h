@@ -83,10 +83,6 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
 int32_t vm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
                pte_t perm, bool allow_super_pages);
 
-/// @brief create an empty user page table.
-/// @return new pagetable or NULL if out of memory.
-pagetable_t uvm_create();
-
 /// @brief Allocate PTEs and physical memory to grow the process heap (and text,
 /// data, bss segments at load/execv).
 /// [round_up(start_va) to end_va] gets mapped. start_va is round up to the next
