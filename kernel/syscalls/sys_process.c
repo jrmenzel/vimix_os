@@ -43,8 +43,12 @@ ssize_t sys_sbrk()
     size_t addr = get_current()->heap_end;
     if (proc_grow_memory(increment) < 0)
     {
+        // TODO: the partial allocation is cleared, but the page table might
+        // have gotton new pages (with invalid entries). So some memeory is
+        // wasted until the process is killed.
         return -ENOMEM;
     }
+
     return addr;
 }
 

@@ -358,21 +358,17 @@ ssize_t fork()
     struct process *np = alloc_process();
     if (np == NULL)
     {
-        return -1;
+        return -ENOMEM;
     }
 
     struct process *parent = get_current();
-
-    // printk("fork() Memory used: %zdkb - %zdkb free\n",
-    //        kalloc_debug_get_allocation_count() * 4,
-    //        kalloc_get_free_memory() / 1024);
 
     // Copy memory
     if (proc_copy_memory(parent, np) == -1)
     {
         free_process(np);
         spin_unlock(&np->lock);
-        return -1;
+        return -ENOMEM;
     }
 
     // printk(" fork() Memory used: %zdkb - %zdkb free\n",

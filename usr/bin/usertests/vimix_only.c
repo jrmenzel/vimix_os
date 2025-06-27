@@ -2684,14 +2684,12 @@ void USER_VA_ENDplus(char *s)
 // failed allocation?
 void sbrkfail(char *s)
 {
-#if (MEMORY_SIZE > 4)
-    const size_t BIG = (MEMORY_SIZE - 5ul) * 1024ul * 1024ul;
-#else
-    _Static_assert(MEMORY_SIZE >= 2);
-    const size_t BIG = (MEMORY_SIZE - 1) * 1024 * 1024;
-#endif
+    // 10 forks with 1/4 the memory size allocation each will request in total
+    // more memory than is available so one allocation will fail
+    const size_t BIG = (MEMORY_SIZE / 4ul) * 1024ul * 1024ul;
 
     pid_t pids[10];
+    const size_t fork_count = sizeof(pids) / sizeof(pids[0]);
 
     int fds[2];
     if (pipe(fds) != 0)
@@ -2699,13 +2697,29 @@ void sbrkfail(char *s)
         printf("%s: pipe() failed\n", s);
         exit(1);
     }
-    for (size_t i = 0; i < sizeof(pids) / sizeof(pids[0]); i++)
+    int failed_allocations = 0;
+    for (size_t i = 0; i < fork_count; i++)
     {
-        if ((pids[i] = fork()) == 0)
+        pids[i] = fork();
+        if (errno != 0)
         {
+            printf("%s: fork failed in loop %zd with error %s\n", s, i,
+                   strerror(errno));
+        }
+        else if (pids[i] == 0)
+        {
+            // child
+
             // allocate a lot of memory
             sbrk(BIG);
-            write(fds[1], "x", 1);
+            if (errno == ENOMEM)
+            {
+                write(fds[1], "f", 1);
+            }
+            else
+            {
+                write(fds[1], "s", 1);
+            }
 
             // sit around until killed
             while (true)
@@ -2713,15 +2727,31 @@ void sbrkfail(char *s)
                 sleep(1000);
             }
         }
-        if (pids[i] != -1)
+        else
         {
+            // parent, wait for allocation in child process
             char scratch;
             read(fds[0], &scratch, 1);
+            if (scratch == 'f')
+            {
+                failed_allocations++;
+            }
         }
+    }
+
+    if (failed_allocations == 0)
+    {
+        printf(
+            "%s ERROR: at least in one fork the sbrk() call should have "
+            "failed\n",
+            s);
+        exit(1);
     }
 
     // if those failed allocations freed up the pages they did allocate,
     // we'll be able to allocate here
+    // test one page first while the children still run
+    // note: this succeeds even with some memory leakage
     long page_size = sysconf(_SC_PAGE_SIZE);
     char *c = sbrk(page_size);
     for (size_t i = 0; i < sizeof(pids) / sizeof(pids[0]); i++)
@@ -2737,6 +2767,18 @@ void sbrkfail(char *s)
         // to test for this condition
         assert_errno(ENOMEM);
         printf("%s: failed sbrk() calls seem to leak memory\n", s);
+        exit(1);
+    }
+
+    // After killing the child processes, the parent should be able to allocate
+    // the big chunk once.
+    sbrk(BIG);
+    if (errno == ENOMEM)
+    {
+        printf(
+            "%s: failed sbrk() call indicated leaked memory by not reclaiming "
+            "all memory from killed children\n",
+            s);
         exit(1);
     }
 

@@ -117,10 +117,8 @@ void *alloc_pages(int32_t flags, size_t order)
         memset((char *)pages, 5, PAGE_SIZE * (1 << order));  // fill with junk
     }
 #endif  // CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
-    // printk("allocated a page 0x%zx - used %zd - total: %zd\n", (size_t)page,
-    //        g_kernel_memory.pages_allocated,
-    //        g_kernel_memory.pages_allocated_total);
-    // if (page == NULL)
+
+    // if (pages == NULL)
     // {
     //     printk("WARNING: OUT OF MEMORY\n");
     // }
