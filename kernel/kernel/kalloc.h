@@ -28,10 +28,11 @@ void free_pages(void* pa, size_t order);
 /// @param pa Address of page to free
 static inline void free_page(void* pa) { free_pages(pa, 0); }
 
-/// @brief Allocate one 4096-byte page of physical memory.
+/// @brief Allocate up to one page of physical memory.
+/// Use alloc_pages() when more is needed.
 /// Returns a pointer that the kernel can use.
-/// @return One 4k page or NULL if the memory cannot be allocated.
-void* kalloc();
+/// @return NULL if the memory cannot be allocated.
+void* kmalloc(size_t size);
 
 /// @brief Free the page of physical memory pointed at by pa,
 /// which normally should have been returned by a

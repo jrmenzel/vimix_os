@@ -48,6 +48,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/exec.o \
 	kernel/reset.o \
 	kernel/scheduler.o \
+	kernel/slab.o \
 	kernel/trap.o \
 	kernel/kticks.o \
 	syscalls/sys_device.o \

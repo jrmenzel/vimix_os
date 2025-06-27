@@ -8,6 +8,7 @@
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/list.h>
+#include <kernel/slab.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
@@ -18,6 +19,11 @@
 // blocks of the requested order are available.
 #define PAGE_ALLOC_MAX_ORDER 9
 
+// Number of Slab Allocator caches to provide allocations from SLAB_ALIGNMENT
+// to PAGE_SIZE/4
+#define OBJECT_CACHES \
+    ((PAGE_SHIFT - SLAB_ALIGNMENT_ORDER) - (MAX_SLAB_SIZE_DIVIDER_SHIFT - 1))
+
 /// a linked list per order of all free memory blocks for the kernel to allocate
 struct
 {
@@ -25,6 +31,8 @@ struct
     char *end_of_physical_memory;
 
     struct list_head list_of_free_memory[PAGE_ALLOC_MAX_ORDER + 1];
+
+    struct kmem_cache object_cache[OBJECT_CACHES];
 
 #ifdef CONFIG_DEBUG_KALLOC
     size_t pages_allocated;
@@ -216,6 +224,14 @@ void kalloc_init(struct Minimal_Memory_Map *memory_map)
         list_init(&g_kernel_memory.list_of_free_memory[i]);
     }
 
+    for (size_t i = 0; i < OBJECT_CACHES; ++i)
+    {
+        size_t size = (1 << i) * SLAB_ALIGNMENT;
+        char name[KMEM_CACHE_MAX_NAME_LEN];
+        snprintf(name, KMEM_CACHE_MAX_NAME_LEN, "cache_%d", (uint32_t)size);
+        kmem_cache_init(&g_kernel_memory.object_cache[i], name, size);
+    }
+
     // The available memory after kernel_end can have up to two holes:
     // the dtb file and a initrd ramdisk, both are optional.
     // The dtb could also be outside of the RAM area (e.g. in flash)
@@ -262,9 +278,8 @@ void kalloc_init(struct Minimal_Memory_Map *memory_map)
 
 void kfree(void *pa)
 {
-    if (((size_t)pa % PAGE_SIZE) != 0  // if pa is not page aligned
-        || (char *)pa < end_of_kernel  // or pa is before or inside the kernel
-                                       // binary in memory
+    if ((char *)pa < end_of_kernel  // or pa is before or inside the kernel
+                                    // binary in memory
         || (char *)pa >=
                g_kernel_memory.end_of_physical_memory)  // or pa is outside of
                                                         // the physical memory
@@ -272,10 +287,60 @@ void kfree(void *pa)
         panic("kfree: out of range or unaligned address");
     }
 
-    free_pages(pa, 0);
+    if (((size_t)pa % PAGE_SIZE) == 0)
+    {
+        // page aligned
+        free_pages(pa, 0);
+        return;
+    }
+
+    // must be from an object cache
+    struct kmem_slab *slab = kmem_slab_infer_slab(pa);
+    kmem_slab_free(slab, pa);
 }
 
-void *kalloc() { return alloc_pages(ALLOC_FLAG_NONE, 0); }
+size_t next_power_of_two(size_t v)
+{
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+#ifdef __ARCH_64BIT
+    v |= v >> 32;
+#endif
+    v++;
+
+    return v;
+}
+
+void *kmalloc(size_t size)
+{
+    if (size > PAGE_SIZE)
+    {
+        panic("too much memory to allocate for kmalloc()");
+    }
+
+    size = next_power_of_two(size);
+    size_t order = 0;
+    while (size >>= 1)
+    {
+        order++;
+    }
+    size_t cache_index = 0;
+    if (order > SLAB_ALIGNMENT_ORDER)
+    {
+        cache_index = order - SLAB_ALIGNMENT_ORDER;
+    }
+    if (cache_index >= OBJECT_CACHES)
+    {
+        // no cache for this size -> return a full page
+        // printk("alloc full page\n");
+        return alloc_pages(ALLOC_FLAG_NONE, 0);
+    }
+    return kmem_cache_alloc(&(g_kernel_memory.object_cache[cache_index]));
+}
 
 #ifdef CONFIG_DEBUG_KALLOC
 size_t kalloc_debug_get_allocation_count()

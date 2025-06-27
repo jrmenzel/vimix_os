@@ -24,6 +24,8 @@ enum process_state
     ZOMBIE
 };
 
+#define MAX_PROC_DEBUG_NAME 16
+
 /// Per-process state
 /// Central struct to schedule processes.
 ///
@@ -57,7 +59,7 @@ struct process
                                                 ///< FILE_DESCRIPTOR value.
     struct inode *cwd;                          ///< Current Working Directory
 
-    char name[16];  ///< Process name (debugging)
+    char name[MAX_PROC_DEBUG_NAME];  ///< Process name (debugging)
 #ifdef CONFIG_DEBUG
     size_t current_syscall;  ///< More info in process listing via CTRL+P
 #endif

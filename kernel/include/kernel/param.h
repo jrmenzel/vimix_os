@@ -56,6 +56,7 @@
 #endif  // CONFIG_DEBUG
 
 #if defined(CONFIG_DEBUG_EXTRA_RUNTIME_TESTS)
+// DEBUG_EXTRA_ASSERT(expected_to_be_true, "message is expectation is broken")
 #define DEBUG_EXTRA_ASSERT(test, msg) \
     if (!(test))                      \
     {                                 \

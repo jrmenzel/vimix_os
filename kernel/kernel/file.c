@@ -11,6 +11,7 @@
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
+#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
@@ -22,8 +23,8 @@
 
 struct
 {
-    struct spinlock lock;
-    struct file file[MAX_FILES_SUPPORTED];
+    struct spinlock lock;         ///< global lock for all open files
+    struct list_head open_files;  ///< double linked list of open files
 } g_file_table;
 
 bool check_and_adjust_mode(mode_t *mode, mode_t default_type)
@@ -49,23 +50,23 @@ bool check_and_adjust_mode(mode_t *mode, mode_t default_type)
     return true;
 }
 
-void file_init() { spin_lock_init(&g_file_table.lock, "ftable"); }
+void file_init()
+{
+    spin_lock_init(&g_file_table.lock, "ftable");
+    list_init(&g_file_table.open_files);
+}
 
 struct file *file_alloc()
 {
     spin_lock(&g_file_table.lock);
-    for (struct file *f = g_file_table.file;
-         f < (g_file_table.file + MAX_FILES_SUPPORTED); f++)
+    struct file *f = kmalloc(sizeof(struct file));
+    if (f)
     {
-        if (f->ref == 0)
-        {
-            f->ref = 1;
-            spin_unlock(&g_file_table.lock);
-            return f;
-        }
+        f->ref = 1;
+        list_add(&f->list, &g_file_table.open_files);
     }
     spin_unlock(&g_file_table.lock);
-    return NULL;
+    return f;
 }
 
 struct file *file_dup(struct file *f)
@@ -183,24 +184,24 @@ void file_close(struct file *f)
         return;
     }
 
-    // that was the last reference -> close the file
-    // make a copy of the struct to savely access the values after
-    // unlocking the file table access lock.
-    struct file ff = *f;
-    f->ref = 0;
-    f->mode = 0;
+    // that was the last reference -> close the file by removing it from the
+    // open file list
+    list_del(&f->list);
     spin_unlock(&g_file_table.lock);
 
-    if (S_ISFIFO(ff.mode))
+    if (S_ISFIFO(f->mode))
     {
-        bool close_writing_end = (ff.flags & O_WRONLY) || (ff.flags & O_RDWR);
-        pipe_close(ff.pipe, close_writing_end);
+        bool close_writing_end = (f->flags & O_WRONLY) || (f->flags & O_RDWR);
+        pipe_close(f->pipe, close_writing_end);
     }
-    else if (S_ISCHR(ff.mode) || S_ISBLK(ff.mode) || S_ISDIR(ff.mode) ||
-             S_ISREG(ff.mode))
+    else if (S_ISCHR(f->mode) || S_ISBLK(f->mode) || S_ISDIR(f->mode) ||
+             S_ISREG(f->mode))
     {
-        inode_put(ff.ip);
+        inode_put(f->ip);
     }
+
+    // free memory of file struct
+    kfree((void *)f);
 }
 
 int32_t file_stat(struct file *f, size_t addr)

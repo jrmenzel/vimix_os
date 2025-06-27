@@ -23,6 +23,8 @@
 #include <kernel/smp.h>
 #include <kernel/vm.h>
 
+#include <kernel/slab.h>
+
 #if defined(__CONFIG_RAMDISK_EMBEDDED)
 #include <ramdisk_fs.h>
 #endif

@@ -3,18 +3,20 @@
 
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
+#include <kernel/list.h>
 #include <kernel/stat.h>
 
 /// @brief Represents an open file. Each process has an array
 /// of these. The "file descriptor" in C is simply the index into that array.
 struct file
 {
-    mode_t mode;        ///< file type and access rights
-    int32_t flags;      ///< file create flags
-    int32_t ref;        ///< reference count
-    struct pipe *pipe;  ///< used if the file belongs to a pipe
-    struct inode *ip;   ///< for files, dirs, char and block devices
-    uint32_t off;       ///< for files
+    struct list_head list;  ///< double linked list of all open files
+    mode_t mode;            ///< file type and access rights
+    int32_t flags;          ///< file create flags
+    int32_t ref;            ///< reference count
+    struct pipe *pipe;      ///< used if the file belongs to a pipe
+    struct inode *ip;       ///< for files, dirs, char and block devices
+    uint32_t off;           ///< for files
 };
 
 /// @brief Common code to check file mode.
