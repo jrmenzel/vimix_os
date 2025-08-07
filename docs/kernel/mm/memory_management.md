@@ -27,6 +27,10 @@ This has the following limitations:
 - Even if only a few bytes are needed, each allocation will use up at least one full [page](page.md).
 - Allocation of multiple pages can fail if there is no continuous memory region free of that size. This can happen even if the total amount of free memory is less than requested.
 
+### Lists
+
+Dynamically growing and shrinking lists of objects are manages by a double linked list (`struct list_head` from `kernel/list.h`).
+
 
 ## Virtual Memory
 
@@ -42,7 +46,7 @@ Page table: `pagetable_t`. An array of 1024 `pagetable_element` which are just 3
 
 All harts use the same kernel page table:
 - all memory is mapped to the physical location
-	- 2MB blocks can be mapped as one super page
+	- 2 MB blocks can be mapped as one super page
 - [devices](../devices/devices.md) are mapped
 - the trampoline function gets mapped to the highest address
 See [memory_map_kernel](memory_map_kernel.md) for details.
@@ -59,7 +63,7 @@ User space applications can only increase or decrease their memory heap with the
 ---
 **Overview:** [kernel](../kernel.md)
 
-**Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
-
 **Subsystems:** [interrupts](interrupts.md) | [devices](../devices/devices.md) | [file_system](../file_system/file_system.md) | [memory_management](memory_management.md)
 [processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](../syscalls/syscalls.md)
+
+**Related:** [kernel memory map](memory_map_kernel.md) | [process memory map](memory_map_process.md) | [page](page.md)

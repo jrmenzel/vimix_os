@@ -22,9 +22,25 @@ void spin_lock_init(struct spinlock *lk, char *name_for_debug)
 #endif  // CONFIG_DEBUG_SPINLOCK
 }
 
-/// Acquire/lock the lock.
-/// Loops (spins) until the lock is acquired.
-/// Disables interrupts until the lock gets released.
+void debug_test_lock(struct spinlock *lk)
+{
+#ifdef CONFIG_DEBUG_SPINLOCK
+    if (lk->cpu != NULL)
+    {
+        if (lk->cpu == get_cpu())
+        {
+            panic("spin_lock is owned by this CPU already");
+        }
+        else
+        {
+            panic("spin_lock was not cleared at release");
+        }
+    }
+    // Record info about lock acquisition for holding() and debugging.
+    lk->cpu = get_cpu();
+#endif  // CONFIG_DEBUG_SPINLOCK
+}
+
 void spin_lock(struct spinlock *lk)
 {
     cpu_push_disable_device_interrupt_stack();  // disable interrupts to avoid
@@ -48,25 +64,30 @@ void spin_lock(struct spinlock *lk)
     // On RISC-V, this emits a fence instruction.
     __sync_synchronize();
 
-#ifdef CONFIG_DEBUG_SPINLOCK
-    if (lk->cpu != NULL)
-    {
-        if (lk->cpu == get_cpu())
-        {
-            panic("spin_lock is owned by this CPU already");
-        }
-        else
-        {
-            panic("spin_lock was not cleared at release");
-        }
-    }
-    // Record info about lock acquisition for holding() and debugging.
-    lk->cpu = get_cpu();
-#endif  // CONFIG_DEBUG_SPINLOCK
+    debug_test_lock(lk);
 }
 
-/// Release/unlock the lock.
-/// Re-enables interrupts (if they were enabled at time of spin_lock())
+bool spin_trylock(struct spinlock *lk)
+{
+    cpu_push_disable_device_interrupt_stack();  // disable interrupts to avoid
+                                                // deadlock.
+    DEBUG_ASSERT_CPU_DOES_NOT_HOLD_LOCK(lk);
+
+    // if already locked cleanup and return false
+    if (__sync_lock_test_and_set(&lk->locked, true) == true)
+    {
+        cpu_pop_disable_device_interrupt_stack();
+        return false;
+    }
+
+    // if it was unlocked, it's now locked -> memory barrier and return true
+    __sync_synchronize();
+
+    debug_test_lock(lk);
+
+    return true;
+}
+
 void spin_unlock(struct spinlock *lk)
 {
 #ifdef CONFIG_DEBUG_SPINLOCK

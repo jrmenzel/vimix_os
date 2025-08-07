@@ -23,7 +23,7 @@ struct virtio_disk g_virtio_disks[MAX_MINOR_DEVICES];
 
 void virtio_block_device_read(struct Block_Device *bd, struct buf *b);
 void virtio_block_device_write(struct Block_Device *bd, struct buf *b);
-void virtio_block_device_interrupt();
+void virtio_block_device_interrupt(dev_t dev);
 
 const char *virtio_names[MAX_MINOR_DEVICES] = {"virtio0", "virtio1", "virtio2",
                                                "virtio3"};

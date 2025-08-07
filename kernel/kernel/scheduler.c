@@ -22,27 +22,33 @@ void scheduler()
              proc < &g_process_list[MAX_PROCS]; proc++)
         {
             if (g_kernel_panicked != 0) goto KERNEL_PANIC;
-            spin_lock(&proc->lock);
-            if (proc->state == RUNNABLE)
+
+            // try to lock and check, but if the process is locked,
+            // it's probably running, so skip to the next one
+            if (spin_trylock(&proc->lock))
             {
-                // printk("run %s\n", proc->name);
-                struct cpu *this_cpu = get_cpu();
+                if (proc->state == RUNNABLE)
+                {
+                    // printk("run %s\n", proc->name);
+                    struct cpu *this_cpu = get_cpu();
 
-                proc_shrink_stack(proc);
+                    proc_shrink_stack(proc);
 
-                // Switch to chosen process.  It is the process's job
-                // to release its lock and then reacquire it
-                // before jumping back to us.
-                found_runnable = true;
-                proc->state = RUNNING;
-                this_cpu->proc = proc;
-                context_switch(&this_cpu->context, &proc->context);
+                    // Switch to chosen process.  It is the process's job
+                    // to release its lock and then reacquire it
+                    // before jumping back to us.
+                    found_runnable = true;
+                    proc->state = RUNNING;
+                    this_cpu->proc = proc;
+                    context_switch(&this_cpu->context, &proc->context);
 
-                // Process is done running for now.
-                // It should have changed its proc->state before coming back.
-                this_cpu->proc = NULL;
+                    // Process is done running for now.
+                    // It should have changed its proc->state before coming
+                    // back.
+                    this_cpu->proc = NULL;
+                }
+                spin_unlock(&proc->lock);
             }
-            spin_unlock(&proc->lock);
         }
 
         if (!found_runnable)

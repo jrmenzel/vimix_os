@@ -14,6 +14,6 @@ long page_size = sysconf(_SC_PAGE_SIZE);
 
 
 ---
-**Overview:** [kernel](../kernel.md)
+**Overview:** [memory management](memory_management.md)
 
-**Related:**  [memory_management](memory_management.md)
+**Related:** [kernel memory map](memory_map_kernel.md) | [process memory map](memory_map_process.md) | [page](page.md)

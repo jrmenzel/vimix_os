@@ -390,7 +390,7 @@ void copyinstr3(char *s)
 
 // See if the kernel refuses to read/write user memory that the
 // application doesn't have anymore, because it returned it.
-void rwsbrk()
+void rwsbrk(char *s)
 {
     size_t page_size = (size_t)sysconf(_SC_PAGE_SIZE);
     size_t a = (size_t)sbrk(2 * page_size);

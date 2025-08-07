@@ -57,9 +57,6 @@ Same as 32-bit, except that virtual memory goes up to 0x40.0000.0000.
 
 
 ---
-**Overview:** [kernel](../kernel.md)
+**Overview:** [memory management](memory_management.md)
 
-**Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
-
-**Subsystems:** [interrupts](interrupts.md) | [devices](../devices/devices.md) | [file_system](../file_system/file_system.md) | [memory_management](memory_management.md)
-[processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](../syscalls/syscalls.md)
+**Related:** [kernel memory map](memory_map_kernel.md) | [process memory map](memory_map_process.md) | [page](page.md)

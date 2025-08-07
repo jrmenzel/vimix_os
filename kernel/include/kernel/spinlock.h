@@ -23,10 +23,20 @@ struct spinlock
 /// @param name_for_debug only used for debugging
 void spin_lock_init(struct spinlock *lk, char *name_for_debug);
 
-/// Acquire/lock the spinlock.
+/// @brief Acquire/lock the lock.
+/// Loops (spins) until the lock is acquired.
+/// Disables interrupts until the lock gets released.
+/// @param lk The spinlock.
 void spin_lock(struct spinlock *lk);
 
-/// Release/unlock the spinlock.
+/// @brief Tries to acquire lock, returns true if successfull.
+/// @param lk The spinlock.
+/// @return True if lock was locked (must call spin_unlock() after).
+bool spin_trylock(struct spinlock *lk);
+
+/// @brief Release/unlock the lock.
+/// Re-enables interrupts (if they were enabled at time of spin_lock())
+/// @param lk The spinlock.
 void spin_unlock(struct spinlock *lk);
 
 #ifdef CONFIG_DEBUG_SPINLOCK

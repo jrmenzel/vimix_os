@@ -24,7 +24,7 @@ dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name);
 bool uart_set_baud_rate(enum UART_BAUD_RATE rate);
 
 /// @brief Console Character Device will set this up
-void uart_interrupt_handler();
+void uart_interrupt_handler(dev_t dev);
 
 /// add a character to the output buffer and tell the
 /// UART to start sending if it isn't already.

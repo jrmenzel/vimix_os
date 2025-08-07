@@ -13,8 +13,8 @@
 #include <kernel/string.h>
 #include <kernel/xv6fs.h>
 
-static void recover_from_log();
-static void commit();
+static void recover_from_log(struct log *log);
+static void commit(struct log *log);
 
 void log_init(struct log *log, dev_t dev, struct xv6fs_superblock *sb)
 {
