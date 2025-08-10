@@ -427,7 +427,7 @@ void rwsbrk(char *s)
     fd = open("/README.md", O_RDONLY);
     if (fd < 0)
     {
-        printf("open(rwsbrk) failed\n");
+        printf("open(/README.md) failed\n");
         exit(1);
     }
     n = read(fd, (void *)(a + page_size), 10);

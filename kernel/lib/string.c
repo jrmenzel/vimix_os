@@ -214,8 +214,9 @@ unsigned long strtoul(const char *string, char **end, int base)
 {
     if (base != 10) return 0;
 
-    while (_is_whitespace(*string++))
+    while (_is_whitespace(*string))
     {
+        string++;
     }
 
     char sign = '+';

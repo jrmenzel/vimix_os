@@ -11,7 +11,7 @@ Duplicate open [file descriptor](../file_system/file.md).
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_dub()`. 
+Implemented in `sys_file.c` as `sys_dup()`. 
 
 ## See also
 

@@ -4,10 +4,10 @@
 
 ```C
 #include <signal.h>
-int32_t kill(pid_t pid);
+int32_t kill(pid_t pid, int sig);
 ```
 
-Kills the process with given [process](../processes/processes.md) ID `pid`. 
+Sends the signal `sig` to the process with given [process](../processes/processes.md) ID `pid`. So far only the `SIGKILL` signal is supported, terminating the process.
 
 ## User Apps
 

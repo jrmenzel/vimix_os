@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,10 +14,21 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: kill pid...\n");
         return 1;
     }
+
+    size_t error_count = 0;
     for (size_t i = 1; i < argc; i++)
     {
-        kill(atoi(argv[i]), SIGKILL);
+        int32_t pid = atoi(argv[i]);
+        int ret = kill(pid, SIGKILL);
+        if (ret != 0)
+        {
+            error_count++;
+            if (errno == ESRCH)
+            {
+                printf("No such process with PID %d\n", pid);
+            }
+        }
     }
 
-    return 0;
+    return error_count;
 }

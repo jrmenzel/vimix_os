@@ -31,7 +31,7 @@ function build_config_compiler {
 }
 
 # $1 = arch
-# $2 = platfrom
+# $2 = platform
 function build_config_release_debug {
     build_config $1 $2 debug
     build_config $1 $2 release
@@ -211,7 +211,7 @@ function main {
     fi
 
     echo "Usage: run_tests.sh {build | boot | all}"
-    echo " build: builds for all plattforms"
+    echo " build: builds for all platforms"
     echo " boot:  builds and boots on qemu"
     echo " all:   builds and performs usertests, forktest, grind, etc."
 }

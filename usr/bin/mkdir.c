@@ -14,14 +14,15 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    int some_dirs_failed = 0;
     for (size_t i = 1; i < argc; i++)
     {
         if (mkdir(argv[i], 0755) < 0)
         {
             fprintf(stderr, "mkdir: %s failed to create\n", argv[i]);
-            break;
+            some_dirs_failed = 1;
         }
     }
 
-    return 0;
+    return some_dirs_failed;
 }

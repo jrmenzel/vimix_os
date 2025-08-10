@@ -3,7 +3,7 @@
 ## User Mode
 
 ```C
-#include <uinstd.h>
+#include <unistd.h>
 int32_t pipe(int pipe_descriptors[2]);
 ```
 

@@ -50,7 +50,7 @@ void dev_null(char *s)
     close(fd);
 }
 
-/// @brief Reads from /dev/zero should fill the buffer with '0', writes to it
+/// @brief Reads from /dev/zero should fill the buffer with 0, writes to it
 /// should return the length of the written string.
 /// @param s test name
 void dev_zero(char *s)
@@ -699,6 +699,27 @@ void getline_test(char *s)
     }
 }
 
+void strtoul_test(char *s)
+{
+    char *end = NULL;
+    unsigned long n;
+
+    const char *test_str1 = "   42foo";
+    n = strtoul(test_str1, &end, 10);
+    assert_same_value(n, 42);
+    assert_same_value(*end, 'f');
+
+    const char *test_str2 = "0123";
+    n = strtoul(test_str2, &end, 10);
+    assert_same_value(n, 123);
+    assert_same_value(*end, 0);
+
+    const char *test_str3 = " -123456a";
+    n = strtoul(test_str3, &end, 10);
+    assert_same_value(n, -123456);
+    assert_same_value(*end, 'a');
+}
+
 struct test quicktests_common[] = {
     {dev_null, "dev_null"},
     {dev_zero, "dev_zero"},
@@ -709,6 +730,7 @@ struct test quicktests_common[] = {
     {realloc_test, "realloc"},
     {str_test, "str"},
     {getline_test, "getline"},
+    {strtoul_test, "strtoul"},
 
     {0, 0},
 };
