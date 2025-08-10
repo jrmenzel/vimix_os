@@ -105,7 +105,6 @@ SUB_DIRS_TO_MAKE := $(addprefix $(K_BUILD_DIR)/, $(SUB_DIRS))
 KERNEL_SPACE_INC := $(ARCH_DIR) # selected architecture
 KERNEL_SPACE_INC += ./include   # public kernel API
 KERNEL_SPACE_INC += ./lib/libfdt   # libfdt
-KERNEL_SPACE_INC += $(K_BUILD_DIR)/$(ARCH_DIR) # for initcode.h
 ifeq ($(RAMDISK_EMBEDDED), yes)
 KERNEL_SPACE_INC += $(K_BUILD_DIR)
 endif
@@ -133,7 +132,7 @@ endif
 KBUILD_AFLAGS := -D__ASSEMBLY__ $(KBUILD_CFLAGS)
 
 .PHONY: all directories clean
-all: directories $(INIT_BUILD_DIR)/initcode.h $(KERNEL_PATH) # build all
+all: directories $(KERNEL_PATH) # build all
 
 directories: # create temp build directories
 	@mkdir -p $(SUB_DIRS_TO_MAKE)
@@ -143,24 +142,13 @@ $(K_BUILD_DIR)/%.o: %.S
 	@$(CC) $(KBUILD_AFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 # compile C, also create assembly listing
-$(K_BUILD_DIR)/%.o: %.c $(INIT_BUILD_DIR)/initcode.h
+$(K_BUILD_DIR)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
 	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 ifeq ($(CREATE_ASSEMBLY), yes)
 	@printf "$(TASK_COLOR)Assembly $(basename $@).s\n$(NO_COLOR)"
 	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -S $< -g -o $(basename $@).s
 endif
-
-# special case: initcode
-# ld flag --no-warn-rwx-segments requires newer linker versions (2.39 or later)
-$(INIT_BUILD_DIR)/initcode.h: $(ARCH_DIR)/asm/initcode.S 
-	@printf "$(TASK_COLOR)Compile initcode and dump it into initcode.h\n$(NO_COLOR)"
-	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(ARCH_DIR)/asm/initcode.S -o $(INIT_BUILD_DIR)/initcode.o
-	@$(LD) $(LDFLAGS) -N -e start -Ttext $(USER_TEXT_START) -o $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode.o
-	@$(OBJCOPY) -S -O binary $(INIT_BUILD_DIR)/initcode.out $(INIT_BUILD_DIR)/initcode
-	@echo "unsigned char g_initcode[] = {" > $(INIT_BUILD_DIR)/initcode.h
-	@xxd -i < $(INIT_BUILD_DIR)/initcode >> $(INIT_BUILD_DIR)/initcode.h
-	@echo "};" >> $(INIT_BUILD_DIR)/initcode.h
 
 
 # embedd the filesystem image into the kernel as an array:
@@ -215,7 +203,7 @@ $(K_BUILD_DIR)/dtb_embedded.h:
 	@touch $(K_BUILD_DIR)/dtb_embedded.h
 endif
 
-$(KERNEL_PATH): $(INIT_BUILD_DIR)/initcode.h $(K_BUILD_DIR)/ramdisk_fs.h $(K_BUILD_DIR)/dtb_embedded.h $(OBJECT_FILES) $(ARCH_DIR)/kernel.ld # build kernel
+$(KERNEL_PATH): $(K_BUILD_DIR)/ramdisk_fs.h $(K_BUILD_DIR)/dtb_embedded.h $(OBJECT_FILES) $(ARCH_DIR)/kernel.ld # build kernel
 	@printf "$(TASK_COLOR)Link kernel: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) --defsym=KERNBASE=$(KERNBASE) $(ARCH_LD_FLAGS) -T $(ARCH_DIR)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
 ifeq ($(CREATE_ASSEMBLY), yes)
@@ -228,7 +216,6 @@ clean:
 	-@rm -f $(KERNEL_PATH)
 	-@rm -f $(KERNEL_PATH).bin
 	-@rm -rf $(K_BUILD_DIR)
-	-@rm -f $(ARCH_DIR)/asm/initcode.h
 	-@rm -f $(K_BUILD_DIR)/ramdisk_fs.h
 	-@rm -f $(RAMDISC_C)
 	-@rm -f $(DTB_C)

@@ -16,7 +16,7 @@
 
 int main()
 {
-    // init is called from the kernels initcode and has no open files.
+    // init is executed from the kernel explicitly and has no open files.
     // The first three files are defined to be stdin, stdout and stderr.
     // This opens the console to be these standart files.
     // Note that fork() and execv() below wont change the open files,

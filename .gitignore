@@ -16,7 +16,6 @@ utests-tmp/*
 #*.dtb
 
 # auto generated:
-kernel/arch/riscv/asm/initcode.h
 .gdbinit
 
 # 3rd party tools

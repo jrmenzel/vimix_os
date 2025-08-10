@@ -62,6 +62,14 @@
     {                                 \
         printk("ERROR: %s\n", msg);   \
     }
+
+// DEBUG_EXTRA_PANIC(expected_to_be_true, "message is expectation is broken")
+#define DEBUG_EXTRA_PANIC(test, msg) \
+    if (!(test))                     \
+    {                                \
+        panic(msg);                  \
+    }
 #else
 #define DEBUG_EXTRA_ASSERT(test, msg)
+#define DEBUG_EXTRA_PANIC(test, msg)
 #endif

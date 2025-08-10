@@ -6,6 +6,7 @@
 #include <fs/xv6fs/xv6fs.h>
 #include <kernel/cpu.h>
 #include <kernel/errno.h>
+#include <kernel/exec.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/kalloc.h>
@@ -20,13 +21,6 @@
 #include <kernel/string.h>
 #include <kernel/vm.h>
 #include <syscalls/syscall.h>
-
-/// a user program that calls execv("/usr/bin/init")
-/// assembled from initcode.S
-/// od -t xC initcode
-#include <asm/initcode.h>
-_Static_assert((sizeof(g_initcode) <= PAGE_SIZE),
-               "Initcode must fit into one page");
 
 struct cpu g_cpus[MAX_CPUS];
 
@@ -267,35 +261,10 @@ void proc_free_pagetable(pagetable_t pagetable)
 /// This creates the only process not created by fork()
 void userspace_init()
 {
-    struct process *proc = alloc_process();
-    g_initial_user_process = proc;
+    g_initial_user_process = alloc_process();
+    g_initial_user_process->state = RUNNABLE;
 
-    // Allocate one user page and load the user initcode into
-    // address USER_TEXT_START of pagetable
-    char *mem = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
-    vm_map(proc->pagetable, USER_TEXT_START, (size_t)mem, PAGE_SIZE,
-           PTE_INITCODE, false);
-    memmove(mem, g_initcode, sizeof(g_initcode));
-
-    proc->heap_begin = USER_TEXT_START + PAGE_SIZE;
-    proc->heap_end = proc->heap_begin;
-
-    size_t sp;
-    uvm_create_stack(proc->pagetable, NULL, &(proc->stack_low), &sp);
-
-    // prepare for the very first "return" from kernel to user.
-    // clear all registers, esp. s0 / stack frame base and ra:
-    memset(proc->trapframe, 0, sizeof(struct trapframe));
-    trapframe_set_program_counter(proc->trapframe, USER_TEXT_START);
-    trapframe_set_stack_pointer(proc->trapframe, sp);
-
-    safestrcpy(proc->name, "initcode", sizeof(proc->name));
-    // proc->cwd = inode_from_path("/");
-    proc->cwd = NULL;  // set in forkret
-
-    proc->state = RUNNABLE;
-
-    spin_unlock(&proc->lock);
+    spin_unlock(&g_initial_user_process->lock);
 }
 
 /// Grow or shrink user memory by n bytes.
@@ -433,14 +402,10 @@ void exit(int32_t status)
 {
     struct process *proc = get_current();
 
-    // special case: "/usr/bin/init" or even initcode.S returned
+    // special case: "/usr/bin/init" returned
     if (proc == g_initial_user_process)
     {
         size_t return_value = trapframe_get_return_register(proc->trapframe);
-        if (return_value == -0xDEAD)
-        {
-            panic("initcode.S could not load /usr/bin/init - check filesystem");
-        }
 
         printk("/usr/bin/init returned: %zd\n", return_value);
         panic("/usr/bin/init should not have returned");
@@ -577,6 +542,38 @@ void yield()
     spin_unlock(&proc->lock);
 }
 
+/// @brief Called once to load the first process from forkret() into the
+/// currently active process. panics on error.
+/// @param init_path Absolute path to the init binary.
+void load_init_process(char *init_path)
+{
+    get_current()->cwd = inode_from_path("/");
+    int ret = execv(init_path, (char *[]){init_path, 0});
+    if (ret < 0)
+    {
+        switch (ret)
+        {
+            case -ENOENT:
+                printk("ERROR starting init process, binary not found at %s\n",
+                       init_path);
+                break;
+            case -ENOEXEC:
+                printk("ERROR starting init process, %s is not an executable\n",
+                       init_path);
+                break;
+            case -ENOMEM:
+                printk(
+                    "ERROR starting init process: out of memory while loading "
+                    "%s\n",
+                    init_path);
+                break;
+
+            default: break;
+        }
+        panic("execv of init failed");
+    }
+}
+
 /// A fork child's very first scheduling by scheduler()
 /// will context_switch to forkret.
 void forkret()
@@ -594,8 +591,13 @@ void forkret()
         first = false;
         mount_root(ROOT_DEVICE_NUMBER, XV6_FS_NAME);
         printk("forkret() mounting /... OK\n");
-        get_current()->cwd = inode_from_path("/");
-        __sync_synchronize();
+
+        // We can involve execv() after file system is initialized.
+        char *init_path = "/usr/bin/init";
+        load_init_process(init_path);
+        printk("forkret() loading %s... OK\n", init_path);
+
+        __sync_synchronize();  // other cores must see first = false
     }
 
     return_to_user_mode();
@@ -805,6 +807,12 @@ void debug_print_call_stack_user(struct process *proc)
     size_t fp_physical =
         uvm_get_physical_addr(proc->pagetable, frame_pointer, NULL);
     size_t return_address = trapframe_get_return_address(proc->trapframe);
+
+    if (proc_stack_pa == 0 || fp_physical == 0)
+    {
+        // no mapped stack found
+        return;
+    }
 
     while (address_is_in_page(fp_physical, proc_stack_pa))
     {

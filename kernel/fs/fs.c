@@ -217,11 +217,12 @@ static struct inode *namex(const char *path, bool get_parent, char *name)
 
     if (*path == '/')
     {
-        DEBUG_EXTRA_ASSERT(ROOT_SUPER_BLOCK != NULL, "No root filesystem!");
+        DEBUG_EXTRA_PANIC(ROOT_SUPER_BLOCK != NULL, "No root filesystem!");
         ip = VFS_SUPER_IGET_ROOT(ROOT_SUPER_BLOCK);
     }
     else
     {
+        DEBUG_EXTRA_PANIC(get_current()->cwd != NULL, "CWD inode is NULL");
         ip = VFS_INODE_DUP(get_current()->cwd);
     }
 
