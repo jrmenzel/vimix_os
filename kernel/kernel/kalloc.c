@@ -103,6 +103,13 @@ void *alloc_pages(int32_t flags, size_t order)
         {
             zero_pages(pages, (1 << order));
         }
+        else
+        {
+#ifdef CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
+            memset((char *)pages, 5,
+                   PAGE_SIZE * (1 << order));  // fill with junk
+#endif  // CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
+        }
 #ifdef CONFIG_DEBUG_KALLOC
         g_kernel_memory.pages_allocated += (1 << order);
         g_kernel_memory.pages_allocated_total += (1 << order);
@@ -110,13 +117,6 @@ void *alloc_pages(int32_t flags, size_t order)
     }
 
     spin_unlock(&g_kernel_memory.lock);
-
-#ifdef CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
-    if (pages)
-    {
-        memset((char *)pages, 5, PAGE_SIZE * (1 << order));  // fill with junk
-    }
-#endif  // CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
 
     // if (pages == NULL)
     // {

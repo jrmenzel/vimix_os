@@ -34,11 +34,11 @@ static inline void free_page(void* pa) { free_pages(pa, 0); }
 /// @return NULL if the memory cannot be allocated.
 void* kmalloc(size_t size);
 
-/// @brief Free the page of physical memory pointed at by pa,
+/// @brief Free memory pointed at by pa,
 /// which normally should have been returned by a
-/// call to kalloc().  (The exception is when
+/// call to kalloc() or kmalloc().  (The exception is when
 /// initializing the allocator; see kalloc_init())
-/// @param pa physical address of the page to free
+/// @param pa physical address of the memory to free
 void kfree(void* pa);
 
 /// @brief Free the RAM after the kernel loaded, called once at

@@ -54,6 +54,12 @@ void kmem_slab_free(struct kmem_slab *slab, void *object)
         panic("kmem_slab_free called for object not belonging to this slab");
     }
 
+#ifdef CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
+    memset((char *)object, 2,
+           slab->object_size);  // fill with junk, first size_t will be
+                                // overwritten next
+#endif                          // CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
+
     *(void **)object = slab->free_list;
     slab->free_list = object;
     slab->objects_allocated--;

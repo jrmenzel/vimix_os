@@ -151,7 +151,7 @@ void return_to_user_mode()
     // and switches to user mode with sret.
     size_t return_to_user_mode_asm_ptr =
         TRAMPOLINE + (return_to_user_mode_asm - trampoline);
-    ((void (*)(size_t))return_to_user_mode_asm_ptr)(satp);
+    ((void (*)(size_t, size_t))return_to_user_mode_asm_ptr)(satp, 0);
 }
 
 void handle_device_interrupt()

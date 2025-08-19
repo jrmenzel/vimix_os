@@ -94,8 +94,10 @@ int drivetests(int quick, int continuous, char *justone)
         int free1 = countfree();
         if (free1 < free0)
         {
-            printf("FAILED -- lost some free pages %d (out of %d)\n", free1,
-                   free0);
+            printf(
+                "FAILED -- lost some free pages; free now: %d (was: %d); %d "
+                "lost\n",
+                free1, free0, free0 - free1);
             printf("badarg is a candidate for leaked memory\n");
             if (continuous != 2)
             {

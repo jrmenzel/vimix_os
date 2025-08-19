@@ -62,17 +62,17 @@ CFLAGS_COMMON += -I.
 # Disable position independend code generation
 CFLAGS_COMMON += -fno-pie -no-pie
 
+DEBUG_FLAGS := -ggdb -gdwarf -DDEBUG -g # debug info
+
 ifeq ($(BUILD_TYPE), debug)
 CFLAGS_COMMON += -O0 
-CFLAGS_COMMON += -ggdb -gdwarf-2 -DDEBUG # debug info
-CFLAGS_COMMON += -g # native format for debug info
+CFLAGS_COMMON += $(DEBUG_FLAGS)
 CFLAGS_COMMON += -MD
 else
 CFLAGS_COMMON += -O2
 ifeq ($(REL_WITH_DEBUG), yes)
 # release with debug symbols
-CFLAGS_COMMON += -ggdb -gdwarf-2 -DDEBUG # debug info
-CFLAGS_COMMON += -g # native format for debug info
+CFLAGS_COMMON += $(DEBUG_FLAGS)
 endif
 endif
 

@@ -16,9 +16,9 @@
 #include <kernel/memlayout.h>
 #include <arch/riscv/asm/satp.h>
 
-# Define a section for this code to place it in the linker script at the end of the kernel,
-# page aligned. proc_pagetable() will map only this page into the users page table (so this
-# code must set the kernels pagetable before calling functions.
+# Define a section for this code to place it in the linker script of the kernel in its own 
+# (page aligned) page. proc_pagetable() will map only this page into the users page table (so this
+# code must set the kernels pagetable before calling kernel functions).
 .section trampsec
 .globl trampoline
 trampoline:
@@ -98,6 +98,7 @@ u_mode_trap_vector:
     # fetch the kernel page table register value, from p->trapframe->kernel_page_table.
     # mmu_set_page_table_reg_value(p->trapframe->kernel_page_table)
     LOAD_REG_FROM_TRAP_FRAME(a0, 0)
+    mv a1, zero
     jal mmu_set_page_table_reg_value
 
     # jump to user_mode_interrupt_handler(), which does not return
@@ -106,6 +107,7 @@ u_mode_trap_vector:
 # Sets satp register including all required barriers.
 # Implemented in assembly to share code with the other kernel code.
 # param a0 = size_t satp register value to set.
+# param a1 = ASID
 .globl mmu_set_page_table_reg_value
 mmu_set_page_table_reg_value:
     li t0, SATP_ASID_MASK
@@ -130,7 +132,7 @@ mmu_set_page_table_reg_value:
 
 .globl return_to_user_mode_asm
 return_to_user_mode_asm:
-    # return_to_user_mode_asm(pagetable)
+    # return_to_user_mode_asm(pagetable, ASID)
     # called by return_to_user_mode() in trap.c to
     # switch from kernel to user.
     # a0: user page table, for satp.

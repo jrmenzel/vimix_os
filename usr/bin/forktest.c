@@ -26,9 +26,10 @@ int main()
 
     if (n == N)
     {
-        printf("fork claimed to work N times!\n");
+        printf("fork worked %d times! Expected a failure.\n", N);
         return 1;
     }
+    printf("fork worked %d times\n", n);
 
     for (; n > 0; n--)
     {

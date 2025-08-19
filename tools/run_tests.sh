@@ -65,7 +65,7 @@ function test_config {
     # copy test
     cp ${BUILD_DIR}/root/tests/$4.sh ${BUILD_DIR}/root/tests/autoexec.sh
     # re-create fs image
-    make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 EXTERNAL_KERNEL_FLAGS="$(EXTERNAL_KERNEL_FLAGS)" BUILD_DIR=${BUILD_DIR} ${BUILD_DIR}/filesystem.img || exit 1
+    make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 EXTERNAL_KERNEL_FLAGS="${EXTERNAL_KERNEL_FLAGS}" BUILD_DIR=${BUILD_DIR} ${BUILD_DIR}/filesystem.img || exit 1
     # run test
     echo -e "${YELLOW}Test config: make PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} CPUS=$6 ${EMU_FLAGS} $3 ${NC}"
     make PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} CPUS=$6 ${EMU_FLAGS} $3 > ${RESULT_FILE} || exit 1
