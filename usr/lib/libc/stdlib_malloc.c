@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: MIT */
 
+// Memory allocator by Kernighan and Ritchie,
+// The C programming Language, 2nd ed.  Section 8.7.
+
+#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
+
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-// Memory allocator by Kernighan and Ritchie,
-// The C programming Language, 2nd ed.  Section 8.7.
-
-// typedef size_t Align;
 
 union header
 {
@@ -105,19 +105,19 @@ static Header *morecore(size_t nu)
 void *malloc(size_t size_in_bytes)
 {
     if (size_in_bytes == 0) return NULL;
-    Header *p = NULL;
-    Header *prevp = NULL;
 
     size_t nunits = (size_in_bytes + sizeof(Header) - 1) / sizeof(Header) + 1;
 
-    prevp = g_free_pointer;
+    Header *prevp = g_free_pointer;
     if (prevp == NULL)
     {
-        g_base_pointer.s.ptr = g_free_pointer = prevp = &g_base_pointer;
+        g_free_pointer = &g_base_pointer;
+        g_base_pointer.s.ptr = g_free_pointer;
+        prevp = g_free_pointer;
         g_base_pointer.s.size = 0;
     }
 
-    for (p = prevp->s.ptr;; prevp = p, p = p->s.ptr)
+    for (Header *p = prevp->s.ptr;; prevp = p, p = p->s.ptr)
     {
         t(p);
         if (p->s.size >= nunits)

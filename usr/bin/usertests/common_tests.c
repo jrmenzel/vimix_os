@@ -29,7 +29,7 @@ void dev_null(char *s)
 {
     const size_t N = 3;
     int fd = open("/dev/null", O_RDWR);
-    assert_open_ok(s, fd, "/dev/null");
+    assert_open_ok_fd(s, fd, "/dev/null");
 
     for (size_t i = 0; i < N; i++)
     {
@@ -57,7 +57,7 @@ void dev_zero(char *s)
 {
     const size_t N = 4;
     int fd = open("/dev/zero", O_RDWR);
-    assert_open_ok(s, fd, "/dev/zero");
+    assert_open_ok_fd(s, fd, "/dev/zero");
 
     for (size_t i = 0; i < N; i++)
     {
@@ -101,7 +101,7 @@ void lseek_test(char *s)
 {
     const char *file_name = "seektest";
     int fd = open(file_name, O_CREAT | O_RDWR, 0755);
-    assert_open_ok(s, fd, file_name);
+    assert_open_ok_fd(s, fd, file_name);
 
     // inital seek pos == 0
     off_t seek_pos = lseek(fd, 0, SEEK_CUR);
@@ -541,12 +541,14 @@ void getc_test(char *s)
 
     // write file:
     int fd = open(file_name, O_CREAT | O_WRONLY | O_TRUNC, 0755);
-    assert_open_ok(s, fd, file_name);
+    assert_open_ok_fd(s, fd, file_name);
     assert_same_value(write(fd, str, str_len), str_len);
     assert_same_value(close(fd), 0);
 
     // open and read via getc():
     FILE *f = fopen(file_name, "r");
+    assert_open_ok(s, f, file_name);
+
     for (size_t i = 0; i < str_len; ++i)
     {
         assert_same_value((char)getc(f), str[i]);
@@ -557,6 +559,7 @@ void getc_test(char *s)
 
     // open and read via fgetc():
     f = fopen(file_name, "r");
+    assert_open_ok(s, f, file_name);
     for (size_t i = 0; i < str_len; ++i)
     {
         assert_same_value((char)getc(f), str[i]);
@@ -567,6 +570,7 @@ void getc_test(char *s)
 
     // again with ungetc():
     f = fopen(file_name, "r");
+    assert_open_ok(s, f, file_name);
     for (size_t i = 0; i < str_len; ++i)
     {
         int c = getc(f);
@@ -584,7 +588,7 @@ void realloc_test(char *s)
 {
     size_t size = 16;
     int *ptr1 = (int *)realloc(NULL, sizeof(int) * size);
-    assert_no_error(ptr1);
+    assert_no_ptr_error(ptr1);
 
     for (size_t i = 0; i < size; ++i)
     {
@@ -592,7 +596,7 @@ void realloc_test(char *s)
     }
 
     int *ptr2 = (int *)realloc(ptr1, sizeof(int) * size * 2);
-    assert_no_error(ptr2);
+    assert_no_ptr_error(ptr2);
 
     for (size_t i = 0; i < size; ++i)
     {
@@ -601,7 +605,7 @@ void realloc_test(char *s)
 
     size = size / 2;
     int *ptr3 = (int *)realloc(ptr2, sizeof(int) * size);
-    assert_no_error(ptr3);
+    assert_no_ptr_error(ptr3);
 
     for (size_t i = 0; i < size; ++i)
     {
@@ -634,6 +638,7 @@ void getline_test(char *s)
 
     {
         FILE *f = fopen(file_name, "r");
+        assert_open_ok(s, f, file_name);
         char *line = NULL;
         size_t line_buf_size;
         ssize_t ret = getline(&line, &line_buf_size, f);
@@ -648,11 +653,12 @@ void getline_test(char *s)
 
         // write file:
         int fd = open(file_name, O_CREAT | O_WRONLY | O_TRUNC, 0755);
-        assert_open_ok(s, fd, file_name);
+        assert_open_ok_fd(s, fd, file_name);
         assert_same_value(write(fd, str, str_len), str_len);
         assert_same_value(close(fd), 0);
 
         FILE *f = fopen(file_name, "r");
+        assert_open_ok(s, f, file_name);
         char *line = NULL;
         size_t line_buf_size;
         ssize_t ret = getline(&line, &line_buf_size, f);
@@ -671,12 +677,18 @@ void getline_test(char *s)
 
         // write file:
         int fd = open(file_name, O_CREAT | O_WRONLY | O_TRUNC, 0755);
-        assert_open_ok(s, fd, file_name);
+        assert_open_ok_fd(s, fd, file_name);
         assert_same_value(write(fd, str, str_len), str_len);
         assert_same_value(close(fd), 0);
 
         FILE *f = fopen(file_name, "r");
+        assert_open_ok(s, f, file_name);
         char *line = malloc(4);  // intentionally too small
+        if (line == NULL)
+        {
+            printf("%s: ERROR, tiny malloc failed (errno: %s)\n", s,
+                   strerror(errno));
+        }
         size_t line_buf_size = 4;
         ssize_t ret = getline(&line, &line_buf_size, f);
         if (line_buf_size < 7) exit(-1);
@@ -741,11 +753,22 @@ struct test slowtests_common[] = {
 
 // helper functions
 
-void assert_open_ok(const char *test_name, int fd, const char *file_name)
+void assert_open_ok(const char *test_name, FILE *f, const char *file_name)
+{
+    if (f == NULL)
+    {
+        printf("%s: error: could not open %s (errno: %s)!\n", test_name,
+               file_name, strerror(errno));
+        exit(1);
+    }
+}
+
+void assert_open_ok_fd(const char *test_name, int fd, const char *file_name)
 {
     if (fd < 0)
     {
-        printf("%s: error: could not open %s!\n", test_name, file_name);
+        printf("%s: error: could not open %s (errno: %s)!\n", test_name,
+               file_name, strerror(errno));
         exit(1);
     }
 }
@@ -765,8 +788,8 @@ void assert_write_to_file(const char *test_name, int fd, const char *string)
 
     if (write(fd, string, str_len) != str_len)
     {
-        printf("%s: error: write of %zd bytes to file failed\n", test_name,
-               str_len);
+        printf("%s: error: write of %zd bytes to file failed (errno: %s)\n",
+               test_name, str_len, strerror(errno));
         exit(1);
     }
 }

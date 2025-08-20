@@ -262,6 +262,8 @@ void proc_free_pagetable(pagetable_t pagetable)
 void userspace_init()
 {
     g_initial_user_process = alloc_process();
+    if (g_initial_user_process == NULL)
+        panic("userspace_init() already out of memory");
     g_initial_user_process->state = RUNNABLE;
 
     spin_unlock(&g_initial_user_process->lock);

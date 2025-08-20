@@ -75,9 +75,9 @@ uint64_t htif_send_command(uint32_t device, uint32_t command, uint64_t data)
 void htif_machine_power_off()
 {
     htif_send_command(HTIF_DEVICE_HALT, HTIF_HALT_HALT, 1);
-    while (true)
-    {
-    }  // at least on Spike the shutdown is not instant, prevent a panic
+
+    // at least on Spike the shutdown is not instant, prevent a panic
+    infinite_loop;
 }
 
 void htif_putc(int32_t c)

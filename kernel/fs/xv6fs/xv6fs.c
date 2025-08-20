@@ -592,6 +592,8 @@ size_t bmap(struct inode *ip, uint32_t bn)
 
 struct inode *xv6fs_iget(struct super_block *sb, uint32_t inum)
 {
+    if (sb == NULL) return NULL;
+
     spin_lock(&xv6fs_itable.lock);
 
     // Is the inode already in the table?

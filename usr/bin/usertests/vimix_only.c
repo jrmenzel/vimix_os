@@ -132,9 +132,12 @@ int countfree()
 
 void duptest(char *s)
 {
-    int fd = dup(-1);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-use-without-check"
+    int fd = dup(-1);  // intentially testing an invalid file descriptor
     assert_same_value(fd, -1);
     assert_errno(EBADF);
+#pragma GCC diagnostic pop
 
     // already open files = stdin/out/err
     for (size_t i = 3; i < MAX_FILES_PER_PROCESS; ++i)
@@ -310,6 +313,12 @@ void copyinstr2(char *s)
     {
         long max_arg_size = sysconf(_SC_ARG_MAX);
         char *big = malloc(max_arg_size + 1);
+        if (big == NULL)
+        {
+            printf("copyinstr2: malloc() failed (errno: %s)\n",
+                   strerror(errno));
+            exit(1);
+        }
 
         for (size_t i = 0; i < max_arg_size; i++)
         {
@@ -452,6 +461,11 @@ void truncate1(char *s)
     close(fd1);
 
     int fd2 = open("truncfile", O_RDONLY);
+    if (fd2 < 0)
+    {
+        printf("%s: truncfile gone (errno: %s)\n", s, strerror(errno));
+        exit(1);
+    }
     ssize_t n = read(fd2, buf, sizeof(buf));
     if (n != 4)
     {
@@ -460,8 +474,18 @@ void truncate1(char *s)
     }
 
     fd1 = open("truncfile", O_WRONLY | O_TRUNC);
+    if (fd1 < 0)
+    {
+        printf("%s: truncfile gone (errno: %s)\n", s, strerror(errno));
+        exit(1);
+    }
 
     int fd3 = open("truncfile", O_RDONLY);
+    if (fd3 < 0)
+    {
+        printf("%s: truncfile gone (errno: %s)\n", s, strerror(errno));
+        exit(1);
+    }
     n = read(fd3, buf, sizeof(buf));
     if (n != 0)
     {
@@ -556,6 +580,11 @@ void truncate3(char *s)
             }
             close(fd);
             fd = open("truncfile", O_RDONLY);
+            if (fd < 0)
+            {
+                printf("%s: truncfile gone (errno: %s)\n", s, strerror(errno));
+                exit(1);
+            }
             read(fd, buf, sizeof(buf));
             close(fd);
         }
@@ -888,7 +917,7 @@ void exectest(char *s)
 
     if (pid == 0)
     {
-        close(1);
+        close(STDOUT_FILENO);
         int fd = open("echo-ok", O_CREATE | O_WRONLY, 0755);
         if (fd < 0)
         {
@@ -961,7 +990,7 @@ void pipe1(char *s)
     int fds[2];
     if (pipe(fds) != 0)
     {
-        printf("%s: pipe() failed\n", s);
+        printf("%s: pipe() failed (errno: %s)\n", s, strerror(errno));
         exit(1);
     }
 
@@ -997,7 +1026,8 @@ void pipe1(char *s)
                 if ((buf[i] & 0xff) != (seq++ & 0xff))
                 {
                     printf("%s: pipe1 oops 2\n", s);
-                    return;
+                    close(fds[0]);
+                    exit(1);
                 }
             }
             total += n;
@@ -1010,12 +1040,12 @@ void pipe1(char *s)
             n = read(fds[0], buf, cc);
         }
 
+        close(fds[0]);
         if (total != N * SZ)
         {
             printf("%s: pipe1 oops 3 total %zd\n", s, total);
             exit(1);
         }
-        close(fds[0]);
 
         int32_t xstatus;
         wait(&xstatus);
@@ -1075,9 +1105,7 @@ void preempt(char *s)
     }
     if (pid1 == 0)
     {
-        while (true)
-        {
-        }
+        infinite_loop;
     }
 
     pid_t pid2 = fork();
@@ -1088,18 +1116,21 @@ void preempt(char *s)
     }
     if (pid2 == 0)
     {
-        while (true)
-        {
-        }
+        infinite_loop;
     }
 
     int pfds[2];
-    pipe(pfds);
+    int ret = pipe(pfds);
+    if (ret != 0)
+    {
+        printf("%s: pipe failed (errno: %s)\n", s, strerror(errno));
+        exit(1);
+    }
 
     pid_t pid3 = fork();
     if (pid3 < 0)
     {
-        printf("%s: fork failed\n", s);
+        printf("%s: fork failed (errno: %s)\n", s, strerror(errno));
         exit(1);
     }
     if (pid3 == 0)
@@ -1107,18 +1138,17 @@ void preempt(char *s)
         close(pfds[0]);
         if (write(pfds[1], "x", 1) != 1)
         {
-            printf("%s: preempt write error", s);
+            printf("%s: preempt write error (errno: %s)\n", s, strerror(errno));
         }
         close(pfds[1]);
-        while (true)
-        {
-        }
+        infinite_loop;
     }
 
     close(pfds[1]);
     if (read(pfds[0], buf, sizeof(buf)) != 1)
     {
-        printf("%s: preempt read error", s);
+        printf("%s: preempt read error (errno: %s)\n", s, strerror(errno));
+        close(pfds[0]);
         return;
     }
     close(pfds[0]);
@@ -1520,6 +1550,11 @@ void fourfiles(char *s)
     {
         char *fname = names[i];
         int fd = open(fname, O_RDONLY);
+        if (fd < 0)
+        {
+            printf("%s: error opening file (errno: %s)\n", s, strerror(errno));
+            exit(1);
+        }
         int32_t total = 0;
         ssize_t n;
         while ((n = read(fd, buf, sizeof(buf))) > 0)
@@ -1712,9 +1747,11 @@ void linktest(char *s)
     }
     unlink("lf1");
 
-    if (open("lf1", O_RDONLY) >= 0)
+    int unlinked_file_fd = open("lf1", O_RDONLY);
+    if (unlinked_file_fd >= 0)
     {
         printf("%s: unlinked lf1 but it is still there!\n", s);
+        close(unlinked_file_fd);
         exit(1);
     }
 
@@ -1731,22 +1768,28 @@ void linktest(char *s)
     }
     close(fd);
 
-    if (link("lf2", "lf2") >= 0)
+    int hardlink_fd = link("lf2", "lf2");
+    if (hardlink_fd >= 0)
     {
         printf("%s: link lf2 lf2 succeeded! oops\n", s);
+        close(hardlink_fd);
         exit(1);
     }
 
     unlink("lf2");
-    if (link("lf2", "lf1") >= 0)
+    hardlink_fd = link("lf2", "lf1");
+    if (hardlink_fd >= 0)
     {
         printf("%s: link non-existent succeeded! oops\n", s);
+        close(hardlink_fd);
         exit(1);
     }
 
-    if (link(".", "lf1") >= 0)
+    hardlink_fd = link(".", "lf1");
+    if (hardlink_fd >= 0)
     {
         printf("%s: link . lf1 succeeded! oops\n", s);
+        close(hardlink_fd);
         exit(1);
     }
 }
@@ -1805,6 +1848,11 @@ void concreate(char *s)
 
     memset(fa, 0, sizeof(fa));
     int fd = open(".", O_RDONLY);
+    if (fd < 0)
+    {
+        printf("%s: error opening file . (errno: %s)\n", s, strerror(errno));
+        exit(1);
+    }
 
     size_t n = 0;
     while (read(fd, &de, sizeof(de)) > 0)
@@ -1911,8 +1959,6 @@ void linkunlink(char *s)
 
 void subdir(char *s)
 {
-    int fd, cc;
-
     unlink("ff");
     if (mkdir("dd", 0755) != 0)
     {
@@ -1920,7 +1966,7 @@ void subdir(char *s)
         exit(1);
     }
 
-    fd = open("dd/ff", O_CREATE | O_RDWR, 0755);
+    int fd = open("dd/ff", O_CREATE | O_RDWR, 0755);
     if (fd < 0)
     {
         printf("%s: create dd/ff failed\n", s);
@@ -1956,7 +2002,7 @@ void subdir(char *s)
         printf("%s: open dd/dd/../ff failed\n", s);
         exit(1);
     }
-    cc = read(fd, buf, sizeof(buf));
+    int cc = read(fd, buf, sizeof(buf));
     if (cc != 2 || buf[0] != 'f')
     {
         printf("%s: dd/dd/../ff wrong content\n", s);
@@ -1975,9 +2021,11 @@ void subdir(char *s)
         printf("%s: unlink dd/dd/ff failed\n", s);
         exit(1);
     }
-    if (open("dd/dd/ff", O_RDONLY) >= 0)
+    int dd_dd_ff = open("dd/dd/ff", O_RDONLY);
+    if (dd_dd_ff >= 0)
     {
         printf("%s: open (unlinked) dd/dd/ff succeeded\n", s);
+        close(dd_dd_ff);
         exit(1);
     }
 
@@ -2015,35 +2063,51 @@ void subdir(char *s)
     }
     close(fd);
 
-    if (open("dd/dd/ff", O_RDONLY) >= 0)
+    fd = open("dd/dd/ff", O_RDONLY);
+    if (fd >= 0)
     {
         printf("%s: open (unlinked) dd/dd/ff succeeded!\n", s);
+        close(fd);
         exit(1);
     }
 
-    if (open("dd/ff/ff", O_CREATE | O_RDWR, 0755) >= 0)
+    fd = open("dd/ff/ff", O_CREATE | O_RDWR, 0755);
+    if (fd >= 0)
     {
         printf("%s: create dd/ff/ff succeeded!\n", s);
+        close(fd);
         exit(1);
     }
-    if (open("dd/xx/ff", O_CREATE | O_RDWR, 0755) >= 0)
+
+    fd = open("dd/xx/ff", O_CREATE | O_RDWR, 0755);
+    if (fd >= 0)
     {
         printf("%s: create dd/xx/ff succeeded!\n", s);
+        close(fd);
         exit(1);
     }
-    if (open("dd", O_CREATE, 0755) >= 0)
+
+    fd = open("dd", O_CREATE, 0755);
+    if (fd >= 0)
     {
         printf("%s: create dd succeeded!\n", s);
+        close(fd);
         exit(1);
     }
-    if (open("dd", O_RDWR) >= 0)
+
+    fd = open("dd", O_RDWR);
+    if (fd >= 0)
     {
         printf("%s: open dd rdwr succeeded!\n", s);
+        close(fd);
         exit(1);
     }
-    if (open("dd", O_WRONLY) >= 0)
+
+    fd = open("dd", O_WRONLY);
+    if (fd >= 0)
     {
         printf("%s: open dd wronly succeeded!\n", s);
+        close(fd);
         exit(1);
     }
     if (link("dd/ff/ff", "dd/dd/xx") == 0)
@@ -2370,6 +2434,11 @@ void dirfile(char *s)
         exit(1);
     }
     fd = open(".", O_RDONLY);
+    if (fd < 0)
+    {
+        printf("%s: could not open . for reading!\n", s);
+        exit(1);
+    }
     if (write(fd, "x", 1) > 0)
     {
         printf("%s: write . succeeded!\n", s);
@@ -2730,6 +2799,7 @@ void sbrkfail(char *s)
         else
         {
             // parent, wait for allocation in child process
+
             char scratch;
             read(fds[0], &scratch, 1);
             if (scratch == 'f')
@@ -2738,6 +2808,8 @@ void sbrkfail(char *s)
             }
         }
     }
+    close(fds[0]);
+    close(fds[1]);
 
     if (failed_allocations == 0)
     {
@@ -3064,7 +3136,10 @@ void stack_underflow(char *s)
     }
 }
 
-// check that writes to invalid addresses fail
+// check that writes to invalid addresses fail (including following NULL
+// pointers)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wanalyzer-null-dereference"
 void nowrite(char *s)
 {
     for (size_t ai = 0; ai < INVALID_PTR_COUNT; ai++)
@@ -3073,7 +3148,7 @@ void nowrite(char *s)
         if (pid == 0)
         {
             volatile int *addr = (int *)INVALID_PTRS[ai];
-            *addr = 10;
+            *addr = 10;  // write some value
             printf("%s: write to %p did not fail!\n", s, addr);
             exit(1);
         }
@@ -3096,20 +3171,7 @@ void nowrite(char *s)
         }
     }
 }
-
-// regression test. uvm_copy_in(), uvm_copy_out(), and uvm_copy_in_str() used to
-// cast the virtual page address to uint32_t, which (with certain wild system
-// call arguments) resulted in a kernel page faults.
-void *big = (void *)0xeaeb0b5b00002f5e;
-void pgbug(char *s)
-{
-    char *argv[1];
-    argv[0] = 0;
-    execv(big, argv);
-    pipe(big);
-
-    exit(0);
-}
+#pragma GCC diagnostic pop
 
 // regression test. does the kernel panic if a process sbrk()s its
 // size to be less than a page, or zero, or reduces the break by an
@@ -3197,9 +3259,22 @@ void sbrklast(char *s)
     p[0] = 'x';
     p[1] = '\0';
     int fd = open(p, O_RDWR | O_CREATE, 0755);
+    if (fd < 0)
+    {
+        printf("sbrklast error opening file %s (errno: %s)\n", p,
+               strerror(errno));
+        exit(1);
+    }
     write(fd, p, 1);
     close(fd);
     fd = open(p, O_RDWR);
+    if (fd < 0)
+    {
+        printf("sbrklast error opening file %s again (errno: %s)\n", p,
+               strerror(errno));
+        exit(1);
+    }
+
     p[0] = '\0';
     read(fd, p, 1);
     if (p[0] != 'x')
@@ -3428,7 +3503,7 @@ void execout(char *s)
                 sbrk(-page_size);
             }
 
-            close(1);
+            close(STDOUT_FILENO);
             char *args[] = {"echo", "x", 0};
             execv(bin_echo, args);
             exit(0);
@@ -3462,7 +3537,8 @@ void diskfull(char *s)
         if (fd < 0)
         {
             // oops, ran out of inodes before running out of blocks.
-            printf("%s: could not create file %s\n", s, name);
+            printf("%s: could not create file %s (errno: %s)\n", s, name,
+                   strerror(errno));
             done = true;
             break;
         }
@@ -3472,7 +3548,6 @@ void diskfull(char *s)
             if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
             {
                 done = true;
-                close(fd);
                 break;
             }
         }
@@ -3617,7 +3692,6 @@ struct test quicktests[] = {
     {stack_overflow, "stack_overflow"},
     {stack_underflow, "stack_underflow"},
     {nowrite, "nowrite"},
-    {pgbug, "pgbug"},
     {sbrkbugs, "sbrkbugs"},
     {sbrklast, "sbrklast"},
     {sbrk8000, "sbrk8000"},

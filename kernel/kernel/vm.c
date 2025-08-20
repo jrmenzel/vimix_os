@@ -183,7 +183,7 @@ pte_t *vm_walk2(pagetable_t pagetable, size_t va, bool *is_super_page,
             // a valid / already in use PTE
             if (PTE_IS_LEAF(*pte))
             {
-                *is_super_page = true;
+                if (is_super_page) *is_super_page = true;
                 return pte;
             }
             // else it's pointing to the next level of the tree:

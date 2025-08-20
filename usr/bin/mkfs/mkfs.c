@@ -590,21 +590,30 @@ void balloc(int used)
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wanalyzer-use-of-uninitialized-value"
 void iappend(uint32_t inum, void *xp, int n)
 {
-    char *p = (char *)xp;
-    uint32_t fbn, off, n1;
     struct xv6fs_dinode din;
     char buf[BLOCK_SIZE];
     uint32_t indirect[XV6FS_N_INDIRECT_BLOCKS];
-    uint32_t x;
 
     read_dinode(inum, &din);
-    off = xint(din.size);
+    uint32_t off = xint(din.size);
     // printf("append inum %d at off %d sz %d\n", inum, off, n);
+
+    char *p = (char *)xp;
+    if (p == NULL)
+    {
+        printf("ERROR in iappend()\n");
+        return;
+    }
+
     while (n > 0)
     {
-        fbn = off / BLOCK_SIZE;
+        uint32_t x;
+
+        uint32_t fbn = off / BLOCK_SIZE;
         assert(fbn < XV6FS_MAX_FILE_SIZE_BLOCKS);
         if (fbn < XV6FS_N_DIRECT_BLOCKS)
         {
@@ -630,7 +639,7 @@ void iappend(uint32_t inum, void *xp, int n)
             }
             x = xint(indirect[fbn - XV6FS_N_DIRECT_BLOCKS]);
         }
-        n1 = min(n, (fbn + 1) * BLOCK_SIZE - off);
+        uint32_t n1 = min(n, (fbn + 1) * BLOCK_SIZE - off);
         read_sector(x, buf);
 
         memmove(buf + off - (fbn * BLOCK_SIZE), p, n1);
@@ -643,6 +652,7 @@ void iappend(uint32_t inum, void *xp, int n)
     din.size = xint(off);
     write_dinode(inum, &din);
 }
+#pragma GCC diagnostic pop
 
 /// @brief Exit the program after printing a error message
 /// @param error_message the message

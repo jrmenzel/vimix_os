@@ -2,6 +2,8 @@
 
 // Simple grep.  Only supports ^ . * $ operators.
 
+#pragma GCC diagnostic ignored "-Wanalyzer-infinite-recursion"
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>

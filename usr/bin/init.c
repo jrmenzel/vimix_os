@@ -26,12 +26,18 @@ int main()
     int ret = mount("dev", "/dev", "devfs", 0, NULL);
     if (ret < 0) return -errno;
 
-    if (open("/dev/console", O_RDWR) < 0)
+    int stdin_fd = open("/dev/console", O_RDWR);
+    if (stdin_fd < 0)
     {
         return -errno;
     }
-    dup(0);  // stdout
-    dup(0);  // stderr
+    int stdout_fd = dup(0);  // stdout
+    int stderr_fd = dup(0);  // stderr
+    if ((stdin_fd != STDIN_FILENO) || (stdout_fd != STDOUT_FILENO) ||
+        (stderr_fd != STDERR_FILENO))
+    {
+        return -errno;
+    }
 
     // wait till print works:
     printf("init mounting /dev... OK\n");

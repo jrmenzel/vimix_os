@@ -245,11 +245,17 @@ unsigned long strtoul(const char *string, char **end, int base)
 
 char *strstr(const char *haystack, const char *needle)
 {
+    if ((haystack == NULL) || (needle == NULL)) return NULL;
+
     for (const char *start = haystack; *start != 0; start++)
     {
-        const char *pin, *hay;
-        for (pin = needle, hay = start;
-             (*hay == *pin) && (*hay != 0) && (pin != 0); hay++, pin++);
+        const char *pin = needle;
+        const char *hay = start;
+        while ((*hay == *pin))
+        {
+            hay++;
+            pin++;
+        }
 
         if (*pin != 0)
         {

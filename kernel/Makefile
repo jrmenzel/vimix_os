@@ -174,6 +174,7 @@ $(K_BUILD_DIR)/ramdisk_fs.o: $(K_BUILD_DIR)/ramdisk_fs.c
 
 else
 $(K_BUILD_DIR)/ramdisk_fs.h:
+	@mkdir -p $(K_BUILD_DIR)
 	@touch $(K_BUILD_DIR)/ramdisk_fs.h
 endif
 

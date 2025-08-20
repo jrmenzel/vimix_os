@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -22,6 +23,12 @@ DIR *fdopendir(int fd)
     if (!S_ISDIR(st.st_mode)) return NULL;
 
     DIR *dir = malloc(sizeof(DIR));
+    if (dir == NULL)
+    {
+        errno = ENOMEM;
+        return NULL;
+    }
+
     dir->next_entry = 0;
     dir->fd = fd;
 

@@ -117,7 +117,7 @@ void return_to_user_mode()
     // send syscalls, interrupts, and exceptions to u_mode_trap_vector in
     // u_mode_trap_vector.S
     size_t trampoline_u_mode_trap_vector =
-        TRAMPOLINE + (u_mode_trap_vector - trampoline);
+        TRAMPOLINE + ((size_t)u_mode_trap_vector - (size_t)trampoline);
 
     cpu_set_trap_vector((void *)trampoline_u_mode_trap_vector);
 
@@ -150,7 +150,7 @@ void return_to_user_mode()
     // memory, which switches to the user page table, restores user registers,
     // and switches to user mode with sret.
     size_t return_to_user_mode_asm_ptr =
-        TRAMPOLINE + (return_to_user_mode_asm - trampoline);
+        TRAMPOLINE + ((size_t)return_to_user_mode_asm - (size_t)trampoline);
     ((void (*)(size_t, size_t))return_to_user_mode_asm_ptr)(satp, 0);
 }
 

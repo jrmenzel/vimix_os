@@ -5,6 +5,7 @@
 //
 
 #include <drivers/console.h>
+#include <kernel/kernel.h>
 #include <kernel/printk.h>
 #include <kernel/proc.h>
 #include <kernel/reset.h>
@@ -75,9 +76,7 @@ void panic(char* error_message)
         if (g_kernel_panicked > 2)
         {
             // machine_power_off failed before and panicked
-            while (true)
-            {
-            }
+            infinite_loop;
         }
         machine_power_off();
     }
@@ -97,13 +96,11 @@ void panic(char* error_message)
 
 #if defined(_SHUTDOWN_ON_PANIC)
     machine_power_off();
-#else
-    while (true)
-    {
-        // allows other CPUs to react to console input and print more machine
-        // state for debugging
-    }
 #endif
+
+    // allows other CPUs to react to console input and print more machine
+    // state for debugging
+    infinite_loop;
 }
 
 void printk_init()

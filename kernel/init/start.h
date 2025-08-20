@@ -23,7 +23,7 @@ void wait_on_bss_clear(bool this_thread_clears);
 /// @param cpuid Hart ID
 /// @param device_tree set by SBI to the device tree file, not set for cores
 /// started by sbi_hart_start()
-void start(size_t cpuid, void *device_tree);
+void start(size_t cpuid, void *device_tree) __attribute__((noreturn));
 
 //
 // to implement per ARCH:

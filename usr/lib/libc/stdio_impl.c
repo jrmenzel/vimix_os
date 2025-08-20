@@ -121,6 +121,12 @@ FILE *fopen(const char *filename, const char *modes)
     }
 
     FILE *file = malloc(sizeof(FILE));
+    if (file == NULL)
+    {
+        errno = ENOMEM;
+        return NULL;
+    }
+
     memset(file, 0, sizeof(FILE));
     file->fd = open(filename, flags, mode);
     file->returned_char = _FILE_NO_RETURNED_CHAR;

@@ -163,7 +163,7 @@ void runcmd(struct cmd *cmd)
             if (pipe(p) < 0) sh_panic("pipe");
             if (fork1() == 0)
             {
-                close(1);
+                close(STDOUT_FILENO);
                 int fd = dup(p[1]);
                 if (fd != 1) exit(1);
 
@@ -173,7 +173,7 @@ void runcmd(struct cmd *cmd)
             }
             if (fork1() == 0)
             {
-                close(0);
+                close(STDIN_FILENO);
                 int fd = dup(p[0]);
                 if (fd != 0) exit(1);
 
@@ -310,6 +310,8 @@ struct cmd *execcmd()
     struct execcmd *cmd;
 
     cmd = malloc(sizeof(*cmd));
+    if (cmd == NULL) return NULL;
+
     memset(cmd, 0, sizeof(*cmd));
     cmd->type = EXEC;
     return (struct cmd *)cmd;

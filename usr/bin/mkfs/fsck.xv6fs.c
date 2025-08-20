@@ -43,19 +43,25 @@ void read_block(struct xv6fs_in_file *file, size_t block_id, uint8_t *buffer)
     off_t offset = lseek(file->fd, block_id * BLOCK_SIZE, SEEK_SET);
     if (offset < 0)
     {
-        fprintf(stderr, "File ended unexpectedly (errno: %d)\n\n", errno);
+        fprintf(stderr, "File ended unexpectedly (errno: %s)\n\n",
+                strerror(errno));
         exit(1);
     }
     ssize_t r = read(file->fd, buffer, BLOCK_SIZE);
     if (r != BLOCK_SIZE)
     {
-        fprintf(stderr, "File ended unexpectedly (errno: %d)\n\n", errno);
+        fprintf(stderr, "File ended unexpectedly (errno: %s)\n\n",
+                strerror(errno));
         exit(1);
     }
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wanalyzer-use-of-uninitialized-value"
 void mark_block_as_used(struct xv6fs_in_file *file, uint32_t addr)
 {
+    if (file == NULL || file->bitmap == NULL) return;
+
     // the offset is 0 instead of bmapstart as the bitmap is the array g_bitmap
     // and not the in-file bitmap
     size_t block = XV6FS_BMAP_BLOCK_OF_BIT(addr, 0);
@@ -72,6 +78,7 @@ void mark_block_as_used(struct xv6fs_in_file *file, uint32_t addr)
 
     bitmap_block[local_addr] = bitmap_block[local_addr] | bit_to_set;
 }
+#pragma GCC diagnostic pop
 
 void print_fs_layout(struct xv6fs_in_file *file)
 {
@@ -158,6 +165,12 @@ void check_dirents(struct xv6fs_in_file *file, uint32_t addr)
 int check_dinode(struct xv6fs_in_file *file, struct xv6fs_dinode *dinode,
                  size_t inum, bool verbose)
 {
+    if (file == NULL || file->inodes == NULL || dinode == NULL)
+    {
+        printf("ERROR in check_dinode\n");
+        exit(1);
+    }
+
     if (dinode->type == XV6_FT_UNUSED)
     {
         file->inodes[inum] = INODE_UNUSED;
@@ -201,6 +214,11 @@ int check_dinode(struct xv6fs_in_file *file, struct xv6fs_dinode *dinode,
         {
             mark_block_as_used(file, dinode->addrs[XV6FS_N_DIRECT_BLOCKS]);
             uint8_t *buffer = malloc(BLOCK_SIZE);
+            if (buffer == NULL)
+            {
+                printf("ERROR: out of memory\n");
+                exit(1);
+            }
             read_block(file, dinode->addrs[XV6FS_N_DIRECT_BLOCKS], buffer);
             uint32_t *addr = (uint32_t *)buffer;
             for (size_t i = 0; i < BLOCK_SIZE / sizeof(uint32_t); ++i)
@@ -313,6 +331,11 @@ int check_file_system(int fd, bool verbose)
     file.bitmap =
         malloc(BLOCK_SIZE * XV6_BLOCKS_FOR_BITMAP(file.super_block.size));
     file.inodes = malloc(file.super_block.ninodes);
+    if (file.inodes == NULL)
+    {
+        printf("ERROR: out of memory\n");
+        exit(1);
+    }
     for (size_t i = 0; i < file.super_block.ninodes; ++i)
     {
         file.inodes[i] = INODE_UNUSED;

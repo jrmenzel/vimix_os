@@ -12,7 +12,7 @@ extern volatile size_t g_global_init_done;
 
 ///
 /// first function called in supervisor mode for each hart
-void main(void *device_tree, size_t is_first_thread);
+void main(void *device_tree, size_t is_first_thread) __attribute__((noreturn));
 
 //
 // Some const values about the kernel binary provided by the linker.

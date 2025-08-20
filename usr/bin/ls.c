@@ -123,7 +123,7 @@ int print_file(const char *file_name, const char *full_path,
     struct stat st;
     if (stat(full_path, &st) < 0)
     {
-        printf("stat (%s) error, errno: %d\n", full_path, errno);
+        printf("stat (%s) error (errno: %s)\n", full_path, strerror(errno));
         return S_SERIOUS_ERROR;
     }
 

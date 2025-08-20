@@ -176,6 +176,8 @@ ssize_t mount_internal(dev_t source, struct inode *i_target,
                        unsigned long mountflags, size_t addr_data)
 {
     struct super_block *sb = get_free_super_block();
+    if (sb == NULL) return -ENOMEM;
+
     sb->dev = source;
 
     void *data_kernel_space = NULL;

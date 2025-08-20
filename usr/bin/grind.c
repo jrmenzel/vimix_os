@@ -14,6 +14,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-use-without-check"
+
 const char *bin_echo = "/usr/bin/echo";
 const char *bin_cat = "/usr/bin/cat";
 
@@ -284,7 +287,7 @@ void go(int which_child, int max_iterations)
                 close(bb[0]);
                 close(bb[1]);
                 close(aa[0]);
-                close(1);
+                close(STDOUT_FILENO);
                 if (dup(aa[1]) != 1)
                 {
                     fprintf(stderr, "grind: dup failed\n");
@@ -306,14 +309,14 @@ void go(int which_child, int max_iterations)
             {
                 close(aa[1]);
                 close(bb[0]);
-                close(0);
+                close(STDIN_FILENO);
                 if (dup(aa[0]) != 0)
                 {
                     fprintf(stderr, "grind: dup failed\n");
                     exit(4);
                 }
                 close(aa[0]);
-                close(1);
+                close(STDOUT_FILENO);
                 if (dup(bb[1]) != 1)
                 {
                     fprintf(stderr, "grind: dup failed\n");

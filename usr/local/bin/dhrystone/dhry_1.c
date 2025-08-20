@@ -88,6 +88,14 @@ int main()
 
     Next_Ptr_Glob = (Rec_Pointer)malloc(sizeof(Rec_Type));
     Ptr_Glob = (Rec_Pointer)malloc(sizeof(Rec_Type));
+    if (Next_Ptr_Glob == NULL || Ptr_Glob == NULL)
+    {
+        printf("ERROR: out of memory\n");
+        // one of them might have succeeded:
+        if (Next_Ptr_Glob) free(Next_Ptr_Glob);
+        if (Ptr_Glob) free(Ptr_Glob);
+        exit(1);
+    }
 
     Ptr_Glob->Ptr_Comp = Next_Ptr_Glob;
     Ptr_Glob->Discr = Ident_1;
@@ -329,10 +337,8 @@ void Proc_2(One_Fifty *Int_Par_Ref)
 /* executed once */
 /* *Int_Par_Ref == 1, becomes 4 */
 {
-    One_Fifty Int_Loc;
-    Enumeration Enum_Loc;
-
-    Int_Loc = *Int_Par_Ref + 10;
+    Enumeration Enum_Loc = 0;
+    One_Fifty Int_Loc = *Int_Par_Ref + 10;
     do                        /* executed once */
         if (Ch_1_Glob == 'A') /* then, executed */
         {

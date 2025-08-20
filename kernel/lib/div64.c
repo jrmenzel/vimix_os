@@ -20,7 +20,7 @@ long long div_u64(unsigned long long n, unsigned long long d, long long *r)
         if (rem >= d)
         {
             rem = rem - d;
-            quot = quot | (1 << i);  // set bit i
+            quot = quot | (1ll << (long long)i);  // set bit i
         }
     }
 

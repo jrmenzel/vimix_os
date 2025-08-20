@@ -84,6 +84,12 @@ struct Devices_List *get_devices_list()
 
 struct Device_Driver *get_generell_drivers() { return g_generell_drivers; }
 
+// init_device() calls init_device_by_phandle() for dependent devices,
+// this is seens as a potential infinite recursion by GCC analize which is a
+// false positive as long as there is no loop in the devices dependencies.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wanalyzer-infinite-recursion"
+
 dev_t init_device_by_phandle(struct Devices_List *dev_list, int phandle)
 {
     for (size_t i = 0; i < dev_list->dev_array_length; ++i)
@@ -152,6 +158,7 @@ dev_t init_device_by_name(struct Devices_List *dev_list, const char *dtb_name)
     }
     return INVALID_DEVICE;
 }
+#pragma GCC diagnostic pop
 
 void clear_init_parameters(struct Device_Init_Parameters *param)
 {

@@ -12,7 +12,7 @@ void *malloc(size_t size_in_bytes);
 /// init new data. Use returned value after use instead of ptr.
 /// @param ptr Current allocation. If NULL, realloc will behave like malloc.
 /// @param size New size.
-/// @return Address of new allocation.
+/// @return Address of new allocation. NULL on error.
 void *realloc(void *ptr, size_t size);
 
 /// @brief Free memory allocated by malloc

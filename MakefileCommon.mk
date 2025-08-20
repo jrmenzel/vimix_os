@@ -62,6 +62,10 @@ CFLAGS_COMMON += -I.
 # Disable position independend code generation
 CFLAGS_COMMON += -fno-pie -no-pie
 
+ifeq ($(ANALYZE), 1)
+CFLAGS_COMMON += -fanalyzer
+endif
+
 DEBUG_FLAGS := -ggdb -gdwarf -DDEBUG -g # debug info
 
 ifeq ($(BUILD_TYPE), debug)
