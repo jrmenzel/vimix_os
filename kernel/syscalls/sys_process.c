@@ -37,14 +37,14 @@ ssize_t sys_wait()
 ssize_t sys_sbrk()
 {
     // parameter 0: intptr_t increment
-    size_t increment;
-    argaddr(0, &increment);
+    intptr_t increment;
+    argssize_t(0, &increment);
 
     size_t addr = get_current()->heap_end;
     if (proc_grow_memory(increment) < 0)
     {
         // TODO: the partial allocation is cleared, but the page table might
-        // have gotton new pages (with invalid entries). So some memeory is
+        // have gotton new pages (with invalid entries). So some memory is
         // wasted until the process is killed.
         return -ENOMEM;
     }

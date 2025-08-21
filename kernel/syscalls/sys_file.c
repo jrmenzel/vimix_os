@@ -50,8 +50,8 @@ ssize_t sys_read()
     argaddr(1, &buffer);
 
     // parameter 2: n
-    int32_t n;
-    argint(2, &n);
+    size_t n;
+    argsize_t(2, &n);
 
     return file_read(f, buffer, n);
 }
@@ -70,8 +70,8 @@ ssize_t sys_write()
     argaddr(1, &buffer);
 
     // parameter 2: n
-    int32_t n;
-    argint(2, &n);
+    size_t n;
+    argsize_t(2, &n);
 
     return file_write(f, buffer, n);
 }

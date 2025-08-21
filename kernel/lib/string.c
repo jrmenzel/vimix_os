@@ -151,7 +151,7 @@ char *strncpy(char *dst, const char *src, size_t n)
 char *safestrcpy(char *dst, const char *src, size_t n)
 {
     char *ret = strncpy(dst, src, n);
-    dst[n - 1] = 0;
+    if (n > 0) dst[n - 1] = 0;
     return ret;
 }
 

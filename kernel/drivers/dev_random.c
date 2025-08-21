@@ -5,11 +5,13 @@
 #include <drivers/rtc.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
+#include <kernel/sleeplock.h>
 
 struct
 {
     struct Character_Device cdev;  ///< derived from a character device
     unsigned long rand_next;
+    struct sleeplock lock;
 } g_dev_random;
 
 // from FreeBSD.
@@ -37,7 +39,13 @@ int do_rand(unsigned long *ctx)
     return (x);
 }
 
-int rand() { return (do_rand(&g_dev_random.rand_next)); }
+int rand()
+{
+    sleep_lock(&g_dev_random.lock);
+    int rnd = do_rand(&g_dev_random.rand_next);
+    sleep_unlock(&g_dev_random.lock);
+    return rnd;
+}
 
 ssize_t dev_random_read(struct Device *dev, bool addr_is_userspace, size_t addr,
                         size_t len, uint32_t unused_file_offset)
@@ -62,6 +70,7 @@ dev_t dev_random_init(struct Device_Init_Parameters *param, const char *name)
     g_dev_random.cdev.ops.read = dev_random_read;
     g_dev_random.cdev.ops.write = character_device_write_unsupported;
     g_dev_random.cdev.ops.ioctl = NULL;
+    sleep_lock_init(&g_dev_random.lock, "random");
     dev_set_irq(&g_dev_random.cdev.dev, INVALID_IRQ_NUMBER, NULL);
     register_device(&g_dev_random.cdev.dev);
 

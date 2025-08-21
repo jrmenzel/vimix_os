@@ -159,6 +159,10 @@ int32_t argstr(int32_t n, char *buf, size_t max);
 /// @return 0 on success, -1 on failure
 int32_t argssize_t(int32_t n, ssize_t *ip);
 
+/// @brief Retrieve an argument as an size_t.
+/// @return 0 on success, -1 on failure
+int32_t argsize_t(int32_t n, size_t *ip);
+
 /// @brief Retrieve an argument as a pointer.
 /// Doesn't check for legality, since
 /// uvm_copy_in/uvm_copy_out will do that.

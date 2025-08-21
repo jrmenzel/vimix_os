@@ -87,6 +87,12 @@ int32_t argssize_t(int32_t n, ssize_t *ip)
     return 0;
 }
 
+int32_t argsize_t(int32_t n, size_t *ip)
+{
+    *ip = (size_t)get_system_call_argument(n);
+    return 0;
+}
+
 int32_t argstr(int32_t n, char *buf, size_t max)
 {
     size_t addr;

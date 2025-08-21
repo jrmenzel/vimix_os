@@ -62,6 +62,7 @@ struct file *file_alloc()
     struct file *f = kmalloc(sizeof(struct file));
     if (f)
     {
+        memset(f, 0, sizeof(struct file));
         f->ref = 1;
         list_add(&f->list, &g_file_table.open_files);
     }
