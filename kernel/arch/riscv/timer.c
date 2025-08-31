@@ -3,6 +3,7 @@
 #include <arch/riscv/sbi.h>
 #include <arch/timer.h>
 #include <init/dtb.h>
+#include <kernel/smp.h>
 
 timer_schedule_interrupt_p *timer_schedule_interrupt = NULL;
 
@@ -31,11 +32,10 @@ void sstc_schedule_interrupt(uint64_t) { panic("sstc unsupported"); }
 //
 // init one of the supported timers
 
-void timer_init(void *dtb, size_t cpuid)
+void timer_init(void *dtb, CPU_Features features)
 {
-    g_boot_time = rv_get_time();
+    if (g_boot_time == 0) g_boot_time = rv_get_time();
 
-    CPU_Features features = dtb_get_cpu_features(dtb, cpuid);
     if (features & RV_EXT_SSTC)
     {
         // preferred: sstc extension
@@ -53,6 +53,7 @@ void timer_init(void *dtb, size_t cpuid)
 
     uint64_t timer_interrupt_interval =
         g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
+    DEBUG_EXTRA_ASSERT(timer_interrupt_interval > 0, "invalid timebase");
     uint64_t now = rv_get_time();
     timer_schedule_interrupt(now + timer_interrupt_interval);
 }

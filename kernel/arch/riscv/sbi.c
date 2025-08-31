@@ -2,7 +2,9 @@
 
 #include <drivers/console.h>
 #include <init/dtb.h>
+#include <kernel/ipi.h>
 #include <kernel/kernel.h>
+#include <kernel/proc.h>
 #include <kernel/reset.h>
 #include <kernel/smp.h>
 #include <plic.h>
@@ -181,6 +183,13 @@ void sbi_machine_restart()
     sbi_system_reset(SBI_SRST_TYPE_WARM_REBOOT, SBI_SRST_REASON_NONE);
 }
 
+struct sbiret sbi_send_ipi(unsigned long hart_mask,
+                           unsigned long hart_mask_base)
+{
+    return sbi_ecall(SBI_EXT_ID_IPI, SBI_IPI_SEND_IPI, hart_mask,
+                     hart_mask_base, 0, 0, 0, 0);
+}
+
 void init_sbi()
 {
     struct sbiret ret;
@@ -266,5 +275,58 @@ void sbi_start_harts(size_t opaque)
             }
         }
         hartid++;
+    }
+}
+
+void ipi_send_interrupt(cpu_mask mask, enum ipi_type type, void *data)
+{
+    spin_lock(&g_cpus_ipi_lock);
+    for (size_t i = 0; i < MAX_CPUS; ++i)
+    {
+        if (mask & (1 << i))
+        {
+            struct cpu *c = &g_cpus[i];
+
+            // error check
+            if (c->state == CPU_UNUSED)
+            {
+                printk("IPI: CPU %zd not started, cannot send IPI %d\n", i,
+                       type);
+                continue;
+            }
+
+            size_t pending_count = 0;
+            while ((pending_count < MAX_IPI_PENDING) &&
+                   (c->ipi[pending_count].pending != IPI_NONE))
+            {
+                pending_count++;
+            }
+            if (pending_count == MAX_IPI_PENDING)
+            {
+                printk("IPI queue full on CPU %zd, dropping IPI %d\n", i, type);
+            }
+            else
+            {
+                c->ipi[pending_count].pending = type;
+                c->ipi[pending_count].data = data;
+            }
+        }
+    }
+    spin_unlock(&g_cpus_ipi_lock);
+
+    struct sbiret ret;
+
+#if (__riscv_xlen == 32)
+    unsigned long mask0 = (unsigned long)(mask & 0xFFFFFFFF);
+    unsigned long mask1 = (unsigned long)(mask >> 32);
+    ret = sbi_send_ipi(mask0, 0);
+    if (ret.error == SBI_SUCCESS) ret = sbi_send_ipi(mask1, 31);
+#else
+    ret = sbi_send_ipi((unsigned long)mask, 0);
+#endif
+
+    if (ret.error)
+    {
+        printk("SBI IPI send failed: %ld\n", ret.error);
     }
 }

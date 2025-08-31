@@ -46,6 +46,10 @@ struct kmem_slab
     size_t object_size;
     // number of allocated objects, used to detect when a slab is empty
     size_t objects_allocated;
+
+    // if the slab is managed by a cache, this points to it
+    // can be NULL if the slab is used standalone
+    struct kmem_cache *owning_cache;
 };
 
 /// @brief Construct a new slab object.

@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <kernel/proc.h>
+#include <kernel/smp.h>
+#include <kernel/spinlock.h>
 #include "plic.h"
 #include "riscv.h"
 #include "sbi.h"
@@ -52,8 +55,29 @@ static inline bool int_ctx_is_system_call(struct Interrupt_Context *ctx)
 
 static inline bool int_ctx_source_is_timer(struct Interrupt_Context *ctx)
 {
-    return ((ctx->scause == SCAUSE_SUPERVISOR_SOFTWARE_INTERRUPT ||
-             ctx->scause == SCAUSE_SUPERVISOR_TIMER_INTERRUPT));
+    return (ctx->scause == SCAUSE_SUPERVISOR_TIMER_INTERRUPT);
+}
+
+static inline bool int_ctx_source_is_software_timer(
+    struct Interrupt_Context *ctx)
+{
+    bool is_timer = false;
+
+    if ((g_cpus[smp_processor_id()].features & RV_EXT_SSTC) == false)
+    {
+        // without sstc we can't distinguish IPI and timer interrupt from
+        // SBI, trigger a timer interrupt if no IPI is pending
+        if (ctx->scause == SCAUSE_SUPERVISOR_SOFTWARE_INTERRUPT)
+        {
+            spin_lock(&g_cpus_ipi_lock);
+            if (g_cpus[smp_processor_id()].ipi->pending == IPI_NONE)
+            {
+                is_timer = true;
+            }
+            spin_unlock(&g_cpus_ipi_lock);
+        }
+    }
+    return is_timer;
 }
 
 static inline bool int_ctx_source_is_device(struct Interrupt_Context *ctx)
@@ -66,6 +90,11 @@ static inline bool int_ctx_source_is_page_fault(struct Interrupt_Context *ctx)
     return (ctx->scause == SCAUSE_STORE_AMO_PAGE_FAULT);
 }
 
+static inline bool int_ctx_source_is_ipi(struct Interrupt_Context *ctx)
+{
+    return (ctx->scause == SCAUSE_SUPERVISOR_SOFTWARE_INTERRUPT);
+}
+
 // e.g. where the page fault address is stored if the exception is a page fault
 static inline size_t int_ctx_get_addr(struct Interrupt_Context *ctx)
 {
@@ -75,4 +104,18 @@ static inline size_t int_ctx_get_addr(struct Interrupt_Context *ctx)
 static inline size_t int_ctx_get_exception_pc(struct Interrupt_Context *ctx)
 {
     return ctx->sepc;
+}
+
+/// @brief acknowledge the software interrupt by clearing
+/// the S-Mode Timer Interrupt bit in sip
+static inline void int_acknowledge_timer()
+{
+    rv_write_csr_sip(rv_read_csr_sip() & ~SIP_STIP);
+}
+
+/// @brief acknowledge the software interrupt by clearing
+/// the S-Mode Software Interrupt bit in sip
+static inline void int_acknowledge_software()
+{
+    rv_write_csr_sip(rv_read_csr_sip() & ~SIP_SSIP);
 }

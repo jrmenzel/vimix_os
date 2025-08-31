@@ -2,14 +2,28 @@
 #pragma once
 
 #include <arch/context.h>
+#include <arch/cpu.h>
+#include <kernel/ipi.h>
 #include <kernel/kernel.h>
 #include <kernel/process.h>
 #include <kernel/spinlock.h>
 #include <kernel/vm.h>
 
+enum CPU_State
+{
+    CPU_UNUSED = 0,
+    CPU_STARTED,
+    CPU_HALTED,
+    CPU_PANICKED
+};
+
 /// Per-CPU state.
 struct cpu
 {
+    enum CPU_State
+        state;  ///< Has the CPU started? Also false if CPU doesn't exist.
+    CPU_Features features;  ///< CPU features detected during boot.
+
     struct process *proc;    ///< The process running on this cpu, or null.
     struct context context;  ///< context_switch() here to enter scheduler().
     int32_t
@@ -20,9 +34,18 @@ struct cpu
         disable_dev_int_stack_original_state;  ///< Were interrupts
                                                ///< enabled before
                                                ///< cpu_push_disable_device_interrupt_stack()?
+
+    // Inter Processor Interrupts (IPI) data, access protected by
+    // g_cpus_ipi_lock (one lock for all CPUs!).
+    struct ipi
+    {
+        enum ipi_type pending;
+        void *data;
+    } ipi[MAX_IPI_PENDING];
 };
 
 extern struct cpu g_cpus[MAX_CPUS];
+extern struct spinlock g_cpus_ipi_lock;
 
 /// @brief Exit process.
 /// @param status Exit code ( return value from main() )

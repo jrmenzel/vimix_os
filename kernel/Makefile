@@ -40,6 +40,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	init/start.o \
 	ipc/pipe.o \
 	kernel/cpu.o \
+	kernel/ipi.o \
 	kernel/kalloc.o \
 	kernel/vm.o \
 	kernel/proc.o \

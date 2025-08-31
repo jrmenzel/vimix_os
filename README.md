@@ -86,3 +86,4 @@ $
 - Added [/dev](docs/kernel/file_system/devfs/devfs.md) as a special file system exposing all devices.
 - Boot in [M-mode](docs/riscv/M-mode.md) now mimics [SBI](docs/riscv/SBI.md) to the [S-mode](docs/riscv/S-mode.md) kernel.
 - Added a [buddy allocator](docs/kernel/mm/memory_management.md). `kmalloc()` now supports smaller allocations of one [page](docs/kernel/mm/page.md) via a slab allocator (see [memory_management](docs/kernel/mm/memory_management.md)).
+- Added [Inter Processor Interrupts](docs/kernel/interrupts/IPI.md).

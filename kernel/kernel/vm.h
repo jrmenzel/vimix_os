@@ -69,6 +69,12 @@ void kvm_init(struct Minimal_Memory_Map *memory_map,
 int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
                          size_t size, pte_t perm);
 
+/// @brief Look up the physical address of a page behind a virtual address.
+///        Can only be used to look up kernel pages.
+/// @param va (kernel) virtual address to look up.
+/// @return Physical address or 0 if not mapped.
+size_t kvm_get_physical_paddr(size_t va);
+
 /// @brief Create PTEs for virtual addresses starting at va that refer to
 /// physical addresses starting at pa. va and size must be page-aligned.
 /// @param pagetable kernel page table to modify

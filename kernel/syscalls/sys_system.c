@@ -9,6 +9,7 @@
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
 #include <kernel/mount.h>
+#include <kernel/proc.h>
 #include <kernel/reboot.h>
 #include <kernel/reset.h>
 #include <kernel/spinlock.h>
@@ -16,6 +17,26 @@
 #include <syscalls/syscall.h>
 
 ssize_t sys_uptime() { return kticks_get_ticks(); }
+
+void system_shutdown()
+{
+    // stop other CPUs
+    cpu_mask mask = ipi_cpu_mask_all_but_self();
+    ipi_send_interrupt(mask, IPI_SHUTDOWN, NULL);
+
+    for (size_t i = 0; i < MAX_CPUS; ++i)
+    {
+        if (i == smp_processor_id()) continue;
+        while (g_cpus[i].state != CPU_HALTED && g_cpus[i].state != CPU_UNUSED &&
+               g_cpus[i].state != CPU_PANICKED)
+        {
+            // wait for other existing (!CPU_UNUSED) CPUs to halt or panic
+            __sync_synchronize();
+        }
+    }
+
+    printk("All other CPUs halted.\n");
+}
 
 ssize_t sys_reboot()
 {
@@ -33,10 +54,12 @@ ssize_t sys_reboot()
     {
         case VIMIX_REBOOT_CMD_POWER_OFF:
             printk("Power off NOW!\n");
+            system_shutdown();
             machine_power_off();
             break;
         case VIMIX_REBOOT_CMD_RESTART:
             printk("Restart NOW!\n");
+            system_shutdown();
             machine_restart();
             break;
         default: break;

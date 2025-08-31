@@ -2,7 +2,7 @@
 
 Without [SBI](../../riscv/SBI.md) support, there are [M-Mode](../../riscv/M-mode.md) and [S-Mode](../../riscv/S-mode.md) interrupts.
 With [SBI](../../riscv/SBI.md) support, there are only [S-Mode](../../riscv/S-mode.md) interrupts.
-
+To send an interrupt to another CPU use [IPI](IPI.md).
 
 ## Machine Mode (NON SBI ONLY)
 
@@ -40,5 +40,5 @@ See [timer_interrupt](timer_interrupt.md).
 
 **Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
 
-**Subsystems:** [interrupts](interrupts.md) | [devices](../devices/devices.md) | [file_system](../file_system/file_system.md) | [memory_management](../mm/memory_management.md)
+**Subsystems:** [interrupts](interrupts.md) | [IPI](IPI.md) | [devices](../devices/devices.md) | [file_system](../file_system/file_system.md) | [memory_management](../mm/memory_management.md)
 [processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](../syscalls/syscalls.md)

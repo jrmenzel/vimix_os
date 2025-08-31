@@ -5,6 +5,7 @@
 //
 
 #include <drivers/console.h>
+#include <kernel/ipi.h>
 #include <kernel/kernel.h>
 #include <kernel/printk.h>
 #include <kernel/proc.h>
@@ -13,6 +14,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/stdarg.h>
 #include <kernel/types.h>
+#include <syscalls/syscall.h>
 
 #include "print_impl.h"
 
@@ -68,6 +70,10 @@ void panic(char* error_message)
     g_kernel_panicked++;  // freeze scheduling on other CPUs
     __sync_synchronize();
     cpu_disable_interrupts();
+    struct cpu* this_cpu = get_cpu();
+    this_cpu->state = CPU_PANICKED;
+
+    __sync_synchronize();
 
     printk("\n\nKernel PANIC on CPU %zd: %s\n", smp_processor_id(),
            error_message);
@@ -81,15 +87,28 @@ void panic(char* error_message)
         machine_power_off();
     }
 
+    // stop other CPUs
+    cpu_mask mask = ipi_cpu_mask_all_but_self();
+    ipi_send_interrupt(mask, IPI_KERNEL_PANIC, NULL);
+
 #if defined(__ARCH_riscv)
     // print the kernel call stack:
     debug_print_call_stack_kernel_fp((size_t)__builtin_frame_address(0));
 
-    struct cpu* this_cpu = get_cpu();
     if (this_cpu && this_cpu->proc)
     {
         struct process* proc = this_cpu->proc;
-        printk(" Process %s (PID: %d) call stack:\n", proc->name, proc->pid);
+        printk(" Process %s (PID: %d)", proc->name, proc->pid);
+#ifdef CONFIG_DEBUG
+        if (proc->current_syscall != 0)
+        {
+            printk(" in syscall %s()\n",
+                   debug_get_syscall_name(proc->current_syscall));
+        }
+#else
+        printk("\n");
+#endif
+        printk(" Call stack:\n");
         debug_print_call_stack_user(proc);
     }
 #endif

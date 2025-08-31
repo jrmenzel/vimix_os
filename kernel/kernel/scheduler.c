@@ -21,7 +21,7 @@ void scheduler()
         for (struct process *proc = g_process_list;
              proc < &g_process_list[MAX_PROCS]; proc++)
         {
-            if (g_kernel_panicked != 0) goto KERNEL_PANIC;
+            if (cpu->state != CPU_STARTED) goto KERNEL_PANIC;
 
             // try to lock and check, but if the process is locked,
             // it's probably running, so skip to the next one

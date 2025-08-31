@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/cpu.h>
 #include <arch/riscv/riscv.h>
 #include <kernel/kernel.h>
 
@@ -14,6 +15,6 @@ extern timer_schedule_interrupt_p *timer_schedule_interrupt;
 
 /// @brief Called from start() and sets timer_schedule_interrupt() pointer
 /// depending on the configured timer.
-void timer_init(void *dtb, size_t cpuid);
+void timer_init(void *dtb, CPU_Features features);
 
 static inline uint64_t get_time() { return rv_get_time(); }

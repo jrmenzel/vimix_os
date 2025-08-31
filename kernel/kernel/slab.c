@@ -18,6 +18,7 @@ struct kmem_slab *kmem_slab_create(size_t size)
     slab->object_size = size;
     slab->free_list = NULL;
     slab->objects_allocated = 0;
+    slab->owning_cache = NULL;
 
     size_t offset_objects = ROUND_TO_SLAB_ALIGNMENT(sizeof(struct kmem_slab));
 
@@ -31,7 +32,7 @@ struct kmem_slab *kmem_slab_create(size_t size)
         next_object += size;
     }
 
-    // printk("slab 0x%zx created, object size = %zd\n", (size_t)slab, size);
+    // printk("slab 0x%zx | %zd created\n", (size_t)slab, size);
     return slab;
 }
 
@@ -105,6 +106,7 @@ void *kmem_cache_alloc(struct kmem_cache *cache)
         {
             list_add_tail(&(new_slab->slab_list), &(cache->slab_list));
             allocation = kmem_slab_alloc(new_slab);
+            new_slab->owning_cache = cache;
         }
     }
 

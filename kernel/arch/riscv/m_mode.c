@@ -251,6 +251,28 @@ struct sbiret m_mode_handle_sbi_call(xlen_t arg0, xlen_t arg1, xlen_t arg2,
             ret.error = SBI_SUCCESS;
         }
     }
+    else if (ext == SBI_EXT_ID_IPI)
+    {
+        if (fid == SBI_IPI_SEND_IPI)
+        {
+            size_t hart_mask = arg0;
+            size_t hart_base = arg1;
+            for (size_t i = 0; i < sizeof(size_t) * 8; i++)
+            {
+                if (hart_mask & (1 << i))
+                {
+                    size_t hart = hart_base + i;
+                    if (hart >= MAX_CPUS)
+                    {
+                        ret.error = SBI_ERR_INVALID_PARAM;
+                        return ret;
+                    }
+                    CLINT_MSIP(hart) = 1;
+                }
+            }
+            ret.error = SBI_SUCCESS;
+        }
+    }
     return ret;
 }
 
@@ -332,6 +354,12 @@ void m_mode_interrupt_handler(xlen_t *stack)
         {
             g_m_mode_cpu_data[hart_id].int_cause = INT_CAUSE_NONE;
             m_mode_prepare_start_hart(stack);
+        }
+        else
+        {
+            // arrange for a supervisor software interrupt
+            // after this handler returns so S Mode gets an IPI
+            rv_write_csr_sip(rv_read_csr_sip() | SIP_SSIP);
         }
     }
     else if (mcause == MCAUSE_ILLEGAL_INSTRUCTION)

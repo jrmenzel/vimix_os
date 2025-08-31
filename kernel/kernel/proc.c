@@ -9,6 +9,7 @@
 #include <kernel/exec.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
+#include <kernel/ipi.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
@@ -22,7 +23,8 @@
 #include <kernel/vm.h>
 #include <syscalls/syscall.h>
 
-struct cpu g_cpus[MAX_CPUS];
+struct cpu g_cpus[MAX_CPUS] = {0};
+struct spinlock g_cpus_ipi_lock;
 
 /// @brief All user processes (except for init)
 struct process g_process_list[MAX_PROCS];
@@ -516,12 +518,16 @@ void sched()
 
     if (get_cpu()->disable_dev_int_stack_depth != 1)
     {
-        panic("sched locks");
+        printk(
+            "ERROR: CPU %zd disable_dev_int_stack_depth "
+            "is %d instead of 1\n",
+            smp_processor_id(), get_cpu()->disable_dev_int_stack_depth);
+        panic("sched invalid disable_dev_int_stack_depth");
     }
 
     if (proc->state == RUNNING)
     {
-        panic("sched running");
+        panic("sched process is already running");
     }
 
     if (cpu_is_interrupts_enabled())
@@ -787,10 +793,23 @@ void debug_print_call_stack_kernel_fp(size_t frame_pointer)
     size_t depth = 32;  // limit just in case of a corrupted stack
     while (depth-- != 0)
     {
-        size_t ra = *((size_t *)(frame_pointer - 1 * sizeof(size_t)));
-        frame_pointer = *((size_t *)(frame_pointer - 2 * sizeof(size_t)));
-        printk("  ra: " FORMAT_REG_SIZE "\n", ra);
         if (frame_pointer == 0) break;
+        size_t ra_address = frame_pointer - 1 * sizeof(size_t);
+        if (kvm_get_physical_paddr(ra_address) == 0)
+        {
+            printk("  ra: <invalid address>\n");
+            break;
+        }
+        size_t ra = *((size_t *)(ra_address));
+        size_t next_frame_pointer_address = frame_pointer - 2 * sizeof(size_t);
+        if (kvm_get_physical_paddr(next_frame_pointer_address) == 0)
+        {
+            printk("  invalid frame pointer address: 0x%zx\n",
+                   next_frame_pointer_address);
+            break;
+        }
+        frame_pointer = *((size_t *)(next_frame_pointer_address));
+        printk("  ra: " FORMAT_REG_SIZE "\n", ra);
     };
 }
 

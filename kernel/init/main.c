@@ -2,6 +2,7 @@
 
 #include "main.h"
 
+#include <arch/cpu.h>
 #include <arch/interrupts.h>
 #include <arch/platform.h>
 #include <arch/timer.h>
@@ -78,8 +79,7 @@ void print_memory_map(struct Minimal_Memory_Map *memory_map)
 
 void print_timer_source(void *dtb)
 {
-    CPU_Features features =
-        dtb_get_cpu_features(dtb, __arch_smp_processor_id());
+    CPU_Features features = dtb_get_cpu_features(dtb, smp_processor_id());
 
     if (features & RV_EXT_SSTC)
     {
@@ -233,9 +233,14 @@ void init_by_first_thread(void *dtb)
     printk("%zdkb free\n", kalloc_get_free_memory() / 1024);
 #endif  // CONFIG_DEBUG_KALLOC
 
+    // get the timebase frequency for timer_init():
+    g_timebase_frequency = dtb_get_timebase(dtb);
+
     // full memory barrier (gcc buildin):
     __sync_synchronize();
     g_global_init_done = GLOBAL_INIT_DONE;
+
+    ipi_init();
 
     platform_boot_other_cpus(dtb);
 }
@@ -247,16 +252,19 @@ void main(void *device_tree, size_t is_first_thread)
     {
         g_boot_hart = smp_processor_id();
         init_by_first_thread(device_tree);
-        g_timebase_frequency = dtb_get_timebase(device_tree);
     }
 
-    printk("CPU %zd starting %s\n", smp_processor_id(),
+    size_t cpu_id = smp_processor_id();
+    printk("CPU %zd starting %s\n", cpu_id,
            (is_first_thread ? "(boot CPU)" : ""));
 
+    g_cpus[cpu_id].features = dtb_get_cpu_features(device_tree, cpu_id);
     mmu_set_page_table((size_t)g_kernel_pagetable, 0);  // turn on paging
     set_supervisor_trap_vector();  // install kernel trap vector
-    timer_init(device_tree, smp_processor_id());
+    timer_init(device_tree, g_cpus[cpu_id].features);
     init_interrupt_controller_per_hart();
+
+    g_cpus[cpu_id].state = CPU_STARTED;
 
     scheduler();
 }

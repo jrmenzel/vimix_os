@@ -24,6 +24,10 @@ void handle_timer_interrupt();
 
 void handle_device_interrupt();
 
+/// @brief Handle an Inter Processor Interrupt
+/// @return true if the current process (if there is one) should yield
+bool handle_ipi_interrupt();
+
 /// @brief Dump kernel thread state from before the interrupt.
 void dump_pre_int_kthread_state(size_t *stack);
 

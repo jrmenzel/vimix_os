@@ -18,7 +18,7 @@ See [init_overview](overview/init_overview.md) to see how main() inits all subsy
 
 ### Interrupt Handling
 
-See [interrupts](interrupts/interrupts.md) and [timer_interrupt](interrupts/timer_interrupt.md)
+See [interrupts](interrupts/interrupts.md), [IPI](interrupts/IPI.md) and [timer_interrupt](interrupts/timer_interrupt.md)
 
 ### Devices / Drivers
 
@@ -53,4 +53,5 @@ To see how the application-kernel interaction works see [calling_syscall](syscal
 
 **Boot:** [boot_process](overview/boot_process.md) | [init_overview](overview/init_overview.md)
 
-**Subsystems:** [interrupts](interrupts/interrupts.md) | [devices](devices/devices.md) | [file_system](file_system/file_system.md) | [memory_management](mm/memory_management.md) | [processes](processes/processes.md) | [scheduling](processes/scheduling.md) | [syscalls](syscalls/syscalls.md)
+**Subsystems:** [interrupts](interrupts.md) | [IPI](IPI.md) | [devices](../devices/devices.md) | [file_system](../file_system/file_system.md) | [memory_management](../mm/memory_management.md)
+[processes](../processes/processes.md) | [scheduling](../processes/scheduling.md) | [syscalls](../syscalls/syscalls.md)

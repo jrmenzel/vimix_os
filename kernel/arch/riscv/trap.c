@@ -190,11 +190,6 @@ void handle_device_interrupt()
 
 void handle_timer_interrupt()
 {
-    // acknowledge the software interrupt by clearing
-    // the SSIP bit in sip before scheduling the next interrupt
-    // in case it schedules the int instantly
-    rv_write_csr_sip(rv_read_csr_sip() & ~SIP_SSIP);
-
     uint64_t timer_interrupt_interval =
         g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
     uint64_t now = rv_get_time();

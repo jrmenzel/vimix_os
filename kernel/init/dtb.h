@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <arch/cpu.h>
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
 #include <kernel/vm.h>
@@ -43,14 +44,5 @@ bool dtb_get_regs(void *dtb, int offset, struct Device_Init_Parameters *params);
 bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size);
 
 int dtb_get_cpu_offset(void *dtb, size_t cpu_id, bool print_errors);
-
-typedef uint32_t CPU_Features;
-#define RV_SV32_SUPPORTED 0x01
-#define RV_SV39_SUPPORTED 0x02
-#define RV_SV48_SUPPORTED 0x04
-#define RV_SV57_SUPPORTED 0x08
-#define RV_EXT_FLOAT 0x10
-#define RV_EXT_DOUBLE 0x20
-#define RV_EXT_SSTC 0x40
 
 CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id);

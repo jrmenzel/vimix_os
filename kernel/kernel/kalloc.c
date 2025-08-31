@@ -292,9 +292,18 @@ void kfree(void *pa)
         return;
     }
 
-    // must be from an object cache
+    // must be from an object slab / cache
     struct kmem_slab *slab = kmem_slab_infer_slab(pa);
-    kmem_slab_free(slab, pa);
+    if (slab->owning_cache == NULL)
+    {
+        // free the object, but NOT the slab (if empty)
+        kmem_slab_free(slab, pa);
+    }
+    else
+    {
+        // free the object AND the slab (if empty)
+        kmem_cache_free(slab->owning_cache, pa);
+    }
 }
 
 size_t next_power_of_two(size_t v)

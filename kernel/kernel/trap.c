@@ -66,12 +66,24 @@ void user_mode_interrupt_handler(size_t *stack)
     }
     else if (int_ctx_source_is_timer(&ctx))
     {
+        int_acknowledge_timer();
+        handle_timer_interrupt();
+        yield_process = true;
+    }
+    else if (int_ctx_source_is_software_timer(&ctx))
+    {
+        int_acknowledge_software();
         handle_timer_interrupt();
         yield_process = true;
     }
     else if (int_ctx_source_is_device(&ctx))
     {
         handle_device_interrupt();
+    }
+    else if (int_ctx_source_is_ipi(&ctx))
+    {
+        int_acknowledge_software();
+        yield_process = handle_ipi_interrupt();
     }
     else if (int_ctx_source_is_page_fault(&ctx))
     {
@@ -135,12 +147,24 @@ void kernel_mode_interrupt_handler(size_t *stack)
     bool yield_process = false;
     if (int_ctx_source_is_timer(&ctx))
     {
+        int_acknowledge_timer();
+        handle_timer_interrupt();
+        yield_process = true;
+    }
+    else if (int_ctx_source_is_software_timer(&ctx))
+    {
+        int_acknowledge_software();
         handle_timer_interrupt();
         yield_process = true;
     }
     else if (int_ctx_source_is_device(&ctx))
     {
         handle_device_interrupt();
+    }
+    else if (int_ctx_source_is_ipi(&ctx))
+    {
+        int_acknowledge_software();
+        yield_process = handle_ipi_interrupt();
     }
     else
     {
@@ -166,4 +190,53 @@ void kernel_mode_interrupt_handler(size_t *stack)
     // so restore trap registers for use by s_mode_trap_vector.S's sepc
     // instruction.
     int_ctx_restore(&ctx);
+}
+
+bool handle_ipi_interrupt()
+{
+    bool yield_process = false;
+
+    spin_lock(&g_cpus_ipi_lock);
+    struct cpu *c = get_cpu();
+    for (size_t i = 0; i < MAX_IPI_PENDING; ++i)
+    {
+        enum ipi_type type = c->ipi[i].pending;
+        // void *data = c->ipi[i].data;
+        if (type == IPI_NONE) break;
+
+        // clear the IPI
+        c->ipi[i].pending = IPI_NONE;
+        c->ipi[i].data = NULL;
+
+        switch (type)
+        {
+            case IPI_KERNEL_PAGETABLE_CHANGED:
+            {
+                // a process changed the kernels page table, reload it to
+                // flush TLBs
+                mmu_set_page_table((size_t)g_kernel_pagetable, 0);
+                break;
+            }
+            case IPI_KERNEL_PANIC:
+            {
+                // another CPU panicked, stop this CPUs scheduling
+                struct cpu *this_cpu = get_cpu();
+                this_cpu->state = CPU_PANICKED;
+                yield_process = true;
+                break;
+            }
+            case IPI_SHUTDOWN:
+            {
+                struct cpu *this_cpu = get_cpu();
+                this_cpu->state = CPU_HALTED;
+                yield_process = true;
+                break;
+            }
+
+            default: printk("Unhandled IPI %d\n", type); break;
+        }
+    }
+    spin_unlock(&g_cpus_ipi_lock);
+
+    return yield_process;
 }

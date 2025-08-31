@@ -5,8 +5,6 @@
 #include "asm/satp.h"
 #include "riscv.h"
 
-extern pagetable_t g_kernel_pagetable;
-
 size_t mmu_get_page_table_reg_value() { return rv_read_csr_satp(); }
 
 size_t mmu_make_page_table_reg(size_t addr_of_first_block, uint32_t asid)

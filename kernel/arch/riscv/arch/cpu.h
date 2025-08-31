@@ -4,6 +4,15 @@
 #include <arch/riscv/riscv.h>
 #include <kernel/kernel.h>
 
+typedef uint32_t CPU_Features;
+#define RV_SV32_SUPPORTED 0x01
+#define RV_SV39_SUPPORTED 0x02
+#define RV_SV48_SUPPORTED 0x04
+#define RV_SV57_SUPPORTED 0x08
+#define RV_EXT_FLOAT 0x10
+#define RV_EXT_DOUBLE 0x20
+#define RV_EXT_SSTC 0x40
+
 /// read and write tp, the thread pointer, which VIMIX uses to hold
 /// this core's hartid (core number), the index into g_cpus[].
 /// This is required as the Hart ID can only be read in Machine Mode, but

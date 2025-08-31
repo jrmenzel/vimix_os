@@ -231,6 +231,21 @@ size_t uvm_get_physical_paddr(pagetable_t pagetable, size_t va,
     return pa;
 }
 
+size_t kvm_get_physical_paddr(size_t va)
+{
+    if (!VA_IS_IN_RANGE_FOR_KERNEL(va))
+    {
+        return 0;
+    }
+
+    pte_t *pte = vm_walk2(g_kernel_pagetable, va, NULL, false);
+    if (pte == NULL) return 0;
+    if (PTE_IS_VALID_NODE(*pte) == false) return 0;
+
+    size_t pa = PTE_GET_PA(*pte);
+    return pa;
+}
+
 int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
                          size_t size, pte_t perm)
 {

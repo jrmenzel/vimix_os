@@ -91,3 +91,5 @@ unsigned long long __umoddi3(unsigned long long n, unsigned long long d)
     div_u64(n, d, &r);
     return (unsigned long long)r;
 }
+
+long __ashldi3(long a, int b) { return a << b; }
