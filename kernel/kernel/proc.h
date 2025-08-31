@@ -60,9 +60,6 @@ ssize_t fork();
 /// @return 0 on success, -1 on failure.
 int32_t proc_grow_memory(ssize_t n);
 
-/// Allocate a page for each process's kernel stack.
-void init_per_process_kernel_stack(pagetable_t kpage_table);
-
 pagetable_t proc_pagetable(struct process *proc);
 
 /// @brief Free a process's page table, and free the
@@ -132,6 +129,10 @@ int32_t either_copyout(bool addr_is_userspace, size_t dst, void *src,
 /// @return 0 on success, -1 on error.
 int32_t either_copyin(void *dst, bool addr_is_userspace, size_t src,
                       size_t len);
+
+/// @brief Frees all allocated memory of a process and the process struct itself
+/// @param proc Process, lock must be held.
+void proc_free(struct process *proc);
 
 /// @brief Prints the processes kernel call stack.
 /// @param proc A not running process.

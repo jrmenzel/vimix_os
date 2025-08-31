@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 
 /// Test that fork fails gracefully.
-/// Tiny executable so that the limit can be filling the g_process_list table.
+/// Tiny executable so that forking isn't limited by memory.
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +13,7 @@
 
 int main()
 {
-    const int32_t N = 1000;
+    const int32_t N = 10000;
     pid_t n;
 
     printf("fork test\n");
@@ -20,7 +21,11 @@ int main()
     for (n = 0; n < N; n++)
     {
         pid_t pid = fork();
-        if (pid < 0) break;
+        if (pid < 0)
+        {
+            printf("fork failed with error: %s\n", strerror(errno));
+            break;
+        }
         if (pid == 0) return 0;
     }
 

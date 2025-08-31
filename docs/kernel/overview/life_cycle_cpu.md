@@ -1,10 +1,10 @@
 # The life cycle of a CPU
 
 **Boot:** (for details, see [boot_process](boot_process.md))
-`entry.S` -> `start.c` -> `main.c` calls `schedule()` 
+`entry.S` -> `start.c` -> `main.c` calls `scheduler()` 
 
-**schedule():**
-`schedule()` enters an infinite loop and will never return.
+**scheduler():**
+`scheduler()` enters an infinite loop and will never return.
 From now on the harts will do this forever:
 
 - look for a process to run (for details see [scheduling](../processes/scheduling.md))

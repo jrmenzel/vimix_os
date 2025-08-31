@@ -17,7 +17,7 @@ Timer interrupts happen at a fixed interval set via `TIMER_INTERRUPTS_PER_SECOND
 If an application was running when the timer [interrupts](interrupts.md) occurred, it will:
 - Call `u_mode_trap_vector` (like a [syscall](syscalls/syscalls.md))
 - `user_mode_interrupt_handler()` will call `yield()` for the process
-- `yield()` basically calls `schedule()` and switch back to the scheduler
+- `yield()` basically calls `scheduler()` and switch back to the scheduler
 - Once rescheduled it basically returns to where it was interrupted in user mode
 
 A timer interrupt can also happen while the process in in kernel mode (e.g. during a [syscall](syscalls/syscalls.md)). It also yields but on return will continue with the process in kernel mode.

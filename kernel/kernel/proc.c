@@ -26,8 +26,8 @@
 struct cpu g_cpus[MAX_CPUS] = {0};
 struct spinlock g_cpus_ipi_lock;
 
-/// @brief All user processes (except for init)
-struct process g_process_list[MAX_PROCS];
+/// @brief All user processes
+struct process_list g_process_list;
 
 /// @brief The init process in user mode.
 /// Created in userspace_init(), the only process not created by fork()
@@ -37,7 +37,7 @@ pid_t g_next_pid = 1;
 struct spinlock g_pid_lock;
 
 extern void forkret();
-static void free_process(struct process *proc);
+void wakeup_holding_plist_lock(void *chan);
 
 extern char trampoline[];  // u_mode_trap_vector.S
 
@@ -47,40 +47,70 @@ extern char trampoline[];  // u_mode_trap_vector.S
 /// must be acquired before any p->lock.
 struct spinlock g_wait_lock;
 
-/// Allocate pages for each process's kernel stack.
-/// Map it high in memory, followed by an invalid
-/// guard page.
-void init_per_process_kernel_stack(pagetable_t kpage_table)
+/// @brief Returns the virtual address for a kernel stack.
+/// @return 0 on failure
+size_t proc_get_kernel_stack()
 {
-    for (struct process *proc = g_process_list;
-         proc < &g_process_list[MAX_PROCS]; proc++)
+    spin_lock(&g_process_list.kernel_stack_lock);
+    ssize_t idx =
+        find_first_zero_bit(g_process_list.kernel_stack_in_use, MAX_PROCESSES);
+    if (idx < 0)
     {
-        size_t va = KSTACK((size_t)(proc - g_process_list));
-        for (size_t i = 0; i < KERNEL_STACK_PAGES; ++i)
-        {
-            char *pa = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
-            if (pa == NULL)
-            {
-                panic("init_per_process_kernel_stack() alloc_page failed");
-            }
-            kvm_map_or_panic(kpage_table, va + (i * PAGE_SIZE), (size_t)pa,
-                             PAGE_SIZE, PTE_KERNEL_STACK);
-        }
+        spin_unlock(&g_process_list.kernel_stack_lock);
+        return 0;
     }
+    set_bit(idx, g_process_list.kernel_stack_in_use);
+    spin_unlock(&g_process_list.kernel_stack_lock);
+    // printk("alloc kstack va 0x%zd\n", KSTACK_VA_FROM_INDEX(idx));
+    return KSTACK_VA_FROM_INDEX(idx);
 }
 
-/// initialize the g_process_list table.
+void proc_free_kernel_stack(size_t stack_va)
+{
+    spin_lock(&g_process_list.kernel_stack_lock);
+    // printk("free kstack va 0x%zd\n", stack_va);
+    size_t idx = KSTACK_INDEX_FROM_VA(stack_va);
+    clear_bit(idx, g_process_list.kernel_stack_in_use);
+    spin_unlock(&g_process_list.kernel_stack_lock);
+}
+
+bool proc_init_kernel_stack(pagetable_t kpage_table, struct process *proc,
+                            size_t kstack_va)
+{
+    spin_lock(&g_kernel_pagetable_lock);
+    for (size_t i = 0; i < KERNEL_STACK_PAGES; ++i)
+    {
+        char *pa = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
+        if (pa == NULL)
+        {
+            spin_unlock(&g_kernel_pagetable_lock);
+            return false;
+        }
+        kvm_map_or_panic(kpage_table, kstack_va + (i * PAGE_SIZE), (size_t)pa,
+                         PAGE_SIZE, PTE_KERNEL_STACK);
+    }
+    mmu_set_page_table((size_t)kpage_table,
+                       0);  // update pagetable, flush cache
+
+    spin_unlock(&g_kernel_pagetable_lock);
+
+    // tell other cores to also to reload the kernel page table
+    cpu_mask mask = ipi_cpu_mask_all_but_self();
+    ipi_send_interrupt(mask, IPI_KERNEL_PAGETABLE_CHANGED, NULL);
+
+    return true;
+}
+
+/// initialize the g_process_array table.
 void proc_init()
 {
     spin_lock_init(&g_pid_lock, "nextpid");
     spin_lock_init(&g_wait_lock, "wait_lock");
-    for (struct process *proc = g_process_list;
-         proc < &g_process_list[MAX_PROCS]; proc++)
-    {
-        spin_lock_init(&proc->lock, "proc");
-        proc->state = UNUSED;
-        proc->kstack = KSTACK((size_t)(proc - g_process_list));
-    }
+
+    list_init(&g_process_list.plist);
+    spin_lock_init(&g_process_list.lock, "proc_list_lock");
+    g_process_list.kernel_stack_in_use = bitmap_alloc(MAX_PROCESSES);
+    spin_lock_init(&g_process_list.kernel_stack_lock, "proc_list_kstack_lock");
 }
 
 /// Return this CPU's cpu struct.
@@ -121,45 +151,39 @@ pid_t alloc_pid()
 }
 
 /// Creates a new process:
-/// Look in the process table for an UNUSED struct process.
-/// If found, initialize state required to run in the kernel,
+/// If allocated, initialize state required to run in the kernel,
 /// and return with `proc->lock` held.
 /// If there are no free processes, or a memory allocation fails, return NULL.
 static struct process *alloc_process()
 {
-    struct process *proc;
-
-    bool found = false;
-    for (proc = g_process_list; proc < &g_process_list[MAX_PROCS]; proc++)
+    struct process *proc = kmalloc(sizeof(struct process));
+    if (proc == NULL)
     {
-        spin_lock(&proc->lock);
-        if (proc->state == UNUSED)
-        {
-            found = true;
-            break;
-        }
-        else
-        {
-            spin_unlock(&proc->lock);
-        }
+        return NULL;
     }
+    memset(proc, 0, sizeof(struct process));
+    // proc_free() can free partially initialized structs, but the lock is
+    // expected to be helt
+    spin_lock_init(&proc->lock, "proc");
+    spin_lock(&proc->lock);
 
-    if (found == false)
+    // kernel stack
+    proc->kstack = proc_get_kernel_stack();
+    if (proc->kstack == 0 ||
+        !proc_init_kernel_stack(g_kernel_pagetable, proc, proc->kstack))
     {
-        // error: maximum number of processes reached
+        proc_free(proc);
         return NULL;
     }
 
-    // found a free process, now init:
-    proc->pid = alloc_pid();
-    proc->state = USED;
-
-    // Allocate a trapframe page.
+    // Allocate a trapframe page (full page as it gets it's own memory mapping
+    // to a compile time known location).
+    _Static_assert(sizeof(struct trapframe) <= PAGE_SIZE,
+                   "struct trapframe is too big");
     proc->trapframe = (struct trapframe *)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
     if (proc->trapframe == NULL)
     {
-        free_process(proc);
-        spin_unlock(&proc->lock);
+        proc_free(proc);
         return NULL;
     }
 
@@ -167,14 +191,24 @@ static struct process *alloc_process()
     proc->pagetable = proc_pagetable(proc);
     if (proc->pagetable == NULL)
     {
-        free_process(proc);
-        spin_unlock(&proc->lock);
+        proc_free(proc);
         return NULL;
     }
 
+    // other members and state
+    list_init(&proc->plist);
+    proc->pid = alloc_pid();
+    proc->state = USED;
+
+    // printk(
+    //     "CPU %zd: new  process %d at kstack: 0x%zx (lower address) trapframe:
+    //     " "0x%zx\n",
+    //     __arch_smp_processor_id(), proc->pid, proc->kstack,
+    //     (size_t)proc->trapframe);
+
     // Set up new context to start executing at forkret,
     // which returns to user space.
-    memset(&proc->context, 0, sizeof(proc->context));
+    // proc was zero initialized, so is proc->context at this point
     context_set_return_register(&proc->context, (xlen_t)forkret);
     context_set_stack_pointer(&proc->context, proc->kstack + KERNEL_STACK_SIZE);
 
@@ -185,7 +219,7 @@ static struct process *alloc_process()
 /// free a struct process structure and the data hanging from it,
 /// including user pages.
 /// proc->lock must be held.
-static void free_process(struct process *proc)
+void proc_free(struct process *proc)
 {
     DEBUG_ASSERT_CPU_HOLDS_LOCK(&proc->lock);
 
@@ -201,17 +235,26 @@ static void free_process(struct process *proc)
     }
     proc->pagetable = INVALID_PAGETABLE_T;
 
-    proc->heap_begin = 0;
-    proc->heap_end = 0;
-    proc->stack_low = 0;
-    proc->pid = 0;
-    proc->parent = NULL;
-    proc->name[0] = 0;
-    proc->chan = NULL;
-    proc->killed = false;
-    proc->xstate = 0;
-    proc->state = UNUSED;
-    proc->debug_log_depth = 0;
+    // unmap and free kernel stack:
+    if (proc->kstack != 0)
+    {
+        proc_free_kernel_stack(proc->kstack);
+        spin_lock(&g_kernel_pagetable_lock);
+        uvm_unmap(g_kernel_pagetable, proc->kstack, KERNEL_STACK_PAGES, true);
+        vm_trim_pagetable(g_kernel_pagetable, proc->kstack);
+        mmu_set_page_table((size_t)g_kernel_pagetable,
+                           0);  // update pagetable, flush cache
+        spin_unlock(&g_kernel_pagetable_lock);
+
+        // tell other cores to also to reload the kernel page table
+        cpu_mask mask = ipi_cpu_mask_all_but_self();
+        ipi_send_interrupt(mask, IPI_KERNEL_PAGETABLE_CHANGED, NULL);
+
+        proc->kstack = 0;
+    }
+
+    spin_unlock(&proc->lock);
+    kfree(proc);
 }
 
 /// Create a user page table for a given process, with no user memory,
@@ -267,6 +310,11 @@ void userspace_init()
     if (g_initial_user_process == NULL)
         panic("userspace_init() already out of memory");
     g_initial_user_process->state = RUNNABLE;
+
+    // add to process list
+    spin_lock(&g_process_list.lock);
+    list_add_tail(&g_initial_user_process->plist, &g_process_list.plist);
+    spin_unlock(&g_process_list.lock);
 
     spin_unlock(&g_initial_user_process->lock);
 }
@@ -339,8 +387,7 @@ ssize_t fork()
     // Copy memory
     if (proc_copy_memory(parent, np) == -1)
     {
-        free_process(np);
-        spin_unlock(&np->lock);
+        proc_free(np);
         return -ENOMEM;
     }
 
@@ -381,6 +428,11 @@ ssize_t fork()
     np->debug_log_depth = 0;
     spin_unlock(&np->lock);
 
+    // add to process list
+    spin_lock(&g_process_list.lock);
+    list_add_tail(&np->plist, &g_process_list.plist);
+    spin_unlock(&g_process_list.lock);
+
     return pid;
 }
 
@@ -388,15 +440,18 @@ ssize_t fork()
 /// Caller must hold g_wait_lock.
 void reparent(struct process *proc)
 {
-    for (struct process *pp = g_process_list; pp < &g_process_list[MAX_PROCS];
-         pp++)
+    struct list_head *pos;
+    spin_lock(&g_process_list.lock);
+    list_for_each(pos, &g_process_list.plist)
     {
+        struct process *pp = process_from_list(pos);
         if (pp->parent == proc)
         {
             pp->parent = g_initial_user_process;
-            wakeup(g_initial_user_process);
+            wakeup_holding_plist_lock(g_initial_user_process);
         }
     }
+    spin_unlock(&g_process_list.lock);
 }
 
 /// Exit the current process.  Does not return.
@@ -435,9 +490,13 @@ void exit(int32_t status)
     reparent(proc);
 
     // Parent might be sleeping in wait().
-    wakeup(proc->parent);
-
+    // Note that the parent can't free the process while we still hold
+    // the proc->lock, because it will acquire the lock before the free.
     spin_lock(&proc->lock);
+
+    spin_lock(&g_process_list.lock);
+    wakeup_holding_plist_lock(proc->parent);
+    spin_unlock(&g_process_list.lock);
 
     proc->xstate = status;
     proc->state = ZOMBIE;
@@ -459,9 +518,12 @@ pid_t wait(int32_t *wstatus)
     {
         // Scan through table looking for exited children.
         bool havekids = false;
-        for (struct process *pp = g_process_list;
-             pp < &g_process_list[MAX_PROCS]; pp++)
+        struct list_head *pos;
+        spin_lock(&g_process_list.lock);
+        list_for_each(pos, &g_process_list.plist)
         {
+            struct process *pp = process_from_list(pos);
+
             // we can only wait on our own children:
             if (pp->parent == proc)
             {
@@ -481,16 +543,25 @@ pid_t wait(int32_t *wstatus)
                     {
                         spin_unlock(&pp->lock);
                         spin_unlock(&g_wait_lock);
+
+                        spin_unlock(&g_process_list.lock);
                         return -EFAULT;
                     }
-                    free_process(pp);
-                    spin_unlock(&pp->lock);
+
+                    // remove from process list, lock is already held
+                    list_del(&pp->plist);
+
+                    proc_free(pp);
+
                     spin_unlock(&g_wait_lock);
+
+                    spin_unlock(&g_process_list.lock);
                     return pid;
                 }
                 spin_unlock(&pp->lock);
             }
         }
+        spin_unlock(&g_process_list.lock);
 
         // No point waiting if we don't have any children.
         if (!havekids || proc_is_killed(proc))
@@ -641,18 +712,19 @@ void sleep(void *chan, struct spinlock *lk)
     spin_lock(lk);
 }
 
-/// Wake up all processes sleeping on chan.
-/// Must be called without any proc->lock.
-void wakeup(void *chan)
+void wakeup_holding_plist_lock(void *chan)
 {
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(&g_process_list.lock);
+
     struct process *current_process = get_current();
 
     // if (chan != &g_ticks) printk("wakeup 0x%zx\n", (size_t)chan);
 
-    for (struct process *proc = g_process_list;
-         proc < &g_process_list[MAX_PROCS]; proc++)
+    struct list_head *pos;
+    list_for_each(pos, &g_process_list.plist)
     {
-        DEBUG_ASSERT_CPU_DOES_NOT_HOLD_LOCK(&proc->lock);
+        struct process *proc = process_from_list(pos);
+
         if (proc != current_process)
         {
             spin_lock(&proc->lock);
@@ -663,6 +735,17 @@ void wakeup(void *chan)
             spin_unlock(&proc->lock);
         }
     }
+}
+
+/// Wake up all processes sleeping on chan.
+/// Must be called without any proc->lock.
+void wakeup(void *chan)
+{
+    spin_lock(&g_wait_lock);
+    spin_lock(&g_process_list.lock);
+    wakeup_holding_plist_lock(chan);
+    spin_unlock(&g_process_list.lock);
+    spin_unlock(&g_wait_lock);
 }
 
 /// Kill the process with the given pid.
@@ -676,9 +759,12 @@ ssize_t proc_send_signal(pid_t pid, int32_t sig)
         return -EINVAL;
     }
 
-    for (struct process *proc = g_process_list;
-         proc < &g_process_list[MAX_PROCS]; proc++)
+    struct list_head *pos;
+    spin_lock(&g_process_list.lock);
+    list_for_each(pos, &g_process_list.plist)
     {
+        struct process *proc = process_from_list(pos);
+
         spin_lock(&proc->lock);
         if (proc->pid == pid)
         {
@@ -689,10 +775,14 @@ ssize_t proc_send_signal(pid_t pid, int32_t sig)
                 proc->state = RUNNABLE;
             }
             spin_unlock(&proc->lock);
+
+            spin_unlock(&g_process_list.lock);
             return 0;
         }
         spin_unlock(&proc->lock);
     }
+
+    spin_unlock(&g_process_list.lock);
     return -ESRCH;
 }
 
@@ -861,93 +951,101 @@ void debug_print_open_files(struct process *proc)
     }
 }
 
+void debug_print_process(bool print_call_stack_user,
+                         bool print_call_stack_kernel, bool print_files,
+                         bool print_page_table, struct process *proc)
+{
+    static char *states[] = {[USED] "used",
+                             [SLEEPING] "sleeping",
+                             [RUNNABLE] "runnable",
+                             [RUNNING] "running",
+                             [ZOMBIE] "zombie"};
+
+    char *state = "???";
+    if (proc->state >= 0 && proc->state < NELEM(states) && states[proc->state])
+    {
+        state = states[proc->state];
+    }
+
+    printk(" PID: %d", proc->pid);
+
+    if (proc->parent)
+    {
+        printk(" (PPID: %d)", proc->parent->pid);
+    }
+    printk(" | %s", proc->name);
+    printk(" | cwd: ");
+    debug_print_inode(proc->cwd);
+    printk(" | state: %s", state);
+
+    if (proc->state == ZOMBIE)
+    {
+        printk(" (return value: %d)", proc->xstate);
+    }
+    if (proc->state == SLEEPING)
+    {
+        printk(", waiting on: ");
+        bool found_chan = false;
+        if (proc->chan == proc)
+        {
+            printk("child");
+            found_chan = true;
+        }
+        else if (proc->chan == &g_ticks)
+        {
+            printk("timer");
+            found_chan = true;
+        }
+        if (!found_chan)
+        {
+            printk("0x%zx", (size_t)proc->chan);
+        }
+    }
+#ifdef CONFIG_DEBUG
+    if (proc->current_syscall != 0)
+    {
+        printk(" | in syscall %s",
+               debug_get_syscall_name(proc->current_syscall));
+    }
+#endif
+    printk("\n");
+
+    if (print_call_stack_user && proc->state != RUNNING)
+    {
+        printk("Call stack user:\n");
+        debug_print_call_stack_user(proc);
+    }
+    if (print_call_stack_kernel && proc->state != RUNNING)
+    {
+        printk("Call stack kernel:\n");
+        debug_print_call_stack_kernel(proc);
+    }
+    if (print_files)
+    {
+        printk("Open files:\n");
+        debug_print_open_files(proc);
+    }
+    if (print_page_table)
+    {
+        debug_vm_print_page_table(proc->pagetable);
+    }
+}
+
 void debug_print_process_list(bool print_call_stack_user,
                               bool print_call_stack_kernel, bool print_files,
                               bool print_page_table)
 {
-    static char *states[] = {
-        [UNUSED] "unused",     [USED] "used",       [SLEEPING] "sleeping",
-        [RUNNABLE] "runnable", [RUNNING] "running", [ZOMBIE] "zombie"};
-
     printk("\nProcess list (%zd)\n", (size_t)smp_processor_id());
-    for (struct process *proc = g_process_list;
-         proc < &g_process_list[MAX_PROCS]; proc++)
+
+    struct list_head *pos;
+    spin_lock(&g_process_list.lock);
+    list_for_each(pos, &g_process_list.plist)
     {
-        if (proc->state == UNUSED)
-        {
-            continue;
-        }
-
-        char *state = "???";
-        if (proc->state >= 0 && proc->state < NELEM(states) &&
-            states[proc->state])
-        {
-            state = states[proc->state];
-        }
-
-        printk(" PID: %d", proc->pid);
-
-        if (proc->parent)
-        {
-            printk(" (PPID: %d)", proc->parent->pid);
-        }
-        printk(" | %s", proc->name);
-        printk(" | cwd: ");
-        debug_print_inode(proc->cwd);
-        printk(" | state: %s", state);
-
-        if (proc->state == ZOMBIE)
-        {
-            printk(" (return value: %d)", proc->xstate);
-        }
-        if (proc->state == SLEEPING)
-        {
-            printk(", waiting on: ");
-            bool found_chan = false;
-            if (proc->chan == proc)
-            {
-                printk("child");
-                found_chan = true;
-            }
-            else if (proc->chan == &g_ticks)
-            {
-                printk("timer");
-                found_chan = true;
-            }
-            if (!found_chan)
-            {
-                printk("0x%zx", (size_t)proc->chan);
-            }
-        }
-#ifdef CONFIG_DEBUG
-        if (proc->current_syscall != 0)
-        {
-            printk(" | in syscall %s",
-                   debug_get_syscall_name(proc->current_syscall));
-        }
-#endif
-        printk("\n");
-
-        if (print_call_stack_user && proc->state != RUNNING)
-        {
-            printk("Call stack user:\n");
-            debug_print_call_stack_user(proc);
-        }
-        if (print_call_stack_kernel && proc->state != RUNNING)
-        {
-            printk("Call stack kernel:\n");
-            debug_print_call_stack_kernel(proc);
-        }
-        if (print_files)
-        {
-            printk("Open files:\n");
-            debug_print_open_files(proc);
-        }
-        if (print_page_table)
-        {
-            debug_vm_print_page_table(proc->pagetable);
-        }
+        struct process *proc = process_from_list(pos);
+        debug_print_process(print_call_stack_user, print_call_stack_kernel,
+                            print_files, print_page_table, proc);
     }
+    spin_unlock(&g_process_list.lock);
 }
 
 FILE_DESCRIPTOR fd_alloc(struct file *f)

@@ -20,6 +20,8 @@ For the [user space](../../userspace/userspace.md) [processes](../processes/proc
 | FFFF 9000 | FFFF 9FFF | proc 2 kernel stack | kalloc()          | R, W        |
 |           |           | ... to proc max     |                   |             |
 
+The kernel stacks of the [processes](../processes/processes.md) are only allocated and mapped if the process exists.
+
 ### RAM (bare metal)
 
 On bare-metal qemu the RAM starts at 0x8000.0000:

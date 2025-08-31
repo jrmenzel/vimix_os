@@ -19,7 +19,11 @@
 
 /// map kernel stacks beneath the trampoline,
 /// each surrounded by invalid guard pages.
-#define KSTACK(p) (TRAMPOLINE - ((p) + 1) * (PAGE_SIZE + KERNEL_STACK_SIZE))
+#define KSTACK_VA_FROM_INDEX(idx) \
+    (TRAMPOLINE - ((idx) + 1) * (PAGE_SIZE + KERNEL_STACK_SIZE))
+
+#define KSTACK_INDEX_FROM_VA(va) \
+    (((TRAMPOLINE - (va)) / (PAGE_SIZE + KERNEL_STACK_SIZE)) - 1)
 
 /// User memory layout.
 /// Address 400000:

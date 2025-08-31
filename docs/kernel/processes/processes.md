@@ -3,6 +3,9 @@
 
 The main struct to hold all data of one process is `struct process` (in Linux it's `struct task_struct`, in xv6 it's `struct proc`).
 
+All processes in the system are managed in the linked list `struct process_list g_process_list`. This struct also hold a bitmap of available [kernel stack addresses](../mm/memory_map_kernel.md). 
+
+
 ## Overview
 
 - The first user space process is created in `init_userspace()` ([init_userspace](init_userspace.md)).

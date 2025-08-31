@@ -2,15 +2,16 @@
 #pragma once
 
 #include <arch/context.h>
+#include <kernel/container_of.h>
 #include <kernel/kernel.h>
+#include <kernel/list.h>
 #include <kernel/spinlock.h>
 #include <kernel/vm.h>
+#include <lib/bitmap.h>
 
 /// State of a process (sleeping, runnable, etc.)
 enum process_state
 {
-    /// Indicates that the `process` does not hold a valid process
-    UNUSED,
     /// State of a new process which isn't fully setup
     USED,
     /// Sleeping, via `sleep()`
@@ -26,13 +27,26 @@ enum process_state
 
 #define MAX_PROC_DEBUG_NAME 16
 
+/// @brief There is one global process list g_process_list
+struct process_list
+{
+    struct list_head plist;  ///< list of all processes
+    struct spinlock lock;    ///< access lock for all read/write accesses to the
+                             ///< process linked list.
+    bitmap_t kernel_stack_in_use;  ///< keeps track which addresses are in use
+    struct spinlock kernel_stack_lock;  ///< lock for kernel_stack_in_use
+};
+
 /// Per-process state
 /// Central struct to schedule processes.
 ///
-/// Freed at free_process()
+/// Freed at proc_free()
 struct process
 {
-    struct spinlock lock;  ///< Access lock for this process
+    struct list_head plist;  ///< double linked list of all processes
+
+    struct spinlock lock;  ///< Access lock for this process (except the list
+                           ///< plist of all processes)
 
     // process->lock must be held when using these:
     enum process_state state;  ///< Process state
@@ -67,5 +81,6 @@ struct process
     int32_t debug_log_depth;  // debug
 };
 
-/// List of all user processes.
-extern struct process g_process_list[MAX_PROCS];
+extern struct process_list g_process_list;
+
+#define process_from_list(ptr) container_of(ptr, struct process, plist)

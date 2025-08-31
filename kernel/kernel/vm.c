@@ -13,7 +13,10 @@
 
 //
 // The kernel's page table: all memory is mapped to its real location.
+// Also the per process kernel stack is mapped to high memory.
+// protect modifications with g_kernel_pagetable_lock.
 pagetable_t g_kernel_pagetable;
+struct spinlock g_kernel_pagetable_lock;
 
 extern char end_of_text[];  // kernel.ld sets this to end of kernel code.
 
@@ -68,9 +71,6 @@ pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
     kvm_map_or_panic(kpage_table, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
                      PTE_RO_TEXT);
 
-    // allocate and map a kernel stack for each process.
-    init_per_process_kernel_stack(kpage_table);
-
     // map all found MMIO devices
     for (size_t i = 0; i < dev_list->dev_array_length; ++i)
     {
@@ -109,7 +109,10 @@ pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
 void kvm_init(struct Minimal_Memory_Map *memory_map,
               struct Devices_List *dev_list)
 {
+    spin_lock_init(&g_kernel_pagetable_lock, "kvm_lock");
+    spin_lock(&g_kernel_pagetable_lock);
     g_kernel_pagetable = kvm_make_kernel_pagetable(memory_map, dev_list);
+    spin_unlock(&g_kernel_pagetable_lock);
 }
 
 #if defined(__ARCH_32BIT)
@@ -690,6 +693,49 @@ int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
     {
         return -1;
     }
+}
+
+bool vm_trim_pagetable(pagetable_t pagetable, size_t va_removed)
+{
+    // find the page of the pagetable that mapped va_removed
+    pagetable_t parent_of_va_removed = pagetable;
+    pte_t *pte_of_parent_of_va_removed = NULL;
+    for (size_t level = PAGE_TABLE_MAX_LEVELS - 1; level > 0; level--)
+    {
+        size_t index = PAGE_TABLE_INDEX(level, va_removed);
+        pte_t *pte = &parent_of_va_removed[index];
+
+        if (!PTE_IS_VALID_NODE(*pte))
+        {
+            // the path to va_removed does not exist -> nothing to free
+            return false;
+        }
+        else if (PTE_IS_LEAF(*pte))
+        {
+            // a leaf pointing to a mapped page -> nothing to free
+            return false;
+        }
+
+        // this PTE points to a lower-level page table
+        pte_of_parent_of_va_removed = pte;
+        parent_of_va_removed = (pagetable_t)PTE_GET_PA(*pte);
+    }
+
+    for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
+    {
+        pte_t pte = parent_of_va_removed[i];
+        if (PTE_IS_VALID_NODE(pte))
+        {
+            // found a valid entry -> cannot free this page table
+            return false;
+        }
+    }
+
+    kfree(parent_of_va_removed);
+    *pte_of_parent_of_va_removed = 0;
+    // printk("freed a page table page: 0x%zd\n", (size_t)parent_of_va_removed);
+
+    return true;
 }
 
 #if defined(DEBUG)

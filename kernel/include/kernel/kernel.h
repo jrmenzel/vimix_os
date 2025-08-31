@@ -8,6 +8,9 @@
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x) / sizeof((x)[0]))
 
+// 32 or 64 depending on the architecture
+#define BITS_PER_SIZET (8 * sizeof(size_t))
+
 // clang-format off
 #define infinite_loop \
     _Pragma("GCC diagnostic push"); \

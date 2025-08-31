@@ -2,9 +2,11 @@
 
 ## General
 
-`schedule()` runs on all cores in an infinite loop after the boot code (see [life_cycle_cpu](../overview/life_cycle_cpu.md)).
+`scheduler()` runs on all cores in an infinite loop after the boot code (see [life_cycle_cpu](../overview/life_cycle_cpu.md)).
 When they find a run-able process, the switch to it (`context_switch()`).
 All processes have a [kernel](kernel.md) context which was active when they called `yield()` (e.g. from a timer [interrupts](../interrupts/interrupts.md)) or from when they were created.
+
+The scheduler only stops after an [IPI](../interrupts/IPI.md) indicating the system should [halt / reboot](../syscalls/reboot.md) or a `panic()` on another CPU occurred.
 
 From the processes perspective: [life_cycle_user_application](../overview/life_cycle_user_application.md).
 

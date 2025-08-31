@@ -4,10 +4,12 @@
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
 #include <kernel/page.h>
+#include <kernel/spinlock.h>
 #include <mm/pte.h>
 #include <mm/vm.h>
 
 extern pagetable_t g_kernel_pagetable;
+extern struct spinlock g_kernel_pagetable_lock;
 
 // Memory map filled in main from a device tree and used to init the free memory
 struct Minimal_Memory_Map
@@ -227,6 +229,15 @@ int32_t uvm_copy_in(pagetable_t pagetable, char *dst_pa, size_t src_va,
 /// @return 0 on success, -1 on failure.
 int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
                         size_t max);
+
+/// @brief Trim unused page table pages from the pagetable. E.g. after a leave
+/// was removed from the last level of the pagetable, the second last level
+/// might be empty and can be freed.
+/// @param pagetable The page table to trim.
+/// @param va_start Optional address where a page was unmapped to limit trim
+/// search to the path to that va.
+/// @return true if any page of the table page was freed.
+bool vm_trim_pagetable(pagetable_t pagetable, size_t va_removed);
 
 #if defined(DEBUG)
 /// @brief Debug print of the pagetable.
