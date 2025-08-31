@@ -11,4 +11,4 @@ If no file is provided, cat reads from [stdin](../../misc/stdio.md).
 ---
 **Up:** [user space](../userspace.md)
 
-**Misc:** [cat](cat.md) | [echo](echo.md) | [grep](grep.md) | [wc](wc.md) | [date](date.md) | [sleep](sleep.md) | [xxd](xxd.md)
+**Misc:** [cat](cat.md) | [echo](echo.md) | [grep](grep.md) | [wc](wc.md) | [date](date.md) | [sleep](sleep.md) | [time](time.md) | [xxd](xxd.md)

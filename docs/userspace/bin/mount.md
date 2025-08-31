@@ -15,4 +15,4 @@ Mounts a [file_system](../../kernel/file_system/file_system.md).
 ---
 **Up:** [user space](../userspace.md)
 
-**System:** [mount](mount.md) | [umount](umount.md) | [shutdown](shutdown.md) 
+**System:** [sh](sh.md) | [which](which.md) | [mount](mount.md) | [umount](umount.md) | [shutdown](shutdown.md) 

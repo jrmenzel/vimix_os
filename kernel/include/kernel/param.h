@@ -27,6 +27,8 @@
 #define CONFIG_DEBUG
 #endif  // DEBUG
 
+#define CONFIG_DEBUG_KALLOC
+
 #ifdef CONFIG_DEBUG
 /// adds extra runtime tests to check correct spinlock
 /// usage and stores an optional name per lock for debugging.

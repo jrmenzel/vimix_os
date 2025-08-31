@@ -47,6 +47,7 @@ OBJDUMP := $(TOOLPREFIX)objdump
 
 # for compiling userspace apps on the host platform
 CC_HOST := gcc
+AR_HOST := ar
 HOST_GCC_VERSION_AT_LEAST_12 := $(shell expr `$(CC_HOST) -dumpversion | cut -f1 -d.` \>= 12)
 HOST_GCC_VERSION_AT_LEAST_13 := $(shell expr `$(CC_HOST) -dumpversion | cut -f1 -d.` \>= 13)
 HOST_GCC_VERSION_AT_LEAST_14 := $(shell expr `$(CC_HOST) -dumpversion | cut -f1 -d.` \>= 14)

@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <vimixutils/path.h>
 
 #if defined(BUILD_ON_HOST)
 #include <linux/limits.h>
@@ -73,50 +74,18 @@ void sh_panic(char *);
 struct cmd *parsecmd(char *);
 void runcmd(struct cmd *) __attribute__((noreturn));
 
-int build_full_path(char *dst, const char *path, const char *file)
-{
-    strncpy(dst, path, PATH_MAX);
-    size_t len = strlen(dst);
-    if (dst[len - 1] != '/')
-    {
-        dst[len] = '/';
-        len++;
-    }
-    size_t name_len = strlen(file);
-    if (len + name_len > PATH_MAX - 1)
-    {
-        return -1;
-    }
-    strncpy(dst + len, file, PATH_MAX - len);
-
-    return 0;
-}
-
-const char *search_path[] = {"/usr/bin", "/usr/local/bin", NULL};
-
 void execute_command(struct execcmd *ecmd)
 {
-    if (ecmd->argv[0] == 0) exit(1);
+    if (ecmd->argv[0] == NULL) exit(1);
 
-    if (ecmd->argv[0][0] == '.' || ecmd->argv[0][0] == '/')
+    const char *full_path = find_program_in_path(ecmd->argv[0]);
+    if (full_path == NULL)
     {
-        // don't use the search path, e.g. for "./foo" or "/usr/bin/bar"
-        execv(ecmd->argv[0], ecmd->argv);
-    }
-    else
-    {
-        char full_path[PATH_MAX];
-        for (size_t search_path_index = 0;
-             search_path[search_path_index] != NULL; search_path_index++)
-        {
-            const char *current_search_path = search_path[search_path_index];
-            build_full_path(full_path, current_search_path, ecmd->argv[0]);
-            execv(full_path, ecmd->argv);
-        }
-        // execv only returns on error
         fprintf(stderr, "exec %s failed (%s)\n", ecmd->argv[0],
                 strerror(errno));
+        return;
     }
+    execv(full_path, ecmd->argv);
 }
 
 // Execute cmd.  Never returns.

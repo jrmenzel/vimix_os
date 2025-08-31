@@ -23,6 +23,7 @@
         "user_inc_path": [
             "${workspaceFolder}/kernel/include",
             "${workspaceFolder}/usr/lib/libc",
+            "${workspaceFolder}/usr/lib/libvimixutils",
             "${workspaceFolder}/usr/include"
         ]
       },
@@ -91,7 +92,8 @@
             "includePath": [
                 "/usr/include",
                 "/usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include",
-                "${workspaceFolder}/kernel/include"
+                "${workspaceFolder}/kernel/include",
+                "${workspaceFolder}/usr/lib/libvimixutils"
             ],
             "defines": [
                 "MEMORY_SIZE=64",

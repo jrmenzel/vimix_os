@@ -39,10 +39,12 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [wc](bin/wc.md) - count words and characters in a text file
 - [date](bin/date.md) - Prints date and time
 - [sleep](bin/sleep.md) - Pauses execution for N seconds
+- [time](bin/time.md) - Print execution time of an application
 - [dhrystone](local/bin/dhrystone.md) - A benchmark
 
 **System:**
 - [sh](bin/sh.md) - the shell
+- [which](bin/which.md) - finds programs in the search path
 - [mount](bin/mount.md) - mounts a [file_system](../kernel/file_system/file_system.md)
 - [umount](bin/umount.md) - unmounts a [file_system](../kernel/file_system/file_system.md)
 - [shutdown](bin/shutdown.md) - Halts or shuts down the OS
