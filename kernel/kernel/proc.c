@@ -489,12 +489,11 @@ void exit(int32_t status)
     // Give any children to init.
     reparent(proc);
 
+    spin_lock(&g_process_list.lock);
     // Parent might be sleeping in wait().
     // Note that the parent can't free the process while we still hold
     // the proc->lock, because it will acquire the lock before the free.
     spin_lock(&proc->lock);
-
-    spin_lock(&g_process_list.lock);
     wakeup_holding_plist_lock(proc->parent);
     spin_unlock(&g_process_list.lock);
 

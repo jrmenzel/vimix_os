@@ -295,12 +295,23 @@ void ipi_send_interrupt(cpu_mask mask, enum ipi_type type, void *data)
                 continue;
             }
 
+            // find pending IPI count
             size_t pending_count = 0;
             while ((pending_count < MAX_IPI_PENDING) &&
                    (c->ipi[pending_count].pending != IPI_NONE))
             {
                 pending_count++;
             }
+
+            // if exactly the same IPI is already pending, don't add
+            // another one
+            if ((pending_count != 0) &&
+                (c->ipi[pending_count - 1].pending == type) &&
+                (c->ipi[pending_count - 1].data == data))
+            {
+                continue;
+            }
+
             if (pending_count == MAX_IPI_PENDING)
             {
                 printk("IPI queue full on CPU %zd, dropping IPI %d\n", i, type);
@@ -320,7 +331,8 @@ void ipi_send_interrupt(cpu_mask mask, enum ipi_type type, void *data)
     unsigned long mask0 = (unsigned long)(mask & 0xFFFFFFFF);
     unsigned long mask1 = (unsigned long)(mask >> 32);
     ret = sbi_send_ipi(mask0, 0);
-    if (ret.error == SBI_SUCCESS) ret = sbi_send_ipi(mask1, 31);
+    if ((ret.error == SBI_SUCCESS) && (mask1 != 0))
+        ret = sbi_send_ipi(mask1, 31);
 #else
     ret = sbi_send_ipi((unsigned long)mask, 0);
 #endif
