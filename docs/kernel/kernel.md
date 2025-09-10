@@ -16,6 +16,8 @@ See [init_overview](overview/init_overview.md) to see how main() inits all subsy
 
 ## Subsystems
 
+Some [common_objects](overview/common_objects.md) are used in multiple subsystems. Some kernel objects are organized in in an [object oriented](overview/object_orientation.md) manner.
+
 ### Interrupt Handling
 
 See [interrupts](interrupts/interrupts.md), [IPI](interrupts/IPI.md) and [timer_interrupt](interrupts/timer_interrupt.md)
@@ -35,7 +37,7 @@ See [devices](devices/devices.md).
 
 ### Memory Management
 
-See [memory_management](mm/memory_management.md).
+For allocating kernel memory, see [memory_management](mm/memory_management.md). To learn how the virtual memory is layd out, see [memory_map_kernel](mm/memory_map_kernel.md) and [memory_map_process](mm/memory_map_process.md).
 
 ### Process Management
 

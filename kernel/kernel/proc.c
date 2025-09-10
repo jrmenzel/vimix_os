@@ -33,8 +33,8 @@ struct process_list g_process_list;
 /// Created in userspace_init(), the only process not created by fork()
 struct process *g_initial_user_process;
 
-pid_t g_next_pid = 1;
-struct spinlock g_pid_lock;
+/// next available process ID, lockfree via atomic fetch & add
+atomic_size_t g_next_pid = 1;
 
 extern void forkret();
 void wakeup_holding_plist_lock(void *chan);
@@ -104,11 +104,10 @@ bool proc_init_kernel_stack(pagetable_t kpage_table, struct process *proc,
 /// initialize the g_process_array table.
 void proc_init()
 {
-    spin_lock_init(&g_pid_lock, "nextpid");
     spin_lock_init(&g_wait_lock, "wait_lock");
 
     list_init(&g_process_list.plist);
-    spin_lock_init(&g_process_list.lock, "proc_list_lock");
+    rwspin_lock_init(&g_process_list.lock, "proc_list_lock");
     g_process_list.kernel_stack_in_use = bitmap_alloc(MAX_PROCESSES);
     spin_lock_init(&g_process_list.kernel_stack_lock, "proc_list_kstack_lock");
 }
@@ -140,15 +139,7 @@ struct process *get_current()
 }
 
 /// Get a new unique process ID
-pid_t alloc_pid()
-{
-    spin_lock(&g_pid_lock);
-    pid_t pid = g_next_pid;
-    g_next_pid = g_next_pid + 1;
-    spin_unlock(&g_pid_lock);
-
-    return pid;
-}
+pid_t alloc_pid() { return atomic_fetch_add(&g_next_pid, 1); }
 
 /// Creates a new process:
 /// If allocated, initialize state required to run in the kernel,
@@ -169,9 +160,22 @@ static struct process *alloc_process()
 
     // kernel stack
     proc->kstack = proc_get_kernel_stack();
-    if (proc->kstack == 0 ||
-        !proc_init_kernel_stack(g_kernel_pagetable, proc, proc->kstack))
+    if (proc->kstack == 0)
     {
+        proc_free(proc);
+        return NULL;
+    }
+
+    bool pagetable_updated =
+        proc_init_kernel_stack(g_kernel_pagetable, proc, proc->kstack);
+    if (pagetable_updated == false)
+    {
+        // a bit special case: free_proc() expects the kernel stack to be set in
+        // the pagetable if proc->kstack != 0is set. So free the kernel stack
+        // part that is not the pagetable manually here. proc_put() will call
+        // free_proc().
+        proc_free_kernel_stack(proc->kstack);
+        proc->kstack = 0;
         proc_free(proc);
         return NULL;
     }
@@ -312,9 +316,9 @@ void userspace_init()
     g_initial_user_process->state = RUNNABLE;
 
     // add to process list
-    spin_lock(&g_process_list.lock);
+    rwspin_write_lock(&g_process_list.lock);
     list_add_tail(&g_initial_user_process->plist, &g_process_list.plist);
-    spin_unlock(&g_process_list.lock);
+    rwspin_write_unlock(&g_process_list.lock);
 
     spin_unlock(&g_initial_user_process->lock);
 }
@@ -429,9 +433,9 @@ ssize_t fork()
     spin_unlock(&np->lock);
 
     // add to process list
-    spin_lock(&g_process_list.lock);
+    rwspin_write_lock(&g_process_list.lock);
     list_add_tail(&np->plist, &g_process_list.plist);
-    spin_unlock(&g_process_list.lock);
+    rwspin_write_unlock(&g_process_list.lock);
 
     return pid;
 }
@@ -441,7 +445,7 @@ ssize_t fork()
 void reparent(struct process *proc)
 {
     struct list_head *pos;
-    spin_lock(&g_process_list.lock);
+    rwspin_read_lock(&g_process_list.lock);
     list_for_each(pos, &g_process_list.plist)
     {
         struct process *pp = process_from_list(pos);
@@ -451,7 +455,7 @@ void reparent(struct process *proc)
             wakeup_holding_plist_lock(g_initial_user_process);
         }
     }
-    spin_unlock(&g_process_list.lock);
+    rwspin_read_unlock(&g_process_list.lock);
 }
 
 /// Exit the current process.  Does not return.
@@ -489,13 +493,13 @@ void exit(int32_t status)
     // Give any children to init.
     reparent(proc);
 
-    spin_lock(&g_process_list.lock);
+    rwspin_read_lock(&g_process_list.lock);
     // Parent might be sleeping in wait().
     // Note that the parent can't free the process while we still hold
     // the proc->lock, because it will acquire the lock before the free.
     spin_lock(&proc->lock);
     wakeup_holding_plist_lock(proc->parent);
-    spin_unlock(&g_process_list.lock);
+    rwspin_read_unlock(&g_process_list.lock);
 
     proc->xstate = status;
     proc->state = ZOMBIE;
@@ -518,7 +522,7 @@ pid_t wait(int32_t *wstatus)
         // Scan through table looking for exited children.
         bool havekids = false;
         struct list_head *pos;
-        spin_lock(&g_process_list.lock);
+        rwspin_write_lock(&g_process_list.lock);
         list_for_each(pos, &g_process_list.plist)
         {
             struct process *pp = process_from_list(pos);
@@ -540,10 +544,11 @@ pid_t wait(int32_t *wstatus)
                                      (char *)&pp->xstate,
                                      sizeof(pp->xstate)) < 0)
                     {
+                        // error copying out status
                         spin_unlock(&pp->lock);
                         spin_unlock(&g_wait_lock);
 
-                        spin_unlock(&g_process_list.lock);
+                        rwspin_write_unlock(&g_process_list.lock);
                         return -EFAULT;
                     }
 
@@ -554,13 +559,13 @@ pid_t wait(int32_t *wstatus)
 
                     spin_unlock(&g_wait_lock);
 
-                    spin_unlock(&g_process_list.lock);
+                    rwspin_write_unlock(&g_process_list.lock);
                     return pid;
                 }
                 spin_unlock(&pp->lock);
             }
         }
-        spin_unlock(&g_process_list.lock);
+        rwspin_write_unlock(&g_process_list.lock);
 
         // No point waiting if we don't have any children.
         if (!havekids || proc_is_killed(proc))
@@ -675,14 +680,13 @@ void forkret()
         load_init_process(init_path);
         printk("forkret() loading %s... OK\n", init_path);
 
-        __sync_synchronize();  // other cores must see first = false
+        atomic_thread_fence(
+            memory_order_seq_cst);  // other cores must see first = false
     }
 
     return_to_user_mode();
 }
 
-/// Atomically release lock and sleep on chan.
-/// Reacquires lock when awakened.
 void sleep(void *chan, struct spinlock *lk)
 {
     struct process *proc = get_current();
@@ -713,8 +717,6 @@ void sleep(void *chan, struct spinlock *lk)
 
 void wakeup_holding_plist_lock(void *chan)
 {
-    DEBUG_ASSERT_CPU_HOLDS_LOCK(&g_process_list.lock);
-
     struct process *current_process = get_current();
 
     // if (chan != &g_ticks) printk("wakeup 0x%zx\n", (size_t)chan);
@@ -736,14 +738,12 @@ void wakeup_holding_plist_lock(void *chan)
     }
 }
 
-/// Wake up all processes sleeping on chan.
-/// Must be called without any proc->lock.
 void wakeup(void *chan)
 {
     spin_lock(&g_wait_lock);
-    spin_lock(&g_process_list.lock);
+    rwspin_read_lock(&g_process_list.lock);
     wakeup_holding_plist_lock(chan);
-    spin_unlock(&g_process_list.lock);
+    rwspin_read_unlock(&g_process_list.lock);
     spin_unlock(&g_wait_lock);
 }
 
@@ -759,7 +759,7 @@ ssize_t proc_send_signal(pid_t pid, int32_t sig)
     }
 
     struct list_head *pos;
-    spin_lock(&g_process_list.lock);
+    rwspin_read_lock(&g_process_list.lock);
     list_for_each(pos, &g_process_list.plist)
     {
         struct process *proc = process_from_list(pos);
@@ -775,13 +775,13 @@ ssize_t proc_send_signal(pid_t pid, int32_t sig)
             }
             spin_unlock(&proc->lock);
 
-            spin_unlock(&g_process_list.lock);
+            rwspin_read_unlock(&g_process_list.lock);
             return 0;
         }
         spin_unlock(&proc->lock);
     }
 
-    spin_unlock(&g_process_list.lock);
+    rwspin_read_unlock(&g_process_list.lock);
     return -ESRCH;
 }
 
@@ -1037,14 +1037,14 @@ void debug_print_process_list(bool print_call_stack_user,
     printk("\nProcess list (%zd)\n", (size_t)smp_processor_id());
 
     struct list_head *pos;
-    spin_lock(&g_process_list.lock);
+    rwspin_read_lock(&g_process_list.lock);
     list_for_each(pos, &g_process_list.plist)
     {
         struct process *proc = process_from_list(pos);
         debug_print_process(print_call_stack_user, print_call_stack_kernel,
                             print_files, print_page_table, proc);
     }
-    spin_unlock(&g_process_list.lock);
+    rwspin_read_unlock(&g_process_list.lock);
 }
 
 FILE_DESCRIPTOR fd_alloc(struct file *f)

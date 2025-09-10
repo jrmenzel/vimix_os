@@ -16,44 +16,57 @@ Compile and try out:
 
 How it looks like (text mode via UART only) running on [qemu](docs/run_on_qemu.md):
 ```
-init device ns16550a... OK (1,0)
+init device riscv,plic0... OK (8,0)
+init device ns16550a... OK (15,0)
 
-VIMIX OS 64 bit (bare metal) kernel version 2c539f9 is booting
-95KB of Kernel code
-8KB of read only data
-1KB of data
-76KB of bss / uninitialized data
-
+VIMIX OS 64 bit (RISC V) kernel version 50dd26a is booting
+87KB of Kernel code
+12KB of read only data
+0KB of data
+55KB of bss / uninitialized data
+Console: ns16550a
+Timer source: sstc extension
 init memory management...
     RAM S: 0x80000000
- KERNEL S: 0x80000000
- KERNEL E: 0x8003d000
+ KERNEL S: 0x80200000
+ KERNEL E: 0x80239000
     DTB S: 0x83e00000
-    DTB E: 0x83e01c20
-    RAM E: 0x84000000
+    DTB E: 0x83e0235c
+    RAM E: 0x84000000 - size: 64 MB
 init process and syscall support...
 init filesystem...
 init remaining devices...
-init device virtio,mmio... OK (2,0)
-init device google,goldfish-rtc... OK (6,0)
-init device syscon... OK (7,0)
-init device riscv,plic0... OK (8,0)
-init device riscv,clint0... OK (9,0)
 init device /dev/null... OK (3,0)
 init device /dev/zero... OK (4,0)
-fs root device: virtio,mmio (2,0)
+init device /dev/random... OK (12,0)
+init device google,goldfish-rtc... OK (6,0)
+init device syscon... register syscon reboot/shutdown functions
+OK (7,0)
+init device virtio,mmio... OK (1,0)
+init device virtio,mmio... OK (1,1)
+fs root device: virtio,mmio (1,0)
+SBI implementation: OpenSBI (version 65541)
+SBI specification: v2.0
+SBI extension SRST detected: register SBI reboot/shutdown functions
 init userspace...
-Memory used: 472kb - 64812kb free
-hart 3 starting 
-hart 2 starting 
-hart 1 starting 
-hart 0 starting (init hart)
-init: starting /usr/bin/sh
+Memory used: 84kb - 63164kb free
+starting additional harts via SBI HSM extension
+CPU 0 starting 
+CPU 1 starting 
+CPU 3 starting 
+CPU 2 starting (boot CPU)
+forkret() mounting /... OK
+forkret() loading /usr/bin/init... OK
+init mounting /dev... OK
+init mounting /home... OK
+init starting /usr/bin/sh
 $ ls
-drwxr-xr-x      48 B usr
-.rwxr-xr-x    3078 B README.md
-drwxr-xr-x      80 B dev
-drwxr-xr-x      32 B home
+drwxr-xr-x      64 B usr
+.rwxr-xr-x    4515 B README.md
+drw-rw----       0 B dev
+drwxr-xr-x    1024 B etc
+drwxr-xr-x     112 B home
+drwxr-xr-x    7168 B tests
 $ cat README.md | grep RISC | wc
 3 66 496 
 $ 
@@ -62,9 +75,9 @@ $
 
 ## Changes from xv6
 
-- Added documentation in `docs`.
+- Added [documentation](docs/overview_directories.md) in `docs`.
 - Cleanups: Reorganized code, separate headers, renamed many functions and variables, using stdint types, general refactoring, reduced number of GOTOs, ...
-- Support 32-bit RISC V (in addition to 64-bit), both "bare metal" and running in a [SBI](docs/riscv/SBI.md) environment. Inspired by a 32-bit xv6 port by Michael Schröder (https://github.com/x653/xv6-riscv-fpga/tree/main/xv6-riscv).
+- Support 32-bit RISC V (in addition to 64-bit), both booting in [M-mode](docs/riscv/M-mode.md) and [S-mode](docs/riscv/S-mode.md) in a [SBI](docs/riscv/SBI.md) environment. Inspired by a 32-bit xv6 port by Michael Schröder (https://github.com/x653/xv6-riscv-fpga/tree/main/xv6-riscv).
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
 - Changed [memory map](docs/kernel/mm/memory_map_process.md); app stacks grow dynamically.
 - Added applications:
@@ -74,14 +87,14 @@ $
 	- [reboot](docs/kernel/syscalls/reboot.md)
 	- [get_time](docs/kernel/syscalls/get_time.md)
 	- [lseek](docs/kernel/syscalls/lseek.md)
-	- split unlink() into [unlink](docs/kernel/syscalls/unlink.md) and [rmdir](docs/kernel/syscalls/rmdir.md)
+	- split `unlink()` into [unlink](docs/kernel/syscalls/unlink.md) and [rmdir](docs/kernel/syscalls/rmdir.md)
 	- [mount](docs/kernel/syscalls/mount.md) and [umount](docs/kernel/syscalls/umount.md)
 - Support multiple [devices](docs/kernel/devices/devices.md), not just two hard coded ones.
 - Added devices:
 	- [/dev/null](docs/userspace/dev/null.md), [/dev/zero](docs/userspace/dev/zero.md), [/dev/random](docs/userspace/dev/random.md)
 	- [ramdisk](docs/kernel/devices/ramdisk.md)
 	- [jh7110 temperature sensor](docs/userspace/dev/temp.md)
-- [xv6 file system](docs/kernel/file_system/xv6fs/xv6fs.md) was changed to differentiate between character and block devices. It was also moved behind a [virtual file system](docs/kernel/file_system/vfs.md) abstraction.
+- [xv6 file system](docs/kernel/file_system/xv6fs/xv6fs.md) was changed to differentiate between character and block [devices](docs/kernel/devices/devices.md). It was also moved behind a [virtual file system](docs/kernel/file_system/vfs.md) abstraction.
 - Parse the [device tree](docs/misc/device_tree.md) at [boot](docs/kernel/overview/boot_process.md).
 - Added [/dev](docs/kernel/file_system/devfs/devfs.md) as a special file system exposing all devices.
 - Boot in [M-mode](docs/riscv/M-mode.md) now mimics [SBI](docs/riscv/SBI.md) to the [S-mode](docs/riscv/S-mode.md) kernel.

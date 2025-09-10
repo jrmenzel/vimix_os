@@ -12,7 +12,7 @@
 struct process *get_next_runnable_process()
 {
     struct list_head *pos;
-    spin_lock(&g_process_list.lock);
+    rwspin_write_lock(&g_process_list.lock);
     list_for_each(pos, &g_process_list.plist)
     {
         struct process *proc = process_from_list(pos);
@@ -25,13 +25,13 @@ struct process *get_next_runnable_process()
                 list_del(pos);
                 list_add_tail(pos, &g_process_list.plist);
 
-                spin_unlock(&g_process_list.lock);
+                rwspin_write_unlock(&g_process_list.lock);
                 return proc;  // return locked process
             }
             spin_unlock(&proc->lock);
         }
     }
-    spin_unlock(&g_process_list.lock);
+    rwspin_write_unlock(&g_process_list.lock);
     return NULL;
 }
 

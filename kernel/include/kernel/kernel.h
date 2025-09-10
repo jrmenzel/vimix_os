@@ -5,6 +5,13 @@
 #include <kernel/printk.h>
 #include <kernel/types.h>
 
+// can get included by userspace apps which can be compiled on the host
+#if defined(BUILD_ON_HOST)
+#include <stdatomic.h>
+#else
+#include <kernel/stdatomic.h>
+#endif  // BUILD_ON_HOST
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x) / sizeof((x)[0]))
 

@@ -1,6 +1,16 @@
 # Overview of the project directories
 
 
+## .vscode
+
+VSCode project files setting up defines and include paths for IntelliSense. Also providing [debug](debugging.md) configs.
+
+
+## boot
+
+Files required to boot on some systems, e.g. [VisionFive2](run_on_visionfive2.md). These are files that do not end up in the [file system](kernel/file_system/file_system.md) image for VIMIX. Also includes [device tree](misc/device_tree.md) files.
+
+
 ## build
 
 Temp build files. See [build_instructions](build_instructions.md) on how to compile the system.
@@ -21,16 +31,24 @@ The VIMIX [kernel](kernel/kernel.md) contains all the code that runs in [S-mode]
 
 The sub-directory structure was inspired by Linux:
 - `arch/riscv` ([RISC V](riscv/RISCV.md)) (ideally) all architecture dependent code
+	- `<arch>/mm` ([memory_management](kernel/mm/memory_management.md))
 - `drivers` ([devices](kernel/devices/devices.md)) drivers by category
 - `fs` ([file_system](kernel/file_system/file_system.md))
+	- `fs/devfs` virtual [devfs](kernel/file_system/devfs/devfs.md) file system exposing all [devices](kernel/devices/devices.md).
 	- `fs/xv6fs` [xv6fs](kernel/file_system/xv6fs/xv6fs.md) is a simple file system based on the one from xv6 (which was inspired by the UNIX 6 file system)
 - `include` kernel API for kernel code (e.g. drivers)
 	- [user space](userspace/userspace.md) kernel API: `usr/include/sys`
 - `init` ([init_overview](kernel/overview/init_overview.md)) boot and init of all subsystems
+- `ipc` inter process communications, currently [pipes](kernel/syscalls/pipe.md).
 - `kernel` ([kernel](kernel/kernel.md)) primary functions of the OS like process management
 - `lib` libs shared by different kernel modules
 	- `lib/libfdt` [device tree](docs/misc/device_tree.md) parsing lib from https://github.com/dgibson/dtc.
-- `mm` ([memory_management](kernel/mm/memory_management.md))
+- `syscalls` entry points of [system calls](kernel/syscalls/syscalls.md).
+
+
+## root
+
+This directory will become the root of the [file system](kernel/file_system/file_system.md) image. Meaning everything in here will get copied into the image file VIMIX will [mount](userspace/bin/mount.md) as `/`. During the [build process](build_instructions.md) this gets first copied to `build/root` and compiled [userspace](userspace/userspace.md) applications get added before creating the image file.
 
 
 ## tools

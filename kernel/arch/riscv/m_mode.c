@@ -113,7 +113,7 @@ void m_mode_start(size_t hart_id)
     cpu_set_m_mode_trap_vector(m_mode_trap_vector);
     cpu_enable_m_mode_interrupts();
 
-    __sync_synchronize();
+    atomic_thread_fence(memory_order_seq_cst);
 }
 
 // only the boot hart runs this
@@ -122,7 +122,7 @@ void m_mode_boot_hart_setup(size_t hart_id, size_t dtb)
     g_m_mode_cpu_data[hart_id].start_addr = (size_t)_entry_s_mode;
     g_m_mode_cpu_data[hart_id].opaque = dtb;
     g_m_mode_cpu_data[hart_id].hart_status = SBI_HSM_HART_STARTED;
-    __sync_synchronize();
+    atomic_thread_fence(memory_order_seq_cst);
 }
 
 struct ret_value
@@ -238,7 +238,7 @@ struct sbiret m_mode_handle_sbi_call(xlen_t arg0, xlen_t arg1, xlen_t arg2,
             g_m_mode_cpu_data[hart_id].opaque = arg2;
             g_m_mode_cpu_data[hart_id].int_cause = INT_CAUSE_START;
             g_m_mode_cpu_data[hart_id].hart_status = SBI_HSM_HART_START_PENDING;
-            __sync_synchronize();
+            atomic_thread_fence(memory_order_seq_cst);
             ret.error = SBI_SUCCESS;
 
             // Trigger software interrupt on remote hart
@@ -246,7 +246,7 @@ struct sbiret m_mode_handle_sbi_call(xlen_t arg0, xlen_t arg1, xlen_t arg2,
         }
         else if (fid == SBI_HSM_HART_STATUS)
         {
-            __sync_synchronize();
+            atomic_thread_fence(memory_order_seq_cst);
             ret.value = g_m_mode_cpu_data[arg0].hart_status;
             ret.error = SBI_SUCCESS;
         }

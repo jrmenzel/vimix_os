@@ -57,6 +57,7 @@ Character devices have read / write functions for variable length of strings.
 - [console](../../userspace/dev/console.md)
 - [null](../../userspace/dev/null.md)
 - [zero](../../userspace/dev/zero.md)
+- jh7110_temp - a temperature sensor on the [VisionFive2](../../run_on_visionfive2.md).
 
 
 ---

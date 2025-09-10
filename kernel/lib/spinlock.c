@@ -15,7 +15,7 @@
 /// initializes a spinlock
 void spin_lock_init(struct spinlock *lk, char *name_for_debug)
 {
-    lk->locked = false;
+    atomic_init(&lk->locked, false);
 #ifdef CONFIG_DEBUG_SPINLOCK
     lk->name = name_for_debug;
     lk->cpu = NULL;
@@ -47,22 +47,12 @@ void spin_lock(struct spinlock *lk)
                                                 // deadlock.
     DEBUG_ASSERT_CPU_DOES_NOT_HOLD_LOCK(lk);
 
-    // sync_lock_test_and_set() is a GCC build-in function
-    // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
-    //   a5 = 1
-    //   s1 = &lk->locked
-    //   amoswap.w.aq a5, a5, (s1)
-    while (__sync_lock_test_and_set(&lk->locked, true) != false)
+    while (atomic_exchange_explicit(&lk->locked, true, memory_order_acquire) !=
+           false)
     {
         // while the lock is held by someone else, keep trying
         // -> this is where the name comes from
     }
-
-    // Tell the C compiler and the processor to not move loads or stores
-    // past this point, to ensure that the critical section's memory
-    // references happen strictly after the lock is acquired.
-    // On RISC-V, this emits a fence instruction.
-    __sync_synchronize();
 
     debug_test_lock(lk);
 }
@@ -74,17 +64,14 @@ bool spin_trylock(struct spinlock *lk)
     DEBUG_ASSERT_CPU_DOES_NOT_HOLD_LOCK(lk);
 
     // if already locked cleanup and return false
-    if (__sync_lock_test_and_set(&lk->locked, true) == true)
+    if (atomic_exchange_explicit(&lk->locked, true, memory_order_acquire) ==
+        true)
     {
         cpu_pop_disable_device_interrupt_stack();
         return false;
     }
 
-    // if it was unlocked, it's now locked -> memory barrier and return true
-    __sync_synchronize();
-
     debug_test_lock(lk);
-
     return true;
 }
 
@@ -98,22 +85,10 @@ void spin_unlock(struct spinlock *lk)
     lk->cpu = NULL;
 #endif  // CONFIG_DEBUG_SPINLOCK
 
-    // Tell the C compiler and the CPU to not move loads or stores
-    // past this point, to ensure that all the stores in the critical
-    // section are visible to other CPUs before the lock is released,
-    // and that loads in the critical section occur strictly before
-    // the lock is released.
-    // On RISC-V, this emits a fence instruction.
-    __sync_synchronize();
-
-    // Release the lock, equivalent to lk->locked = 0.
-    // This code doesn't use a C assignment, since the C standard
-    // implies that an assignment might be implemented with
-    // multiple store instructions.
-    // On RISC-V, sync_lock_release turns into an atomic swap:
-    //   s1 = &lk->locked
-    //   amoswap.w zero, zero, (s1)
-    __sync_lock_release(&lk->locked);
+    // Release the lock, equivalent to lk->locked = false.
+    // All memory writes before the unlock are visible to other
+    // CPUs that acquire this lock afterwards.
+    atomic_store_explicit(&lk->locked, false, memory_order_release);
 
     cpu_pop_disable_device_interrupt_stack();
 }
@@ -123,6 +98,6 @@ void spin_unlock(struct spinlock *lk)
 /// Interrupts must be off.
 bool spin_lock_is_held_by_this_cpu(struct spinlock *lk)
 {
-    return (lk->locked && lk->cpu == get_cpu());
+    return (atomic_load(&lk->locked) && lk->cpu == get_cpu());
 }
 #endif  // CONFIG_DEBUG_SPINLOCK

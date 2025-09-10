@@ -30,7 +30,7 @@
 #define CONFIG_DEBUG_KALLOC
 
 #ifdef CONFIG_DEBUG
-/// adds extra runtime tests to check correct spinlock
+/// adds extra runtime tests to check correct spinlock and rwspinlock
 /// usage and stores an optional name per lock for debugging.
 #define CONFIG_DEBUG_SPINLOCK
 

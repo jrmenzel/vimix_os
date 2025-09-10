@@ -5,6 +5,7 @@
 #include <kernel/container_of.h>
 #include <kernel/kernel.h>
 #include <kernel/list.h>
+#include <kernel/rwspinlock.h>
 #include <kernel/spinlock.h>
 #include <kernel/vm.h>
 #include <lib/bitmap.h>
@@ -31,7 +32,7 @@ enum process_state
 struct process_list
 {
     struct list_head plist;  ///< list of all processes
-    struct spinlock lock;    ///< access lock for all read/write accesses to the
+    struct rwspinlock lock;  ///< access lock for all read/write accesses to the
                              ///< process linked list.
     bitmap_t kernel_stack_in_use;  ///< keeps track which addresses are in use
     struct spinlock kernel_stack_lock;  ///< lock for kernel_stack_in_use

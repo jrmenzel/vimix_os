@@ -31,7 +31,7 @@ void system_shutdown()
                g_cpus[i].state != CPU_PANICKED)
         {
             // wait for other existing (!CPU_UNUSED) CPUs to halt or panic
-            __sync_synchronize();
+            atomic_thread_fence(memory_order_seq_cst);
         }
     }
 

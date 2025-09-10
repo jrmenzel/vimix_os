@@ -1,12 +1,14 @@
 # Object Orientation in the Kernel
 
+Some objects (like [devices](../devices/devices.md)) use object orientation to inherit from common base classes.
+
 ## Methods
 
 Class methods are stored in virtual function tables named `struct_name_` + `ops` (this can be found in Linux as well).
 
 ## Derived objects
 
-Assuming the derived struct always places the base struct as the first member, any pointer to the derived type can be cased to a pointer of the base to access the members.
+Assuming the derived struct always places the base struct as the first member, any pointer to the derived type can be cased to a pointer of the base to access the members. But this insn't very robust and save.
 
 ```C
 struct Base
@@ -21,9 +23,11 @@ struct Derived_Class
 };
 ```
 
-Using compiler tricks, the offset of the base struct inside of the derived struct can be found. With it, the base can be "cast" into the derived class even if it was not the first member. This is done in the macro `container_of` which can also be found in the Linux kernel.
+Using compiler tricks, the offset of the base struct inside of the derived struct can be found (instead of assuming it to be zero and just doing a cast). With this offset, the base can be cast safely into the derived class even if it was not the first member. This is done in the macro `container_of` which can also be found in the Linux kernel.
 
+Objects often define a macro based on `container_of`: `derived_from_base(base *)`.
 
-## Used where
+---
+**Overview:** [kernel](../kernel.md)
 
-[devices](../devices/devices.md)
+**Related:** [common_objects](common_objects.md) | [object_orientation](object_orientation.md)

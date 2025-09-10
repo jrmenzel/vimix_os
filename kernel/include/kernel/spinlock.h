@@ -2,15 +2,14 @@
 #pragma once
 
 #include <kernel/kernel.h>
+#include <kernel/stdatomic.h>
 
 struct cpu;
 
 /// Mutual exclusion lock.
 struct spinlock
 {
-    // On RISC V the atomic exchange operation works on 32bit, so use
-    // (u)int32_t.
-    volatile uint32_t locked;  ///< Is the lock held?
+    atomic_bool locked;  ///< Is the lock held?
 
 #ifdef CONFIG_DEBUG_SPINLOCK
     struct cpu *cpu;  ///< The CPU holding the lock.

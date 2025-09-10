@@ -171,6 +171,7 @@ FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
 
 void file_close(struct file *f)
 {
+    DEBUG_EXTRA_PANIC(f != NULL, "file_close() on NULL");
     spin_lock(&g_file_table.lock);
     if (f->ref < 1)
     {

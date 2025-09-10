@@ -19,7 +19,7 @@ typedef __gnuc_va_list va_list;
 
 #else  // __GNUC__
 
-// Dummie defines for syntax highlighting in VStudio
+// Dummie defines for syntax highlighting in VSCode etc.
 #pragma error "not intended to be compiled, add compiler support?"
 
 typedef void *va_list;

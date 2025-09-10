@@ -237,7 +237,7 @@ void init_by_first_thread(void *dtb)
     g_timebase_frequency = dtb_get_timebase(dtb);
 
     // full memory barrier (gcc buildin):
-    __sync_synchronize();
+    atomic_thread_fence(memory_order_seq_cst);
     g_global_init_done = GLOBAL_INIT_DONE;
 
     ipi_init();

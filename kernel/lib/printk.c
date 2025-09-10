@@ -68,12 +68,12 @@ void panic(char* error_message)
 {
     g_printk.locking = false;
     g_kernel_panicked++;  // freeze scheduling on other CPUs
-    __sync_synchronize();
+    atomic_thread_fence(memory_order_seq_cst);
     cpu_disable_interrupts();
     struct cpu* this_cpu = get_cpu();
     this_cpu->state = CPU_PANICKED;
 
-    __sync_synchronize();
+    atomic_thread_fence(memory_order_seq_cst);
 
     printk("\n\nKernel PANIC on CPU %zd: %s\n", smp_processor_id(),
            error_message);
