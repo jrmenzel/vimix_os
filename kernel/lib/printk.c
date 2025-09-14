@@ -95,7 +95,7 @@ void panic(char* error_message)
     // print the kernel call stack:
     debug_print_call_stack_kernel_fp((size_t)__builtin_frame_address(0));
 
-    if (this_cpu && this_cpu->proc)
+    if (this_cpu->proc)
     {
         struct process* proc = this_cpu->proc;
         printk(" Process %s (PID: %d)", proc->name, proc->pid);

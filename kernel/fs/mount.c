@@ -9,6 +9,7 @@
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
+#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <kernel/mount.h>
@@ -26,48 +27,28 @@ dev_t ROOT_DEVICE_NUMBER;
 /// during FS tree traversal in namex()
 struct super_block *ROOT_SUPER_BLOCK = NULL;
 
-/// @brief One super block per mounted file system, free entries are indicated
-/// by an invalid (0) device number.
-struct super_block g_active_file_systems[MAX_MOUNTED_FILE_SYSTEMS] = {0};
-
 /// @brief Lock to protect the mount/umount "inner" calls (after input
 /// validation / error checks). This means only one process can mount or umount
 /// at a time, but that limitation is fine.
 struct sleeplock g_mount_lock;
 
-/// @brief Returns an unused super_block for mounting.
+/// @brief Returns a new super_block for mounting.
 ///        Indirectly protected by g_mount_lock.
-struct super_block *get_free_super_block()
+struct super_block *sb_alloc()
 {
-    for (size_t i = 0; i < MAX_MOUNTED_FILE_SYSTEMS; ++i)
-    {
-        if (g_active_file_systems[i].dev == INVALID_DEVICE)
-        {
-            return &g_active_file_systems[i];
-        }
-    }
-    return NULL;
+    struct super_block *sb = kmalloc(sizeof(struct super_block));
+    if (sb == NULL) return NULL;
+    memset(sb, 0, sizeof(*sb));
+
+    kobject_init(&sb->kobj, NULL);
+
+    return sb;
 }
 
 /// @brief Frees a super_block during unmounting.
 ///        Indirectly protected by g_mount_lock.
 /// @param sb Super block of unmounted FS to free.
-void free_super_block(struct super_block *sb)
-{
-    for (size_t i = 0; i < MAX_MOUNTED_FILE_SYSTEMS; ++i)
-    {
-        if (&g_active_file_systems[i] == sb)
-        {
-            // call destructor
-            // g_active_file_systems[i].s_type->kill_sb(sb);
-            // mark entry as free
-            inode_put(sb->imounted_on);
-            inode_put(sb->s_root);
-            sb->imounted_on = NULL;
-            sb->dev = INVALID_DEVICE;
-        }
-    }
-}
+void free_super_block(struct super_block *sb) { kfree(sb); }
 
 ssize_t mount(const char *source, const char *target,
               const char *filesystemtype, unsigned long mountflags,
@@ -175,7 +156,7 @@ ssize_t mount_internal(dev_t source, struct inode *i_target,
                        struct file_system_type *filesystemtype,
                        unsigned long mountflags, size_t addr_data)
 {
-    struct super_block *sb = get_free_super_block();
+    struct super_block *sb = sb_alloc();
     if (sb == NULL) return -ENOMEM;
 
     sb->dev = source;
@@ -213,6 +194,12 @@ ssize_t mount_internal(dev_t source, struct inode *i_target,
         sb->imounted_on = VFS_INODE_DUP(i_target);
         inode_unlock(i_target);
     }
+
+    // add to kobject tree
+    kobject_add(&sb->kobj, &g_kobjects_fs, "%s_on_(%d,%d)", sb->s_type->name,
+                MAJOR(sb->dev), MINOR(sb->dev));
+    kobject_put(
+        &sb->kobj);  // drop reference now that the kobject tree holds one
 
     return 0;
 }
@@ -269,6 +256,8 @@ ssize_t umount_internal(struct inode *i_target_mountpoint,
 {
     DEBUG_EXTRA_ASSERT(i_target_mountpoint->is_mounted_on != NULL,
                        "imounted_on not set on mountpoint");
+
+    kobject_del(&sb->kobj);  // remove from kobject tree
 
     // assume target to be locked
     sb->s_type->kill_sb(sb);  // free file system specific data

@@ -235,10 +235,15 @@ void plic_init_per_cpu()
     {
         irq_enable_flags[block] = 0;
     }
-    for (size_t i = 0; i < MAX_DEVICES * MAX_MINOR_DEVICES; ++i)
+
+    // enable IRQs of all registered devices:
+    rwspin_read_lock(&g_kobjects_dev.children_lock);
+    struct list_head *pos;
+    list_for_each(pos, &g_kobjects_dev.children)
     {
-        struct Device *dev = g_devices[i];
-        if (dev && (dev->irq_number != INVALID_IRQ_NUMBER))
+        struct kobject *kobj = kobject_from_child_list(pos);
+        struct Device *dev = device_from_kobj(kobj);
+        if (dev->irq_number != INVALID_IRQ_NUMBER)
         {
             size_t block = dev->irq_number / 32;
             size_t enable_bit = dev->irq_number % 32;
@@ -249,11 +254,12 @@ void plic_init_per_cpu()
             {
                 // set the default priority in case the device did not call
                 // plic_set_interrupt_priority() before (or the prio was
-                // lost as the PLIC was not initialized yes)
+                // lost as the PLIC was not initialized yet)
                 plic_set_interrupt_priority(dev->irq_number, 1);
             }
         }
     }
+    rwspin_read_unlock(&g_kobjects_dev.children_lock);
 
     size_t context = plic_get_this_harts_s_context();
     plic_enable_interrupts(context, irq_enable_flags);

@@ -56,9 +56,7 @@ void rwspin_read_lock(struct rwspinlock *lk)
         // -> this is where the name comes from
     }
 
-    // size_t others =
     atomic_fetch_add_explicit(&lk->readers, 1, memory_order_acquire);
-    // if (others != 0) printk("readers %zd\n", others + 1);
 
     // unlock:
     atomic_store_explicit(&lk->locked, false, memory_order_release);

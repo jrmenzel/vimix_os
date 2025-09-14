@@ -207,7 +207,7 @@ ssize_t sys_mknod()
     dev_t device;
     argint(2, &device);
 
-    if (!device_exists(device))
+    if (!dev_exists(device))
     {
         return -ENODEV;
     }

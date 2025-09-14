@@ -6,7 +6,7 @@ There are two types of devices: character devices and block devices:
 
 The major device number defines the driver to use, the minor number can select sub devices (e.g. partitions of a disk or multiple physical UARTs handled by the same driver). In practice, minor device numbers are not used yet.
 
-All devices are stored in `g_devices`. Add one with `register_device()`, find devices with `get_block_device(device number)` / `get_character_device(device number)`.
+All devices are stored in a linked list by being `kobjects`. Add one with `register_device()`, find devices with `get_block_device(device number)` / `get_character_device(device number)`.
 
 
 ### General

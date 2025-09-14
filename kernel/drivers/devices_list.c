@@ -293,8 +293,7 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
 
 void dev_list_sort(struct Devices_List *dev_list, const char *name)
 {
-    // can be more than MAX_MINOR_DEVICES, which is the limit for
-    // initialized devices
+    // 32 should be enough
     const size_t MAX_DEVICES_PER_TYPE = 32;
     ssize_t index[MAX_DEVICES_PER_TYPE];
     for (size_t i = 0; i < MAX_DEVICES_PER_TYPE; ++i)

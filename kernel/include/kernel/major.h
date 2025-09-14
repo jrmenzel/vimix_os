@@ -17,17 +17,17 @@
 #define RTC_MAJOR 6
 #define SYSCON_MAJOR 7
 #define PLIC_MAJOR 8
-#define CLINT_MAJOR 9
-#define HTIF_MAJOR 10
-#define DEV_RANDOM_MAJOR 12
-#define JH7110_SYSCRG_MAJOR 13
-#define JH7110_TEMP_MAJOR 14
-#define UART_16550_MAJOR 15
+#define HTIF_MAJOR 9
+#define DEV_RANDOM_MAJOR 10
+#define JH7110_SYSCRG_MAJOR 11
+#define JH7110_TEMP_MAJOR 12
+#define UART_16550_MAJOR 13
 
 // special case: not a device itself but needs a device number for its inodes
-#define DEVFS_MAJOR 11
+#define DEVFS_MAJOR 14
 
-// NOTE: highest major value can be MAX_DEVICES-1
+// highest major device number to check for invalid device numbers
+#define MAX_MAJOR_DEVICE_NUMBER (DEVFS_MAJOR)
 
 // macro values from Linux kdev_t.h:
 #define MINORBITS 20

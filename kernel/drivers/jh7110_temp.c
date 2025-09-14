@@ -90,13 +90,10 @@ dev_t jh7110_temp_init(struct Device_Init_Parameters *init_parameters,
     MMIO_WRITE_UINT_8(g_jh7110_temp.mmio_base, 0, SFCTEMP_RUN | SFCTEMP_RSTN);
 
     // init device and register it in the system
-    g_jh7110_temp.cdev.dev.name = "temp";
-    g_jh7110_temp.cdev.dev.type = CHAR;
-    g_jh7110_temp.cdev.dev.device_number = MKDEV(JH7110_TEMP_MAJOR, 0);
+    dev_init(&g_jh7110_temp.cdev.dev, CHAR, MKDEV(JH7110_TEMP_MAJOR, 0), "temp",
+             init_parameters->interrupt, jh7110_temp_interrupt);
     g_jh7110_temp.cdev.ops.read = jh7110_temp_read;
     g_jh7110_temp.cdev.ops.write = character_device_write_unsupported;
-    dev_set_irq(&g_jh7110_temp.cdev.dev, init_parameters->interrupt,
-                jh7110_temp_interrupt);
     register_device(&g_jh7110_temp.cdev.dev);
 
     g_jh7110_temp.is_initialized = true;

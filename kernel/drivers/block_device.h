@@ -41,7 +41,10 @@ struct Block_Device
 
 /// @brief Returns the Block Device which is registered under this
 /// device number or NULL if there is no matching device.
-struct Block_Device *get_block_device(dev_t device_number);
+static inline struct Block_Device *get_block_device(dev_t device_number)
+{
+    return block_device_from_device(dev_by_device_number(device_number));
+}
 
 /// @brief Read from a block device at any location.
 /// @param bdev Block device

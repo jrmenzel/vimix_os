@@ -118,11 +118,6 @@ void *alloc_pages(int32_t flags, size_t order)
 
     spin_unlock(&g_kernel_memory.lock);
 
-    // if (pages == NULL)
-    // {
-    //     printk("WARNING: OUT OF MEMORY\n");
-    // }
-
     return pages;
 }
 

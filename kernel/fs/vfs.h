@@ -7,9 +7,6 @@
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 
-#define MAX_FILE_SYSTEM_TYPES 2
-#define MAX_MOUNTED_FILE_SYSTEMS 4
-
 // A file system like xv6fs
 struct file_system_type
 {

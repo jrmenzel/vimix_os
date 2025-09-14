@@ -137,7 +137,7 @@ FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
     }
 
     if ((S_ISCHR(ip->i_mode) || S_ISBLK(ip->i_mode)) &&
-        (MAJOR(ip->dev) < 0 || MINOR(ip->dev) >= MAX_DEVICES))
+        (dev_exists(ip->dev) == false))
     {
         printk(
             "Kernel error: can't open device with invalid device number %d "

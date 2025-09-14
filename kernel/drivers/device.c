@@ -8,25 +8,71 @@
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 
-/// @brief all devices indexed by the major device number * MAX_MINOR_DEVICES
-struct Device *g_devices[MAX_DEVICES * MAX_MINOR_DEVICES] = {NULL};
+void dev_init(struct Device *dev, device_type type, dev_t device_number,
+              const char *name, int32_t irq_number,
+              interrupt_handler_p interrupt_handler)
+{
+    dev->type = type;
+    dev->irq_number = irq_number;
+    dev->dev_ops.interrupt_handler = interrupt_handler;
+    dev->device_number = device_number;
+    dev->name = name;
+
+    // init kobject
+    kobject_init(&dev->kobj, NULL);
+}
+
+struct Device *dev_by_device_number(dev_t device_number)
+{
+    DEBUG_EXTRA_PANIC((MAJOR(device_number) < MAX_MAJOR_DEVICE_NUMBER),
+                      "invalid device number");
+
+    rwspin_read_lock(&g_kobjects_dev.children_lock);
+    struct list_head *pos;
+    list_for_each(pos, &g_kobjects_dev.children)
+    {
+        struct kobject *kobj = kobject_from_child_list(pos);
+        struct Device *dev = device_from_kobj(kobj);
+        if (dev->device_number == device_number)
+        {
+            rwspin_read_unlock(&g_kobjects_dev.children_lock);
+            return dev;
+        }
+    }
+    rwspin_read_unlock(&g_kobjects_dev.children_lock);
+
+    return NULL;
+}
+
+struct Device *dev_by_irq_number(int32_t irq_number)
+{
+    rwspin_read_lock(&g_kobjects_dev.children_lock);
+    struct list_head *pos;
+    list_for_each(pos, &g_kobjects_dev.children)
+    {
+        struct kobject *kobj = kobject_from_child_list(pos);
+        struct Device *dev = device_from_kobj(kobj);
+        if (dev->irq_number == irq_number)
+        {
+            rwspin_read_unlock(&g_kobjects_dev.children_lock);
+            return dev;
+        }
+    }
+    rwspin_read_unlock(&g_kobjects_dev.children_lock);
+
+    return NULL;
+}
 
 void register_device(struct Device *dev)
 {
-    size_t major = MAJOR(dev->device_number);
-    size_t minor = MINOR(dev->device_number);
-
-    if ((major >= MAX_DEVICES) || (minor >= MAX_MINOR_DEVICES))
+    if ((MAJOR(dev->device_number) >= MAX_MAJOR_DEVICE_NUMBER))
     {
         panic("invalid high device number");
     }
-    if (g_devices[DEVICE_INDEX(major, minor)] != NULL)
+    if (dev_exists(dev->device_number))
     {
         panic("multiple drivers with same device number");
     }
-
-    // printk("register device %d\n", dev->device_number);
-    g_devices[DEVICE_INDEX(major, minor)] = dev;
 
     // hook up interrupts:
     if (dev->irq_number != INVALID_IRQ_NUMBER)
@@ -35,6 +81,12 @@ void register_device(struct Device *dev)
         // printk("register device %d with IRQ %d\n", dev->device_number,
         //        dev->irq_number);
     }
+
+    kobject_add(&dev->kobj, &g_kobjects_dev, dev->name);
+    // this device had a reference since kobject_init(),
+    // kobject_add() added another one for the parent, which
+    // from now on will be the only one
+    kobject_put(&dev->kobj);
 }
 
 void dev_set_irq(struct Device *dev, int32_t irq_number,
@@ -44,57 +96,22 @@ void dev_set_irq(struct Device *dev, int32_t irq_number,
     dev->dev_ops.interrupt_handler = interrupt_handler;
 }
 
+bool dev_exists(dev_t device_number)
+{
+    return (dev_by_device_number(device_number) != NULL);
+}
+
 #ifdef CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
-#define DEVICE_IS_OK(major, minor, TYPE)                          \
-    if ((major >= MAX_DEVICES) || (minor >= MAX_MINOR_DEVICES) || \
-        (g_devices[DEVICE_INDEX(major, minor)] == NULL) ||        \
-        (g_devices[DEVICE_INDEX(major, minor)]->type != TYPE))    \
-    {                                                             \
-        panic("no device of that type");                          \
-        return NULL;                                              \
+#define DEVICE_IS_OK(major, minor, TYPE)                           \
+    if ((dev_exists(MKDEV(major, minor)) == false) ||              \
+        (dev_by_device_number(MKDEV(major, minor))->type != TYPE)) \
+    {                                                              \
+        panic("no device of that type");                           \
+        return NULL;                                               \
     }
 #else
 #define DEVICE_IS_OK(major, minor, TYPE)
 #endif
-
-bool device_exists(dev_t device_number)
-{
-    if ((MAJOR(device_number) > MAX_DEVICES) ||
-        (MINOR(device_number) > MAX_MINOR_DEVICES))
-    {
-        return false;
-    }
-    // find device for this IRQ and call interrupt handler
-    for (size_t i = 0; i < MAX_DEVICES * MAX_MINOR_DEVICES; ++i)
-    {
-        struct Device *dev = g_devices[i];
-        if (dev && dev->device_number == device_number)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-struct Block_Device *get_block_device(dev_t device_number)
-{
-    size_t major = MAJOR(device_number);
-    size_t minor = MINOR(device_number);
-
-    DEVICE_IS_OK(major, minor, BLOCK);
-
-    return block_device_from_device(g_devices[DEVICE_INDEX(major, minor)]);
-}
-
-struct Character_Device *get_character_device(dev_t device_number)
-{
-    size_t major = MAJOR(device_number);
-    size_t minor = MINOR(device_number);
-
-    DEVICE_IS_OK(major, minor, CHAR);
-
-    return character_device_from_device(g_devices[DEVICE_INDEX(major, minor)]);
-}
 
 ssize_t block_device_rw(struct Block_Device *bdev, size_t addr_u, size_t offset,
                         size_t n, bool do_read)

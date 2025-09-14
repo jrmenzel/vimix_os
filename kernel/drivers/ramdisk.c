@@ -2,9 +2,12 @@
 
 #include <drivers/generic_disc.h>
 #include <drivers/ramdisk.h>
+#include <kernel/container_of.h>
+#include <kernel/kalloc.h>
+#include <kernel/kernel.h>
 #include <kernel/major.h>
-#include <kernel/param.h>
 #include <kernel/proc.h>
+#include <kernel/stdatomic.h>
 #include <kernel/string.h>
 
 struct ramdisk
@@ -14,9 +17,11 @@ struct ramdisk
     struct spinlock vdisk_lock;
 
     void *ram_base;
-} g_ramdisk[MAX_MINOR_DEVICES];
+};
 
-size_t g_next_free_ramdisk = 0;
+#define ramdisk_from_generic_disk(ptr) container_of(ptr, struct ramdisk, disk)
+
+atomic_size_t g_ramdisk_next_minor = 0;
 
 void *get_address_from_buffer(struct buf *b, struct ramdisk *disk)
 {
@@ -36,13 +41,15 @@ void *get_address_from_buffer(struct buf *b, struct ramdisk *disk)
 /// @param b The buffer to fill.
 void ramdisk_block_device_read(struct Block_Device *bd, struct buf *b)
 {
-    size_t minor = MINOR(b->dev);
-    spin_lock(&g_ramdisk[minor].vdisk_lock);
+    struct Generic_Disc *gdisk = generic_disk_from_block_device(bd);
+    struct ramdisk *rdisk = ramdisk_from_generic_disk(gdisk);
 
-    void *addr = get_address_from_buffer(b, &g_ramdisk[minor]);
+    spin_lock(&rdisk->vdisk_lock);
+
+    void *addr = get_address_from_buffer(b, rdisk);
     memmove(b->data, addr, BLOCK_SIZE);
 
-    spin_unlock(&g_ramdisk[minor].vdisk_lock);
+    spin_unlock(&rdisk->vdisk_lock);
 }
 
 /// @brief Write function as mandated for a Block_Device
@@ -50,18 +57,16 @@ void ramdisk_block_device_read(struct Block_Device *bd, struct buf *b)
 /// @param b The buffer to write out to disk.
 void ramdisk_block_device_write(struct Block_Device *bd, struct buf *b)
 {
-    size_t minor = MINOR(b->dev);
+    struct Generic_Disc *gdisk = generic_disk_from_block_device(bd);
+    struct ramdisk *rdisk = ramdisk_from_generic_disk(gdisk);
 
-    spin_lock(&g_ramdisk[minor].vdisk_lock);
+    spin_lock(&rdisk->vdisk_lock);
 
-    void *addr = get_address_from_buffer(b, &g_ramdisk[minor]);
+    void *addr = get_address_from_buffer(b, rdisk);
     memmove(addr, b->data, BLOCK_SIZE);
 
-    spin_unlock(&g_ramdisk[minor].vdisk_lock);
+    spin_unlock(&rdisk->vdisk_lock);
 }
-
-const char *ramdisk_names[MAX_MINOR_DEVICES] = {"ramdisk0", "ramdisk1",
-                                                "ramdisk2", "ramdisk3"};
 
 dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
                    const char *name)
@@ -70,20 +75,36 @@ dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
     {
         panic("invalid ramdisk_init parameters");
     }
-    size_t minor = g_next_free_ramdisk++;
+
+    struct ramdisk *rdisk = kmalloc(sizeof(struct ramdisk));
+    if (rdisk == NULL)
+    {
+        printk("ramdisk: out of memory\n");
+        return INVALID_DEVICE;
+    }
+    memset(rdisk, 0, sizeof(struct ramdisk));
+
+    size_t minor = (size_t)atomic_fetch_add(&g_ramdisk_next_minor, 1);
     // printk("ramdisk_init %zd\n", minor);
 
-    g_ramdisk[minor].ram_base = (void *)init_parameters->mem[0].start;
-    g_ramdisk[minor].disk.bdev.size = init_parameters->mem[0].size;
+    rdisk->ram_base = (void *)init_parameters->mem[0].start;
+    rdisk->disk.bdev.size = init_parameters->mem[0].size;
+
+    char *device_name = kmalloc(16);
+    if (device_name == NULL)
+    {
+        kfree(rdisk);
+        printk("ramdisk: out of memory\n");
+        return INVALID_DEVICE;
+    }
+    snprintf(device_name, 16, "ramdisk%zd", minor);
 
     // init device and register it in the system
-    g_ramdisk[minor].disk.bdev.dev.name = ramdisk_names[minor];
-    g_ramdisk[minor].disk.bdev.dev.type = BLOCK;
-    g_ramdisk[minor].disk.bdev.dev.device_number = MKDEV(RAMDISK_MAJOR, minor);
-    g_ramdisk[minor].disk.bdev.ops.read_buf = ramdisk_block_device_read;
-    g_ramdisk[minor].disk.bdev.ops.write_buf = ramdisk_block_device_write;
-    dev_set_irq(&g_ramdisk[minor].disk.bdev.dev, INVALID_IRQ_NUMBER, NULL);
-    register_device(&g_ramdisk[minor].disk.bdev.dev);
+    dev_init(&rdisk->disk.bdev.dev, BLOCK, MKDEV(RAMDISK_MAJOR, minor),
+             device_name, INVALID_IRQ_NUMBER, NULL);
+    rdisk->disk.bdev.ops.read_buf = ramdisk_block_device_read;
+    rdisk->disk.bdev.ops.write_buf = ramdisk_block_device_write;
+    register_device(&rdisk->disk.bdev.dev);
 
     return MKDEV(RAMDISK_MAJOR, minor);
 }

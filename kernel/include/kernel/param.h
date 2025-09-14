@@ -8,10 +8,7 @@
 #define MAX_PROCESSES 1024
 #define MAX_CPUS 8                   ///< maximum number of CPUs
 #define MAX_FILES_PER_PROCESS 16     ///< open files per process
-#define MAX_FILES_SUPPORTED 100      ///< open files per system
 #define XV6FS_MAX_ACTIVE_INODES 50   ///< maximum number of active i-nodes
-#define MAX_DEVICES 20               ///< maximum major device number
-#define MAX_MINOR_DEVICES 4          ///< maximum minor device number
 #define MAX_EXEC_ARGS 32             ///< max exec arguments
 #define MAX_OP_BLOCKS 10             ///< max # of blocks any FS op writes
 #define LOGSIZE (MAX_OP_BLOCKS * 3)  ///< max data blocks in on-disk log
@@ -23,11 +20,11 @@
 #define KERNEL_STACK_PAGES (1)
 #define KERNEL_STACK_SIZE (KERNEL_STACK_PAGES * PAGE_SIZE)
 
+#define CONFIG_DEBUG_KALLOC
+
 #if defined(DEBUG)
 #define CONFIG_DEBUG
 #endif  // DEBUG
-
-#define CONFIG_DEBUG_KALLOC
 
 #ifdef CONFIG_DEBUG
 /// adds extra runtime tests to check correct spinlock and rwspinlock

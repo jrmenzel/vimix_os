@@ -10,10 +10,10 @@
 struct file_system_type devfs_file_system_type;
 const char *DEV_FS_NAME = "devfs";
 
-// the dir itself + all possible devices:
+// the dir itself + all possible devices - guesswork now as there is no limit on
+// devices
 #define DEVFS_RESERVED_INODES (1)
-#define DEVFS_MAX_ACTIVE_INODES \
-    (DEVFS_RESERVED_INODES + (MAX_DEVICES * MAX_MINOR_DEVICES))
+#define DEVFS_MAX_ACTIVE_INODES (DEVFS_RESERVED_INODES + (20 * 4))
 struct
 {
     struct spinlock lock;
@@ -171,7 +171,6 @@ ssize_t devfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
     {
         // inode 0 is root, seek_pos 2 is the first device -> inode 1
         size_t device_index = seek_pos - 1;
-        // struct inode *ip = &devfs_itable.inode[device_index];
         dir_entry.d_ino = device_index;
         strncpy(dir_entry.d_name, devfs_itable.name[device_index],
                 MAX_DIRENT_NAME);
@@ -274,31 +273,33 @@ ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
     devfs_itable.used_inodes = 1;
 
     size_t found_devices = 0;
-    for (size_t i = 0; i < MAX_DEVICES * MAX_MINOR_DEVICES; i++)
+    rwspin_read_lock(&g_kobjects_dev.children_lock);
+    struct list_head *pos;
+    list_for_each(pos, &g_kobjects_dev.children)
     {
-        struct Device *dev = g_devices[i];
-        if (dev != NULL)
+        struct kobject *kobj = kobject_from_child_list(pos);
+        struct Device *dev = device_from_kobj(kobj);
+
+        size_t inode_idx = devfs_itable.used_inodes;
+
+        devfs_itable.inode[inode_idx].inum = found_devices;
+        devfs_itable.inode[inode_idx].i_sb = sb_in;
+        if (dev->type == CHAR)
         {
-            size_t inode_idx = devfs_itable.used_inodes;
-
-            devfs_itable.inode[inode_idx].inum = found_devices;
-            devfs_itable.inode[inode_idx].i_sb = sb_in;
-            if (dev->type == CHAR)
-            {
-                devfs_itable.inode[inode_idx].i_mode |= S_IFCHR;
-            }
-            else
-            {
-                devfs_itable.inode[inode_idx].i_mode |= S_IFBLK;
-            }
-            devfs_itable.inode[inode_idx].dev = dev->device_number;
-            devfs_itable.inode[inode_idx].ref = 1;
-            devfs_itable.name[inode_idx] = dev->name;
-            devfs_itable.used_inodes = inode_idx + 1;
-
-            found_devices++;
+            devfs_itable.inode[inode_idx].i_mode |= S_IFCHR;
         }
+        else
+        {
+            devfs_itable.inode[inode_idx].i_mode |= S_IFBLK;
+        }
+        devfs_itable.inode[inode_idx].dev = dev->device_number;
+        devfs_itable.inode[inode_idx].ref = 1;
+        devfs_itable.name[inode_idx] = dev->name;
+        devfs_itable.used_inodes = inode_idx + 1;
+
+        found_devices++;
     }
+    rwspin_read_unlock(&g_kobjects_dev.children_lock);
 
     return 0;
 }

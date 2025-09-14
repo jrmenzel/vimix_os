@@ -2,6 +2,7 @@
 #pragma once
 
 #include <kernel/container_of.h>
+#include <kernel/kobject.h>
 #include <kernel/major.h>
 #include <kernel/types.h>
 
@@ -29,6 +30,8 @@ typedef enum device_type_enum device_type;
 /// Devices react with dev_ops->interrupt_handler() on interrupt irq_number.
 struct Device
 {
+    struct kobject kobj;
+
     device_type type;
     /// @brief Interrupt ReQuest number the device reacts to
     int32_t irq_number;
@@ -39,19 +42,23 @@ struct Device
     const char *name;  ///< for DEV FS in /dev
 };
 
-/// @brief Array of pointers to all devices in the system.
-/// Add new devices at boot via register_device()
-extern struct Device *g_devices[MAX_DEVICES * MAX_MINOR_DEVICES];
+#define device_from_kobj(ptr) container_of(ptr, struct Device, kobj)
 
-#define DEVICE_INDEX(major, minor) ((major) * MAX_MINOR_DEVICES + (minor))
+void dev_init(struct Device *dev, device_type type, dev_t device_number,
+              const char *name, int32_t irq_number,
+              interrupt_handler_p interrupt_handler);
+
+struct Device *dev_by_device_number(dev_t device_number);
+
+struct Device *dev_by_irq_number(int32_t irq_number);
 
 #define INVALID_IRQ_NUMBER (-1)
 /// @brief Initialize the device, called from the character and block device
 /// init functions.
 /// @param dev Device to init
 /// @param irq_number IRQ to listen to or INVALID_IRQ_NUMBER
-/// @param interrupt_handler valid interrupt callback or NULL (irq_number must
-/// be INVALID_IRQ_NUMBER)
+/// @param interrupt_handler valid interrupt callback or NULL (irq_number
+/// must be INVALID_IRQ_NUMBER)
 void dev_set_irq(struct Device *dev, int32_t irq_number,
                  interrupt_handler_p interrupt_handler);
 
@@ -62,4 +69,4 @@ void register_device(struct Device *dev);
 /// @brief Check if a device with the given device number exists.
 /// @param device_number Number to check.
 /// @return True if the device exists.
-bool device_exists(dev_t device_number);
+bool dev_exists(dev_t device_number);

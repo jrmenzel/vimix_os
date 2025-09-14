@@ -23,4 +23,4 @@ struct Generic_Disc
 /// @brief To cast a Device object to a Generic_Disc object.
 /// See container_of to see why this should be used instead of pointer casting.
 #define generic_disk_from_block_device(ptr) \
-    container_of(ptr, struct Generic_Disc, dev)
+    container_of(ptr, struct Generic_Disc, bdev)

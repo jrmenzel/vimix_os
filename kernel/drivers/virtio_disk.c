@@ -18,21 +18,30 @@
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 
-size_t g_virtio_disks_used = 0;
-struct virtio_disk g_virtio_disks[MAX_MINOR_DEVICES];
+atomic_size_t g_virtio_next_minor = 0;
 
 void virtio_block_device_read(struct Block_Device *bd, struct buf *b);
 void virtio_block_device_write(struct Block_Device *bd, struct buf *b);
 void virtio_block_device_interrupt(dev_t dev);
 
-const char *virtio_names[MAX_MINOR_DEVICES] = {"virtio0", "virtio1", "virtio2",
-                                               "virtio3"};
-
 dev_t virtio_disk_init_internal(size_t disk_index,
                                 struct Device_Init_Parameters *mapping)
 {
-    if (disk_index > MAX_MINOR_DEVICES) return INVALID_DEVICE;
-    struct virtio_disk *disk = &g_virtio_disks[disk_index];
+    struct virtio_disk *disk = kmalloc(sizeof(struct virtio_disk));
+    if (disk == NULL)
+    {
+        printk("virtio disk: out of memory\n");
+        return INVALID_DEVICE;
+    }
+    char *device_name = kmalloc(16);
+    if (device_name == NULL)
+    {
+        kfree(disk);
+        printk("virtio: out of memory\n");
+        return INVALID_DEVICE;
+    }
+    snprintf(device_name, 16, "virtio%zd", disk_index);
+    memset(disk, 0, sizeof(struct virtio_disk));
 
     spin_lock_init(&disk->vdisk_lock, "virtio_disk");
     disk->mmio_base = mapping->mem[0].start;
@@ -149,17 +158,14 @@ dev_t virtio_disk_init_internal(size_t disk_index,
         (struct virtio_blk_config *)(b + VIRTIO_MMIO_CONFIG);
 
     // init device and register it in the system
+    // plic.c and trap.c arrange for interrupts
+    dev_init(&disk->disk.bdev.dev, BLOCK,
+             MKDEV(QEMU_VIRT_IO_DISK_MAJOR, disk_index), device_name,
+             mapping->interrupt, virtio_block_device_interrupt);
     disk->disk.bdev.size = config->capacity * 512;
-    disk->disk.bdev.dev.name = virtio_names[disk_index];
-    disk->disk.bdev.dev.type = BLOCK;
-    disk->disk.bdev.dev.device_number =
-        MKDEV(QEMU_VIRT_IO_DISK_MAJOR, disk_index);
     disk->disk.bdev.ops.read_buf = virtio_block_device_read;
     disk->disk.bdev.ops.write_buf = virtio_block_device_write;
 
-    // plic.c and trap.c arrange for interrupts
-    dev_set_irq(&disk->disk.bdev.dev, mapping->interrupt,
-                virtio_block_device_interrupt);
     register_device(&disk->disk.bdev.dev);
 
     return disk->disk.bdev.dev.device_number;
@@ -178,11 +184,8 @@ dev_t virtio_disk_init(struct Device_Init_Parameters *init_param,
         return INVALID_DEVICE;
     }
 
-    dev_t dev = virtio_disk_init_internal(g_virtio_disks_used, init_param);
-    if (dev != INVALID_DEVICE)
-    {
-        g_virtio_disks_used++;
-    }
+    size_t minor = (size_t)atomic_fetch_add(&g_virtio_next_minor, 1);
+    dev_t dev = virtio_disk_init_internal(minor, init_param);
     return dev;
 }
 
@@ -365,8 +368,10 @@ void virtio_disk_rw(struct virtio_disk *disk, struct buf *b, bool write)
 /// @param b The buffer to fill.
 void virtio_block_device_read(struct Block_Device *bd, struct buf *b)
 {
-    size_t minor = MINOR(bd->dev.device_number);
-    virtio_disk_rw(&g_virtio_disks[minor], b, false);
+    struct Generic_Disc *gdisk = generic_disk_from_block_device(bd);
+    struct virtio_disk *vdisk = virtio_from_generic_disk(gdisk);
+
+    virtio_disk_rw(vdisk, b, false);
 }
 
 /// @brief Write function as mandated for a Block_Device
@@ -374,15 +379,18 @@ void virtio_block_device_read(struct Block_Device *bd, struct buf *b)
 /// @param b The buffer to write out to disk.
 void virtio_block_device_write(struct Block_Device *bd, struct buf *b)
 {
-    size_t minor = MINOR(bd->dev.device_number);
-    virtio_disk_rw(&g_virtio_disks[minor], b, true);
+    struct Generic_Disc *gdisk = generic_disk_from_block_device(bd);
+    struct virtio_disk *vdisk = virtio_from_generic_disk(gdisk);
+
+    virtio_disk_rw(vdisk, b, true);
 }
 
 /// @brief The interrupt handler for the Block_Device
 void virtio_block_device_interrupt(dev_t dev)
 {
-    size_t minor = MINOR(dev);
-    struct virtio_disk *disk = &g_virtio_disks[minor];
+    struct Block_Device *bd = get_block_device(dev);
+    struct Generic_Disc *gdisk = generic_disk_from_block_device(bd);
+    struct virtio_disk *disk = virtio_from_generic_disk(gdisk);
 
     spin_lock(&disk->vdisk_lock);
 

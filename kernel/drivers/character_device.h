@@ -38,16 +38,14 @@ struct Character_Device
 /// @brief To cast a device object to a Character_Device object.
 /// See container_of docu to see why this should be used instead of pointer
 /// casting.
-// #define character_device_from_device(ptr) (struct Character_Device *)(ptr)
-
 #define character_device_from_device(ptr) \
     container_of(ptr, struct Character_Device, dev)
 
 /// @brief returns a character device registered for that device number or NULL
-struct Character_Device *get_character_device(dev_t device_number);
-
-/// @brief returns a character device registered for that device major or NULL
-struct Character_Device *get_character_device_by_major(size_t major);
+static inline struct Character_Device *get_character_device(dev_t device_number)
+{
+    return character_device_from_device(dev_by_device_number(device_number));
+}
 
 /// @brief A char device which does not want to implement read support can use
 /// this default fallback as its implementation.

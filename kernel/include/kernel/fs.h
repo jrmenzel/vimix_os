@@ -7,6 +7,7 @@
 #include <fs/vfs.h>
 #include <kernel/dirent.h>
 #include <kernel/kernel.h>
+#include <kernel/kobject.h>
 #include <kernel/sleeplock.h>
 #include <kernel/stat.h>
 
@@ -22,7 +23,8 @@ struct inode;
 /// and a file system type.
 struct super_block
 {
-    dev_t dev;  ///< dev_t = INVALID_DEVICE means super block is unused
+    struct kobject kobj;  ///< for /sys/fs
+    dev_t dev;            ///< device this super block belongs to
 
     struct file_system_type *s_type;  ///< File system type of device
     struct super_operations *s_op;    ///< FS specific super block operations
@@ -71,14 +73,6 @@ struct inode
 /// @brief inits the filesystem with device dev becoming "/"
 /// @param dev device of the root fs
 void mount_root(dev_t dev, const char *fs_name);
-
-/// @brief Allocate an inode on device dev.
-/// Mark it as allocated by giving it type based on mode.
-/// @param dev The device/filesystem to allocate on.
-/// @param mode Type and access rights of the new inode.
-/// @return An unlocked but allocated and referenced inode,
-/// or NULL if there is no free inode.
-// struct inode *inode_alloc(dev_t dev, mode_t mode);
 
 /// @brief Wrapper for _iops_open() which only returns success codes.
 ///        Used by mkdir() and mknod().

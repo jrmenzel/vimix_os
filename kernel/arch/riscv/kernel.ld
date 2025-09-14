@@ -29,6 +29,7 @@ SECTIONS
 
   .rodata : ALIGN(CONSTANT(MAXPAGESIZE)) {
     . = ALIGN(16);
+    PROVIDE(__start_data = .);
     *(.srodata .srodata.*) /* do not need to distinguish this from .rodata */
     . = ALIGN(16);
     *(.rodata .rodata.*)
@@ -39,6 +40,8 @@ SECTIONS
     *(.sdata .sdata.*) /* do not need to distinguish this from .data */
     . = ALIGN(16);
     *(.data .data.*)
+
+    PROVIDE(__end_data = .);
 
     /* avoid writing to HTIF locations during bss clear */
     . = ALIGN(16);

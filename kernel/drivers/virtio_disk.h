@@ -6,6 +6,7 @@
 #include <drivers/generic_disc.h>
 #include <drivers/virtio.h>
 #include <kernel/buf.h>
+#include <kernel/container_of.h>
 #include <kernel/kernel.h>
 #include <kernel/spinlock.h>
 
@@ -53,6 +54,9 @@ struct virtio_disk
     // base address for memory mapped IO:
     size_t mmio_base;
 };
+
+#define virtio_from_generic_disk(ptr) \
+    container_of(ptr, struct virtio_disk, disk)
 
 /// @brief Inits the virtio disk driver (for qemu) and inits the hardware.
 /// Creates a virtio_disk object and adds it to the devices list.

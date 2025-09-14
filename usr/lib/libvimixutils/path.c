@@ -67,6 +67,7 @@ char* find_program_in_path(const char* program)
     }
 
     char* full_path = (char*)malloc(PATH_MAX);
+    if (full_path == NULL) return NULL;
 
     for (size_t search_path_index = 0; search_path[search_path_index] != NULL;
          search_path_index++)

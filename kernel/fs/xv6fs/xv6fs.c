@@ -9,6 +9,7 @@
 #include <kernel/errno.h>
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
+#include <kernel/kalloc.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
@@ -20,24 +21,16 @@
 /// @param ip inode to truncate.
 void xv6fs_trunc(struct inode *ip);
 
-/// one g_xv6fs_sb_private per mount
-struct xv6fs_sb_private g_xv6fs_sb_private[MAX_MOUNTED_FILE_SYSTEMS] = {0};
-
 struct xv6fs_sb_private *get_free_sb_private()
 {
-    for (size_t i = 0; i < MAX_MOUNTED_FILE_SYSTEMS; ++i)
-    {
-        if (g_xv6fs_sb_private[i].sb.magic == 0)
-        {
-            return &g_xv6fs_sb_private[i];
-        }
-    }
-    return NULL;
+    struct xv6fs_sb_private *private =
+        (struct xv6fs_sb_private *)kmalloc(sizeof(struct xv6fs_sb_private));
+    if (private == NULL) return NULL;
+    memset(private, 0, sizeof(struct xv6fs_sb_private));
+    return private;
 }
 
 struct file_system_type xv6_file_system_type;
-
-extern struct super_block g_active_file_systems[MAX_MOUNTED_FILE_SYSTEMS];
 
 struct xv6fs_inode
 {
@@ -185,8 +178,8 @@ void xv6fs_kill_sb(struct super_block *sb_in)
 {
     struct xv6fs_sb_private *priv = (struct xv6fs_sb_private *)sb_in->s_fs_info;
     DEBUG_EXTRA_ASSERT(priv != NULL, "private data should be set since mount");
-    priv->sb.magic = 0;  // flags private block as unused
     sb_in->s_fs_info = NULL;
+    kfree(priv);
 }
 
 struct inode *xv6fs_iops_lookup(struct inode *iparent, char name[NAME_MAX],
@@ -1060,18 +1053,6 @@ void xv6fs_debug_print_inodes()
         {
             debug_print_inode(ip);
             printk("\n");
-        }
-    }
-
-    for (size_t i = 0; i < MAX_MINOR_DEVICES; ++i)
-    {
-        if (g_xv6fs_sb_private[i].sb.magic != 0)
-        {
-            struct log *l = &g_xv6fs_sb_private[i].log;
-            printk("log %zd: 0x%zx | ", i, (size_t)l);
-            printk("outstanding: %d, committing: %d", l->outstanding,
-                   l->committing);
-            printk(", size: %d, used: %d\n", l->size, l->lh.n);
         }
     }
 }

@@ -16,6 +16,7 @@
 #include <kernel/fs.h>
 #include <kernel/ioctl.h>
 #include <kernel/kernel.h>
+#include <kernel/kobject.h>
 #include <kernel/kticks.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
@@ -267,6 +268,7 @@ void console_debug_print_help()
     printk("CTRL+U: Print process list with user call stack\n");
     printk("CTRL+S: Print process list with kernel call stack\n");
     printk("CTRL+O: Print process list with open files\n");
+    printk("CTRL+Y: Print sys tree\n");
 }
 
 bool console_handle_control_keys(int32_t c)
@@ -301,6 +303,7 @@ bool console_handle_control_keys(int32_t c)
             printk("Kernel process table:\n");
             debug_vm_print_page_table(g_kernel_pagetable);
             break;
+        case CONTROL_KEY('Y'): debug_print_kobject_tree(); break;
         case DELETE_KEY:  // Delete key
             if (g_console.e != g_console.w)
             {
@@ -392,13 +395,11 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
     spin_lock_init(&g_console.lock, "cons");
 
     // init device and register it in the system
-    g_console.cdev.dev.name = "console";
-    g_console.cdev.dev.type = CHAR;
-    g_console.cdev.dev.device_number = MKDEV(CONSOLE_DEVICE_MAJOR, 0);
+    dev_init(&g_console.cdev.dev, CHAR, MKDEV(CONSOLE_DEVICE_MAJOR, 0),
+             "console", INVALID_IRQ_NUMBER, NULL);
     g_console.cdev.ops.read = console_read;
     g_console.cdev.ops.write = console_write;
     g_console.cdev.ops.ioctl = console_ioctl;
-    g_console.cdev.dev.irq_number = INVALID_IRQ_NUMBER;
 
     memset(&g_console.termios, sizeof(struct termios), 0);
     g_console.termios.c_lflag = ECHO | ICANON | ICRNL;

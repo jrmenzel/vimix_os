@@ -84,7 +84,7 @@ bool proc_grow_stack(struct process *proc);
 /// @brief Tries to shrink the stack if pages are unused to free them
 void proc_shrink_stack(struct process *proc);
 
-struct cpu *get_cpu();
+__attribute__((returns_nonnull)) struct cpu *get_cpu();
 
 /// get currently running process
 struct process *get_current();
@@ -136,6 +136,10 @@ int32_t either_copyout(bool addr_is_userspace, size_t dst, void *src,
 /// @return 0 on success, -1 on error.
 int32_t either_copyin(void *dst, bool addr_is_userspace, size_t src,
                       size_t len);
+
+static inline void proc_get(struct process *proc) { kobject_get(&proc->kobj); }
+
+static inline void proc_put(struct process *proc) { kobject_put(&proc->kobj); }
 
 /// @brief Frees all allocated memory of a process and the process struct itself
 /// @param proc Process, lock must be held.

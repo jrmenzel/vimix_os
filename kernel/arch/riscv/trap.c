@@ -143,7 +143,6 @@ void return_to_user_mode()
     rv_write_csr_sepc(trapframe_get_program_counter(proc->trapframe));
 
     // tell u_mode_trap_vector.S the user page table to switch to.
-    // size_t satp = MAKE_SATP(proc->pagetable);
     size_t satp = mmu_make_page_table_reg((size_t)proc->pagetable, 0);
 
     // jump to return_to_user_mode_asm in u_mode_trap_vector.S at the top of
@@ -162,16 +161,11 @@ void handle_device_interrupt()
     int irq = plic_claim();
     bool irq_handled = false;
 
-    // find device for this IRQ and call interrupt handler
-    for (size_t i = 0; i < MAX_DEVICES * MAX_MINOR_DEVICES; ++i)
+    struct Device *dev = dev_by_irq_number(irq);
+    if (dev)
     {
-        struct Device *dev = g_devices[i];
-        if (dev && irq == dev->irq_number)
-        {
-            dev->dev_ops.interrupt_handler(dev->device_number);
-            irq_handled = true;
-            break;
-        }
+        dev->dev_ops.interrupt_handler(dev->device_number);
+        irq_handled = true;
     }
 
     if (irq_handled == false && irq)

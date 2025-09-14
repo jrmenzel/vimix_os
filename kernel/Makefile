@@ -42,6 +42,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/cpu.o \
 	kernel/ipi.o \
 	kernel/kalloc.o \
+	kernel/kobject.o \
 	kernel/vm.o \
 	kernel/proc.o \
 	kernel/bio.o \

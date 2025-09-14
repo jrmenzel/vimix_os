@@ -1,6 +1,6 @@
 # Object Orientation in the Kernel
 
-Some objects (like [devices](../devices/devices.md)) use object orientation to inherit from common base classes.
+Some objects (like [devices](../devices/devices.md)) use object orientation to inherit from common base classes. All objects derived from `kobject` are managed in a tree.
 
 ## Methods
 

@@ -4,6 +4,7 @@
 #include <arch/context.h>
 #include <kernel/container_of.h>
 #include <kernel/kernel.h>
+#include <kernel/kobject.h>
 #include <kernel/list.h>
 #include <kernel/rwspinlock.h>
 #include <kernel/spinlock.h>
@@ -44,6 +45,7 @@ struct process_list
 /// Freed at proc_free()
 struct process
 {
+    struct kobject kobj;     ///< Kernel object for this process
     struct list_head plist;  ///< double linked list of all processes
 
     struct spinlock lock;  ///< Access lock for this process (except the list
@@ -85,3 +87,4 @@ struct process
 extern struct process_list g_process_list;
 
 #define process_from_list(ptr) container_of(ptr, struct process, plist)
+#define process_from_kobj(ptr) container_of(ptr, struct process, kobj)

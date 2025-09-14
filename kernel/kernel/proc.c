@@ -33,8 +33,7 @@ struct process_list g_process_list;
 /// Created in userspace_init(), the only process not created by fork()
 struct process *g_initial_user_process;
 
-/// next available process ID, lockfree via atomic fetch & add
-atomic_size_t g_next_pid = 1;
+atomic_int32_t g_next_pid = 1;
 
 extern void forkret();
 void wakeup_holding_plist_lock(void *chan);
@@ -116,7 +115,7 @@ void proc_init()
 /// Interrupts must be disabled as long as the
 /// returned struct is used (as a context switch
 /// invalidates the cpu if the kernel process switched cores)
-struct cpu *get_cpu()
+__attribute__((returns_nonnull)) struct cpu *get_cpu()
 {
 #if defined(CONFIG_DEBUG_EXTRA_RUNTIME_TESTS)
     if (cpu_is_interrupts_enabled())
@@ -139,7 +138,16 @@ struct process *get_current()
 }
 
 /// Get a new unique process ID
-pid_t alloc_pid() { return atomic_fetch_add(&g_next_pid, 1); }
+pid_t alloc_pid() { return (pid_t)atomic_fetch_add(&g_next_pid, 1); }
+
+void proc_free_kobject(struct kobject *kobj)
+{
+    if (kobj == NULL) return;
+
+    struct process *proc = process_from_kobj(kobj);
+    proc_free(proc);
+}
+struct kobj_type proc_ktype = {.release = proc_free_kobject};
 
 /// Creates a new process:
 /// If allocated, initialize state required to run in the kernel,
@@ -153,8 +161,9 @@ static struct process *alloc_process()
         return NULL;
     }
     memset(proc, 0, sizeof(struct process));
-    // proc_free() can free partially initialized structs, but the lock is
-    // expected to be helt
+    // proc_free() (called from last proc_put()) can free partially initialized
+    // structs, but the lock is expected to be helt
+    kobject_init(&proc->kobj, &proc_ktype);
     spin_lock_init(&proc->lock, "proc");
     spin_lock(&proc->lock);
 
@@ -162,7 +171,7 @@ static struct process *alloc_process()
     proc->kstack = proc_get_kernel_stack();
     if (proc->kstack == 0)
     {
-        proc_free(proc);
+        proc_put(proc);
         return NULL;
     }
 
@@ -176,7 +185,7 @@ static struct process *alloc_process()
         // free_proc().
         proc_free_kernel_stack(proc->kstack);
         proc->kstack = 0;
-        proc_free(proc);
+        proc_put(proc);
         return NULL;
     }
 
@@ -187,7 +196,7 @@ static struct process *alloc_process()
     proc->trapframe = (struct trapframe *)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
     if (proc->trapframe == NULL)
     {
-        proc_free(proc);
+        proc_put(proc);
         return NULL;
     }
 
@@ -195,7 +204,7 @@ static struct process *alloc_process()
     proc->pagetable = proc_pagetable(proc);
     if (proc->pagetable == NULL)
     {
-        proc_free(proc);
+        proc_put(proc);
         return NULL;
     }
 
@@ -315,6 +324,12 @@ void userspace_init()
         panic("userspace_init() already out of memory");
     g_initial_user_process->state = RUNNABLE;
 
+    // add to kobject tree
+    kobject_add(&g_initial_user_process->kobj, &g_kobjects_proc, "1");
+    kobject_put(&g_initial_user_process->kobj);  // drop reference now
+                                                 // that the kobject tree
+                                                 // holds one
+
     // add to process list
     rwspin_write_lock(&g_process_list.lock);
     list_add_tail(&g_initial_user_process->plist, &g_process_list.plist);
@@ -391,7 +406,7 @@ ssize_t fork()
     // Copy memory
     if (proc_copy_memory(parent, np) == -1)
     {
-        proc_free(np);
+        proc_put(np);
         return -ENOMEM;
     }
 
@@ -431,6 +446,10 @@ ssize_t fork()
     np->state = RUNNABLE;
     np->debug_log_depth = 0;
     spin_unlock(&np->lock);
+
+    // add to kobject tree
+    kobject_add(&np->kobj, &g_kobjects_proc, "%d", np->pid);
+    proc_put(np);  // drop reference now that the kobject tree holds one
 
     // add to process list
     rwspin_write_lock(&g_process_list.lock);
@@ -555,7 +574,9 @@ pid_t wait(int32_t *wstatus)
                     // remove from process list, lock is already held
                     list_del(&pp->plist);
 
-                    proc_free(pp);
+                    // remove from kobject tree, if that was the last reference,
+                    // proc_free() will be called
+                    kobject_del(&pp->kobj);
 
                     spin_unlock(&g_wait_lock);
 

@@ -18,6 +18,7 @@
 #include <kernel/file.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
+#include <kernel/kobject.h>
 #include <kernel/kticks.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
@@ -118,6 +119,7 @@ void init_by_first_thread(void *dtb)
     {
         panic("No valid device tree found");
     }
+    init_kobject_root();
 
     // Collect all found devices in this list for later init:
     struct Devices_List *dev_list = get_devices_list();
