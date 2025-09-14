@@ -3,6 +3,7 @@
 
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
+#include <kernel/kref.h>
 #include <kernel/list.h>
 #include <kernel/stat.h>
 
@@ -13,7 +14,7 @@ struct file
     struct list_head list;  ///< double linked list of all open files
     mode_t mode;            ///< file type and access rights
     int32_t flags;          ///< file create flags
-    int32_t ref;            ///< reference count
+    struct kref ref;        ///< reference count
     struct pipe *pipe;      ///< used if the file belongs to a pipe
     struct inode *ip;       ///< for files, dirs, char and block devices
     uint32_t off;           ///< for files

@@ -964,7 +964,8 @@ void debug_print_open_files(struct process *proc)
         if (f != NULL && f->ip != NULL)
         {
             struct inode *ip = proc->files[i]->ip;
-            printk("  fd %zd (ref# %d, off: %d): ", i, f->ref, f->off);
+            printk("  fd %zd (ref# %d, off: %d): ", i, kref_read(&f->ref),
+                   f->off);
             debug_print_inode(ip);
             printk("\n");
         }

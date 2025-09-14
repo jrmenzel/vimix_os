@@ -598,14 +598,15 @@ struct inode *xv6fs_iget(struct super_block *sb, uint32_t inum)
         struct inode *ip = &(xv_ip->ino);
         DEBUG_EXTRA_ASSERT(ip != NULL, "invalid inode");
 
-        if (ip->ref > 0 && ip->i_sb->dev == sb->dev && ip->inum == inum)
+        if (kref_read(&ip->ref) > 0 && ip->i_sb->dev == sb->dev &&
+            ip->inum == inum)
         {
-            ip->ref++;
+            kref_get(&ip->ref);
             spin_unlock(&xv6fs_itable.lock);
             return ip;
         }
 
-        if (empty == NULL && ip->ref == 0)  // Remember empty slot.
+        if (empty == NULL && kref_read(&ip->ref) == 0)  // Remember empty slot.
         {
             empty = ip;
         }
@@ -621,7 +622,7 @@ struct inode *xv6fs_iget(struct super_block *sb, uint32_t inum)
     ip->i_sb = sb;
     ip->dev = sb->dev;
     ip->inum = inum;
-    ip->ref = 1;
+    kref_init(&ip->ref);
     ip->valid = 0;
     ip->is_mounted_on = NULL;
     spin_unlock(&xv6fs_itable.lock);
@@ -631,9 +632,7 @@ struct inode *xv6fs_iget(struct super_block *sb, uint32_t inum)
 
 struct inode *xv6fs_iops_dup(struct inode *ip)
 {
-    spin_lock(&xv6fs_itable.lock);
-    ip->ref++;
-    spin_unlock(&xv6fs_itable.lock);
+    kref_get(&ip->ref);
     return ip;
 }
 
@@ -641,7 +640,7 @@ void xv6fs_iops_put(struct inode *ip)
 {
     spin_lock(&xv6fs_itable.lock);
 
-    if (ip->ref == 1 && ip->valid && ip->nlink == 0)
+    if (kref_read(&ip->ref) == 1 && ip->valid && ip->nlink == 0)
     {
         struct process *proc = get_current();
         bool external_fs_transaction = (proc->debug_log_depth != 0);
@@ -669,7 +668,7 @@ void xv6fs_iops_put(struct inode *ip)
             // this thread had the last reference and it is not accessible
             // via the FS anymore.
             DEBUG_EXTRA_ASSERT(
-                ip->ref == 1 && ip->valid && ip->nlink == 0,
+                kref_read(&ip->ref) == 1 && ip->valid && ip->nlink == 0,
                 "No-one should have been able to change this inode!");
         }
 
@@ -694,9 +693,9 @@ void xv6fs_iops_put(struct inode *ip)
         spin_lock(&xv6fs_itable.lock);
     }
 
-    DEBUG_EXTRA_ASSERT(ip->ref > 0,
+    DEBUG_EXTRA_ASSERT(kref_read(&ip->ref) > 0,
                        "Can't put an inode that is not held by anyone");
-    ip->ref--;
+    kref_put(&ip->ref);
     spin_unlock(&xv6fs_itable.lock);
 }
 
@@ -1049,7 +1048,7 @@ void xv6fs_debug_print_inodes()
     for (size_t i = 0; i < XV6FS_MAX_ACTIVE_INODES; ++i)
     {
         struct inode *ip = &xv6fs_itable.inode[i].ino;
-        if (ip->ref != 0)
+        if (kref_read(&ip->ref) != 0)
         {
             debug_print_inode(ip);
             printk("\n");

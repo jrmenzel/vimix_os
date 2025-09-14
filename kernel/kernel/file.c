@@ -63,7 +63,7 @@ struct file *file_alloc()
     if (f)
     {
         memset(f, 0, sizeof(struct file));
-        f->ref = 1;
+        kref_init(&f->ref);
         list_add(&f->list, &g_file_table.open_files);
     }
     spin_unlock(&g_file_table.lock);
@@ -72,11 +72,9 @@ struct file *file_alloc()
 
 struct file *file_dup(struct file *f)
 {
-    spin_lock(&g_file_table.lock);
-    DEBUG_EXTRA_ASSERT(f->ref >= 1,
+    DEBUG_EXTRA_ASSERT(kref_read(&f->ref) >= 1,
                        "file_dup() called for a file with ref count 0");
-    f->ref++;
-    spin_unlock(&g_file_table.lock);
+    kref_get(&f->ref);
     return f;
 }
 
@@ -173,14 +171,14 @@ void file_close(struct file *f)
 {
     DEBUG_EXTRA_PANIC(f != NULL, "file_close() on NULL");
     spin_lock(&g_file_table.lock);
-    if (f->ref < 1)
+    if (kref_read(&f->ref) < 1)
     {
         panic("file_close() called for file without open references");
     }
 
-    f->ref--;
+    kref_put(&f->ref);
 
-    if (f->ref > 0)
+    if (kref_read(&f->ref) > 0)
     {
         spin_unlock(&g_file_table.lock);
         return;

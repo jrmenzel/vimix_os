@@ -8,6 +8,7 @@
 #include <kernel/dirent.h>
 #include <kernel/kernel.h>
 #include <kernel/kobject.h>
+#include <kernel/kref.h>
 #include <kernel/sleeplock.h>
 #include <kernel/stat.h>
 
@@ -50,10 +51,10 @@ struct inode
     /// filesystem this file is located on.
     /// Identical to i_sb->dev for regular files (for char/block r/w)
     dev_t dev;
-    uint32_t inum;  ///< Inode number
-    int32_t ref;    ///< Reference count. If 0 it means that this entry in inode
-                  ///< table is free. Lock xv6fs_itable.lock protects writes to
-                  ///< this entry!
+    uint32_t inum;    ///< Inode number
+    struct kref ref;  ///< Reference count. If 0 it means that this entry in
+                      ///< inode table is free. Lock xv6fs_itable.lock protects
+                      ///< writes to this entry!
     struct sleeplock lock;  ///< protects everything below here
     int32_t valid;  ///< inode has been read from disk? mode, size etc. are
                     ///< invalid if false

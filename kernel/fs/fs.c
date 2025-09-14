@@ -54,7 +54,7 @@ void inode_lock(struct inode *ip)
     {
         panic("inode_lock: inode is NULL");
     }
-    if (ip->ref < 1)
+    if (kref_read(&ip->ref) < 1)
     {
         panic("inode_lock: inode has an invalid reference count");
     }
@@ -79,7 +79,7 @@ void inode_unlock(struct inode *ip)
     {
         panic("inode_unlock failed: inode is NULL");
     }
-    if (ip->ref < 1)
+    if (kref_read(&ip->ref) < 1)
     {
         panic("inode_unlock failed: reference count invalid");
     }
@@ -292,7 +292,7 @@ void debug_print_inode(struct inode *ip)
     }
     printk("inode %d on (%d,%d), ", ip->inum, MAJOR(ip->i_sb->dev),
            MINOR(ip->i_sb->dev));
-    printk("ref: %d, ", ip->ref);
+    printk("ref: %d, ", kref_read(&ip->ref));
     if (ip->valid)
     {
         printk("link: %d, ", ip->nlink);

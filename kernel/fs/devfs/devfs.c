@@ -88,20 +88,16 @@ void devfs_iops_read_in(struct inode *ip)
 
 struct inode *devfs_iops_dup(struct inode *ip)
 {
-    spin_lock(&devfs_itable.lock);
-    ip->ref++;
-    spin_unlock(&devfs_itable.lock);
+    kref_get(&ip->ref);
     return ip;
 }
 
 void devfs_iops_put(struct inode *ip)
 {
-    spin_lock(&devfs_itable.lock);
-    DEBUG_EXTRA_ASSERT(ip->ref > 0,
+    DEBUG_EXTRA_ASSERT(kref_read(&ip->ref) > 0,
                        "Can't put an inode that is not held by anyone");
-    ip->ref--;
-    spin_unlock(&devfs_itable.lock);
 
+    kref_put(&ip->ref);
     // not backed by a device, so no write back for dev fs
 }
 
@@ -118,7 +114,7 @@ struct inode *devfs_iops_dir_lookup(struct inode *dir, const char *name,
     if (strcmp(name, "..") == 0)
     {
         if (poff) *poff = 1;
-        // return VFS_INODE_DUP(dir->i_sb->imounted_on);
+
         inode_lock(dir->i_sb->imounted_on);
         struct inode *ret =
             VFS_INODE_DIR_LOOKUP(dir->i_sb->imounted_on, "..", NULL);
@@ -242,7 +238,7 @@ void devfs_init()
     {
         devfs_itable.inode[i].dev = MKDEV(DEVFS_MAJOR, 0);
         devfs_itable.inode[i].inum = DEVFS_INVALID_INODE_NUMBER;
-        devfs_itable.inode[i].ref = 0;
+        devfs_itable.inode[i].ref.refcount = 0;
         devfs_itable.inode[i].i_sb = NULL;
         sleep_lock_init(&devfs_itable.inode[i].lock, "devfs inode");
         devfs_itable.inode[i].valid = true;
@@ -269,7 +265,7 @@ ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
     devfs_itable.inode[0].inum = 0;
     devfs_itable.inode[0].i_mode |= S_IFDIR;
     devfs_itable.inode[0].i_sb = sb_in;
-    devfs_itable.inode[0].ref = 1;
+    kref_init(&devfs_itable.inode[0].ref);
     devfs_itable.used_inodes = 1;
 
     size_t found_devices = 0;
@@ -293,7 +289,7 @@ ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
             devfs_itable.inode[inode_idx].i_mode |= S_IFBLK;
         }
         devfs_itable.inode[inode_idx].dev = dev->device_number;
-        devfs_itable.inode[inode_idx].ref = 1;
+        kref_init(&devfs_itable.inode[inode_idx].ref);
         devfs_itable.name[inode_idx] = dev->name;
         devfs_itable.used_inodes = inode_idx + 1;
 
