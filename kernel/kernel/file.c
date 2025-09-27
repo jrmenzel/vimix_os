@@ -347,30 +347,31 @@ ssize_t file_link(char *path_from, char *path_to)
         return -ENOENT;
     }
 
-    // inode_lock(ip);
+    inode_lock(ip);
     if (S_ISDIR(ip->i_mode))
     {
-        // inode_unlock_put(ip);
+        inode_unlock_put(ip);
         return -EISDIR;
     }
-    // inode_unlock(ip);
+    inode_unlock(ip);
 
     char name[NAME_MAX];
     struct inode *dir = inode_of_parent_from_path(path_to, name);
     if (dir == NULL)
     {
-        // inode_put(ip);
+        inode_put(ip);
         return -ENOENT;
     }
 
-    // inode_lock(dir);
-    // inode_lock(ip);
+    inode_lock_two(dir, ip);
     if (dir->dev != ip->dev)
     {
-        // inode_unlock_put(ip);
-        // inode_unlock_put(dir);
+        inode_unlock_put(ip);
+        inode_unlock_put(dir);
         return -EOTHER;
     }
+    inode_unlock(dir);
+    inode_unlock(ip);
 
     return VFS_INODE_LINK(dir, ip, name);
 }

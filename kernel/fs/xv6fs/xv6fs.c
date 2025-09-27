@@ -874,8 +874,7 @@ ssize_t xv6fs_iops_link(struct inode *dir, struct inode *ip,
                         char name[NAME_MAX])
 {
     log_begin_fs_transaction(ip->i_sb);
-    inode_lock(dir);
-    inode_lock(ip);
+    inode_lock_two(dir, ip);
 
     ip->nlink++;
     xv6fs_sops_write_inode(ip);

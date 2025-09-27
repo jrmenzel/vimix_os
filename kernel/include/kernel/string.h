@@ -36,7 +36,7 @@ void *memset(void *dst, int32_t constant, size_t n);
 /// @param src Source string.
 /// @param n Max chars to copy.
 /// @return Pointer to src.
-char *safestrcpy(char *dst, const char *str, size_t n);
+char *safestrcpy(char *dst, const char *src, size_t n);
 
 /// @brief locate character in string
 /// @param str String

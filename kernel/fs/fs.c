@@ -132,6 +132,28 @@ void inode_lock(struct inode *ip)
     }
 }
 
+void inode_lock_two(struct inode *ip0, struct inode *ip1)
+{
+    DEBUG_EXTRA_PANIC(ip0 != NULL && ip1 != NULL,
+                      "inode_lock_two: one of the inodes is NULL");
+    DEBUG_EXTRA_PANIC(ip0 != ip1, "inode_lock_two: both inodes are the same");
+
+    while (true)
+    {
+        if (sleep_trylock(&ip0->lock))
+        {
+            if (sleep_trylock(&ip1->lock))
+            {
+                // got both locks
+                return;
+            }
+            // could not get second lock, unlock first and try again
+            sleep_unlock(&ip0->lock);
+        }
+        yield();  // let other threads run
+    }
+}
+
 void inode_unlock(struct inode *ip)
 {
 #ifdef CONFIG_DEBUG_EXTRA_RUNTIME_TESTS

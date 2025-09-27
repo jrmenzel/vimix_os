@@ -91,6 +91,8 @@ int iops_dir_link_default_ro(struct inode *dir, char *name, ino_t inum)
 ssize_t iops_link_default_ro(struct inode *dir, struct inode *ip,
                              char name[NAME_MAX])
 {
+    inode_put(dir);
+    inode_put(ip);
     return -EOTHER;
 }
 

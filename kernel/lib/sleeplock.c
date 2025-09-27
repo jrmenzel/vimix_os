@@ -32,6 +32,24 @@ void sleep_lock(struct sleeplock *lk)
     spin_unlock(&lk->lk);
 }
 
+bool sleep_trylock(struct sleeplock *lk)
+{
+    bool locked = spin_trylock(&lk->lk);
+    if (locked == false) return false;
+
+    if (lk->locked)
+    {
+        spin_unlock(&lk->lk);
+        return false;
+    }
+    lk->locked = true;
+#ifdef CONFIG_DEBUG_SLEEPLOCK
+    lk->pid = get_current()->pid;
+#endif  // CONFIG_DEBUG_SLEEPLOCK
+    spin_unlock(&lk->lk);
+    return true;
+}
+
 void sleep_unlock(struct sleeplock *lk)
 {
     spin_lock(&lk->lk);

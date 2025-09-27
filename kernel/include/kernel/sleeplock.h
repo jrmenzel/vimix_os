@@ -18,6 +18,12 @@ struct sleeplock
 
 void sleep_lock_init(struct sleeplock *lk, char *name_for_debug);
 void sleep_lock(struct sleeplock *lk);
+
+/// @brief Returns true if the lock was aquired, does not block, does not sleep.
+/// @param lk The lock.
+/// @return True if the lock was aquired.
+bool sleep_trylock(struct sleeplock *lk);
+
 void sleep_unlock(struct sleeplock *lk);
 
 #ifdef CONFIG_DEBUG_SLEEPLOCK

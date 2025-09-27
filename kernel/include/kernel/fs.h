@@ -111,6 +111,11 @@ ssize_t inode_create(const char *path, mode_t mode, dev_t device);
 /// Reads the inode from disk if necessary.
 void inode_lock(struct inode *ip);
 
+/// @brief Locks both inodes (in a deadlock free way).
+/// @param ip0 First inode.
+/// @param ip1 Second inode.
+void inode_lock_two(struct inode *ip0, struct inode *ip1);
+
 /// @brief Increase reference count for the inode.
 /// @param ip The inode.
 static inline void inode_get(struct inode *ip) { kref_get(&ip->ref); }
