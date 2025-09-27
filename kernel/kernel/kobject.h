@@ -1,17 +1,21 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <fs/sysfs/sysfs_data.h>
 #include <kernel/container_of.h>
 #include <kernel/kernel.h>
 #include <kernel/kref.h>
 #include <kernel/list.h>
 #include <kernel/rwspinlock.h>
+#include <kernel/spinlock.h>
 
 struct kobject;
 struct kobj_type
 {
     void (*release)(struct kobject *kobj);
-    // const struct sysfs_ops *sysfs_ops;
+    const struct sysfs_ops *sysfs_ops;
+    size_t n_attributes;
+    struct sysfs_attribute *attribute;
 };
 
 /// @brief Represents a kernel object in a hierarchy.
@@ -26,11 +30,14 @@ struct kobject
     struct list_head children;        ///< list of child kobjects
     struct rwspinlock children_lock;  ///< protects the children list
     struct list_head siblings;  ///< node in parent's children list, protected
-                                ///< by parents lock
+    ///< by parents lock
 
+    struct spinlock sysfs_lock;     ///< protects sysfs data
     const struct kobj_type *ktype;  ///< object specific callbacks, can be NULL
-    // struct sysfs_...
-    struct kref ref_count;  ///< reference count for this object
+    struct kref ref_count;          ///< reference count for this object
+
+    struct sysfs_node *
+        *sysfs_nodes;  ///< array of associated sysfs nodes (not inodes)
 };
 
 #define kobject_from_child_list(ptr) container_of(ptr, struct kobject, siblings)
@@ -47,7 +54,7 @@ void init_kobject_root();
 
 /// @brief Alloc and initializes a new dynamic kobject.
 /// @return NULL on failure
-struct kobject *kobject_create();
+struct kobject *kobject_create_init();
 
 /// @brief Initializes a kobject. Call kobject_add() next to add it to the
 /// kobject hierarchy.

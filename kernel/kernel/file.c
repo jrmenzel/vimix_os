@@ -267,7 +267,7 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
             f->off += read_bytes;
         }
     }
-    else if (S_ISREG(f->mode) || S_ISDIR(f->mode))
+    else if (S_ISREG(f->mode))
     {
         inode_lock(f->ip);
         read_bytes = inode_read(f->ip, true, addr, f->off, n);
@@ -277,6 +277,10 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
             f->off += read_bytes;
         }
         inode_unlock(f->ip);
+    }
+    else if (S_ISDIR(f->mode))
+    {
+        return -EISDIR;
     }
     else
     {
@@ -319,12 +323,17 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
         ret = block_device_write(bdev, addr, f->off, n);
         if (ret > 0) f->off += ret;
     }
-    else if (S_ISREG(f->mode) || S_ISDIR(f->mode))
+    else if (S_ISREG(f->mode))
     {
         ret = VFS_FILE_WRITE(f, addr, n);
     }
+    else if (S_ISDIR(f->mode))
+    {
+        return -EISDIR;
+    }
     else
     {
+        printk("file_write(): unknown file type %x\n", f->mode);
         panic("file_write() on unknown file type");
     }
 
@@ -339,28 +348,28 @@ ssize_t file_link(char *path_from, char *path_to)
         return -ENOENT;
     }
 
-    inode_lock(ip);
+    // inode_lock(ip);
     if (S_ISDIR(ip->i_mode))
     {
-        inode_unlock_put(ip);
+        // inode_unlock_put(ip);
         return -EISDIR;
     }
-    inode_unlock(ip);
+    // inode_unlock(ip);
 
     char name[NAME_MAX];
     struct inode *dir = inode_of_parent_from_path(path_to, name);
     if (dir == NULL)
     {
-        inode_put(ip);
+        // inode_put(ip);
         return -ENOENT;
     }
 
-    inode_lock(dir);
-    inode_lock(ip);
+    // inode_lock(dir);
+    // inode_lock(ip);
     if (dir->dev != ip->dev)
     {
-        inode_unlock_put(ip);
-        inode_unlock_put(dir);
+        // inode_unlock_put(ip);
+        // inode_unlock_put(dir);
         return -EOTHER;
     }
 

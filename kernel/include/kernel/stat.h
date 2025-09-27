@@ -6,9 +6,6 @@
 
 #include <kernel/kernel.h>
 
-/// @brief An inode number.
-typedef long unsigned ino_t;
-
 struct stat
 {
     dev_t st_dev;       ///< File system's disk device

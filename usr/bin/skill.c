@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "libasm.h"
+#include <vimixutils/libasm.h>
 
 size_t min_stack = 0;
 

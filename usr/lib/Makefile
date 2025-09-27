@@ -35,7 +35,8 @@ LIB_VIMIXUTILS_BUILD_DIR := $(LIB_BUILD_DIR)/libvimixutils
 LIB_VIMIXUTILS_BUILD_DIR_HOST := $(LIB_BUILD_DIR_HOST)/libvimixutils
 
 LIB_VIMIXUTILS_O := \
-	path.o
+	path.o \
+	sysfs.o
 
 LIB_VIMIXUTILS := $(foreach a, $(LIB_VIMIXUTILS_O), $(LIB_VIMIXUTILS_BUILD_DIR)/$a)
 LIB_VIMIXUTILS_HOST := $(foreach a, $(LIB_VIMIXUTILS_O), $(LIB_VIMIXUTILS_BUILD_DIR_HOST)/$a)
@@ -61,7 +62,7 @@ $(LIB_BUILD_DIR)/vimixutils.a : $(LIB_VIMIXUTILS)
 # generic rule to compile .c files to .o files on target
 $(LIB_BUILD_DIR)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -I. $(USER_SPACE_INC_PARAMS) -c $< -o $@
+	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 # build libvimixutils on host
 $(LIB_BUILD_DIR_HOST)/vimixutils.a : $(LIB_VIMIXUTILS_HOST)
@@ -71,7 +72,7 @@ $(LIB_BUILD_DIR_HOST)/vimixutils.a : $(LIB_VIMIXUTILS_HOST)
 # generic rule to compile .c files to .o files on host
 $(LIB_BUILD_DIR_HOST)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile on host: $(@)\n$(NO_COLOR)"
-	@$(CC_HOST) $(CFLAGS_HOST) -I. $(USER_SPACE_INC_PARAMS_HOST) -c $< -o $@
+	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_PARAMS_HOST) -c $< -o $@
 
 # automatically generated
 $(LIBC_BUILD_DIR)/usys.S : libc/usys.pl

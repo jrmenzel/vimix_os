@@ -2,7 +2,9 @@
 
 #pragma once
 
+#include <kernel/container_of.h>
 #include <kernel/kernel.h>
+#include <kernel/kobject.h>
 #include <kernel/list.h>
 #include <kernel/spinlock.h>
 
@@ -52,6 +54,8 @@ struct kmem_slab
     struct kmem_cache *owning_cache;
 };
 
+#define kmem_slab_from_list(ptr) container_of(ptr, struct kmem_slab, slab_list)
+
 /// @brief Construct a new slab object.
 struct kmem_slab *kmem_slab_create(size_t size);
 
@@ -99,6 +103,24 @@ static inline bool kmem_slab_is_full(struct kmem_slab *slab)
     return (slab->free_list == NULL);
 }
 
+/// @brief Get number of free/available objects in this slab.
+/// @param slab The slab to query.
+/// @return Objects available.
+size_t kmem_slab_get_free_count(struct kmem_slab *slab);
+
+/// @brief Get number of allocated objects in this slab.
+/// @param slab The slab to query.
+/// @return Objects allocated.
+size_t kmem_slab_get_object_count(struct kmem_slab *slab);
+
+/// @brief Get the maximum number of objects this slab can manage.
+/// @param slab The slab to query.
+/// @return Max space in this slab.
+size_t kmem_slab_get_max_objects(struct kmem_slab *slab);
+
+void kmem_slab_check(struct kmem_slab *slab);
+void kmem_cache_check(struct kmem_cache *cache);
+
 #define KMEM_CACHE_MAX_NAME_LEN 16
 
 /// @brief A cache of allocations of a certain type/size.
@@ -106,6 +128,9 @@ static inline bool kmem_slab_is_full(struct kmem_slab *slab)
 /// Grows and shrinks internal list of slabs.
 struct kmem_cache
 {
+    // kobject for sysfs
+    struct kobject kobj;
+
     // lock protecting this cache
     struct spinlock lock;
 
@@ -119,11 +144,11 @@ struct kmem_cache
     char name[KMEM_CACHE_MAX_NAME_LEN];
 };
 
+#define kmem_cache_from_kobj(ptr) container_of(ptr, struct kmem_cache, kobj)
+
 /// @brief Init a cache for objects of a given size.
-/// @param name For debugging, no longer than KMEM_CACHE_MAX_NAME_LEN!
 /// @param size Size per object in bytes.
-void kmem_cache_init(struct kmem_cache *new_cache, const char *name,
-                     size_t size);
+void kmem_cache_init(struct kmem_cache *new_cache, size_t size);
 
 /// @brief Allocate an object from this cache.
 /// @param cache The cache to use.
@@ -134,3 +159,23 @@ void *kmem_cache_alloc(struct kmem_cache *cache);
 /// @param cache The cache to use.
 /// @param object Pointer to object to free.
 void kmem_cache_free(struct kmem_cache *cache, void *object);
+
+/// @brief Get the number of slabs in this cache.
+/// @param cache The cache to query.
+/// @return Count of slabs, each slab is one page.
+size_t kmem_cache_get_slab_count(struct kmem_cache *cache);
+
+/// @brief How many objects can this cache manage in total currently.
+/// @param cache The cahce to query.
+/// @return Count of objects.
+size_t kmem_cache_get_max_objects(struct kmem_cache *cache);
+
+/// @brief Get the size of objects in this cache.
+/// @param cache The cache to query.
+/// @return Size in bytes.
+size_t kmem_cache_get_object_size(struct kmem_cache *cache);
+
+/// @brief Get the number of allocated objects in this cache.
+/// @param cache Cache to query.
+/// @return Count of allocated objects in all slabs of this cache.
+size_t kmem_cache_get_object_count(struct kmem_cache *cache);

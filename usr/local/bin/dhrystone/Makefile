@@ -4,7 +4,7 @@ DEPLOY_DIR_SUFFIX := local/bin
 include $(ROOT)/usr/MakefileCommonUser.mk
 
 USER_SPACE_INC_PARAMS := $(foreach d, $(USER_SPACE_INC), -I$(ROOT)/$d)
-USER_SPACE_INC_HOST_PARAMS := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
+USER_SPACE_INC_PARAMS_HOST := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
 
 .PHONY: all directories clean
 
@@ -33,7 +33,7 @@ $(B_DEPLOY_DIR_HOST)/dhrystone: $(B_BUILD_DIR_HOST)/dhry_1.o $(B_BUILD_DIR_HOST)
 
 $(B_BUILD_DIR_HOST)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile for host: $(@)\n$(NO_COLOR)"
-	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_HOST_PARAMS) -c $< -o $@
+	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_PARAMS_HOST) -c $< -o $@
 
 
 directories: # make temp build directories

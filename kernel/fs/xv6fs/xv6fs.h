@@ -55,17 +55,13 @@ void xv6fs_iops_read_in(struct inode *ip);
 /// @param sb The filesystem to look on.
 /// @param inum Inode number.
 /// @return in-memory copy of inode, (NOT locked)
-struct inode *xv6fs_iget(struct super_block *sb, uint32_t inum);
+struct inode *xv6fs_iget(struct super_block *sb, ino_t inum);
 
 /// @brief Returns the root inode of the file system.
 static inline struct inode *xv6fs_sops_iget_root(struct super_block *sb)
 {
     return xv6fs_iget(sb, XV6FS_ROOT_INODE);
 }
-
-/// @brief Increment reference count for ip.
-/// @return ip to enable ip = inode_dup(ip1) idiom.
-struct inode *xv6fs_iops_dup(struct inode *ip);
 
 /// @brief Decreases ref count. If the inode was "deleted" (zero links) and this
 /// was the last reference, delete on disk. Note that this can require a new log
@@ -88,7 +84,7 @@ struct inode *xv6fs_iops_dir_lookup(struct inode *dir, const char *name,
 /// @param name file name of new entry
 /// @param inum inode of new entry
 /// @return 0 on success, -1 on failure (e.g. out of disk blocks).
-int xv6fs_iops_dir_link(struct inode *dir, char *name, uint32_t inum);
+int xv6fs_iops_dir_link(struct inode *dir, char *name, ino_t inum);
 
 /// @brief For the syscall to get directory entries get_dirent() from dirent.h.
 /// @param dir Directory inode
@@ -135,5 +131,3 @@ ssize_t xv6fs_iops_unlink(struct inode *dir, char name[NAME_MAX],
 struct file;
 
 ssize_t xv6fs_fops_write(struct file *f, size_t addr, size_t n);
-
-void xv6fs_debug_print_inodes();

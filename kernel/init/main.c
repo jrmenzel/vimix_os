@@ -227,14 +227,6 @@ void init_by_first_thread(void *dtb)
     printk("init userspace...\n");
     userspace_init();  // first user process
 
-#ifdef CONFIG_DEBUG_KALLOC
-    printk("Memory used: %zdkb - %zdkb free\n",
-           kalloc_debug_get_allocation_count() * 4,
-           kalloc_get_free_memory() / 1024);
-#else
-    printk("%zdkb free\n", kalloc_get_free_memory() / 1024);
-#endif  // CONFIG_DEBUG_KALLOC
-
     // get the timebase frequency for timer_init():
     g_timebase_frequency = dtb_get_timebase(dtb);
 

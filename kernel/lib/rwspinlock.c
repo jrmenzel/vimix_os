@@ -87,6 +87,10 @@ void rwspin_write_lock(struct rwspinlock *lk)
 void rwspin_read_unlock(struct rwspinlock *lk)
 {
 #ifdef CONFIG_DEBUG_SPINLOCK
+    if (rwspin_write_lock_is_held_by_this_cpu(lk))
+    {
+        panic("released spinlock for reading but holding it for writing");
+    }
     lk->cpu = NULL;
 #endif  // CONFIG_DEBUG_SPINLOCK
 
@@ -98,7 +102,7 @@ void rwspin_read_unlock(struct rwspinlock *lk)
 void rwspin_write_unlock(struct rwspinlock *lk)
 {
 #ifdef CONFIG_DEBUG_SPINLOCK
-    if (!rwspin_lock_is_held_by_this_cpu(lk))
+    if (!rwspin_write_lock_is_held_by_this_cpu(lk))
     {
         panic("released spinlock without holding it");
     }
@@ -116,8 +120,11 @@ void rwspin_write_unlock(struct rwspinlock *lk)
 #ifdef CONFIG_DEBUG_SPINLOCK
 /// Check whether this cpu is holding the lock.
 /// Interrupts must be off.
-bool rwspin_lock_is_held_by_this_cpu(struct rwspinlock *lk)
+bool rwspin_write_lock_is_held_by_this_cpu(struct rwspinlock *lk)
 {
+    DEBUG_EXTRA_PANIC((size_t)lk >= PAGE_SIZE,
+                      "rwspin_write_lock_is_held_by_this_cpu: lk (or foo of "
+                      "foo->lk) is NULL");
     return (atomic_load(&lk->locked) && lk->cpu == get_cpu());
 }
 #endif  // CONFIG_DEBUG_SPINLOCK

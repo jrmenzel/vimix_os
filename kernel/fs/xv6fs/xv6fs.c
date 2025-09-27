@@ -21,15 +21,6 @@
 /// @param ip inode to truncate.
 void xv6fs_trunc(struct inode *ip);
 
-struct xv6fs_sb_private *get_free_sb_private()
-{
-    struct xv6fs_sb_private *private =
-        (struct xv6fs_sb_private *)kmalloc(sizeof(struct xv6fs_sb_private));
-    if (private == NULL) return NULL;
-    memset(private, 0, sizeof(struct xv6fs_sb_private));
-    return private;
-}
-
 struct file_system_type xv6_file_system_type;
 
 struct xv6fs_inode
@@ -47,18 +38,6 @@ struct xv6fs_inode
 
 #define xv6fs_inode_from_inode(ptr) container_of(ptr, struct xv6fs_inode, ino)
 
-/// In memory inodes, call xv6fs_init() before use.
-struct
-{
-    /// The xv6fs_itable.lock spin-lock protects the allocation of
-    /// xv6fs_itable entries. Since ip->ref indicates whether an entry
-    /// is free, and ip->dev and ip->inum indicate which i-node
-    /// an entry holds, one must hold xv6fs_itable.lock while using any
-    /// of those fields.
-    struct spinlock lock;
-    struct xv6fs_inode inode[XV6FS_MAX_ACTIVE_INODES];
-} xv6fs_itable;
-
 const char *XV6_FS_NAME = "xv6fs";
 
 // super block operations
@@ -73,7 +52,7 @@ struct inode_operations xv6fs_i_op = {
     iops_create : xv6fs_iops_create,
     iops_open : xv6fs_iops_open,
     iops_read_in : xv6fs_iops_read_in,
-    iops_dup : xv6fs_iops_dup,
+    iops_dup : iops_dup_default,
     iops_put : xv6fs_iops_put,
     iops_dir_lookup : xv6fs_iops_dir_lookup,
     iops_dir_link : xv6fs_iops_dir_link,
@@ -107,13 +86,6 @@ void xv6fs_init()
     xv6_file_system_type.init_fs_super_block = xv6fs_init_fs_super_block;
     xv6_file_system_type.kill_sb = xv6fs_kill_sb;
 
-    spin_lock_init(&xv6fs_itable.lock, "xv6fs_itable");
-    for (size_t i = 0; i < XV6FS_MAX_ACTIVE_INODES; i++)
-    {
-        sleep_lock_init(&xv6fs_itable.inode[i].ino.lock, "inode");
-        xv6fs_itable.inode[i].ino.inum = XV6FS_UNUSED_INODE;
-    }
-
     register_file_system(&xv6_file_system_type);
 }
 
@@ -141,17 +113,8 @@ ssize_t xv6fs_init_fs_super_block(struct super_block *sb_in, const void *data)
 {
     // data is used for file system specific mount parameters
     // ignore those here
-
-    struct xv6fs_sb_private *priv = get_free_sb_private();
-    if (priv == NULL)
-    {
-        return -ENOMEM;
-    }
-    sb_in->s_fs_info = (void *)priv;
-
     dev_t dev = sb_in->dev;
     struct buf *first_block = bio_read(dev, XV6FS_SUPER_BLOCK_NUMBER);
-
     struct xv6fs_superblock *vx6_sb =
         (struct xv6fs_superblock *)first_block->data;
     if (vx6_sb->magic != XV6FS_MAGIC)
@@ -161,6 +124,16 @@ ssize_t xv6fs_init_fs_super_block(struct super_block *sb_in, const void *data)
         bio_release(first_block);
         return -EINVAL;
     }
+
+    struct xv6fs_sb_private *priv =
+        (struct xv6fs_sb_private *)kmalloc(sizeof(struct xv6fs_sb_private));
+    if (priv == NULL)
+    {
+        bio_release(first_block);
+        return -ENOMEM;
+    }
+    memset(priv, 0, sizeof(struct xv6fs_sb_private));
+    sb_in->s_fs_info = (void *)priv;
 
     memmove(&(priv->sb), vx6_sb, sizeof(struct xv6fs_superblock));
     log_init(&(priv->log), dev, &(priv->sb));
@@ -185,12 +158,13 @@ void xv6fs_kill_sb(struct super_block *sb_in)
 struct inode *xv6fs_iops_lookup(struct inode *iparent, char name[NAME_MAX],
                                 mode_t mode, int32_t flags)
 {
-    log_begin_fs_transaction(iparent->i_sb);
+    struct super_block *sb = iparent->i_sb;
+    log_begin_fs_transaction(sb);
     inode_lock(iparent);
     struct inode *ip = xv6fs_iops_dir_lookup(iparent, name, NULL);
     if (ip == NULL)
     {
-        log_end_fs_transaction(iparent->i_sb);
+        log_end_fs_transaction(sb);
         return NULL;
     }
 
@@ -208,11 +182,11 @@ struct inode *xv6fs_iops_lookup(struct inode *iparent, char name[NAME_MAX],
 #if defined(CONFIG_DEBUG_INODE_PATH_NAME)
         strncpy(ip->path, name, PATH_MAX);
 #endif
-        log_end_fs_transaction(iparent->i_sb);
+        log_end_fs_transaction(sb);
         return ip;
     }
     inode_unlock_put(ip);
-    log_end_fs_transaction(iparent->i_sb);
+    log_end_fs_transaction(sb);
     return NULL;
 }
 
@@ -319,15 +293,20 @@ struct inode *xv6fs_iops_open(struct inode *iparent, char name[NAME_MAX],
         return NULL;
     }
 
-    inode_lock(ip);
-
     if (S_ISREG(ip->i_mode) && flags & O_TRUNC)
     {
         // truncate if needed
         log_begin_fs_transaction(iparent->i_sb);
+        // lock after starting FS transaction to avoid deadlock
+        // test above only read static data of the inode
+        inode_lock(ip);
         xv6fs_trunc(ip);
         xv6fs_sops_write_inode(ip);
         log_end_fs_transaction(iparent->i_sb);
+    }
+    else
+    {
+        inode_lock(ip);
     }
 #if defined(CONFIG_DEBUG_INODE_PATH_NAME)
     strncpy(ip->path, name, PATH_MAX);
@@ -350,7 +329,7 @@ struct inode *xv6fs_sops_alloc_inode(struct super_block *sb, mode_t mode)
     struct xv6fs_sb_private *priv = (struct xv6fs_sb_private *)sb->s_fs_info;
     struct xv6fs_superblock *xsb = &(priv->sb);
 
-    for (size_t inum = 1; inum < xsb->ninodes; inum++)
+    for (ino_t inum = 1; inum < xsb->ninodes; inum++)
     {
         struct buf *bp = bio_read(sb->dev, XV6FS_BLOCK_OF_INODE_P(inum, xsb));
         struct xv6fs_dinode *dip =
@@ -370,7 +349,7 @@ struct inode *xv6fs_sops_alloc_inode(struct super_block *sb, mode_t mode)
         bio_release(bp);
     }
 
-    printk("xv6fs_sops_alloc_inode: no inodes\n");
+    printk("xv6fs_sops_alloc_inode: no disk inodes left\n");
     return NULL;
 }
 
@@ -583,68 +562,89 @@ size_t bmap(struct inode *ip, uint32_t bn)
     return 0;
 }
 
-struct inode *xv6fs_iget(struct super_block *sb, uint32_t inum)
+struct inode *xv6fs_iget_locked(struct super_block *sb, ino_t inum)
+{
+    struct list_head *pos;
+    list_for_each(pos, &sb->fs_inode_list)
+    {
+        struct inode *ip = inode_from_list(pos);
+        if (ip->inum == inum && ip->i_sb->dev == sb->dev)
+        {
+            inode_get(ip);
+            return ip;
+        }
+    }
+    return NULL;
+}
+
+struct inode *xv6fs_iget(struct super_block *sb, ino_t inum)
 {
     if (sb == NULL) return NULL;
 
-    spin_lock(&xv6fs_itable.lock);
-
-    // Is the inode already in the table?
-    struct inode *empty = NULL;
-    struct xv6fs_inode *xv_ip = NULL;
-    for (xv_ip = &xv6fs_itable.inode[0];
-         xv_ip < &xv6fs_itable.inode[XV6FS_MAX_ACTIVE_INODES]; xv_ip++)
+    // return existing inode if it exists in the list
+    rwspin_read_lock(&sb->fs_inode_list_lock);
+    struct inode *ip = xv6fs_iget_locked(sb, inum);
+    rwspin_read_unlock(&sb->fs_inode_list_lock);
+    if (ip)
     {
-        struct inode *ip = &(xv_ip->ino);
-        DEBUG_EXTRA_ASSERT(ip != NULL, "invalid inode");
-
-        if (kref_read(&ip->ref) > 0 && ip->i_sb->dev == sb->dev &&
-            ip->inum == inum)
-        {
-            kref_get(&ip->ref);
-            spin_unlock(&xv6fs_itable.lock);
-            return ip;
-        }
-
-        if (empty == NULL && kref_read(&ip->ref) == 0)  // Remember empty slot.
-        {
-            empty = ip;
-        }
+        return ip;  // found existing inode
     }
 
-    // Recycle an inode entry.
-    if (empty == NULL)
+    // now we need a write lock
+    rwspin_write_lock(&sb->fs_inode_list_lock);
+    // check again, maybe another thread created it in the meantime
+    ip = xv6fs_iget_locked(sb, inum);
+    if (ip)
     {
-        panic("xv6fs_iget: no inodes left. See XV6FS_MAX_ACTIVE_INODES.");
+        rwspin_write_unlock(&sb->fs_inode_list_lock);
+        return ip;  // unlikely, but found inode now
     }
 
-    struct inode *ip = empty;
-    ip->i_sb = sb;
-    ip->dev = sb->dev;
-    ip->inum = inum;
-    kref_init(&ip->ref);
-    ip->valid = 0;
-    ip->is_mounted_on = NULL;
-    spin_unlock(&xv6fs_itable.lock);
+    // Create a new inode
+    struct xv6fs_inode *xv_ip = kmalloc(sizeof(struct xv6fs_inode));
+    if (xv_ip == NULL)
+    {
+        rwspin_write_unlock(&sb->fs_inode_list_lock);
+        return NULL;
+    }
+    memset(xv_ip, 0, sizeof(struct xv6fs_inode));
+    ip = &xv_ip->ino;
 
-    return ip;
-}
+    inode_init(ip, sb, inum);
+    rwspin_write_unlock(&sb->fs_inode_list_lock);
 
-struct inode *xv6fs_iops_dup(struct inode *ip)
-{
-    kref_get(&ip->ref);
     return ip;
 }
 
 void xv6fs_iops_put(struct inode *ip)
 {
-    spin_lock(&xv6fs_itable.lock);
+    bool free = kref_put(&ip->ref);
+    if (free == false)
+    {
+        // still referenced
+        return;
+    }
 
-    if (kref_read(&ip->ref) == 1 && ip->valid && ip->nlink == 0)
+    // last reference dropped
+    // get a write lock on the inode list to prevent anyone else from
+    // getting this inode while we are deleting it
+    struct rwspinlock *list_lock = &ip->i_sb->fs_inode_list_lock;
+    rwspin_write_lock(list_lock);
+    // check again, maybe another thread got it in the meantime
+    if (kref_read(&ip->ref) != 0)
+    {
+        rwspin_write_unlock(list_lock);
+        return;  // someone else got a reference in the meantime
+    }
+    inode_del(ip);  // removes from inode list -> can't get discovered anymore
+    rwspin_write_unlock(list_lock);
+
+    // If the inode has no links and no other references: truncate and free on
+    // disk.
+    if (ip->valid && ip->nlink == 0)
     {
         struct process *proc = get_current();
         bool external_fs_transaction = (proc->debug_log_depth != 0);
-        // inode has no links and no other references: truncate and free.
 
         if (!external_fs_transaction)
         {
@@ -656,32 +656,16 @@ void xv6fs_iops_put(struct inode *ip)
             // started. Otherwise this might also trigger an error if no
             // other FS transaction is active...
 
-            // to avoid deadlocks, release itable lock:
-            spin_unlock(&xv6fs_itable.lock);
-
             log_begin_fs_transaction(ip->i_sb);
-
-            // regain lock:
-            spin_lock(&xv6fs_itable.lock);
-
-            // no check is needed that the inode is still to be deleted, as
-            // this thread had the last reference and it is not accessible
-            // via the FS anymore.
-            DEBUG_EXTRA_ASSERT(
-                kref_read(&ip->ref) == 1 && ip->valid && ip->nlink == 0,
-                "No-one should have been able to change this inode!");
         }
 
-        // ip->ref == 1 means no other process can have ip locked,
+        // ip->ref == 0 means no other process can have ip locked,
         // so this sleep_lock() won't block (or deadlock).
         sleep_lock(&ip->lock);
-
-        spin_unlock(&xv6fs_itable.lock);
 
         xv6fs_trunc(ip);
         ip->i_mode = 0;
         xv6fs_sops_write_inode(ip);
-        ip->valid = 0;
 
         sleep_unlock(&ip->lock);
 
@@ -689,14 +673,9 @@ void xv6fs_iops_put(struct inode *ip)
         {
             log_end_fs_transaction(ip->i_sb);
         }
-
-        spin_lock(&xv6fs_itable.lock);
     }
 
-    DEBUG_EXTRA_ASSERT(kref_read(&ip->ref) > 0,
-                       "Can't put an inode that is not held by anyone");
-    kref_put(&ip->ref);
-    spin_unlock(&xv6fs_itable.lock);
+    kfree(xv6fs_inode_from_inode(ip));
 }
 
 bool inode_is_mounted_fs_root(struct inode *dir)
@@ -714,7 +693,7 @@ struct inode *xv6fs_iops_dir_lookup(struct inode *dir, const char *name,
         {
             panic("xv6fs_iops_dir_lookup read error");
         }
-        if (de.inum == XV6FS_UNUSED_INODE)
+        if (de.inum == INVALID_INODE)
         {
             continue;
         }
@@ -735,14 +714,14 @@ struct inode *xv6fs_iops_dir_lookup(struct inode *dir, const char *name,
                 inode_unlock(dir->i_sb->imounted_on);
                 return ret;
             }
-            return xv6fs_iget(dir->i_sb, (uint32_t)de.inum);
+            return xv6fs_iget(dir->i_sb, (ino_t)de.inum);
         }
     }
 
     return NULL;
 }
 
-int xv6fs_iops_dir_link(struct inode *dir, char *name, uint32_t inum)
+int xv6fs_iops_dir_link(struct inode *dir, char *name, ino_t inum)
 {
     // Look for an empty xv6fs_dirent.
     struct xv6fs_dirent de;
@@ -754,7 +733,7 @@ int xv6fs_iops_dir_link(struct inode *dir, char *name, uint32_t inum)
         {
             panic("inode_dir_link read wrong amount of data");
         }
-        if (de.inum == XV6FS_UNUSED_INODE)
+        if (de.inum == INVALID_INODE)
         {
             break;
         }
@@ -798,7 +777,7 @@ ssize_t xv6fs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
             return 0;
         }
         new_seek_pos += read_bytes;
-    } while (xv6_dir_entry.inum == XV6FS_UNUSED_INODE);  // skip unused entries
+    } while (xv6_dir_entry.inum == INVALID_INODE);  // skip unused entries
 
     inode_unlock(dir);
 
@@ -896,6 +875,9 @@ ssize_t xv6fs_iops_link(struct inode *dir, struct inode *ip,
                         char name[NAME_MAX])
 {
     log_begin_fs_transaction(ip->i_sb);
+    inode_lock(dir);
+    inode_lock(ip);
+
     ip->nlink++;
     xv6fs_sops_write_inode(ip);
     inode_unlock(ip);
@@ -907,8 +889,10 @@ ssize_t xv6fs_iops_link(struct inode *dir, struct inode *ip,
         inode_lock(ip);
         ip->nlink--;
         xv6fs_sops_write_inode(ip);
+        struct super_block *sb =
+            ip->i_sb;  // save sb pointer before ip is freed
         inode_unlock_put(ip);
-        log_end_fs_transaction(ip->i_sb);
+        log_end_fs_transaction(sb);
         return -EOTHER;
     }
     log_end_fs_transaction(ip->i_sb);
@@ -979,14 +963,16 @@ static int isdirempty(struct inode *dir)
 ssize_t xv6fs_iops_unlink(struct inode *dir, char name[NAME_MAX],
                           bool delete_files, bool delete_directories)
 {
-    log_begin_fs_transaction(dir->i_sb);
+    // save sb pointer in case dir is freed
+    struct super_block *sb = dir->i_sb;
+    log_begin_fs_transaction(sb);
     inode_lock(dir);
     uint32_t off;
     struct inode *ip = xv6fs_iops_dir_lookup(dir, name, &off);
     if (ip == NULL)
     {
         inode_unlock_put(dir);
-        log_end_fs_transaction(dir->i_sb);
+        log_end_fs_transaction(sb);
         return -ENOENT;
     }
     inode_lock(ip);
@@ -1014,7 +1000,7 @@ ssize_t xv6fs_iops_unlink(struct inode *dir, char name[NAME_MAX],
     {
         inode_unlock_put(ip);
         inode_unlock_put(dir);
-        log_end_fs_transaction(dir->i_sb);
+        log_end_fs_transaction(sb);
         return error;
     }
 
@@ -1037,21 +1023,7 @@ ssize_t xv6fs_iops_unlink(struct inode *dir, char name[NAME_MAX],
     xv6fs_sops_write_inode(ip);
     inode_unlock_put(ip);
 
-    log_end_fs_transaction(dir->i_sb);
+    log_end_fs_transaction(sb);
 
     return 0;
-}
-
-void xv6fs_debug_print_inodes()
-{
-    printk("inodes:\n");
-    for (size_t i = 0; i < XV6FS_MAX_ACTIVE_INODES; ++i)
-    {
-        struct inode *ip = &xv6fs_itable.inode[i].ino;
-        if (kref_read(&ip->ref) != 0)
-        {
-            debug_print_inode(ip);
-            printk("\n");
-        }
-    }
 }

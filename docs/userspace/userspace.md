@@ -48,6 +48,7 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [mount](bin/mount.md) - mounts a [file_system](../kernel/file_system/file_system.md)
 - [umount](bin/umount.md) - unmounts a [file_system](../kernel/file_system/file_system.md)
 - [shutdown](bin/shutdown.md) - Halts or shuts down the OS
+- [meminfo](bin/meminfo.md) - prints info on memory usage
 
 **Games:**
 - [fortune](bin/fortune.md) - classic UNIX fortune cookie

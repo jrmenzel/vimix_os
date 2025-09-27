@@ -4,19 +4,25 @@ A UNIX file system stores [inodes](inode.md), which represent [files](file.md), 
 
 
 **Software stack:**
-- File System related [system calls](../syscalls/syscalls.md) 
-- [virtual file system](vfs.md)
-- [xv6 File System](xv6fs/xv6fs.md)
-	- [xv6fs Log](xv6fs/xv6fs_log.md)
-- [Block IO Cache](block_io.md)
-- [device drivers](../devices/devices.md) read()/write()
+
+The software stack coming from a [user space](../../userspace/userspace.md) application looks the same until the [virtual file system](vfs.md) calls into different file systems. Runtime based, "virtual" file systems like [sysfs](sysfs/sysfs.md) are self contained while "real" file systems backed by a disk call into [Block IO](block_io.md) and finally a [block device](../devices/devices.md).
+
+| "real" FS                                              | common                                                      | "virtual" FS                                      |
+| ------------------------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------- |
+|                                                        | File System related [system calls](../syscalls/syscalls.md) |                                                   |
+|                                                        | [virtual file system](vfs.md)                               |                                                   |
+| [xv6 File System](xv6fs/xv6fs.md)                      |                                                             | [devfs](devfs/devfs.md) / [sysfs](sysfs/sysfs.md) |
+| [xv6fs Log](xv6fs/xv6fs_log.md)                        |                                                             |                                                   |
+| [Block IO Cache](block_io.md)                          |                                                             |                                                   |
+| [device drivers](../devices/devices.md) read()/write() |                                                             |                                                   |
 
 
 ## Supported File Systems
 
 File systems supported:
-- mostly compatible [xv6 filesystem](xv6fs/xv6fs.md) (`kernel/fs/xv6fs`)
+- mostly compatible [xv6 file system](xv6fs/xv6fs.md) (`kernel/fs/xv6fs`)
 - [devfs](devfs/devfs.md) for `/dev`
+- [sysfs](sysfs/sysfs.md) for `/sys`
 
 
 ---

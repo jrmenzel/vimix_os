@@ -8,9 +8,10 @@
 
 // run each test in its own process. run returns 1 if child's exit()
 // indicates success.
-int run(void f(char *), char *s)
+bool run(void f(char *), char *s)
 {
     time_t start_time = time(NULL);
+    size_t pages_free_start = countfree();
     printf("test %s: ", s);
 
     // need a flush, because if the print from above is in the processes "todo
@@ -33,13 +34,33 @@ int run(void f(char *), char *s)
     int32_t xstatus;
     wait(&xstatus);
     xstatus = WEXITSTATUS(xstatus);
+
+    size_t pages_free_end = countfree();
     if (xstatus != 0)
     {
         printf("FAILED\n");
+        if (pages_free_start != pages_free_end)
+        {
+            printf(
+                " + leaked memory; free at start: %zu, free at end: "
+                "%zu\n",
+                pages_free_start, pages_free_end);
+        }
     }
     else
     {
-        printf("OK");
+        if (pages_free_start != pages_free_end)
+        {
+            printf(
+                "FAILED due to leaked memory; free at start: %zu, free at end: "
+                "%zu\n",
+                pages_free_start, pages_free_end);
+            xstatus = 1;  // fail the test
+        }
+        else
+        {
+            printf("OK");
+        }
         time_t end_time = time(NULL);
         time_t seconds = end_time - start_time;
         printf(" - %zus\n", (size_t)seconds);
@@ -70,7 +91,7 @@ int drivetests(int quick, int continuous, char *justone)
 
     do {
         printf("usertests starting\n");
-        int free0 = countfree();
+        size_t pages_free_start = countfree();
         if (runtests(quicktests_common, justone) ||
             runtests(quicktests, justone))
         {
@@ -91,13 +112,15 @@ int drivetests(int quick, int continuous, char *justone)
                 }
             }
         }
-        int free1 = countfree();
-        if (free1 < free0)
+
+        size_t pages_free_end = countfree();
+        if (pages_free_start != pages_free_end)
         {
             printf(
-                "FAILED -- lost some free pages; free now: %d (was: %d); %d "
+                "FAILED -- lost some free pages; free now: %zd (was: %zd); %zd "
                 "lost\n",
-                free1, free0, free0 - free1);
+                pages_free_end, pages_free_start,
+                pages_free_start - pages_free_end);
             printf("badarg is a candidate for leaked memory\n");
             if (continuous != 2)
             {

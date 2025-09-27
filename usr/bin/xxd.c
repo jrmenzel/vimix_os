@@ -9,14 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <vimixutils/minmax.h>
 
 ///
 /// Temp buffer for read/write in chunks.
 ///
 char buf[512];
 const size_t bytes_per_line = 16;
-
-#define min(a, b) ((a) < (b) ? (a) : (b))
 
 size_t write_hex_line(char *buf, size_t n, size_t index)
 {

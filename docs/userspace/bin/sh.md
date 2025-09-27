@@ -11,4 +11,4 @@ See also [life_cycle_user_application](../../kernel/overview/life_cycle_user_app
 ---
 **Up:** [user space](../userspace.md)
 
-**System:** [sh](sh.md) | [which](which.md) | [mount](mount.md) | [umount](umount.md) | [shutdown](shutdown.md) 
+**System:** [meminfo](meminfo.md) | [mount](mount.md) | [shutdown](shutdown.md) | [sh](sh.md) | [umount](umount.md) | [which](which.md)

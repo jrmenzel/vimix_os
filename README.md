@@ -81,7 +81,7 @@ $
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
 - Changed [memory map](docs/kernel/mm/memory_map_process.md); app stacks grow dynamically.
 - Added applications:
-	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md), [time](docs/userspace/bin/time.md), [which](docs/userspace/bin/which.md)
+	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md), [time](docs/userspace/bin/time.md), [which](docs/userspace/bin/which.md), [meminfo](docs/userspace/bin/meminfo.md)
 - Added syscalls:
 	- [get_dirent](docs/kernel/syscalls/get_dirent.md)
 	- [reboot](docs/kernel/syscalls/reboot.md)
@@ -97,6 +97,7 @@ $
 - [xv6 file system](docs/kernel/file_system/xv6fs/xv6fs.md) was changed to differentiate between character and block [devices](docs/kernel/devices/devices.md). It was also moved behind a [virtual file system](docs/kernel/file_system/vfs.md) abstraction.
 - Parse the [device tree](docs/misc/device_tree.md) at [boot](docs/kernel/overview/boot_process.md).
 - Added [/dev](docs/kernel/file_system/devfs/devfs.md) as a special file system exposing all devices.
+- Added [/sys](docs/kernel/file_system/sysfs/sysfs.md) as a special file system exposing various kernel objects.
 - Boot in [M-mode](docs/riscv/M-mode.md) now mimics [SBI](docs/riscv/SBI.md) to the [S-mode](docs/riscv/S-mode.md) kernel.
 - Added a [buddy allocator](docs/kernel/mm/memory_management.md). `kmalloc()` now supports smaller allocations of one [page](docs/kernel/mm/page.md) via a slab allocator (see [memory_management](docs/kernel/mm/memory_management.md)).
 - Added [Inter Processor Interrupts](docs/kernel/interrupts/IPI.md).

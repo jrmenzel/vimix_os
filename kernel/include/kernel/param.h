@@ -8,7 +8,6 @@
 #define MAX_PROCESSES 1024
 #define MAX_CPUS 8                   ///< maximum number of CPUs
 #define MAX_FILES_PER_PROCESS 16     ///< open files per process
-#define XV6FS_MAX_ACTIVE_INODES 50   ///< maximum number of active i-nodes
 #define MAX_EXEC_ARGS 32             ///< max exec arguments
 #define MAX_OP_BLOCKS 10             ///< max # of blocks any FS op writes
 #define LOGSIZE (MAX_OP_BLOCKS * 3)  ///< max data blocks in on-disk log
@@ -19,8 +18,6 @@
 
 #define KERNEL_STACK_PAGES (1)
 #define KERNEL_STACK_SIZE (KERNEL_STACK_PAGES * PAGE_SIZE)
-
-#define CONFIG_DEBUG_KALLOC
 
 #if defined(DEBUG)
 #define CONFIG_DEBUG
@@ -34,9 +31,6 @@
 /// adds extra runtime tests to check correct sleeplock
 /// usage and stores an optional name per lock for debugging.
 #define CONFIG_DEBUG_SLEEPLOCK
-
-/// debugs kalloc()
-#define CONFIG_DEBUG_KALLOC
 
 /// fill all allocated pages from kalloc with garbage data
 /// also fill all freed pages with garbage

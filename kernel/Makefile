@@ -31,6 +31,8 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/virtio_disk.o \
 	fs/fs.o \
 	fs/mount.o \
+	fs/sysfs/sysfs.o \
+	fs/sysfs/sysfs_node.o \
 	fs/vfs.o \
 	fs/devfs/devfs.o \
 	fs/xv6fs/log.o \
@@ -42,6 +44,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/cpu.o \
 	kernel/ipi.o \
 	kernel/kalloc.o \
+	kernel/kmem_sysfs.o \
 	kernel/kobject.o \
 	kernel/vm.o \
 	kernel/proc.o \
@@ -88,6 +91,7 @@ SUB_DIRS := \
   kernel \
   fs \
   fs/devfs \
+  fs/sysfs \
   fs/xv6fs \
   init \
   ipc \

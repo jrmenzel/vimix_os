@@ -7,6 +7,8 @@
 #include <init/main.h>
 #include <kernel/kalloc.h>
 #include <kernel/kernel.h>
+#include <kernel/kmem_sysfs.h>
+#include <kernel/kobject.h>
 #include <kernel/list.h>
 #include <kernel/slab.h>
 #include <kernel/spinlock.h>
@@ -27,6 +29,7 @@
 /// a linked list per order of all free memory blocks for the kernel to allocate
 struct
 {
+    struct kobject kobj;
     struct spinlock lock;
     char *end_of_physical_memory;
 
@@ -34,11 +37,14 @@ struct
 
     struct kmem_cache object_cache[OBJECT_CACHES];
 
-#ifdef CONFIG_DEBUG_KALLOC
-    size_t pages_allocated;
-    size_t pages_allocated_total;
-#endif  // CONFIG_DEBUG_KALLOC
-} g_kernel_memory;
+    atomic_size_t pages_allocated;
+    struct Minimal_Memory_Map memory_map;
+
+#ifdef CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
+    // detect kmalloc usage before init
+    bool kmalloc_initialized;
+#endif  // CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
+} g_kernel_memory = {0};
 
 // helper which assumes g_kernel_memory.lock is held
 // most of the time better call alloc_pages()
@@ -110,10 +116,7 @@ void *alloc_pages(int32_t flags, size_t order)
                    PAGE_SIZE * (1 << order));  // fill with junk
 #endif  // CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
         }
-#ifdef CONFIG_DEBUG_KALLOC
-        g_kernel_memory.pages_allocated += (1 << order);
-        g_kernel_memory.pages_allocated_total += (1 << order);
-#endif  // CONFIG_DEBUG_KALLOC
+        atomic_fetch_add(&g_kernel_memory.pages_allocated, (1 << order));
     }
 
     spin_unlock(&g_kernel_memory.lock);
@@ -181,9 +184,7 @@ void free_pages(void *pa, size_t order)
 
     __free_pages(pa, order);
 
-#ifdef CONFIG_DEBUG_KALLOC
-    g_kernel_memory.pages_allocated -= (1 << order);
-#endif  // CONFIG_DEBUG_KALLOC
+    atomic_fetch_add(&g_kernel_memory.pages_allocated, -(1 << order));
 
     spin_unlock(&g_kernel_memory.lock);
 }
@@ -209,20 +210,16 @@ void kalloc_init_memory_region(size_t mem_start, size_t mem_end)
 
 void kalloc_init(struct Minimal_Memory_Map *memory_map)
 {
+    kobject_init(&g_kernel_memory.kobj, &km_kobj_ktype);
+    kobject_add(&g_kernel_memory.kobj, &g_kobjects_root, "kmem");
+
     spin_lock_init(&g_kernel_memory.lock, "kmem");
+    g_kernel_memory.memory_map = *memory_map;
     g_kernel_memory.end_of_physical_memory = (char *)memory_map->ram_end;
 
     for (size_t i = 0; i <= PAGE_ALLOC_MAX_ORDER; ++i)
     {
         list_init(&g_kernel_memory.list_of_free_memory[i]);
-    }
-
-    for (size_t i = 0; i < OBJECT_CACHES; ++i)
-    {
-        size_t size = (1 << i) * SLAB_ALIGNMENT;
-        char name[KMEM_CACHE_MAX_NAME_LEN];
-        snprintf(name, KMEM_CACHE_MAX_NAME_LEN, "cache_%d", (uint32_t)size);
-        kmem_cache_init(&g_kernel_memory.object_cache[i], name, size);
     }
 
     // The available memory after kernel_end can have up to two holes:
@@ -262,15 +259,39 @@ void kalloc_init(struct Minimal_Memory_Map *memory_map)
         region_start = next_region_start;
     }
 
-#ifdef CONFIG_DEBUG_KALLOC
-    // reset *after* kfree_range (as kfree decrements the counter)
-    g_kernel_memory.pages_allocated = 0;
-    g_kernel_memory.pages_allocated_total = 0;
-#endif  // CONFIG_DEBUG_KALLOC
+    // reset *after* kalloc_init_memory_region() calls (as kfree() decrements
+    // the counter)
+    atomic_init(&g_kernel_memory.pages_allocated, 0);
+
+    // init object caches for kmalloc()
+    for (size_t i = 0; i < OBJECT_CACHES; ++i)
+    {
+        size_t size = (1 << i) * SLAB_ALIGNMENT;
+
+        kmem_cache_init(&g_kernel_memory.object_cache[i], size);
+    }
+
+    // with all caches created, mark kmalloc as initialized
+    // now kobject_add() can be called savely, as it might call kmalloc()
+#ifdef CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
+    g_kernel_memory.kmalloc_initialized = true;
+#endif  // CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
+
+    for (size_t i = 0; i < OBJECT_CACHES; ++i)
+    {
+        size_t size = (1 << i) * SLAB_ALIGNMENT;
+        if (!kobject_add(&g_kernel_memory.object_cache[i].kobj,
+                         &g_kernel_memory.kobj, "kmalloc_%zd", size))
+        {
+            panic("kmem_cache_init: failed to add kobject");
+        }
+    }
 }
 
 void kfree(void *pa)
 {
+    DEBUG_EXTRA_PANIC(g_kernel_memory.kmalloc_initialized,
+                      "kfree called before kalloc_init()");
     if ((char *)pa < end_of_kernel  // or pa is before or inside the kernel
                                     // binary in memory
         || (char *)pa >=
@@ -319,6 +340,8 @@ size_t next_power_of_two(size_t v)
 
 void *kmalloc(size_t size)
 {
+    DEBUG_EXTRA_PANIC(g_kernel_memory.kmalloc_initialized,
+                      "kfree called before kalloc_init()");
     if (size > PAGE_SIZE)
     {
         panic("too much memory to allocate for kmalloc()");
@@ -344,15 +367,16 @@ void *kmalloc(size_t size)
     return kmem_cache_alloc(&(g_kernel_memory.object_cache[cache_index]));
 }
 
-#ifdef CONFIG_DEBUG_KALLOC
-size_t kalloc_debug_get_allocation_count()
+size_t kalloc_get_allocation_count()
 {
-    spin_lock(&g_kernel_memory.lock);
-    size_t count = g_kernel_memory.pages_allocated;
-    spin_unlock(&g_kernel_memory.lock);
-    return count;
+    return atomic_load(&g_kernel_memory.pages_allocated);
 }
-#endif  // CONFIG_DEBUG_KALLOC
+
+size_t kalloc_get_total_memory()
+{
+    return (g_kernel_memory.memory_map.ram_end -
+            g_kernel_memory.memory_map.ram_start);
+}
 
 size_t kalloc_get_free_memory()
 {
@@ -386,5 +410,13 @@ void kalloc_dump_free_memory()
         }
         printk("Buddy: order %zd, %zd blocks of %d KB free (total: %zd KB)\n",
                i, blocks, (1 << i) * 4, (1 << i) * 4 * blocks);
+    }
+}
+
+void kalloc_debug_check_caches()
+{
+    for (size_t i = 0; i < OBJECT_CACHES; ++i)
+    {
+        kmem_cache_check(&g_kernel_memory.object_cache[i]);
     }
 }

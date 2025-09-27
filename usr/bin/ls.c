@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
     struct Parameters parameters;
     set_default_parameters(&parameters);
     // parameters.print_hidden = true;
-    // parameters.print_dot_dotdot = true;
+    parameters.print_dot_dotdot = true;
 
     if (argc < 2)
     {

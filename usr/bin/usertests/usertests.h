@@ -14,7 +14,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-#include "../libasm.h"
+#include <vimixutils/libasm.h>
 
 #if defined(BUILD_ON_HOST)
 #include <linux/limits.h>
@@ -39,14 +39,14 @@ extern struct test quicktests_common[];
 extern struct test slowtests_common[];
 
 // get free memory to check for leaks
-int countfree();
+size_t countfree();
 
 // all helpers below call exit(1) on failure of testing
 
 // test if f is not NULL
 void assert_open_ok(const char *test_name, FILE *f, const char *file_name);
 
-// test if fd is not 0
+// test if fd is not -1
 void assert_open_ok_fd(const char *test_name, int fd, const char *file_name);
 
 // test if a signed value is 0
@@ -71,12 +71,13 @@ void assert_write_to_file(const char *test_name, int fd, const char *string);
         exit(1);                                                            \
     }
 
-#define assert_errno(value)                                                  \
-    if (errno != value)                                                      \
-    {                                                                        \
-        printf("%s: error: errno value mismatch! (is: %d, should be: %d)\n", \
-               s, errno, value);                                             \
-        exit(1);                                                             \
+#define assert_errno(value)                                                   \
+    if (errno != value)                                                       \
+    {                                                                         \
+        printf(                                                               \
+            "%s: error: errno value mismatch! (is: '%s', should be: '%s')\n", \
+            s, strerror(errno), strerror(value));                             \
+        exit(1);                                                              \
     }
 
 #define assert_no_error(value)                                              \

@@ -35,6 +35,10 @@ typedef uint32_t mode_t;
 
 #define INVALID_FILE_DESCRIPTOR (-1)
 
+/// @brief Inode number, 32 bit on 32 bit systems, 64 bit on 64 bit systems.
+typedef unsigned long ino_t;
+#define INVALID_INODE (0)
+
 /// @brief Process ID.
 typedef int32_t pid_t;
 

@@ -244,7 +244,7 @@ void check_inodes(struct xv6fs_in_file *file, bool verbose)
     struct xv6fs_superblock *sb = &file->super_block;
     uint8_t buffer[BLOCK_SIZE];
     size_t used = 0;
-    size_t inum = 0;
+    ino_t inum = INVALID_INODE;
     size_t inode_end = (sb->ninodes / XV6FS_INODES_PER_BLOCK) + sb->inodestart;
     for (size_t block = sb->inodestart; block < inode_end; ++block)
     {

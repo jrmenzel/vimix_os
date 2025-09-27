@@ -5,10 +5,13 @@
 // Both the kernel and user programs use this header file.
 
 #include <fs/vfs.h>
+#include <kernel/container_of.h>
 #include <kernel/dirent.h>
 #include <kernel/kernel.h>
 #include <kernel/kobject.h>
 #include <kernel/kref.h>
+#include <kernel/list.h>
+#include <kernel/rwspinlock.h>
 #include <kernel/sleeplock.h>
 #include <kernel/stat.h>
 
@@ -38,7 +41,21 @@ struct super_block
     struct inode
         *imounted_on;  ///< inode this FS is mounted on, owns a reference
     unsigned long s_mountflags;
+
+    struct list_head fs_inode_list;  ///< list of all inodes on this FS
+    struct rwspinlock fs_inode_list_lock;
 };
+
+#define super_block_from_kobj(ptr) container_of(ptr, struct super_block, kobj)
+
+/// @brief Returns a new initialized super_block for mounting.
+///        Indirectly protected by g_mount_lock.
+struct super_block *sb_alloc_init();
+
+/// @brief Frees a super_block during unmounting.
+///        Indirectly protected by g_mount_lock.
+/// @param sb Super block of unmounted FS to free.
+void sb_free(struct super_block *sb);
 
 /// in-memory copy of an inode
 struct inode
@@ -51,10 +68,9 @@ struct inode
     /// filesystem this file is located on.
     /// Identical to i_sb->dev for regular files (for char/block r/w)
     dev_t dev;
-    uint32_t inum;    ///< Inode number
+    ino_t inum;       ///< Inode number
     struct kref ref;  ///< Reference count. If 0 it means that this entry in
-                      ///< inode table is free. Lock xv6fs_itable.lock protects
-                      ///< writes to this entry!
+                      ///< inode table is free.
     struct sleeplock lock;  ///< protects everything below here
     int32_t valid;  ///< inode has been read from disk? mode, size etc. are
                     ///< invalid if false
@@ -66,10 +82,21 @@ struct inode
     struct super_block *is_mounted_on;  ///< if set a file system is mounted on
                                         ///< this (dir) inode
 
+    ///< list of all inodes on the FS the inode belongs to.
+    struct list_head fs_inode_list;
+
 #if defined(CONFIG_DEBUG_INODE_PATH_NAME)
     char path[PATH_MAX];
 #endif
 };
+
+#define inode_from_list(ptr) container_of(ptr, struct inode, fs_inode_list)
+
+void inode_init(struct inode *ip, struct super_block *sb, ino_t inum);
+
+/// @brief De-initialize inode, does not free the memory.
+/// @param ip The inode.
+void inode_del(struct inode *ip);
 
 /// @brief inits the filesystem with device dev becoming "/"
 /// @param dev device of the root fs
@@ -84,14 +111,15 @@ ssize_t inode_create(const char *path, mode_t mode, dev_t device);
 /// Reads the inode from disk if necessary.
 void inode_lock(struct inode *ip);
 
+/// @brief Increase reference count for the inode.
+/// @param ip The inode.
+static inline void inode_get(struct inode *ip) { kref_get(&ip->ref); }
+
 /// @brief Drop a reference to an in-memory inode.
-/// If that was the last reference, the inode table entry can
-/// be recycled.
-/// If that was the last reference and the inode has no links
-/// to it, free the inode (and its content) on disk.
+/// If that was the last reference, the inode gets freed.
 /// All calls to inode_put() must be inside a transaction in
 /// case it has to free the inode.
-void inode_put(struct inode *ip);
+static inline void inode_put(struct inode *ip) { VFS_INODE_PUT(ip); }
 
 /// @brief Unlock the given inode.
 void inode_unlock(struct inode *ip);
@@ -162,7 +190,7 @@ int file_name_cmp(const char *s, const char *t);
 /// @param name file name of new entry
 /// @param inum inode of new entry
 /// @return 0 on success, -1 on failure (e.g. out of disk blocks).
-int inode_dir_link(struct inode *dir, char *name, uint32_t inum);
+int inode_dir_link(struct inode *dir, char *name, ino_t inum);
 
 //
 // debug code

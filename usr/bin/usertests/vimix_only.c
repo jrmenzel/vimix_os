@@ -2,9 +2,9 @@
 
 #include "usertests.h"
 
-#include <kernel/param.h>
-#include <kernel/xv6fs.h>
+#include <dirent.h>
 #include <mm/mm.h>  // for USER_VA_END
+#include <vimixutils/sysfs.h>
 
 //
 // Tests VIMIX system calls.  usertests without arguments runs them all
@@ -16,7 +16,6 @@
 //
 
 #define FORK_FORK_FORK_DURATION_MS 2000
-#define FORK_FORK_FORK_SLEEP_MS 1000
 #define SHORT_SLEEP_MS 100
 
 const size_t TEST_PTR_RAM_BEGIN = 0x80000000LL;
@@ -43,13 +42,53 @@ const size_t INVALID_PTR_COUNT = sizeof(INVALID_PTRS) / sizeof(INVALID_PTRS[0]);
 const char *bin_echo = "/usr/bin/echo";
 const char *bin_init = "/usr/bin/init";
 
+size_t get_process_count()
+{
+    DIR *dir = opendir("/sys/proc");
+    if (dir == NULL)
+    {
+        exit(1);
+    }
+
+    size_t count = 0;
+    struct dirent *dir_entry = NULL;
+    while ((dir_entry = readdir(dir)))
+    {
+        count++;
+    }
+
+    closedir(dir);
+
+    return count - 2;  // discount . and ..
+}
+
+// The init process will wait for the orphaned children.
+// Memory used by these processes will then be freed.
+// If this test exits before that happens, it could lead to
+// false positives on the memory leaks detection.
+// sleep a short while to give init a chance to do its work.
+// If run on a single core machine, it would be unlikely for init to get
+// scheduled before this process exits without sleep (which calls yield).
+static inline void let_init_free_children(size_t expected_proc_count)
+{
+    size_t procs = get_process_count();
+    while (procs != expected_proc_count)
+    {
+        printf(
+            "waiting for init to free children, procs: %zu (expecting %zu)\n",
+            procs, expected_proc_count);
+        sleep(1);
+        procs = get_process_count();
+    }
+}
+
 //
 // use sbrk() to count how many free physical memory pages there are.
 // touches the pages to force allocation.
 // because out of memory with lazy allocation results in the process
 // taking a fault and being killed, fork and report back.
 //
-int countfree()
+int countfree_sbrk()
 {
     int fds[2];
     time_t start_time = time(NULL);
@@ -122,6 +161,12 @@ int countfree()
     printf("count free: %zus\n", (size_t)seconds);
 
     return n;
+}
+
+size_t countfree()
+{
+    return get_from_sysfs("/sys/kmem/mem_free") /
+           (size_t)sysconf(_SC_PAGE_SIZE);
 }
 
 //
@@ -1202,6 +1247,7 @@ void exitwait(char *s)
 // when it still has live children.
 void reparent(char *s)
 {
+    size_t proc_count = get_process_count();
     pid_t master_pid = getpid();
     for (size_t i = 0; i < 200; i++)
     {
@@ -1230,6 +1276,8 @@ void reparent(char *s)
             exit(0);
         }
     }
+
+    let_init_free_children(proc_count);
     exit(0);
 }
 
@@ -1316,6 +1364,7 @@ void forkfork(char *s)
 
 void forkforkfork(char *s)
 {
+    size_t proc_count = get_process_count();
     unlink("stopforking");
 
     pid_t pid = fork();
@@ -1345,7 +1394,8 @@ void forkforkfork(char *s)
     usleep(FORK_FORK_FORK_DURATION_MS * 1000);
     close(open("stopforking", O_CREATE | O_RDWR, 0755));
     wait(NULL);
-    usleep(FORK_FORK_FORK_SLEEP_MS * 1000);
+
+    let_init_free_children(proc_count);
 }
 
 // regression test. does reparent() violate the parent-then-child
@@ -1355,6 +1405,7 @@ void forkforkfork(char *s)
 // it acquired.
 void reparent2(char *s)
 {
+    size_t proc_count = get_process_count();
     for (size_t i = 0; i < 800; i++)
     {
         pid_t pid1 = fork();
@@ -1372,6 +1423,7 @@ void reparent2(char *s)
         wait(NULL);
     }
 
+    let_init_free_children(proc_count);
     exit(0);
 }
 
@@ -1799,13 +1851,6 @@ void concreate(char *s)
 {
     const size_t N = 40;
 
-    char fa[N];
-    struct
-    {
-        uint16_t inum;
-        char name[XV6_NAME_MAX];
-    } de;
-
     char file[3];
     file[0] = 'C';
     file[2] = '\0';
@@ -1846,44 +1891,56 @@ void concreate(char *s)
         }
     }
 
-    memset(fa, 0, sizeof(fa));
-    int fd = open(".", O_RDONLY);
-    if (fd < 0)
+    DIR *dir = opendir(".");
+    if (dir == NULL)
     {
         printf("%s: error opening file . (errno: %s)\n", s, strerror(errno));
         exit(1);
     }
 
+    char fa[N];
+    memset(fa, 0, sizeof(fa));
+
     size_t n = 0;
-    while (read(fd, &de, sizeof(de)) > 0)
+    struct dirent *dir_entry = NULL;
+    while ((dir_entry = readdir(dir)))
     {
-        if (de.inum == 0)
+        if (dir_entry->d_ino == 0)
         {
             continue;
         }
 
-        if (de.name[0] == 'C' && de.name[2] == '\0')
+        if (dir_entry->d_name[0] == 'C' && dir_entry->d_name[2] == '\0')
         {
-            size_t i = de.name[1] - '0';
-            if (i < 0 || i >= sizeof(fa))
+            size_t i = dir_entry->d_name[1] - '0';
+            if (i < 0 || i >= N)
             {
-                printf("%s: concreate weird file %s\n", s, de.name);
+                printf("%s: concreate weird file name %s\n", s,
+                       dir_entry->d_name);
                 exit(1);
             }
             if (fa[i])
             {
-                printf("%s: concreate duplicate file %s\n", s, de.name);
+                printf("%s: concreate duplicate file %s\n", s,
+                       dir_entry->d_name);
                 exit(1);
             }
             fa[i] = 1;
             n++;
         }
     }
-    close(fd);
+    closedir(dir);
 
     if (n != N)
     {
-        printf("%s: concreate not enough files in directory listing\n", s);
+        printf("%s: not enough files in directory listing\n", s);
+        for (size_t i = 0; i < N; i++)
+        {
+            if (fa[i] == 0)
+            {
+                printf("%s: missing file C%c\n", s, (char)('0' + i));
+            }
+        }
         exit(1);
     }
 
@@ -2383,23 +2440,24 @@ void rmdot(char *s)
 void dirfile(char *s)
 {
     int fd = open("dirfile", O_CREATE, 0755);
-    if (fd < 0)
-    {
-        printf("%s: create dirfile failed\n", s);
-        exit(1);
-    }
+    assert_open_ok_fd(s, fd, "dirfile");
     close(fd);
+
     if (chdir("dirfile") == 0)
     {
         printf("%s: chdir dirfile succeeded!\n", s);
         exit(1);
     }
+    assert_errno(ENOTDIR);
+
     fd = open("dirfile/xx", O_RDONLY);
     if (fd >= 0)
     {
         printf("%s: create dirfile/xx succeeded!\n", s);
         exit(1);
     }
+    assert_errno(ENOENT);
+
     fd = open("dirfile/xx", O_CREATE, 0755);
     if (fd >= 0)
     {
@@ -2421,11 +2479,7 @@ void dirfile(char *s)
         printf("%s: link to dirfile/xx succeeded!\n", s);
         exit(1);
     }
-    if (unlink("dirfile") != 0)
-    {
-        printf("%s: unlink dirfile failed!\n", s);
-        exit(1);
-    }
+    assert_no_error(unlink("dirfile"));
 
     fd = open(".", O_RDWR);
     if (fd >= 0)
@@ -2441,17 +2495,20 @@ void dirfile(char *s)
     }
     if (write(fd, "x", 1) > 0)
     {
-        printf("%s: write . succeeded!\n", s);
+        printf("%s: write into . succeeded!\n", s);
         exit(1);
     }
     close(fd);
 }
 
+/// not a real limit, but should be enough to show memory leaks.
+#define IREF_LOOPS 50
+
 // test that inode_put() is called at the end of _namei().
 // also tests empty file names.
 void iref(char *s)
 {
-    for (size_t i = 0; i < XV6FS_MAX_ACTIVE_INODES + 1; i++)
+    for (size_t i = 0; i < IREF_LOOPS; i++)
     {
         if (mkdir("irefd", 0755) != 0)
         {
@@ -2480,7 +2537,7 @@ void iref(char *s)
     }
 
     // clean up
-    for (size_t i = 0; i < XV6FS_MAX_ACTIVE_INODES + 1; i++)
+    for (size_t i = 0; i < IREF_LOOPS; i++)
     {
         chdir("..");
         unlink("irefd");
@@ -2494,11 +2551,8 @@ void iref(char *s)
 // inside the bigger usertests binary, we run out of memory first.
 void forktest(char *s)
 {
-    enum
-    {
-        N = 1000
-    };
-    int32_t n;
+    const size_t N = 1000;
+    size_t n;
 
     for (n = 0; n < N; n++)
     {
@@ -2515,7 +2569,7 @@ void forktest(char *s)
 
     if (n == N)
     {
-        printf("%s: fork claimed to work 1000 times!\n", s);
+        printf("%s: fork claimed to work %zd times!\n", s, N);
         exit(1);
     }
 

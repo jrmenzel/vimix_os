@@ -13,7 +13,7 @@ const char *DEV_FS_NAME = "devfs";
 // the dir itself + all possible devices - guesswork now as there is no limit on
 // devices
 #define DEVFS_RESERVED_INODES (1)
-#define DEVFS_MAX_ACTIVE_INODES (DEVFS_RESERVED_INODES + (20 * 4))
+#define DEVFS_MAX_ACTIVE_INODES (DEVFS_RESERVED_INODES + (16))
 struct
 {
     struct spinlock lock;
@@ -37,29 +37,12 @@ struct inode *devfs_sops_iget_root(struct super_block *sb)
     return &devfs_itable.inode[0];
 }
 
-struct inode *devfs_sops_alloc_inode(struct super_block *sb, mode_t mode)
-{
-    return NULL;  // no new inodes can get created
-}
-
-int devfs_sops_write_inode(struct inode *ip)
-{
-    printk("devfs_sops_write_inode\n");
-    return 0;
-}
-
 // super block operations
 struct super_operations devfs_s_op = {
     iget_root : devfs_sops_iget_root,
-    alloc_inode : devfs_sops_alloc_inode,
-    write_inode : devfs_sops_write_inode
+    alloc_inode : sops_alloc_inode_default_ro,
+    write_inode : sops_write_inode_default_ro,
 };
-
-struct inode *devfs_iops_create(struct inode *iparent, char name[NAME_MAX],
-                                mode_t mode, int32_t flags, dev_t device)
-{
-    return NULL;  // no new inodes can get created
-}
 
 struct inode *devfs_iops_open(struct inode *iparent, char name[NAME_MAX],
                               int32_t flags)
@@ -86,21 +69,6 @@ void devfs_iops_read_in(struct inode *ip)
     // all inodes are defined statically at init, nothing to do here
 }
 
-struct inode *devfs_iops_dup(struct inode *ip)
-{
-    kref_get(&ip->ref);
-    return ip;
-}
-
-void devfs_iops_put(struct inode *ip)
-{
-    DEBUG_EXTRA_ASSERT(kref_read(&ip->ref) > 0,
-                       "Can't put an inode that is not held by anyone");
-
-    kref_put(&ip->ref);
-    // not backed by a device, so no write back for dev fs
-}
-
 struct inode *devfs_iops_dir_lookup(struct inode *dir, const char *name,
                                     uint32_t *poff)
 {
@@ -109,7 +77,7 @@ struct inode *devfs_iops_dir_lookup(struct inode *dir, const char *name,
     if (strcmp(name, ".") == 0)
     {
         if (poff) *poff = 0;
-        return devfs_iops_dup(dir);
+        return iops_dup_default(dir);
     }
     if (strcmp(name, "..") == 0)
     {
@@ -127,17 +95,11 @@ struct inode *devfs_iops_dir_lookup(struct inode *dir, const char *name,
         if ((devfs_itable.name[i] != NULL) &&
             (strcmp(name, devfs_itable.name[i]) == 0))
         {
-            return devfs_iops_dup(&devfs_itable.inode[i]);
+            return iops_dup_default(&devfs_itable.inode[i]);
         }
     }
 
     return NULL;  // not found
-}
-
-int devfs_iops_dir_link(struct inode *dir, char *name, uint32_t inum)
-{
-    printk("devfs_iops_dir_link\n");
-    return 0;
 }
 
 ssize_t devfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
@@ -187,33 +149,28 @@ ssize_t devfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
     return 0;
 }
 
-ssize_t devfs_iops_link(struct inode *dir, struct inode *ip,
-                        char name[NAME_MAX])
+void devfs_iops_put(struct inode *ip)
 {
-    printk("devfs_iops_link\n");
-    return -EOTHER;
-}
+    DEBUG_EXTRA_ASSERT(kref_read(&ip->ref) > 0,
+                       "Can't put an inode that is not held by anyone");
 
-ssize_t devfs_iops_unlink(struct inode *dir, char name[NAME_MAX],
-                          bool delete_files, bool delete_directories)
-{
-    printk("devfs_iops_unlink\n");
-    return 0;
+    kref_put(&ip->ref);
+    // no delete -> static data
 }
 
 // inode operations
 struct inode_operations devfs_i_op = {
-    iops_create : devfs_iops_create,
+    iops_create : iops_create_default_ro,
     iops_open : devfs_iops_open,
     iops_read_in : devfs_iops_read_in,
-    iops_dup : devfs_iops_dup,
+    iops_dup : iops_dup_default,
     iops_put : devfs_iops_put,
     iops_dir_lookup : devfs_iops_dir_lookup,
-    iops_dir_link : devfs_iops_dir_link,
+    iops_dir_link : iops_dir_link_default_ro,
     iops_get_dirent : devfs_iops_get_dirent,
     iops_read : devfs_iops_read,
-    iops_link : devfs_iops_link,
-    iops_unlink : devfs_iops_unlink
+    iops_link : iops_link_default_ro,
+    iops_unlink : iops_unlink_default_ro
 };
 
 ssize_t devfs_fops_write(struct file *f, size_t addr, size_t n)
@@ -278,7 +235,7 @@ ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
 
         size_t inode_idx = devfs_itable.used_inodes;
 
-        devfs_itable.inode[inode_idx].inum = found_devices;
+        devfs_itable.inode[inode_idx].inum = ++found_devices;
         devfs_itable.inode[inode_idx].i_sb = sb_in;
         if (dev->type == CHAR)
         {
@@ -292,8 +249,6 @@ ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
         kref_init(&devfs_itable.inode[inode_idx].ref);
         devfs_itable.name[inode_idx] = dev->name;
         devfs_itable.used_inodes = inode_idx + 1;
-
-        found_devices++;
     }
     rwspin_read_unlock(&g_kobjects_dev.children_lock);
 

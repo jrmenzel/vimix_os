@@ -147,7 +147,10 @@ void proc_free_kobject(struct kobject *kobj)
     struct process *proc = process_from_kobj(kobj);
     proc_free(proc);
 }
-struct kobj_type proc_ktype = {.release = proc_free_kobject};
+struct kobj_type proc_ktype = {.release = proc_free_kobject,
+                               .sysfs_ops = NULL,
+                               .attribute = NULL,
+                               .n_attributes = 0};
 
 /// Creates a new process:
 /// If allocated, initialize state required to run in the kernel,
@@ -409,10 +412,6 @@ ssize_t fork()
         proc_put(np);
         return -ENOMEM;
     }
-
-    // printk(" fork() Memory used: %zdkb - %zdkb free\n",
-    //        kalloc_debug_get_allocation_count() * 4,
-    //        kalloc_get_free_memory() / 1024);
 
     // Copy registers
     *(np->trapframe) = *(parent->trapframe);
@@ -941,7 +940,7 @@ void debug_print_call_stack_user(struct process *proc)
 
     if (proc_stack_pa == 0 || fp_physical == 0)
     {
-        // no mapped stack found
+        printk("<no user stack mapped>\n");
         return;
     }
 

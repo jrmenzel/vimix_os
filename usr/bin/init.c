@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -41,6 +42,17 @@ int main()
 
     // wait till print works:
     printf("init mounting /dev... OK\n");
+
+    // mount /sys
+    ret = mount("sys", "/sys", "sysfs", 0, NULL);
+    if (ret < 0)
+    {
+        printf("init mounting /sys failed. Error %s\n", strerror(errno));
+    }
+    else
+    {
+        printf("init mounting /sys... OK\n");
+    }
 
     struct termios original_termios;
     tcgetattr(STDIN_FILENO, &original_termios);

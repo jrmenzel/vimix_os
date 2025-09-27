@@ -81,9 +81,9 @@ function test_config {
     grep "${EXPECTED_RESULT}" ${RESULT_FILE} > /dev/null
     if [ $? == 0 ]
     then
-        touch ${BUILD_ROOT}/PASS_$1_$2_$4_on_$3.txt
+        mv ${RESULT_FILE} ${BUILD_ROOT}/PASS_$1_$2_$4_on_$3_$6.txt
     else
-        touch ${BUILD_ROOT}/FAIL_$1_$2_$4_on_$3.txt
+        mv ${RESULT_FILE} ${BUILD_ROOT}/FAIL_$1_$2_$4_on_$3_$6.txt
     fi
     set -e
 }

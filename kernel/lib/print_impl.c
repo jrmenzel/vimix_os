@@ -8,40 +8,14 @@
 
 #define ASCII_2_INT(x) (x - 0x30)
 
-int32_t print_number_buffer(_PUT_CHAR_FP func, size_t payload, char *buffer,
-                            size_t max_len, ssize_t padding)
-{
-    int32_t charsWritten = 0;
-
-    padding = (padding <= 0) ? 1 : padding;
-    bool print = false;
-    for (size_t i = 0; i < max_len; ++i)
-    {
-        if (buffer[i] != '0' || i == max_len - padding)
-        {
-            // start printing at the first non zero char or the last one
-            print = true;
-        }
-
-        if (print)
-        {
-            func(buffer[i], payload);
-            charsWritten++;
-        }
-    }
-    return charsWritten;
-}
-
 int32_t print_signed_long_long(_PUT_CHAR_FP func, size_t payload,
-                               ssize_t padding, long long value)
+                               ssize_t padding, char padding_char,
+                               long long value)
 {
-    int32_t charsWritten = 0;
-
+    bool print_minus = false;
     if (value < 0)
     {
-        func('-', payload);
-        charsWritten++;
-        padding--;
+        print_minus = true;
         value *= -1;
     }
 
@@ -53,35 +27,74 @@ int32_t print_signed_long_long(_PUT_CHAR_FP func, size_t payload,
 #endif
     char buffer[MAX_LEN];
 
+    size_t num_len = 0;
     for (size_t i = 0; i < MAX_LEN; ++i)
     {
         long long rem = value % 10;
         value = value / 10;
         if (rem < 0) rem *= -1;
         buffer[MAX_LEN - i - 1] = INT_2_ASCII(rem);
+
+        if (value == 0)
+        {
+            num_len = i + 1;
+            break;
+        }
+    }
+    if (print_minus && padding_char == ' ')
+    {
+        // print after the number, before the padding whitespace
+        buffer[MAX_LEN - num_len - 1] = '-';
+        num_len++;
+    }
+    if (padding > num_len)
+    {
+        padding -= num_len;
+        if (print_minus && padding_char == '0')
+        {
+            padding--;
+        }
+        while (padding > 0)
+        {
+            buffer[MAX_LEN - num_len - 1] = padding_char;
+            num_len++;
+            padding--;
+        }
+    }
+    if (print_minus && padding_char == '0')
+    {
+        // print after the 0-padde number
+        buffer[MAX_LEN - num_len - 1] = '-';
+        num_len++;
     }
 
-    return charsWritten +
-           print_number_buffer(func, payload, buffer, MAX_LEN, padding);
+    for (size_t i = 0; i < num_len; ++i)
+    {
+        func(buffer[MAX_LEN - num_len + i], payload);
+    }
+    return num_len;
 }
 
 static const inline int32_t print_signed_int(_PUT_CHAR_FP func, size_t payload,
-                                             ssize_t padding, int value)
+                                             ssize_t padding, char padding_char,
+                                             int value)
 {
-    return print_signed_long_long(func, payload, padding, (long long)value);
+    return print_signed_long_long(func, payload, padding, padding_char,
+                                  (long long)value);
 }
 
 static const inline int32_t print_signed_long(_PUT_CHAR_FP func, size_t payload,
-                                              ssize_t padding, long value)
+                                              ssize_t padding,
+                                              char padding_char, long value)
 {
-    return print_signed_long_long(func, payload, padding, (long long)value);
+    return print_signed_long_long(func, payload, padding, padding_char,
+                                  (long long)value);
 }
 
 int32_t print_unsigned_long_long(_PUT_CHAR_FP func, size_t payload,
-                                 ssize_t padding, unsigned long long value)
+                                 ssize_t padding, char padding_char,
+                                 unsigned long long value)
 {
-    int32_t charsWritten = 0;
-
 #if defined(__ARCH_32BIT)
     const size_t MAX_LEN = 10;  // 4,294,967,295
 #else
@@ -89,39 +102,60 @@ int32_t print_unsigned_long_long(_PUT_CHAR_FP func, size_t payload,
 #endif
     char buffer[MAX_LEN];
 
+    size_t num_len = 0;
     for (size_t i = 0; i < MAX_LEN; ++i)
     {
         long long rem = value % 10;
         value = value / 10;
         if (rem < 0) rem *= -1;
         buffer[MAX_LEN - i - 1] = INT_2_ASCII(rem);
+
+        if (value == 0)
+        {
+            num_len = i + 1;
+            break;
+        }
+    }
+    if (padding > num_len)
+    {
+        padding -= num_len;
+        while (padding > 0)
+        {
+            buffer[MAX_LEN - num_len - 1] = padding_char;
+            num_len++;
+            padding--;
+        }
     }
 
-    return charsWritten +
-           print_number_buffer(func, payload, buffer, MAX_LEN, padding);
+    for (size_t i = 0; i < num_len; ++i)
+    {
+        func(buffer[MAX_LEN - num_len + i], payload);
+    }
+    return num_len;
 }
 
 static const inline int32_t print_unsigned_int(_PUT_CHAR_FP func,
                                                size_t payload, ssize_t padding,
+                                               char padding_char,
                                                unsigned int value)
 {
-    return print_unsigned_long_long(func, payload, padding,
+    return print_unsigned_long_long(func, payload, padding, padding_char,
                                     (unsigned long long)value);
 }
 
 static const inline int32_t print_unsigned_long(_PUT_CHAR_FP func,
                                                 size_t payload, ssize_t padding,
+                                                char padding_char,
                                                 unsigned long value)
 {
-    return print_unsigned_long_long(func, payload, padding,
+    return print_unsigned_long_long(func, payload, padding, padding_char,
                                     (unsigned long long)value);
 }
 
 int32_t print_unsigned_hex(_PUT_CHAR_FP func, size_t payload, ssize_t padding,
-                           size_t value, bool upperCase)
+                           char padding_char, size_t value, bool upperCase)
 {
     int32_t asciiOffset = upperCase ? 'A' : 'a';
-    int32_t charsWritten = 0;
 
 #if defined(__ARCH_32BIT)
     const size_t MAX_LEN = 8;  // FFFF FFFF
@@ -130,6 +164,7 @@ int32_t print_unsigned_hex(_PUT_CHAR_FP func, size_t payload, ssize_t padding,
 #endif
     char buffer[MAX_LEN];
 
+    size_t num_len = 0;
     for (size_t i = 0; i < MAX_LEN; ++i)
     {
         size_t rem = value % 16;
@@ -142,10 +177,30 @@ int32_t print_unsigned_hex(_PUT_CHAR_FP func, size_t payload, ssize_t padding,
         {
             buffer[MAX_LEN - i - 1] = (rem - 10) + asciiOffset;
         }
+
+        if (value == 0)
+        {
+            num_len = i + 1;
+            break;
+        }
     }
 
-    return charsWritten +
-           print_number_buffer(func, payload, buffer, MAX_LEN, padding);
+    if (padding > num_len)
+    {
+        padding -= num_len;
+        while (padding > 0)
+        {
+            buffer[MAX_LEN - num_len - 1] = padding_char;
+            num_len++;
+            padding--;
+        }
+    }
+
+    for (size_t i = 0; i < num_len; ++i)
+    {
+        func(buffer[MAX_LEN - num_len + i], payload);
+    }
+    return num_len;
 }
 
 int32_t print_string(_PUT_CHAR_FP func, size_t payload, const char *value)
@@ -183,12 +238,21 @@ int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char *format,
                 break;
             }
 
+            // optional padding:
+            // %[0][1-9][0-9]d -> start with 0 for 0 padding
+            // then 1..99 for padding amount
             ssize_t padding = 0;
-            if (*format == '0')
+            char padding_char = ' ';
+            if (*format >= '0' && *format < '9')
             {
-                // one or two chars defining the padding amount
-                format++;
-                if (*format == 0) break;
+                if (*format == '0')
+                {
+                    // 0 padding
+                    format++;
+                    if (*format == 0) break;
+                    padding_char = '0';
+                }
+                // one or two chars define the padding amount
                 padding = ASCII_2_INT(*format);
                 if (padding > 9 || padding < 0) padding = 0;
                 format++;
@@ -227,17 +291,20 @@ int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char *format,
                 switch (length_mod)
                 {
                     case 0:
-                        charsWritten += print_signed_int(func, payload, padding,
-                                                         va_arg(vl, int));
+                        charsWritten +=
+                            print_signed_int(func, payload, padding,
+                                             padding_char, va_arg(vl, int));
                         break;
                     case 1:
-                        charsWritten += print_signed_long(
-                            func, payload, padding, va_arg(vl, long));
+                        charsWritten +=
+                            print_signed_long(func, payload, padding,
+                                              padding_char, va_arg(vl, long));
                         break;
                     case 2:
                     default:
                         charsWritten += print_signed_long_long(
-                            func, payload, padding, va_arg(vl, long long));
+                            func, payload, padding, padding_char,
+                            va_arg(vl, long long));
                 }
             }
             else if (*format == 'u')
@@ -246,30 +313,33 @@ int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char *format,
                 {
                     case 0:
                         charsWritten += print_unsigned_int(
-                            func, payload, padding, va_arg(vl, unsigned int));
+                            func, payload, padding, padding_char,
+                            va_arg(vl, unsigned int));
                         break;
                     case 1:
                         charsWritten += print_unsigned_long(
-                            func, payload, padding, va_arg(vl, unsigned long));
+                            func, payload, padding, padding_char,
+                            va_arg(vl, unsigned long));
                         break;
                     case 2:
                     default:
                         charsWritten += print_unsigned_long_long(
-                            func, payload, padding,
+                            func, payload, padding, padding_char,
                             va_arg(vl, unsigned long long));
                 }
             }
             else if ((*format == 'x') || (*format == 'X'))
             {
                 size_t value = va_arg(vl, size_t);
-                charsWritten += print_unsigned_hex(
-                    func, payload, padding, (size_t)value, (*format == 'X'));
+                charsWritten +=
+                    print_unsigned_hex(func, payload, padding, padding_char,
+                                       (size_t)value, (*format == 'X'));
             }
             else if (*format == 'p')
             {
                 void *value = va_arg(vl, void *);
-                charsWritten += print_unsigned_hex(func, payload, padding,
-                                                   (size_t)value, false);
+                charsWritten += print_unsigned_hex(
+                    func, payload, padding, padding_char, (size_t)value, false);
             }
             else if (*format == 's')
             {

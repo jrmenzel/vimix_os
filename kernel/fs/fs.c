@@ -19,6 +19,7 @@
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
+#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <kernel/mount.h>
@@ -27,6 +28,65 @@
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
+
+struct super_block *sb_alloc_init()
+{
+    struct super_block *sb = kmalloc(sizeof(struct super_block));
+    if (sb == NULL) return NULL;
+    memset(sb, 0, sizeof(*sb));
+
+    kobject_init(&sb->kobj, NULL);
+    list_init(&sb->fs_inode_list);
+    rwspin_lock_init(&sb->fs_inode_list_lock, "fs_inode_list_lock");
+
+    return sb;
+}
+
+void sb_free(struct super_block *sb)
+{
+    kobject_del(&sb->kobj);
+    kfree(sb);
+}
+
+void inode_init(struct inode *ip, struct super_block *sb, ino_t inum)
+{
+    DEBUG_EXTRA_PANIC(
+        rwspin_write_lock_is_held_by_this_cpu(&sb->fs_inode_list_lock),
+        "inode_init: sb inode list lock not held");
+    ip->i_sb = sb;
+    ip->dev = sb->dev;
+    ip->inum = inum;
+    kref_init(&ip->ref);
+    ip->valid = 0;
+    ip->nlink = 0;
+    ip->size = 0;
+    ip->is_mounted_on = NULL;
+    sleep_lock_init(&ip->lock, "inode sleeplock");
+
+    // add to super block inode list
+    list_init(&ip->fs_inode_list);
+    list_add_tail(&ip->fs_inode_list, &sb->fs_inode_list);
+}
+
+void inode_del(struct inode *ip)
+{
+    DEBUG_EXTRA_ASSERT(ip != NULL, "inode_del: ip is NULL");
+    DEBUG_EXTRA_ASSERT(kref_read(&ip->ref) == 0,
+                       "inode_del: reference count not zero");
+    DEBUG_EXTRA_ASSERT(ip->is_mounted_on == NULL,
+                       "inode_del: inode is mounted on");
+    DEBUG_EXTRA_PANIC(
+        rwspin_write_lock_is_held_by_this_cpu(&ip->i_sb->fs_inode_list_lock),
+        "inode_del: sb inode list lock not held");
+
+    if (kref_read(&ip->ref) != 0)
+    {
+        printk("inode_del: reference count not zero\n");
+    }
+
+    // remove from super block inode list
+    list_del(&ip->fs_inode_list);
+}
 
 ssize_t inode_create(const char *pathname, mode_t mode, dev_t device)
 {
@@ -94,8 +154,6 @@ void inode_unlock(struct inode *ip)
     sleep_unlock(&ip->lock);
 }
 
-void inode_put(struct inode *ip) { VFS_INODE_PUT(ip); }
-
 void inode_unlock_put(struct inode *ip)
 {
     inode_unlock(ip);
@@ -146,7 +204,7 @@ struct inode *inode_dir_lookup(struct inode *dir, const char *name)
     return VFS_INODE_DIR_LOOKUP(dir, name, NULL);
 }
 
-int inode_dir_link(struct inode *dir, char *name, uint32_t inum)
+int inode_dir_link(struct inode *dir, char *name, ino_t inum)
 {
     // Check that name is not present.
     struct inode *ip = inode_dir_lookup(dir, name);
@@ -290,7 +348,7 @@ void debug_print_inode(struct inode *ip)
         printk("NULL");
         return;
     }
-    printk("inode %d on (%d,%d), ", ip->inum, MAJOR(ip->i_sb->dev),
+    printk("inode %ld on (%d,%d), ", ip->inum, MAJOR(ip->i_sb->dev),
            MINOR(ip->i_sb->dev));
     printk("ref: %d, ", kref_read(&ip->ref));
     if (ip->valid)
@@ -334,4 +392,28 @@ void debug_print_inode(struct inode *ip)
 #endif
 }
 
-void debug_print_inodes() { xv6fs_debug_print_inodes(); }
+void debug_print_inodes()
+{
+    printk("inodes:\n");
+
+    struct list_head *pos;
+    rwspin_read_lock(&g_kobjects_fs.children_lock);
+    list_for_each(pos, &g_kobjects_fs.children)
+    {
+        struct kobject *kobj = kobject_from_child_list(pos);
+        struct super_block *sb = super_block_from_kobj(kobj);
+
+        printk("file system: %s\n", sb->s_type->name);
+
+        rwspin_read_lock(&sb->fs_inode_list_lock);
+        struct list_head *pos;
+        list_for_each(pos, &sb->fs_inode_list)
+        {
+            struct inode *ip = inode_from_list(pos);
+            debug_print_inode(ip);
+            printk("\n");
+        }
+        rwspin_read_unlock(&sb->fs_inode_list_lock);
+    }
+    rwspin_read_unlock(&g_kobjects_fs.children_lock);
+}

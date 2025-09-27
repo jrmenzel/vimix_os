@@ -98,8 +98,6 @@ _Static_assert((BLOCK_SIZE % sizeof(struct xv6fs_dinode)) == 0,
                "Size of one block (1024 bytes) must be a multiple of the size "
                "of xv6fs_dinode");
 
-#define XV6FS_UNUSED_INODE 0
-
 /// A directory in xv6fs is a file containing a sequence of xv6fs_dirent
 /// structures.
 struct xv6fs_dirent

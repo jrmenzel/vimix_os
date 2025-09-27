@@ -39,7 +39,7 @@ void go(int which_child, int max_iterations)
     {
         // print child number (as letters) every few iterations
         char name = 'A' + which_child;
-        if ((iters % 500) == 0) write(1, &name, 1);
+        if ((iters % 500) == 0) write(STDOUT_FILENO, &name, 1);
         iters++;
 
         int what = rand() % 23;

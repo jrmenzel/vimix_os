@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <fs/sysfs/sysfs.h>
 #include <kernel/kalloc.h>
 #include <kernel/kobject.h>
 #include <kernel/rwspinlock.h>
@@ -24,7 +25,8 @@ static void dynamic_kobj_release(struct kobject *kobj) { kfree(kobj); }
 static const struct kobj_type dynamic_kobj_ktype = {.release =
                                                         dynamic_kobj_release};
 
-const struct kobj_type default_kobj_ktype = {0};
+const struct kobj_type default_kobj_ktype = {
+    .release = NULL, .sysfs_ops = NULL, .attribute = NULL, .n_attributes = 0};
 
 static inline void init_kobjects_in_root(struct kobject *kobj, const char *name)
 {
@@ -44,7 +46,7 @@ void init_kobject_root()
     init_kobjects_in_root(&g_kobjects_proc, "proc");
 }
 
-struct kobject *kobject_create()
+struct kobject *kobject_create_init()
 {
     struct kobject *kobj = kmalloc(sizeof(*kobj));
     if (kobj == NULL) return NULL;
@@ -58,7 +60,14 @@ void kobject_init(struct kobject *kobj, const struct kobj_type *ktype)
 {
     list_init(&kobj->children);
     list_init(&kobj->siblings);
-    kobj->ktype = ktype;
+    if (ktype == NULL)
+    {
+        kobj->ktype = &default_kobj_ktype;
+    }
+    else
+    {
+        kobj->ktype = ktype;
+    }
     kref_init(&kobj->ref_count);
     rwspin_lock_init(&kobj->children_lock, "kobj_children");
 }
@@ -75,6 +84,8 @@ bool kobject_add_varg(struct kobject *kobj, struct kobject *parent,
     {
         const size_t MAX_NAME_LEN = 64;
         char *name = kmalloc(MAX_NAME_LEN);
+        if (name == NULL) return false;
+        memset(name, 0, MAX_NAME_LEN);
         vsnprintf(name, MAX_NAME_LEN, fmt, vargs);
         kobj->name = name;
     }
@@ -86,6 +97,11 @@ bool kobject_add_varg(struct kobject *kobj, struct kobject *parent,
 
     kobject_get(kobj);    // the parent holds a reference to each child
     kobject_get(parent);  // child holds a reference to its parent
+
+    // init stuff for sysfs
+    spin_lock_init(&kobj->sysfs_lock, "kobj_sysfs");
+
+    sysfs_register_kobject(kobj);
 
     return true;
 }
@@ -107,6 +123,8 @@ bool kobject_add(struct kobject *kobj, struct kobject *parent, const char *fmt,
 void kobject_del(struct kobject *kobj)
 {
     if (kobj == NULL || kobj->parent == NULL) return;
+
+    sysfs_unregister_kobject(kobj);
 
     rwspin_write_lock(&kobj->parent->children_lock);
     list_del(&kobj->siblings);
@@ -137,11 +155,6 @@ void kobject_put(struct kobject *kobj)
         if (kobj->ktype && kobj->ktype->release)
         {
             kobj->ktype->release(kobj);
-        }
-        else
-        {
-            // no release function, just free the memory:
-            kfree(kobj);
         }
     }
 }

@@ -17,7 +17,7 @@ struct super_operations
     int (*write_inode)(struct inode *ip);
 };
 
-/// @brief Get root inode of file system.
+/// @brief Get root inode of file system. Not locked.
 #define VFS_SUPER_IGET_ROOT(sb) (sb)->s_op->iget_root((sb))
 #define VFS_SUPER_ALLOC_INODE(sb, mode) (sb)->s_op->alloc_inode((sb), (mode))
 #define VFS_SUPER_WRITE_INODE(ip) (ip)->i_sb->s_op->write_inode((ip))
@@ -39,7 +39,7 @@ struct inode_operations
     struct inode *(*iops_dir_lookup)(struct inode *dir, const char *name,
                                      uint32_t *poff);
 
-    int (*iops_dir_link)(struct inode *dir, char *name, uint32_t inum);
+    int (*iops_dir_link)(struct inode *dir, char *name, ino_t inum);
 
     ssize_t (*iops_get_dirent)(struct inode *dir, size_t dir_entry_addr,
                                bool addr_is_userspace, ssize_t seek_pos);
@@ -78,6 +78,7 @@ struct inode_operations
 /// @brief Reads the inode metadata from disk, called during the first
 /// inode_lock().
 /// @param ip Inode with attribute valid == false.
+/// @return Number of bytes written to ip or a negative value on error.
 #define VFS_INODE_READ_IN(ip) (ip)->i_sb->i_op->iops_read_in((ip))
 
 /// @brief Increment reference count for ip.

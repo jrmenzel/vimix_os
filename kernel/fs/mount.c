@@ -32,24 +32,6 @@ struct super_block *ROOT_SUPER_BLOCK = NULL;
 /// at a time, but that limitation is fine.
 struct sleeplock g_mount_lock;
 
-/// @brief Returns a new super_block for mounting.
-///        Indirectly protected by g_mount_lock.
-struct super_block *sb_alloc()
-{
-    struct super_block *sb = kmalloc(sizeof(struct super_block));
-    if (sb == NULL) return NULL;
-    memset(sb, 0, sizeof(*sb));
-
-    kobject_init(&sb->kobj, NULL);
-
-    return sb;
-}
-
-/// @brief Frees a super_block during unmounting.
-///        Indirectly protected by g_mount_lock.
-/// @param sb Super block of unmounted FS to free.
-void free_super_block(struct super_block *sb) { kfree(sb); }
-
 ssize_t mount(const char *source, const char *target,
               const char *filesystemtype, unsigned long mountflags,
               size_t addr_data)
@@ -64,7 +46,7 @@ ssize_t mount(const char *source, const char *target,
 
     // source is a path to a block device, e.g. "/dev/sda1"
     // but in special cases it is a magic constant
-    if (strcmp(source, "dev") == 0)
+    if ((strcmp(source, "dev") == 0) || (strcmp(source, "sys") == 0))
     {
         struct inode *i_target = inode_from_path(target);
         if (i_target == NULL)
@@ -156,7 +138,7 @@ ssize_t mount_internal(dev_t source, struct inode *i_target,
                        struct file_system_type *filesystemtype,
                        unsigned long mountflags, size_t addr_data)
 {
-    struct super_block *sb = sb_alloc();
+    struct super_block *sb = sb_alloc_init();
     if (sb == NULL) return -ENOMEM;
 
     sb->dev = source;
@@ -196,7 +178,7 @@ ssize_t mount_internal(dev_t source, struct inode *i_target,
     }
 
     // add to kobject tree
-    kobject_add(&sb->kobj, &g_kobjects_fs, "%s_on_(%d,%d)", sb->s_type->name,
+    kobject_add(&sb->kobj, &g_kobjects_fs, "%s_(%d,%d)", sb->s_type->name,
                 MAJOR(sb->dev), MINOR(sb->dev));
     kobject_put(
         &sb->kobj);  // drop reference now that the kobject tree holds one
@@ -257,11 +239,9 @@ ssize_t umount_internal(struct inode *i_target_mountpoint,
     DEBUG_EXTRA_ASSERT(i_target_mountpoint->is_mounted_on != NULL,
                        "imounted_on not set on mountpoint");
 
-    kobject_del(&sb->kobj);  // remove from kobject tree
-
     // assume target to be locked
     sb->s_type->kill_sb(sb);  // free file system specific data
-    free_super_block(sb);     // free generic super block itself
+    sb_free(sb);              // free generic super block itself
     i_target_mountpoint->is_mounted_on = NULL;
 
     return 0;

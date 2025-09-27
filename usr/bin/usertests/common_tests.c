@@ -1,15 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <ctype.h>
+#include <vimixutils/minmax.h>
 #include "usertests.h"
-
-#ifndef min
-#define min(a, b) ((a) < (b) ? (a) : (b))
-#endif
 
 #if defined(BUILD_ON_HOST)
 // we are not the only process on the host, so comparing memory isn't useful
-int countfree() { return 0; }
+size_t countfree() { return 0; }
 
 struct test quicktests[] = {
     {0, 0},
@@ -489,6 +486,14 @@ void printf_test(char *s)
     assert_same_string(buf, "-0005678");
     assert_same_value(ret, 8);
 
+    ret = snprintf(buf, MAX_STRING, "%8zd", (ssize_t)5678);
+    assert_same_string(buf, "    5678");
+    assert_same_value(ret, 8);
+
+    ret = snprintf(buf, MAX_STRING, "%8zd", (ssize_t)-5678);
+    assert_same_string(buf, "   -5678");
+    assert_same_value(ret, 8);
+
     ret = snprintf(buf, MAX_STRING, "0x%08zx", (ssize_t)0xdeadf00d);
     assert_same_string(buf, "0xdeadf00d");
     assert_same_value(ret, 10);
@@ -637,7 +642,7 @@ void getline_test(char *s)
     unlink(file_name);
 
     {
-        FILE *f = fopen(file_name, "r");
+        FILE *f = fopen(file_name, "w");
         assert_open_ok(s, f, file_name);
         char *line = NULL;
         size_t line_buf_size;

@@ -53,12 +53,12 @@ void rwspin_write_unlock(struct rwspinlock *lk);
 
 #ifdef CONFIG_DEBUG_SPINLOCK
 /// Check whether this cpu is holding the lock. Interrupts must be off.
-bool rwspin_lock_is_held_by_this_cpu(struct rwspinlock *lk);
+bool rwspin_write_lock_is_held_by_this_cpu(struct rwspinlock *lk);
 
 /// verifies that the CPU holds the lock
 /// lock is a struct rwspinlock*
 #define DEBUG_ASSERT_CPU_HOLDS_RWLOCK(lock)                         \
-    if (rwspin_lock_is_held_by_this_cpu(lock) == false)             \
+    if (rwspin_write_lock_is_held_by_this_cpu(lock) == false)       \
     {                                                               \
         panic("debug assert failed: spin lock is not held by CPU"); \
     }
@@ -66,7 +66,7 @@ bool rwspin_lock_is_held_by_this_cpu(struct rwspinlock *lk);
 /// verifies that the CPU does not hold the lock
 /// lock is a struct rwspinlock*
 #define DEBUG_ASSERT_CPU_DOES_NOT_HOLD_RWLOCK(lock)             \
-    if (rwspin_lock_is_held_by_this_cpu(lock) == true)          \
+    if (rwspin_write_lock_is_held_by_this_cpu(lock) == true)    \
     {                                                           \
         panic("debug assert failed: spin lock is held by CPU"); \
     }

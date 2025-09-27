@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <vimixutils/minmax.h>
 
 #if defined(BUILD_ON_HOST)
 #include <linux/limits.h>
@@ -34,17 +35,17 @@ struct xv6fs_superblock g_super_block;
 char zero_block[BLOCK_SIZE] = {0};
 
 /// @brief next free inode number
-uint32_t g_freeinode = 1;
+ino_t g_freeinode = INVALID_INODE + 1;
 
 uint32_t freeblock;
 
 void balloc(int);
 void write_sector(uint32_t, void *);
-void write_dinode(uint32_t, struct xv6fs_dinode *);
-void read_dinode(uint32_t inum, struct xv6fs_dinode *ip);
+void write_dinode(ino_t, struct xv6fs_dinode *);
+void read_dinode(ino_t inum, struct xv6fs_dinode *ip);
 void read_sector(uint32_t sec, void *buf);
 uint32_t i_alloc(uint16_t type);
-void iappend(uint32_t inum, void *p, int n);
+void iappend(ino_t inum, void *p, int n);
 void die(const char *);
 
 /// convert to riscv byte order
@@ -228,7 +229,7 @@ bool copy_file_to_filesystem(const char *path_on_host, const char *new_name,
         return false;       // skip file
     }
 
-    uint32_t inum = i_alloc(XV6_FT_FILE);
+    ino_t inum = i_alloc(XV6_FT_FILE);
 
     add_directory_entry(inum, dir_inode_on_fs, new_name);
 
@@ -373,8 +374,7 @@ ssize_t inode_get_dirent(int32_t inode_dir, struct xv6fs_dirent *dir_entry,
             return -1;
         }
         new_seek_pos += read_bytes;
-    } while (xshort(dir_entry->inum) ==
-             XV6FS_UNUSED_INODE);  // skip unused entries
+    } while (xshort(dir_entry->inum) == INVALID_INODE);  // skip unused entries
 
     return new_seek_pos;
 }
@@ -514,7 +514,7 @@ void write_sector(uint32_t sec, void *buf)
     if (write(g_filesystem_fd, buf, BLOCK_SIZE) != BLOCK_SIZE) die("write");
 }
 
-void write_dinode(uint32_t inum, struct xv6fs_dinode *ip)
+void write_dinode(ino_t inum, struct xv6fs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
     struct xv6fs_dinode *dip;
@@ -526,7 +526,7 @@ void write_dinode(uint32_t inum, struct xv6fs_dinode *ip)
     write_sector(block_index, buf);
 }
 
-void read_dinode(uint32_t inum, struct xv6fs_dinode *ip)
+void read_dinode(ino_t inum, struct xv6fs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
     struct xv6fs_dinode *dip;
@@ -557,7 +557,7 @@ void read_sector(uint32_t sec, void *buf)
 /// @return number of the new inode
 uint32_t i_alloc(uint16_t type)
 {
-    uint32_t inum = g_freeinode++;
+    ino_t inum = g_freeinode++;
     struct xv6fs_dinode din;
 
     memset(&din, 0, sizeof(din));
@@ -588,11 +588,9 @@ void balloc(int used)
     write_sector(g_super_block.bmapstart, buf);
 }
 
-#define min(a, b) ((a) < (b) ? (a) : (b))
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wanalyzer-use-of-uninitialized-value"
-void iappend(uint32_t inum, void *xp, int n)
+void iappend(ino_t inum, void *xp, int n)
 {
     struct xv6fs_dinode din;
     char buf[BLOCK_SIZE];

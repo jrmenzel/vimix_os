@@ -46,12 +46,15 @@ void kfree(void* pa);
 /// @param memory_map physical addresses of the memory to use
 void kalloc_init(struct Minimal_Memory_Map* memory_map);
 
-#ifdef CONFIG_DEBUG_KALLOC
 /// Returns the number of 4K allocations currently used.
-size_t kalloc_debug_get_allocation_count();
-#endif  // CONFIG_DEBUG_KALLOC
+size_t kalloc_get_allocation_count();
+
+/// @brief Returns total memory in bytes
+size_t kalloc_get_total_memory();
 
 /// @brief Returns free memory in bytes
 size_t kalloc_get_free_memory();
 
 void kalloc_dump_free_memory();
+
+void kalloc_debug_check_caches();
