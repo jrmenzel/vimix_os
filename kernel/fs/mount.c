@@ -9,7 +9,6 @@
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <kernel/mount.h>
@@ -18,6 +17,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
+#include <mm/kalloc.h>
 
 /// @brief Device number of the root file system. Set in main() during hardware
 /// discovery and used once during FS init / mount_root()

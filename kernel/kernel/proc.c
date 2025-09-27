@@ -10,17 +10,17 @@
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/ipi.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
 #include <kernel/major.h>
-#include <kernel/memlayout.h>
 #include <kernel/proc.h>
 #include <kernel/signal.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
-#include <kernel/vm.h>
+#include <mm/kalloc.h>
+#include <mm/memlayout.h>
+#include <mm/vm.h>
 #include <syscalls/syscall.h>
 
 struct cpu g_cpus[MAX_CPUS] = {0};

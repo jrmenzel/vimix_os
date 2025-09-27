@@ -10,7 +10,7 @@
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
-#include <kernel/vm.h>
+#include <mm/vm.h>
 
 // Load a program segment into pagetable at virtual address va.
 // va must be page-aligned

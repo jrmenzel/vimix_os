@@ -13,12 +13,12 @@
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
-#include <kernel/memlayout.h>
 #include <kernel/proc.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
 #include <kernel/trap.h>
-#include <kernel/vm.h>
+#include <mm/memlayout.h>
+#include <mm/vm.h>
 #include <syscalls/syscall.h>
 
 extern char trampoline[], u_mode_trap_vector[], return_to_user_mode_asm[];

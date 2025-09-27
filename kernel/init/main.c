@@ -16,14 +16,14 @@
 #include <kernel/bio.h>
 #include <kernel/cpu.h>
 #include <kernel/file.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/kobject.h>
 #include <kernel/kticks.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
 #include <kernel/smp.h>
-#include <kernel/vm.h>
+#include <mm/kalloc.h>
+#include <mm/vm.h>
 
 #if defined(__CONFIG_RAMDISK_EMBEDDED)
 #include <ramdisk_fs.h>

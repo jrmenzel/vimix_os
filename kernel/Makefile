@@ -43,19 +43,20 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	ipc/pipe.o \
 	kernel/cpu.o \
 	kernel/ipi.o \
-	kernel/kalloc.o \
-	kernel/kmem_sysfs.o \
 	kernel/kobject.o \
-	kernel/vm.o \
 	kernel/proc.o \
 	kernel/bio.o \
 	kernel/file.o \
 	kernel/exec.o \
 	kernel/reset.o \
 	kernel/scheduler.o \
-	kernel/slab.o \
 	kernel/trap.o \
 	kernel/kticks.o \
+	mm/cache.o \
+	mm/kalloc.o \
+	mm/kmem_sysfs.o \
+	mm/slab.o \
+	mm/vm.o \
 	syscalls/sys_device.o \
 	syscalls/sys_file.o \
 	syscalls/sys_ipc.o \
@@ -88,16 +89,17 @@ endif
 OBJS += $(addprefix lib/libfdt/, $(LIBFDT_OBJS))
 
 SUB_DIRS := \
-  kernel \
+  drivers \
   fs \
   fs/devfs \
   fs/sysfs \
   fs/xv6fs \
   init \
   ipc \
-  drivers \
+  kernel \
   lib \
   lib/libfdt \
+  mm \
   syscalls \
   $(ARCH_DIR) \
   $(ARCH_DIR)/arch \

@@ -11,12 +11,12 @@
 #include <drivers/virtio_disk.h>
 #include <kernel/buf.h>
 #include <kernel/fs.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
+#include <mm/kalloc.h>
 
 atomic_size_t g_virtio_next_minor = 0;
 

@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <fs/sysfs/sysfs_node.h>
-#include <kernel/kalloc.h>
 #include <kernel/string.h>
+#include <mm/kalloc.h>
 
 void sysfs_nodes_init(struct super_block *sb)
 {

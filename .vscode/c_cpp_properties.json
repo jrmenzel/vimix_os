@@ -4,6 +4,7 @@
             "${workspaceFolder}/kernel/include",
             "${workspaceFolder}/kernel",
             "${workspaceFolder}/kernel/lib/libfdt",
+            "${workspaceFolder}/mm",
             "${workspaceFolder}/usr/lib/libc",
             "${workspaceFolder}/usr/include",
             "${workspaceFolder}/build/kernel"
@@ -26,7 +27,7 @@
             "${workspaceFolder}/usr/lib/libvimixutils",
             "${workspaceFolder}/usr/include"
         ]
-      },
+    },
     "configurations": [
         {
             "name": "64 bit RISCV Kernel Dev",
@@ -34,7 +35,7 @@
             "cStandard": "c17",
             "compilerPath": "/usr/bin/riscv64-linux-gnu-gcc",
             "includePath": [
-                "${kernel_inc_path}", 
+                "${kernel_inc_path}",
                 "${workspaceFolder}/kernel/arch/riscv"
             ],
             "defines": [
@@ -53,7 +54,7 @@
             "cStandard": "c17",
             "compilerPath": "/usr/bin/riscv64-linux-gnu-gcc",
             "includePath": [
-                "${kernel_inc_path}", 
+                "${kernel_inc_path}",
                 "${workspaceFolder}/kernel/arch/riscv"
             ],
             "defines": [

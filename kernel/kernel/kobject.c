@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <fs/sysfs/sysfs.h>
-#include <kernel/kalloc.h>
 #include <kernel/kobject.h>
 #include <kernel/rwspinlock.h>
 #include <kernel/stdarg.h>
 #include <kernel/string.h>
+#include <mm/kalloc.h>
 
 extern char __start_data[];  // in kernel.ld
 extern char __end_data[];    // in kernel.ld

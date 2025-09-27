@@ -7,7 +7,7 @@
 #include <kernel/kernel.h>
 #include <kernel/process.h>
 #include <kernel/spinlock.h>
-#include <kernel/vm.h>
+#include <mm/vm.h>
 
 enum CPU_State
 {

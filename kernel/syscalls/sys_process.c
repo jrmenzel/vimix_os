@@ -3,13 +3,13 @@
 #include <arch/timer.h>
 #include <arch/trap.h>
 #include <kernel/exec.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
 #include <kernel/limits.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
+#include <mm/kalloc.h>
 #include <syscalls/syscall.h>
 
 ssize_t sys_exit()

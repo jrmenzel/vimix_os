@@ -9,12 +9,12 @@
 #include <kernel/errno.h>
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
-#include <kernel/kalloc.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
 #include <kernel/xv6fs.h>
 #include <lib/minmax.h>
+#include <mm/kalloc.h>
 
 /// @brief Truncate inode (discard contents), does not call
 /// xv6fs_sops_write_inode() and does not start a FS log!

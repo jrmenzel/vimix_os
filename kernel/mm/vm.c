@@ -2,14 +2,14 @@
 
 #include <kernel/elf.h>
 #include <kernel/fs.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
-#include <kernel/memlayout.h>
 #include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
-#include <kernel/vm.h>
+#include <mm/kalloc.h>
+#include <mm/memlayout.h>
 #include <mm/mm.h>
+#include <mm/vm.h>
 
 //
 // The kernel's page table: all memory is mapped to its real location.

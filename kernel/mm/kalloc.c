@@ -5,15 +5,15 @@
 // and pipe buffers. Allocates whole 4096-byte pages.
 
 #include <init/main.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
-#include <kernel/kmem_sysfs.h>
 #include <kernel/kobject.h>
 #include <kernel/list.h>
-#include <kernel/slab.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
+#include <mm/cache.h>
+#include <mm/kalloc.h>
+#include <mm/kmem_sysfs.h>
 
 // The kernel saves free lists for 2^0 to 2^PAGE_ALLOC_MAX_ORDER pages
 // it uses a buddy allocator strategy to merge free buddy blocks of

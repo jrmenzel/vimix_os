@@ -8,8 +8,8 @@
 #include <kernel/list.h>
 #include <kernel/rwspinlock.h>
 #include <kernel/spinlock.h>
-#include <kernel/vm.h>
 #include <lib/bitmap.h>
+#include <mm/vm.h>
 
 /// State of a process (sleeping, runnable, etc.)
 enum process_state

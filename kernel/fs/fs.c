@@ -19,7 +19,6 @@
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <kernel/mount.h>
@@ -28,6 +27,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
+#include <mm/kalloc.h>
 
 struct super_block *sb_alloc_init()
 {

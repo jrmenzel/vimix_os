@@ -2,10 +2,10 @@
 
 #include <arch/trapframe.h>
 #include <kernel/kernel.h>
-#include <kernel/memlayout.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
 #include <kernel/unistd.h>
+#include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
 bool addr_is_proc_owned(struct process *proc, size_t addr)

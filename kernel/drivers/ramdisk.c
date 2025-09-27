@@ -3,12 +3,12 @@
 #include <drivers/generic_disc.h>
 #include <drivers/ramdisk.h>
 #include <kernel/container_of.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/stdatomic.h>
 #include <kernel/string.h>
+#include <mm/kalloc.h>
 
 struct ramdisk
 {

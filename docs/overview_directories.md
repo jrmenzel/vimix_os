@@ -43,6 +43,7 @@ The sub-directory structure was inspired by Linux:
 - `kernel` ([kernel](kernel/kernel.md)) primary functions of the OS like process management
 - `lib` libs shared by different kernel modules
 	- `lib/libfdt` [device tree](docs/misc/device_tree.md) parsing lib from https://github.com/dgibson/dtc.
+- `mm` [memory management](kernel/mm/memory_management.md).
 - `syscalls` entry points of [system calls](kernel/syscalls/syscalls.md).
 
 

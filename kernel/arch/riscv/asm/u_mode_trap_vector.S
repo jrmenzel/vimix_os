@@ -13,8 +13,8 @@
 #
 
 #include <arch/riscv/asm/registers.h>
-#include <kernel/memlayout.h>
 #include <arch/riscv/asm/satp.h>
+#include <mm/memlayout.h>
 
 # Define a section for this code to place it in the linker script of the kernel in its own 
 # (page aligned) page. proc_pagetable() will map only this page into the users page table (so this

@@ -6,11 +6,11 @@
 #include <fs/sysfs/sysfs_node.h>
 #include <fs/sysfs/sysfs_sb_priv.h>
 #include <kernel/errno.h>
-#include <kernel/kalloc.h>
 #include <kernel/param.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
+#include <mm/kalloc.h>
 
 struct file_system_type sysfs_file_system_type;
 const char *SYS_FS_NAME = "sysfs";

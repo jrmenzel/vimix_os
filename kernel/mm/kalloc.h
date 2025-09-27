@@ -2,7 +2,7 @@
 #pragma once
 
 #include <kernel/kernel.h>
-#include <kernel/vm.h>
+#include <mm/vm.h>
 
 #define ALLOC_FLAG_NONE 0
 #define ALLOC_FLAG_ZERO_MEMORY 1

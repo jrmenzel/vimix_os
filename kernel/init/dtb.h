@@ -5,8 +5,8 @@
 #include <arch/cpu.h>
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
-#include <kernel/vm.h>
 #include <libfdt.h>
+#include <mm/vm.h>
 
 /// @brief 64 bit values in the device tree are 32 bit aligned! Use this type
 /// when casting void* from the device tree.

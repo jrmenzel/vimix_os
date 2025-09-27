@@ -11,7 +11,6 @@
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
@@ -20,6 +19,7 @@
 #include <kernel/stat.h>
 #include <kernel/string.h>
 #include <kernel/unistd.h>
+#include <mm/kalloc.h>
 
 struct
 {

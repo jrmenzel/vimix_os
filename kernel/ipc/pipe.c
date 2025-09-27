@@ -4,10 +4,10 @@
 #include <kernel/errno.h>
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
-#include <kernel/kalloc.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 #include <kernel/stat.h>
+#include <mm/kalloc.h>
 
 static inline bool pipe_is_empty(struct pipe *pipe)
 {

@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <kernel/kalloc.h>
 #include <lib/bitmap.h>
 #include <lib/minmax.h>
+#include <mm/kalloc.h>
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 
