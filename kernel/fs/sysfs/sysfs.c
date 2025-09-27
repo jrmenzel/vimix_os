@@ -84,13 +84,12 @@ void sysfs_init()
 
 ssize_t sysfs_init_fs_super_block(struct super_block *sb_in, const void *data)
 {
-    struct sysfs_sb_private *priv =
-        (struct sysfs_sb_private *)kmalloc(sizeof(struct sysfs_sb_private));
+    struct sysfs_sb_private *priv = (struct sysfs_sb_private *)kmalloc(
+        sizeof(struct sysfs_sb_private), ALLOC_FLAG_ZERO_MEMORY);
     if (priv == NULL)
     {
         return -ENOMEM;
     }
-    memset(priv, 0, sizeof(struct sysfs_sb_private));
     atomic_init(&priv->next_free_inum,
                 1);  // start with inode 1, 0 is reserved
     sb_in->s_fs_info = (void *)priv;
@@ -120,12 +119,12 @@ struct sysfs_inode *sysfs_create_inode_from_node(struct sysfs_node *node)
 {
     struct super_block *sb = sysfs_super_block;
 
-    struct sysfs_inode *sys_ip = kmalloc(sizeof(struct sysfs_inode));
+    struct sysfs_inode *sys_ip =
+        kmalloc(sizeof(struct sysfs_inode), ALLOC_FLAG_ZERO_MEMORY);
     if (sys_ip == NULL)
     {
         return NULL;
     }
-    memset(sys_ip, 0, sizeof(struct sysfs_inode));
 
     // init base inode
     inode_init(&sys_ip->ino, sb, node->inode_number);
@@ -179,10 +178,9 @@ struct sysfs_node *sysfs_register_kobject_parent(
                       "sysfs_register_kobject_parent: kobj->ktype is NULL");
 
     kobj->sysfs_nodes =
-        kmalloc(sizeof(struct sysfs_node *) * (kobj->ktype->n_attributes + 1));
+        kmalloc(sizeof(struct sysfs_node *) * (kobj->ktype->n_attributes + 1),
+                ALLOC_FLAG_ZERO_MEMORY);
     if (kobj->sysfs_nodes == NULL) return NULL;
-    memset(kobj->sysfs_nodes, 0,
-           sizeof(struct sysfs_node *) * (kobj->ktype->n_attributes + 1));
 
     struct sysfs_sb_private *priv =
         (struct sysfs_sb_private *)sysfs_super_block->s_fs_info;
@@ -505,9 +503,8 @@ ssize_t sysfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
         return -EINVAL;
     }
 
-    char *dst_buf = kmalloc(n);
+    char *dst_buf = kmalloc(n, ALLOC_FLAG_ZERO_MEMORY);
     if (dst_buf == NULL) return -ENOMEM;
-    memset(dst_buf, 0, n);
 
     // can't underflow as index 0 is a directory and above is a test for that
     size_t attribute_idx = sysfs_ip->node->sysfs_node_index - 1;

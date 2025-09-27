@@ -12,7 +12,8 @@
 bitmap_t bitmap_alloc(unsigned int nbits)
 {
     // allocate the minimal number of size_t
-    return kmalloc(BITS_TO_SIZET(nbits) * sizeof(size_t));
+    return kmalloc(BITS_TO_SIZET(nbits) * sizeof(size_t),
+                   ALLOC_FLAG_ZERO_MEMORY);
 }
 
 void bitmap_free(const bitmap_t bitmap) { kfree((void *)bitmap); }

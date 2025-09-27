@@ -338,7 +338,7 @@ size_t next_power_of_two(size_t v)
     return v;
 }
 
-void *kmalloc(size_t size)
+void *kmalloc(size_t size, int32_t flags)
 {
     DEBUG_EXTRA_PANIC(g_kernel_memory.kmalloc_initialized,
                       "kfree called before kalloc_init()");
@@ -362,9 +362,10 @@ void *kmalloc(size_t size)
     {
         // no cache for this size -> return a full page
         // printk("alloc full page\n");
-        return alloc_pages(ALLOC_FLAG_NONE, 0);
+        return alloc_pages(ALLOC_FLAG_NONE, flags);
     }
-    return kmem_cache_alloc(&(g_kernel_memory.object_cache[cache_index]));
+    return kmem_cache_alloc(&(g_kernel_memory.object_cache[cache_index]),
+                            flags);
 }
 
 size_t kalloc_get_allocation_count()

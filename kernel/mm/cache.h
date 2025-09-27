@@ -40,8 +40,9 @@ void kmem_cache_init(struct kmem_cache *new_cache, size_t size);
 
 /// @brief Allocate an object from this cache.
 /// @param cache The cache to use.
+/// @param flags Allocation flags, see ALLOC_FLAG_...
 /// @return An object or NULL if out of memory.
-void *kmem_cache_alloc(struct kmem_cache *cache);
+void *kmem_cache_alloc(struct kmem_cache *cache, int32_t flags);
 
 /// @brief Free an object.
 /// @param cache The cache to use.

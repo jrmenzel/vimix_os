@@ -31,8 +31,10 @@ static inline void free_page(void* pa) { free_pages(pa, 0); }
 /// @brief Allocate up to one page of physical memory.
 /// Use alloc_pages() when more is needed.
 /// Returns a pointer that the kernel can use.
+/// @param size Number of bytes to allocate, must be > 0 and <= PAGE_SIZE
+/// @param flags Allocation flags, see ALLOC_FLAG_...
 /// @return NULL if the memory cannot be allocated.
-void* kmalloc(size_t size);
+void* kmalloc(size_t size, int32_t flags);
 
 /// @brief Free memory pointed at by pa,
 /// which normally should have been returned by a

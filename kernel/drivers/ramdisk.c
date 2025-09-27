@@ -76,13 +76,13 @@ dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
         panic("invalid ramdisk_init parameters");
     }
 
-    struct ramdisk *rdisk = kmalloc(sizeof(struct ramdisk));
+    struct ramdisk *rdisk =
+        kmalloc(sizeof(struct ramdisk), ALLOC_FLAG_ZERO_MEMORY);
     if (rdisk == NULL)
     {
         printk("ramdisk: out of memory\n");
         return INVALID_DEVICE;
     }
-    memset(rdisk, 0, sizeof(struct ramdisk));
 
     size_t minor = (size_t)atomic_fetch_add(&g_ramdisk_next_minor, 1);
     // printk("ramdisk_init %zd\n", minor);
@@ -90,7 +90,7 @@ dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
     rdisk->ram_base = (void *)init_parameters->mem[0].start;
     rdisk->disk.bdev.size = init_parameters->mem[0].size;
 
-    char *device_name = kmalloc(16);
+    char *device_name = kmalloc(16, ALLOC_FLAG_NONE);
     if (device_name == NULL)
     {
         kfree(rdisk);

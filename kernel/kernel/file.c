@@ -59,10 +59,9 @@ void file_init()
 struct file *file_alloc()
 {
     spin_lock(&g_file_table.lock);
-    struct file *f = kmalloc(sizeof(struct file));
+    struct file *f = kmalloc(sizeof(struct file), ALLOC_FLAG_ZERO_MEMORY);
     if (f)
     {
-        memset(f, 0, sizeof(struct file));
         kref_init(&f->ref);
         list_add(&f->list, &g_file_table.open_files);
     }

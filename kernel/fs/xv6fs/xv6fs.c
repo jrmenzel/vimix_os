@@ -125,14 +125,13 @@ ssize_t xv6fs_init_fs_super_block(struct super_block *sb_in, const void *data)
         return -EINVAL;
     }
 
-    struct xv6fs_sb_private *priv =
-        (struct xv6fs_sb_private *)kmalloc(sizeof(struct xv6fs_sb_private));
+    struct xv6fs_sb_private *priv = (struct xv6fs_sb_private *)kmalloc(
+        sizeof(struct xv6fs_sb_private), ALLOC_FLAG_ZERO_MEMORY);
     if (priv == NULL)
     {
         bio_release(first_block);
         return -ENOMEM;
     }
-    memset(priv, 0, sizeof(struct xv6fs_sb_private));
     sb_in->s_fs_info = (void *)priv;
 
     memmove(&(priv->sb), vx6_sb, sizeof(struct xv6fs_superblock));
@@ -601,13 +600,13 @@ struct inode *xv6fs_iget(struct super_block *sb, ino_t inum)
     }
 
     // Create a new inode
-    struct xv6fs_inode *xv_ip = kmalloc(sizeof(struct xv6fs_inode));
+    struct xv6fs_inode *xv_ip =
+        kmalloc(sizeof(struct xv6fs_inode), ALLOC_FLAG_ZERO_MEMORY);
     if (xv_ip == NULL)
     {
         rwspin_write_unlock(&sb->fs_inode_list_lock);
         return NULL;
     }
-    memset(xv_ip, 0, sizeof(struct xv6fs_inode));
     ip = &xv_ip->ino;
 
     inode_init(ip, sb, inum);

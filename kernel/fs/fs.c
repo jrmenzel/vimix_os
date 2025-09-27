@@ -31,9 +31,9 @@
 
 struct super_block *sb_alloc_init()
 {
-    struct super_block *sb = kmalloc(sizeof(struct super_block));
+    struct super_block *sb =
+        kmalloc(sizeof(struct super_block), ALLOC_FLAG_ZERO_MEMORY);
     if (sb == NULL) return NULL;
-    memset(sb, 0, sizeof(*sb));
 
     kobject_init(&sb->kobj, NULL);
     list_init(&sb->fs_inode_list);

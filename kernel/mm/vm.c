@@ -6,6 +6,7 @@
 #include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
+#include <mm/arch_vm.h>
 #include <mm/kalloc.h>
 #include <mm/memlayout.h>
 #include <mm/mm.h>

@@ -36,11 +36,9 @@ struct sysfs_node *sysfs_node_alloc_init(struct kobject *kobj,
         entry = &kobj->ktype->attribute[sysfs_entry_index - 1];
     }
 
-    struct sysfs_node *node =
-        (struct sysfs_node *)kmalloc(sizeof(struct sysfs_node));
+    struct sysfs_node *node = (struct sysfs_node *)kmalloc(
+        sizeof(struct sysfs_node), ALLOC_FLAG_ZERO_MEMORY);
     if (node == NULL) return NULL;
-
-    memset(node, 0, sizeof(struct sysfs_node));
 
     ino_t inode_number = atomic_fetch_add(&priv->next_free_inum, 1);
     node->inode_number = inode_number;

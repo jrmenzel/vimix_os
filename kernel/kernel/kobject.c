@@ -48,10 +48,9 @@ void init_kobject_root()
 
 struct kobject *kobject_create_init()
 {
-    struct kobject *kobj = kmalloc(sizeof(*kobj));
+    struct kobject *kobj = kmalloc(sizeof(*kobj), ALLOC_FLAG_ZERO_MEMORY);
     if (kobj == NULL) return NULL;
 
-    memset(kobj, 0, sizeof(*kobj));
     kobject_init(kobj, &dynamic_kobj_ktype);
     return kobj;
 }
@@ -83,9 +82,8 @@ bool kobject_add_varg(struct kobject *kobj, struct kobject *parent,
     else
     {
         const size_t MAX_NAME_LEN = 64;
-        char *name = kmalloc(MAX_NAME_LEN);
+        char *name = kmalloc(MAX_NAME_LEN, ALLOC_FLAG_ZERO_MEMORY);
         if (name == NULL) return false;
-        memset(name, 0, MAX_NAME_LEN);
         vsnprintf(name, MAX_NAME_LEN, fmt, vargs);
         kobj->name = name;
     }

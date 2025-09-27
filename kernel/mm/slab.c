@@ -55,7 +55,7 @@ struct kmem_slab *kmem_slab_create(size_t size)
     return slab;
 }
 
-void *kmem_slab_alloc(struct kmem_slab *slab)
+void *kmem_slab_alloc(struct kmem_slab *slab, int32_t flags)
 {
     if (slab->free_list == NULL) return NULL;
 
@@ -63,7 +63,10 @@ void *kmem_slab_alloc(struct kmem_slab *slab)
     slab->free_list = *(void **)object;
     slab->objects_allocated++;
 
-    memset(object, 0, slab->object_size);
+    if (flags & ALLOC_FLAG_ZERO_MEMORY)
+    {
+        memset(object, 0, slab->object_size);
+    }
     return object;
 }
 

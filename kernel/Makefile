@@ -14,7 +14,7 @@ INIT_BUILD_DIR := $(K_BUILD_DIR)/$(ARCH_DIR)/asm
 #
 OBJS := $(OBJS_ARCH)
 OBJS +=	$(ARCH_DIR)/context.o \
-	$(ARCH_DIR)/mm/vm.o \
+	$(ARCH_DIR)/mm/arch_vm.o \
 	$(ARCH_DIR)/start.o \
 	$(ARCH_DIR)/trap.o \
 	drivers/device.o \

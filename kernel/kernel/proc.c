@@ -158,12 +158,12 @@ struct kobj_type proc_ktype = {.release = proc_free_kobject,
 /// If there are no free processes, or a memory allocation fails, return NULL.
 static struct process *alloc_process()
 {
-    struct process *proc = kmalloc(sizeof(struct process));
+    struct process *proc =
+        kmalloc(sizeof(struct process), ALLOC_FLAG_ZERO_MEMORY);
     if (proc == NULL)
     {
         return NULL;
     }
-    memset(proc, 0, sizeof(struct process));
     // proc_free() (called from last proc_put()) can free partially initialized
     // structs, but the lock is expected to be helt
     kobject_init(&proc->kobj, &proc_ktype);

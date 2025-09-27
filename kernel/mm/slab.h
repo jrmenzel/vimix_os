@@ -79,7 +79,7 @@ static inline void kmem_slab_delete(struct kmem_slab *slab)
 /// @brief Allocate a new object from this slab.
 /// @param slab Slab to get an object from, size is implicit by the chosen slab.
 /// @return NULL if the slab is full already.
-void *kmem_slab_alloc(struct kmem_slab *slab);
+void *kmem_slab_alloc(struct kmem_slab *slab, int32_t flags);
 
 /// @brief If we know that an object was allocated by some slab, we can infer
 /// the slab as its struct is stored at the beginning of the same page.

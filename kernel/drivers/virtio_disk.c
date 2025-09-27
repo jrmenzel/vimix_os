@@ -27,13 +27,14 @@ void virtio_block_device_interrupt(dev_t dev);
 dev_t virtio_disk_init_internal(size_t disk_index,
                                 struct Device_Init_Parameters *mapping)
 {
-    struct virtio_disk *disk = kmalloc(sizeof(struct virtio_disk));
+    struct virtio_disk *disk =
+        kmalloc(sizeof(struct virtio_disk), ALLOC_FLAG_ZERO_MEMORY);
     if (disk == NULL)
     {
         printk("virtio disk: out of memory\n");
         return INVALID_DEVICE;
     }
-    char *device_name = kmalloc(16);
+    char *device_name = kmalloc(16, ALLOC_FLAG_NONE);
     if (device_name == NULL)
     {
         kfree(disk);
@@ -41,7 +42,6 @@ dev_t virtio_disk_init_internal(size_t disk_index,
         return INVALID_DEVICE;
     }
     snprintf(device_name, 16, "virtio%zd", disk_index);
-    memset(disk, 0, sizeof(struct virtio_disk));
 
     spin_lock_init(&disk->vdisk_lock, "virtio_disk");
     disk->mmio_base = mapping->mem[0].start;

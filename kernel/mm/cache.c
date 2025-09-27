@@ -32,7 +32,7 @@ void kmem_cache_init(struct kmem_cache *new_cache, size_t size)
     kobject_init(&new_cache->kobj, &kmem_cache_kobj_ktype);
 }
 
-void *kmem_cache_alloc(struct kmem_cache *cache)
+void *kmem_cache_alloc(struct kmem_cache *cache, int32_t flags)
 {
     spin_lock(&cache->lock);
 
@@ -41,7 +41,7 @@ void *kmem_cache_alloc(struct kmem_cache *cache)
     struct list_head *slab;
     list_for_each(slab, &cache->slab_list)
     {
-        allocation = kmem_slab_alloc((struct kmem_slab *)slab);
+        allocation = kmem_slab_alloc((struct kmem_slab *)slab, flags);
         if (allocation) break;  // found space, break loop
     }
 
@@ -53,7 +53,7 @@ void *kmem_cache_alloc(struct kmem_cache *cache)
         {
             list_add_tail(&(new_slab->slab_list), &(cache->slab_list));
             new_slab->owning_cache = cache;
-            allocation = kmem_slab_alloc(new_slab);
+            allocation = kmem_slab_alloc(new_slab, flags);
         }
     }
 
