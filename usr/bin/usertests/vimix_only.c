@@ -1365,7 +1365,8 @@ void forkfork(char *s)
 void forkforkfork(char *s)
 {
     size_t proc_count = get_process_count();
-    unlink("stopforking");
+    const char *file_name = "stopforking";
+    unlink(file_name);
 
     pid_t pid = fork();
     if (pid < 0)
@@ -1377,14 +1378,14 @@ void forkforkfork(char *s)
     {
         while (true)
         {
-            int fd = open("stopforking", O_RDONLY);
+            int fd = open(file_name, O_RDONLY);
             if (fd >= 0)
             {
                 exit(0);
             }
             if (fork() < 0)
             {
-                close(open("stopforking", O_CREATE | O_RDWR, 0755));
+                close(open(file_name, O_CREATE | O_RDWR, 0755));
             }
         }
 
@@ -1392,10 +1393,11 @@ void forkforkfork(char *s)
     }
 
     usleep(FORK_FORK_FORK_DURATION_MS * 1000);
-    close(open("stopforking", O_CREATE | O_RDWR, 0755));
+    close(open(file_name, O_CREATE | O_RDWR, 0755));
     wait(NULL);
 
     let_init_free_children(proc_count);
+    assert_no_error(unlink(file_name));
 }
 
 // regression test. does reparent() violate the parent-then-child
@@ -2009,9 +2011,14 @@ void linkunlink(char *s)
     }
 
     if (pid)
+    {
         wait(NULL);
+        unlink("x");
+    }
     else
+    {
         exit(0);
+    }
 }
 
 void subdir(char *s)
@@ -2522,7 +2529,11 @@ void iref(char *s)
         }
 
         mkdir("", 0755);
+        assert_errno(ENOENT);
+
         link("README", "");
+        assert_errno(ENOENT);
+
         int fd = open("", O_CREATE, 0755);
         if (fd >= 0)
         {
@@ -2533,17 +2544,17 @@ void iref(char *s)
         {
             close(fd);
         }
-        unlink("xx");
+        assert_no_error(unlink("xx"));
     }
 
     // clean up
     for (size_t i = 0; i < IREF_LOOPS; i++)
     {
-        chdir("..");
-        unlink("irefd");
+        assert_no_error(chdir(".."));
+        assert_no_error(rmdir("irefd"));
     }
 
-    chdir("/utests-tmp");
+    assert_no_error(chdir("/utests-tmp"));
 }
 
 // test that fork fails gracefully
@@ -3055,6 +3066,7 @@ void bigargtest(char *s)
         exit(1);
     }
     close(fd);
+    assert_no_error(unlink("bigarg-ok"));
 }
 
 // what happens when the file system runs out of blocks?

@@ -173,7 +173,8 @@ void lseek_test(char *s)
     assert_same_value(buf[0], test_str_1[pos]);
     pos++;
 
-    close(fd);
+    assert_no_error(close(fd));
+    assert_no_error(unlink(file_name));
 }
 
 char ctype_results_isprint[256] = {
@@ -587,6 +588,7 @@ void getc_test(char *s)
     c = getc(f);
     assert_same_value(c, EOF);
     assert_same_value(fclose(f), 0);
+    assert_no_error(unlink(file_name));
 }
 
 void realloc_test(char *s)
@@ -714,6 +716,7 @@ void getline_test(char *s)
         free(line);
         fclose(f);
     }
+    assert_no_error(unlink(file_name));
 }
 
 void strtoul_test(char *s)

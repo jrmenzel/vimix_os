@@ -129,8 +129,10 @@ int drivetests(int quick, int continuous, char *justone)
         }
     } while (continuous);
 
-    if (chdir("..") < 0) return -1;
-    rmdir("utests-tmp");
+    const char *s = "drivetests";
+    unlink("x");  // leftover
+    assert_no_error(chdir(".."));
+    assert_no_error(rmdir("utests-tmp"));
     return 0;
 }
 

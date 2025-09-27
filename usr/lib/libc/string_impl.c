@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 
 // avoid dublicated code, re-use kernels libs.
@@ -41,4 +42,16 @@ char *strerror(int errnum)
     }
 
     return "Unknown error code";
+}
+
+char *strdup(const char *s)
+{
+    if (s == NULL) return NULL;
+
+    size_t len = strlen(s);
+    char *copy = malloc(len + 1);
+    if (copy == NULL) return NULL;
+
+    strcpy(copy, s);
+    return copy;
 }
