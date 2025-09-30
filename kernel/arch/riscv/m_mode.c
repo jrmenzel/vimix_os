@@ -259,7 +259,7 @@ struct sbiret m_mode_handle_sbi_call(xlen_t arg0, xlen_t arg1, xlen_t arg2,
             size_t hart_base = arg1;
             for (size_t i = 0; i < sizeof(size_t) * 8; i++)
             {
-                if (hart_mask & (1 << i))
+                if (hart_mask & ((size_t)1 << i))
                 {
                     size_t hart = hart_base + i;
                     if (hart >= MAX_CPUS)

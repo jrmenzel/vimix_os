@@ -11,13 +11,13 @@
 
 
 Run
-> make spike
+> make PLATFORM=spike64 spike
 
 
 ## Debugging on Spike with VSCode
 
 1. Run Spike
-> make spike-gdb
+> make PLATFORM=spike64 spike-gdb
 
 2. Run OpenOCD
 > openocd -f tools/openocd/spike.cfg
@@ -26,7 +26,7 @@ Run
 
 Set the Spike binary in `Makefile` when not calling Spike via the default PATH or the self compiled version created by the `tools/build_spike.sh` script. Check that Spike supports a `ns16550` UART, [PLIC](riscv/PLIC.md) and [CLINT](riscv/CLINT.md). To do so check the [device_tree](misc/device_tree.md) via:
 
-> make PLATFORM=spike spike-dump-tree
+> make PLATFORM=spike64 spike-dump-tree
 
 
 ---
