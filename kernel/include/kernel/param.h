@@ -6,11 +6,10 @@
 ///< maximum number of processes, limited by the memory management of
 ///< the per process kernel stack
 #define MAX_PROCESSES 1024
-#define MAX_CPUS 8                   ///< maximum number of CPUs
-#define MAX_FILES_PER_PROCESS 16     ///< open files per process
-#define MAX_EXEC_ARGS 32             ///< max exec arguments
-#define MAX_OP_BLOCKS 10             ///< max # of blocks any FS op writes
-#define LOGSIZE (MAX_OP_BLOCKS * 3)  ///< max data blocks in on-disk log
+#define MAX_CPUS 8                ///< maximum number of CPUs
+#define MAX_FILES_PER_PROCESS 16  ///< open files per process
+#define MAX_EXEC_ARGS 32          ///< max exec arguments
+#define MAX_OP_BLOCKS 10          ///< max # of blocks any FS op writes
 #define NUM_BUFFERS_IN_CACHE (MAX_OP_BLOCKS * 3)  ///< size of disk block cache
 
 /// all stacks start at one page and can grow to this

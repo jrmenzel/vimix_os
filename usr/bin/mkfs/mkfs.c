@@ -26,7 +26,7 @@
 // [ boot block | sb block | log | inode blocks | free bit map | data blocks ]
 
 int ninodeblocks = MAX_ACTIVE_INODESS / XV6FS_INODES_PER_BLOCK + 1;
-int nlog = LOGSIZE;
+int nlog = (MAX_OP_BLOCKS * 3);  ///< max data blocks in on-disk log
 int nmeta;  // Number of meta blocks (boot, g_super_block, nlog, inode, bitmap)
 int nblocks;  // Number of data blocks
 

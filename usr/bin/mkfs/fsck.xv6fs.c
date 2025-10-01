@@ -26,7 +26,7 @@ struct xv6fs_in_file
     uint8_t *bitmap;
     size_t bitmap_errors;
 
-    // store for each inore if it is in use and if it is referenced by a
+    // store for each inode if it is in use and if it is referenced by a
     // directory:
 #define INODE_UNUSED 0
 #define INODE_REFERENCED 1

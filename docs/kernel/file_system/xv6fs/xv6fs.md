@@ -19,7 +19,7 @@ The first block is reserved for the boot loader for historic reasons. This block
 This block contains the struct `xv6fs_superblock` which describes the [file_system](file_system.md), including the position and size of the following areas. Everything in here stays static after the file system got created.
 
 **Log Area:**
-The first block contains the log header struct `logheader`. The following `LOGSIZE` blocks are used to store the data for blocks to be committed from the log. For each of the `LOGSIZE` blocks the header stores the destination block address.
+The first block contains the log header struct `logheader`. It contains a count of blocks to be commited and the destication block adresses. The following blocks are used to store the data for blocks to be committed from the log. The number is of blocks is stored in the FS super block. For each of these blocks the header stores the destination block address.
 
 See [xv6fs_log](xv6fs_log.md).
 

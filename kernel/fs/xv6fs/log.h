@@ -33,15 +33,26 @@ struct super_block;
 struct log
 {
     struct spinlock lock;
-    int32_t start;
-    int32_t size;
-    int32_t outstanding;  // how many FS sys calls are executing.
-    int32_t committing;   // in commit(), please wait.
-    dev_t dev;
-    struct xv6fs_log_header lh;
+    int32_t start;  ///< Block number of first log block, copy from super block
+    int32_t size;   ///< number of blocks, copy from super block
+    int32_t outstanding;  ///< how many FS sys calls are executing.
+    int32_t committing;   ///< in commit(), please wait.
+    dev_t dev;      ///< device number of the block device containing the log/FS
+    uint32_t lh_n;  ///< number of logged blocks
+    uint32_t *lh_block;  ///< block numbers of logged blocks, dynamic array of
+                         ///< size 'size'
 };
 
-void log_init(struct log *log, dev_t dev, struct xv6fs_superblock *sb);
+/// @brief Called at FS init
+/// @param log Log to initialize
+/// @param dev For log->dev
+/// @param sb Super block of the FS using this log
+/// @return 0 on success, negative error code on failure
+ssize_t log_init(struct log *log, dev_t dev, struct xv6fs_superblock *sb);
+
+/// @brief Called at FS unmount
+/// @param log Log to deinitialize
+void log_deinit(struct log *log);
 
 /// Caller has modified b->data and is done with the buffer.
 /// Record the block number and pin in the cache by increasing refcnt.

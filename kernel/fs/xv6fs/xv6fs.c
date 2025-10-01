@@ -135,8 +135,15 @@ ssize_t xv6fs_init_fs_super_block(struct super_block *sb_in, const void *data)
     sb_in->s_fs_info = (void *)priv;
 
     memmove(&(priv->sb), vx6_sb, sizeof(struct xv6fs_superblock));
-    log_init(&(priv->log), dev, &(priv->sb));
+    ssize_t log_ok = log_init(&(priv->log), dev, &(priv->sb));
     bio_release(first_block);
+
+    if (log_ok != 0)
+    {
+        kfree(priv);
+        sb_in->s_fs_info = NULL;
+        return -ENOMEM;
+    }
 
     sb_in->s_type = &xv6_file_system_type;
     sb_in->s_op = &xv6fs_s_op;
@@ -151,6 +158,7 @@ void xv6fs_kill_sb(struct super_block *sb_in)
     struct xv6fs_sb_private *priv = (struct xv6fs_sb_private *)sb_in->s_fs_info;
     DEBUG_EXTRA_ASSERT(priv != NULL, "private data should be set since mount");
     sb_in->s_fs_info = NULL;
+    log_deinit(&priv->log);
     kfree(priv);
 }
 

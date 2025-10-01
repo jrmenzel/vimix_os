@@ -109,13 +109,16 @@ _Static_assert((BLOCK_SIZE % sizeof(struct xv6fs_dirent)) == 0,
                "Size of one block (1024 bytes) must be a multiple of the size "
                "of xv6fs_dirent");
 
-/// Contents of the header block, used for both the on-disk header block
-/// and to keep track in memory of logged block# before commit.
+#define XV6FS_MAX_LOG_BLOCKS (BLOCK_SIZE / sizeof(int32_t) - 1)
+
+/// Contents of the header block, used for the on-disk header block.
+/// Assume the maximal number of log blocks, only the required will be allocated
+/// at runtime and only those will get copied. A full block is read from disk
+/// anyways.
 struct xv6fs_log_header
 {
     int32_t n;
-    int32_t block[LOGSIZE];
+    int32_t block[XV6FS_MAX_LOG_BLOCKS];
 };
-_Static_assert(
-    (sizeof(struct xv6fs_log_header) < BLOCK_SIZE),
-    "Size incorrect for xv6fs_log_header! Must be smaller than one page.");
+_Static_assert((sizeof(struct xv6fs_log_header) <= BLOCK_SIZE),
+               "Size incorrect for xv6fs_log_header! Must fit in one page.");
