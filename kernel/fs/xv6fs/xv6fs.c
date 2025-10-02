@@ -804,6 +804,15 @@ ssize_t xv6fs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
 ssize_t xv6fs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
                         size_t off, size_t n)
 {
+    if (off > ip->size || off + n < off)
+    {
+        return 0;
+    }
+    if (off + n > ip->size)
+    {
+        n = ip->size - off;
+    }
+
     ssize_t m = 0;
     ssize_t tot = 0;
     for (tot = 0; tot < n; tot += m, off += m, dst += m)

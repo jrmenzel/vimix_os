@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: MIT */
 
-#include "main.h"
-
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
 #include <arch/platform.h>
@@ -13,6 +11,7 @@
 #include <drivers/virtio_disk.h>
 #include <fs/vfs.h>
 #include <init/dtb.h>
+#include <init/main.h>
 #include <kernel/bio.h>
 #include <kernel/cpu.h>
 #include <kernel/file.h>

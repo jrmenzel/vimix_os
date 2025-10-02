@@ -17,6 +17,14 @@ struct sleeplock
 };
 
 void sleep_lock_init(struct sleeplock *lk, char *name_for_debug);
+
+static inline void sleep_lock_init_locked(struct sleeplock *lk,
+                                          char *name_for_debug)
+{
+    sleep_lock_init(lk, name_for_debug);
+    lk->locked = 1;
+}
+
 void sleep_lock(struct sleeplock *lk);
 
 /// @brief Returns true if the lock was aquired, does not block, does not sleep.

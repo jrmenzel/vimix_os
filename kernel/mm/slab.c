@@ -10,7 +10,7 @@ struct kmem_slab *kmem_slab_create(size_t size)
 {
     struct kmem_slab *slab = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
     if (!slab) return NULL;
-    size = ROUND_TO_SLAB_ALIGNMENT(size);
+    size = ROUND_TO_MIN_SLAB_SIZE(size);
     if (size > MAX_SLAB_SIZE)
     {
         panic("kmem_slab_create: unsupported slab size");
@@ -22,19 +22,8 @@ struct kmem_slab *kmem_slab_create(size_t size)
     slab->objects_allocated = 0;
     slab->owning_cache = NULL;
 
-    // offset_objects is where the first object starts in the page,
-    // before that the slab struct itself is located.
-    // Instead of max(sizeof(struct kmem_slab), size), which could leave
-    // some space unused at the end of the page, we round up to the next
-    // multiple of size. This way, if there is any space left it will be after
-    // the struct kmem_slab.
-    // This way any pointers returned by an allocation will be aligned to
-    // the object size. This is checked in kmem_slab_free() to detect errors.
-    size_t offset_objects = size;
-    while (offset_objects < sizeof(struct kmem_slab))
-    {
-        offset_objects += size;
-    }
+    // calculate offset of first object
+    size_t offset_objects = ROUND_TO_MIN_SLAB_SIZE(sizeof(struct kmem_slab));
 
     // create free list
     size_t next_object = offset_objects;
@@ -45,10 +34,6 @@ struct kmem_slab *kmem_slab_create(size_t size)
         slab->free_list = (void *)object;
 
         next_object += size;
-
-        // verify alignment
-        DEBUG_EXTRA_ASSERT((size_t)object % slab->object_size == 0,
-                           "object not aligned");
     }
 
     // printk("slab 0x%zx | %zd created\n", (size_t)slab, size);
@@ -75,10 +60,15 @@ void kmem_slab_free(struct kmem_slab *slab, void *object)
     DEBUG_EXTRA_PANIC(
         (PAGE_ROUND_DOWN((size_t)object) == (size_t)slab),
         "kmem_slab_free called for object not belonging to this slab");
-    DEBUG_EXTRA_PANIC((size_t)object % slab->object_size == 0,
-                      "kmem_slab_free object not aligned");
     DEBUG_EXTRA_PANIC((slab->owning_cache != NULL),
                       "kmem_slab_free slab not owned by a cache");
+
+    // try to cache free() calls with wrong pointers
+    DEBUG_EXTRA_PANIC(
+        (((size_t)object % PAGE_SIZE -
+          ROUND_TO_MIN_SLAB_SIZE(sizeof(struct kmem_slab))) %
+         slab->object_size) == 0,
+        "kmem_slab_free not a pointer returned by kmem_slab_alloc()");
 
 #ifdef CONFIG_DEBUG_KALLOC_MEMSET_KALLOC_FREE
     memset((char *)object, 2,

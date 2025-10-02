@@ -6,6 +6,12 @@ All block device read / writes go through the block IO buffer which buffers a nu
 
 The cache is a linked list of buffer entries (`struct buf`) and a global lock (`g_buf_cache`). Each buffer entry contains some meta data (block number, reference count, pointers for the linked list, ...) and the data of this block (`BLOCK_SIZE` bytes).
 
+Some internal data is exposed via the [SysFS](sysfs/sysfs.md):
+- `/sys/kmem/bio/num` number ob buffers currently allocated
+- `/sys/kmem/bio/free` unused buffers which can be re-used (no need to `kmalloc()` a new one)
+- `/sys/kmem/bio/min` minimum number of buffers to cache, used or free
+- `/sys/kmem/bio/max_free` maximal number of free buffers before buffers are freed
+
 
 ## Real World
 

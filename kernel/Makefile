@@ -46,6 +46,8 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/kobject.o \
 	kernel/proc.o \
 	kernel/bio.o \
+	kernel/bio_sysfs.o \
+	kernel/buf.o \
 	kernel/file.o \
 	kernel/exec.o \
 	kernel/reset.o \

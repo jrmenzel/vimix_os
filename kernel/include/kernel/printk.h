@@ -25,6 +25,3 @@ int snprintf(char *dst, size_t n, const char *fmt, ...)
 
 /// @brief Kernel panic: print an error and halt the OS or shutdown
 void panic(char *error_message) __attribute__((noreturn));
-
-// set to true after a kernel panic
-extern volatile size_t g_kernel_panicked;

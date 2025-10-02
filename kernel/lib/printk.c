@@ -5,6 +5,7 @@
 //
 
 #include <drivers/console.h>
+#include <init/main.h>
 #include <kernel/ipi.h>
 #include <kernel/kernel.h>
 #include <kernel/printk.h>
@@ -13,12 +14,13 @@
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
 #include <kernel/stdarg.h>
+#include <kernel/stdatomic.h>
 #include <kernel/types.h>
 #include <syscalls/syscall.h>
 
 #include "print_impl.h"
 
-volatile size_t g_kernel_panicked = 0;
+atomic_size_t g_kernel_panicked = 0;
 
 /// lock to avoid interleaving concurrent printk's.
 static struct
@@ -67,7 +69,7 @@ void printk(char* format, ...)
 void panic(char* error_message)
 {
     g_printk.locking = false;
-    g_kernel_panicked++;  // freeze scheduling on other CPUs
+    atomic_fetch_add(&g_kernel_panicked, 1);
     atomic_thread_fence(memory_order_seq_cst);
     cpu_disable_interrupts();
     struct cpu* this_cpu = get_cpu();
@@ -77,9 +79,9 @@ void panic(char* error_message)
 
     printk("\n\nKernel PANIC on CPU %zd: %s\n", smp_processor_id(),
            error_message);
-    if (g_kernel_panicked > 1)
+    if (atomic_load(&g_kernel_panicked) > 1)
     {
-        if (g_kernel_panicked > 2)
+        if (atomic_load(&g_kernel_panicked) > 2)
         {
             // machine_power_off failed before and panicked
             infinite_loop;
@@ -87,9 +89,12 @@ void panic(char* error_message)
         machine_power_off();
     }
 
-    // stop other CPUs
-    cpu_mask mask = ipi_cpu_mask_all_but_self();
-    ipi_send_interrupt(mask, IPI_KERNEL_PANIC, NULL);
+    if (g_global_init_done == GLOBAL_INIT_DONE)
+    {
+        // stop other CPUs
+        cpu_mask mask = ipi_cpu_mask_all_but_self();
+        ipi_send_interrupt(mask, IPI_KERNEL_PANIC, NULL);
+    }
 
 #if defined(__ARCH_riscv)
     // print the kernel call stack:

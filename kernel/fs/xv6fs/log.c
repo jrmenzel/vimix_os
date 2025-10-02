@@ -70,7 +70,7 @@ static void install_trans(struct log *log, bool recovering)
         bio_write(dbuf);                              // write dst to disk
         if (recovering == false)
         {
-            bio_unpin(dbuf);
+            bio_put(dbuf);
         }
         bio_release(lbuf);
         bio_release(dbuf);
@@ -244,7 +244,7 @@ void log_write(struct log *log, struct buf *b)
     if (i == log->lh_n)
     {
         // Add new block to log?
-        bio_pin(b);
+        bio_get(b);
         log->lh_n++;
     }
     spin_unlock(&log->lock);

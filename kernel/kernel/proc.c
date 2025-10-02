@@ -904,14 +904,17 @@ void debug_print_call_stack_kernel_fp(size_t frame_pointer)
     {
         if (frame_pointer == 0) break;
         size_t ra_address = frame_pointer - 1 * sizeof(size_t);
-        if (kvm_get_physical_paddr(ra_address) == 0)
+        // check if g_kernel_pagetable is set, kernel panics could happen before
+        // that
+        if (g_kernel_pagetable && kvm_get_physical_paddr(ra_address) == 0)
         {
             printk("  ra: <invalid address>\n");
             break;
         }
         size_t ra = *((size_t *)(ra_address));
         size_t next_frame_pointer_address = frame_pointer - 2 * sizeof(size_t);
-        if (kvm_get_physical_paddr(next_frame_pointer_address) == 0)
+        if (g_kernel_pagetable &&
+            kvm_get_physical_paddr(next_frame_pointer_address) == 0)
         {
             printk("  invalid frame pointer address: 0x%zx\n",
                    next_frame_pointer_address);

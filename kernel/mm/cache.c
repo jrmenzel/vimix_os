@@ -20,7 +20,7 @@ void kmem_cache_check(struct kmem_cache *cache)
 
 void kmem_cache_init(struct kmem_cache *new_cache, size_t size)
 {
-    size = ROUND_TO_SLAB_ALIGNMENT(size);
+    size = ROUND_TO_MIN_SLAB_SIZE(size);
     if (size > MAX_SLAB_SIZE)
     {
         panic("kmem_cache_init: unsupported slab size");

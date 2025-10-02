@@ -8,31 +8,27 @@
 #include <kernel/list.h>
 #include <mm/kalloc.h>
 
-// Pick 16 bytes as the smallest cache
-#define SLAB_ALIGNMENT_ORDER 4
+// Slab objects alignment in bytes. Ideally hardware cache aligned.
+#define SLAB_ALIGNMENT (64)
 
-// Slab objects alignment in bytes. Also the minimal size of an object in the
-// slab. Ideally hardware cache aligned.
-#define SLAB_ALIGNMENT (1 << SLAB_ALIGNMENT_ORDER)
-
-_Static_assert((sizeof(size_t) <= SLAB_ALIGNMENT),
+// smallest objects
+#define MIN_SLAB_SIZE_ORDER 4
+#define MIN_SLAB_SIZE (1 << MIN_SLAB_SIZE_ORDER)
+_Static_assert((sizeof(size_t) <= MIN_SLAB_SIZE),
                "Slabs manage free space with a linked list in free objects, so "
                "an object can not be smaller than a size_t");
 
-// 1<<2 == 4 -> 1/4
-#define MAX_SLAB_SIZE_DIVIDER_SHIFT 2
-
 // maximal size of objects managed by the slab allocator
 // a full slab is stored in one page, data and metadata.
-// Minus the slab struct only three 1024 byte objects fit into
+// Minus the slab struct only three 1280 byte objects fit into
 // one 4KB page, this is still useful. However only one object of half the
-// PAGE_SIZE would fit, so for everything larger 1/4 of a PAGE_SIZE kmalloc
+// PAGE_SIZE would fit, so for everything larger 1280 bytes kmalloc
 // will use a full page from alloc_page() instead.
-#define MAX_SLAB_SIZE (PAGE_SIZE / (1 << MAX_SLAB_SIZE_DIVIDER_SHIFT))
+#define MAX_SLAB_SIZE (1280)
 
-// round up an allocation size to the next multiple of the SLAB_ALIGNMENT
-#define ROUND_TO_SLAB_ALIGNMENT(size) \
-    (((size + SLAB_ALIGNMENT - 1) / SLAB_ALIGNMENT) * SLAB_ALIGNMENT)
+// round up an allocation size to the next multiple of the MIN_SLAB_SIZE
+#define ROUND_TO_MIN_SLAB_SIZE(size) \
+    (((size + MIN_SLAB_SIZE - 1) / MIN_SLAB_SIZE) * MIN_SLAB_SIZE)
 
 /// @brief  A slab allocator managing one page of memory, used by kmem_cache.
 /// Access must be synced externally. Don't use directly, use a kmem_cache

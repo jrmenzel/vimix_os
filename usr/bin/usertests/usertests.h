@@ -38,6 +38,9 @@ extern struct test slowtests[];
 extern struct test quicktests_common[];
 extern struct test slowtests_common[];
 
+// used on VIMIX to make memory usage predictable
+void prepare_test_environment();
+
 // get free memory to check for leaks
 size_t countfree();
 

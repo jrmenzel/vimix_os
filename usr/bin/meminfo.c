@@ -75,6 +75,19 @@ void print_caches()
     closedir(dir);
 }
 
+void print_bio_cache()
+{
+    size_t num = get_from_sysfs("/sys/kmem/bio/num");
+    size_t free = get_from_sysfs("/sys/kmem/bio/free");
+    size_t min = get_from_sysfs("/sys/kmem/bio/min");
+    size_t max_free = get_from_sysfs("/sys/kmem/bio/max_free");
+
+    size_t printed = printf("Block IO cache: ");
+    print_trailing_spaces(max(20 - printed, 0));
+    printf("%zu buffers, %zu free; min: %zu; max free: %zu\n", num, free, min,
+           max_free);
+}
+
 int main(int argc, char *argv[])
 {
     size_t mem_total = get_from_sysfs("/sys/kmem/mem_total");
@@ -88,6 +101,7 @@ int main(int argc, char *argv[])
     print_line("Used memory", mem_total - mem_free);
     print_line("Allocated", pages_alloc * page_size);
 
+    print_bio_cache();
     print_caches();
 
     return 0;

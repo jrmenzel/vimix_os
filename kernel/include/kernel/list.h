@@ -31,7 +31,7 @@ static inline void __list_add(struct list_head *new_item,
     prev->next = new_item;
 }
 
-/// @brief Add a new item to the list
+/// @brief Add a new item to the beginning of the list
 /// @param new New item
 /// @param head List head, new item will be added after this
 static inline void list_add(struct list_head *new_item, struct list_head *head)
@@ -72,3 +72,9 @@ static inline int list_empty(const struct list_head *head)
 // helper for loops, pos is an external temp var
 #define list_for_each(pos, head) \
     for (pos = (head)->next; !(pos == (head)); pos = pos->next)
+
+// helper for loops in which objects might get removed
+// pos and n are external temp vars
+#define list_for_each_safe(pos, n, head)                      \
+    for (pos = (head)->next, n = pos->next; !(pos == (head)); \
+         pos = n, n = pos->next)

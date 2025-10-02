@@ -82,6 +82,13 @@ static inline void let_init_free_children(size_t expected_proc_count)
     }
 }
 
+void prepare_test_environment()
+{
+    // make memory usage more predictable
+    set_sysfs("/sys/kmem/bio/min", 30);
+    set_sysfs("/sys/kmem/bio/max_free", 0);
+}
+
 //
 // use sbrk() to count how many free physical memory pages there are.
 // touches the pages to force allocation.

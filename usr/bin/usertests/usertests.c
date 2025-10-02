@@ -138,6 +138,8 @@ int drivetests(int quick, int continuous, char *justone)
 
 int main(int argc, char *argv[])
 {
+    prepare_test_environment();
+
     time_t start_time = time(NULL);
 
     int continuous = 0;

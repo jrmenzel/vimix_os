@@ -6,6 +6,7 @@
 #include <fs/sysfs/sysfs_node.h>
 #include <fs/sysfs/sysfs_sb_priv.h>
 #include <kernel/errno.h>
+#include <kernel/file.h>
 #include <kernel/param.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
@@ -133,7 +134,7 @@ struct sysfs_inode *sysfs_create_inode_from_node(struct sysfs_node *node)
     if (node->attribute != NULL)
     {
         sys_ip->ino.i_mode |= S_IFREG;
-        sys_ip->ino.size = 1024;
+        sys_ip->ino.size = 0;
     }
     else
     {
@@ -527,6 +528,33 @@ ssize_t sysfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
 
 ssize_t sysfs_fops_write(struct file *f, size_t addr, size_t n)
 {
-    printk("sysfs_fops_write\n");
-    return 0;
+    if (!S_ISREG(f->ip->i_mode)) return -1;
+
+    struct sysfs_inode *sysfs_ip = sysfs_inode_from_inode(f->ip);
+
+    const struct sysfs_ops *sysfs_ops = sysfs_ip->node->kobj->ktype->sysfs_ops;
+    if (sysfs_ops == NULL || sysfs_ops->store == NULL ||
+        sysfs_ip->node->attribute == NULL)
+    {
+        return -EINVAL;
+    }
+
+    char *dst_buf = kmalloc(n + 1, ALLOC_FLAG_NONE);
+    if (dst_buf == NULL) return -ENOMEM;
+
+    if (either_copyin(dst_buf, true, addr, n) != 0)
+    {
+        kfree(dst_buf);
+        return -EFAULT;
+    }
+    dst_buf[n] = 0;  // ensure null termination
+
+    // can't underflow as index 0 is a directory and above is a test for that
+    size_t attribute_idx = sysfs_ip->node->sysfs_node_index - 1;
+    ssize_t res =
+        sysfs_ops->store(sysfs_ip->node->kobj, attribute_idx, dst_buf, n);
+
+    kfree(dst_buf);
+
+    return res;
 }

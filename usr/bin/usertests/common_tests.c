@@ -8,6 +8,8 @@
 // we are not the only process on the host, so comparing memory isn't useful
 size_t countfree() { return 0; }
 
+void prepare_test_environment() {}
+
 struct test quicktests[] = {
     {0, 0},
 };

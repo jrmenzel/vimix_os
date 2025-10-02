@@ -197,15 +197,6 @@ void inode_stat(struct inode *ip, struct stat *st)
 ssize_t inode_read(struct inode *ip, bool addr_is_userspace, size_t dst,
                    size_t off, size_t n)
 {
-    if (off > ip->size || off + n < off)
-    {
-        return 0;
-    }
-    if (off + n > ip->size)
-    {
-        n = ip->size - off;
-    }
-
     return VFS_INODE_READ(ip, addr_is_userspace, dst, off, n);
 }
 

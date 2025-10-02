@@ -33,3 +33,25 @@ size_t get_from_sysfs(const char *path)
 
     return strtoul(buf, NULL, 10);
 }
+
+bool set_sysfs(const char *path, size_t value)
+{
+    int fd = open(path, O_WRONLY);
+    if (fd < 0)
+    {
+        fprintf(stderr, "open of %s failed: %s (%d)\n", path, strerror(errno),
+                errno);
+        return false;
+    }
+    char buf[32];
+    int n = snprintf(buf, sizeof(buf), "%zu", value);
+    if (write(fd, buf, n) < 0)
+    {
+        fprintf(stderr, "write of %s failed: %s (%d)\n", path, strerror(errno),
+                errno);
+        close(fd);
+        return false;
+    }
+    close(fd);
+    return true;
+}

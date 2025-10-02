@@ -9,9 +9,9 @@ Smaller allocations can be requested with `kmalloc()`, it uses a number of slab 
 
 ### Allocate less than one page of memory
 
-To allocate memory less than one [page](page.md) call `kmalloc()` (free with `kfree()`). Internally it uses a number of slab allocators for objects sized from `SLAB_ALIGNMENT` to 1/4 of the page size. If an allocation is between the largest value supported by the slab allocators and the page size, a full page will get allocated by calling `alloc_pages()`.
+To allocate memory less than one [page](page.md) call `kmalloc()` (free with `kfree()`). Internally it uses a number of slab allocators organized in caches for objects of different sizes. Those are all power-of-2 sizes from `MIN_SLAB_SIZE` to 1/4 of the page size plus a cache for objects up to 1280 bytes. The last one is used by the [block io cache](../file_system/block_io.md). If an allocation is between the largest value supported by the slab allocators and the page size, a full page will get allocated by calling `alloc_pages()`.
 
-The slabs manage power-of-2 allocation sizes (e.g. 32 byte, 64 byte etc.), so all allocations will use a power-of-2 value of bytes of memory. 
+As most slabs manage power-of-2 allocation sizes (e.g. 32 byte, 64 byte etc.), so most allocations will use a power-of-2 value of bytes of memory. 
 
 All memory up to one page can be freed with `kfree()` without knowing the allocation size. If the freed pointer is already page aligned, it gets freed via `free_page()`, if it is not aligned, if is an object from a slab allocator. In that case rounding down the pointer to the page boundary will give the responsible slab which is then called with `kmem_slab_free()`.
 

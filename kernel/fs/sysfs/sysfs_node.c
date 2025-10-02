@@ -159,7 +159,5 @@ void debug_print_sysfs_node_depth(struct sysfs_node *node, size_t depth)
 
 void debug_print_sysfs_node(struct sysfs_node *node)
 {
-    // rwspin_read_lock(&node->kobj->children_lock);
     debug_print_sysfs_node_depth(node, 0);
-    // rwspin_read_unlock(&node->kobj->children_lock);
 }
