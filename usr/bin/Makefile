@@ -10,6 +10,7 @@ USER_SPACE_INC_PARAMS := $(foreach d, $(USER_SPACE_INC), -I$(ROOT)/$d)
 USER_SPACE_INC_PARAMS_HOST := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
 
 UPROGS_VIMIX_ONLY := init\
+	fsinfo\
     grind\
     shutdown\
 	mount\

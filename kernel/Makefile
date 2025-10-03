@@ -37,6 +37,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	fs/devfs/devfs.o \
 	fs/xv6fs/log.o \
 	fs/xv6fs/xv6fs.o \
+	fs/xv6fs/xv6fs_sysfs.o \
 	init/dtb.o \
 	init/main.o \
 	init/start.o \

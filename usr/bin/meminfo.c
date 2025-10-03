@@ -88,20 +88,64 @@ void print_bio_cache()
            max_free);
 }
 
+void print_memory_map()
+{
+    size_t ram_start = get_from_sysfs("/sys/kmem/ram_start");
+    size_t ram_end = get_from_sysfs("/sys/kmem/ram_end");
+    size_t kernel_start = get_from_sysfs("/sys/kmem/kernel_start");
+    size_t kernel_end = get_from_sysfs("/sys/kmem/kernel_end");
+    size_t bss_start = get_from_sysfs("/sys/kmem/bss_start");
+    size_t bss_end = get_from_sysfs("/sys/kmem/bss_end");
+    size_t initrd_start = get_from_sysfs("/sys/kmem/initrd_start");
+    size_t initrd_end = get_from_sysfs("/sys/kmem/initrd_end");
+    size_t dtb_start = get_from_sysfs("/sys/kmem/dtb_start");
+    size_t dtb_end = get_from_sysfs("/sys/kmem/dtb_end");
+
+    printf("    RAM S: 0x%08zx\n", ram_start);
+    printf(" KERNEL S: 0x%08zx\n", kernel_start);
+    printf("    BSS S: 0x%08zx\n", bss_start);
+    printf("    BSS E: 0x%08zx - size: %zd kb\n", bss_end,
+           (bss_end - bss_start) / 1024);
+    printf(" KERNEL E: 0x%08zx - size: %zd kb\n", kernel_end,
+           (kernel_end - kernel_start) / 1024);
+    if (dtb_start != 0)
+    {
+        printf("    DTB S: 0x%08zx\n", dtb_start);
+        printf("    DTB E: 0x%08zx - size: %zd kb\n", dtb_end,
+               (dtb_end - dtb_start) / 1024);
+    }
+    if (initrd_start != 0)
+    {
+        printf(" INITRD S: 0x%08zx\n", initrd_start);
+        printf(" INITRD E: 0x%08zx - size: %zd kb\n", initrd_end,
+               (initrd_end - initrd_start) / 1024);
+    }
+    size_t ram_size_mb = (ram_end - ram_start) / (1024 * 1024);
+    printf("    RAM E: 0x%08zx - size: %zd MB\n", ram_end, ram_size_mb);
+}
+
 int main(int argc, char *argv[])
 {
+    size_t ram_start = get_from_sysfs("/sys/kmem/ram_start");
+    size_t ram_end = get_from_sysfs("/sys/kmem/ram_end");
     size_t mem_total = get_from_sysfs("/sys/kmem/mem_total");
     size_t mem_free = get_from_sysfs("/sys/kmem/mem_free");
     size_t pages_alloc = get_from_sysfs("/sys/kmem/pages_alloc");
 
     long page_size = sysconf(_SC_PAGE_SIZE);
 
-    print_line("Total memory", mem_total);
+    print_memory_map();
+
+    ssize_t printed = printf("Total memory: ");
+    print_trailing_spaces(max(14 - printed, 0));
+    printf("%10zu bytes (%8zu kb)", mem_total, mem_total / 1024);
+    printf(" mapped: 0x%08zx - 0x%08zx\n", ram_start, ram_end);
+
     print_line("Free memory", mem_free);
     print_line("Used memory", mem_total - mem_free);
     print_line("Allocated", pages_alloc * page_size);
-
     print_bio_cache();
+
     print_caches();
 
     return 0;

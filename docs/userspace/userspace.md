@@ -43,10 +43,11 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [dhrystone](local/bin/dhrystone.md) - A benchmark
 
 **System:**
+- [fsinfo](bin/fsinfo.md) - info on mounted [file systems](../kernel/file_system/file_system.md)
 - [sh](bin/sh.md) - the shell
 - [which](bin/which.md) - finds programs in the search path
-- [mount](bin/mount.md) - mounts a [file_system](../kernel/file_system/file_system.md)
-- [umount](bin/umount.md) - unmounts a [file_system](../kernel/file_system/file_system.md)
+- [mount](bin/mount.md) - mounts a [file system](../kernel/file_system/file_system.md)
+- [umount](bin/umount.md) - unmounts a [file system](../kernel/file_system/file_system.md)
 - [shutdown](bin/shutdown.md) - Halts or shuts down the OS
 - [meminfo](bin/meminfo.md) - prints info on memory usage
 

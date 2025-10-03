@@ -1,8 +1,8 @@
-# MemInfo
+# FSInfo
 
-Prints info on available and used memory. Queries these from [sysfs](../../kernel/file_system/sysfs/sysfs.md).
+Prints info on [mounted](../../kernel/syscalls/mount.md) [file systems](../../kernel/file_system/file_system.md). Queries these from [sysfs](../../kernel/file_system/sysfs/sysfs.md).
 
-> meminfo
+> fsinfo
 
 
 ---

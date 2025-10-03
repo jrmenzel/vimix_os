@@ -252,6 +252,7 @@ ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
     }
     rwspin_read_unlock(&g_kobjects_dev.children_lock);
 
+    kobject_init(&sb_in->kobj, NULL);
     return 0;
 }
 

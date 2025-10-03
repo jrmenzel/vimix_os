@@ -17,31 +17,20 @@ Compile and try out:
 How it looks like (text mode via UART only) running on [qemu](docs/run_on_qemu.md):
 ```
 init device riscv,plic0... OK (8,0)
-init device ns16550a... OK (15,0)
+init device ns16550a... OK (13,0)
 
-VIMIX OS 64 bit (RISC V) kernel version 50dd26a is booting
-87KB of Kernel code
-12KB of read only data
-0KB of data
-55KB of bss / uninitialized data
+VIMIX OS 64 bit (RISC V) kernel version 36bb03d is booting
 Console: ns16550a
 Timer source: sstc extension
 init memory management...
-    RAM S: 0x80000000
- KERNEL S: 0x80200000
- KERNEL E: 0x80239000
-    DTB S: 0x83e00000
-    DTB E: 0x83e0235c
-    RAM E: 0x84000000 - size: 64 MB
 init process and syscall support...
 init filesystem...
 init remaining devices...
 init device /dev/null... OK (3,0)
 init device /dev/zero... OK (4,0)
-init device /dev/random... OK (12,0)
+init device /dev/random... OK (10,0)
 init device google,goldfish-rtc... OK (6,0)
-init device syscon... register syscon reboot/shutdown functions
-OK (7,0)
+init device syscon... OK (7,0)
 init device virtio,mmio... OK (1,0)
 init device virtio,mmio... OK (1,1)
 fs root device: virtio,mmio (1,0)
@@ -49,26 +38,30 @@ SBI implementation: OpenSBI (version 65541)
 SBI specification: v2.0
 SBI extension SRST detected: register SBI reboot/shutdown functions
 init userspace...
-Memory used: 84kb - 63164kb free
-starting additional harts via SBI HSM extension
 CPU 0 starting 
-CPU 1 starting 
+CPU 2 starting 
 CPU 3 starting 
-CPU 2 starting (boot CPU)
+CPU 1 starting (boot CPU)
 forkret() mounting /... OK
 forkret() loading /usr/bin/init... OK
 init mounting /dev... OK
+init mounting /sys... OK
 init mounting /home... OK
 init starting /usr/bin/sh
 $ ls
+drwxr-xr-x    1104 B .
+drwxr-xr-x    1104 B ..
 drwxr-xr-x      64 B usr
-.rwxr-xr-x    4515 B README.md
+.rwxr-xr-x    5311 B README.md
 drw-rw----       0 B dev
 drwxr-xr-x    1024 B etc
 drwxr-xr-x     112 B home
+drw-rw----       0 B sys
 drwxr-xr-x    7168 B tests
 $ cat README.md | grep RISC | wc
-3 66 496 
+4 78 607 
+$ fortune
+I'd spell creat with an e. - Ken Thompson when asked what he would do differently if he were to redesign UNIX
 $ 
 ```
 
@@ -81,7 +74,7 @@ $
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
 - Changed [memory map](docs/kernel/mm/memory_map_process.md); app stacks grow dynamically.
 - Added applications:
-	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md), [time](docs/userspace/bin/time.md), [which](docs/userspace/bin/which.md), [meminfo](docs/userspace/bin/meminfo.md)
+	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md), [time](docs/userspace/bin/time.md), [which](docs/userspace/bin/which.md), [meminfo](docs/userspace/bin/meminfo.md), [fsinfo](docs/userspace/bin/fsinfo.md)
 - Added syscalls:
 	- [get_dirent](docs/kernel/syscalls/get_dirent.md)
 	- [reboot](docs/kernel/syscalls/reboot.md)

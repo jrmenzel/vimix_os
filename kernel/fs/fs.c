@@ -35,7 +35,6 @@ struct super_block *sb_alloc_init()
         kmalloc(sizeof(struct super_block), ALLOC_FLAG_ZERO_MEMORY);
     if (sb == NULL) return NULL;
 
-    kobject_init(&sb->kobj, NULL);
     list_init(&sb->fs_inode_list);
     rwspin_lock_init(&sb->fs_inode_list_lock, "fs_inode_list_lock");
 

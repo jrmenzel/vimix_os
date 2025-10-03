@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <kernel/container_of.h>
 #include <kernel/kernel.h>
 #include <kernel/kobject.h>
 #include <kernel/list.h>
@@ -40,5 +41,8 @@ struct kernel_memory
     bool kmalloc_initialized;
 #endif  // CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
 };
+
+#define kernel_memory_from_kobj(kobj_ptr) \
+    container_of(kobj_ptr, struct kernel_memory, kobj)
 
 extern struct kernel_memory g_kernel_memory;

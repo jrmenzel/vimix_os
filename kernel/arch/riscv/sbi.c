@@ -245,7 +245,7 @@ void sbi_start_harts(size_t opaque)
         return;
     }
 
-    printk("starting additional harts via SBI HSM extension\n");
+    // printk("starting additional harts via SBI HSM extension\n");
 
     size_t this_hart = smp_processor_id();
     size_t hartid = 0;

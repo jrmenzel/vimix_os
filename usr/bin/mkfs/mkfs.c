@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vimixutils/minmax.h>
+#include <vimixutils/path.h>
 
 #if defined(BUILD_ON_HOST)
 #include <linux/limits.h>
@@ -190,6 +191,7 @@ bool is_dot_or_dotdot(const char *file_name)
     return false;
 }
 
+/*
 int build_full_path(char *dst, const char *path, const char *file)
 {
     strncpy(dst, path, PATH_MAX);
@@ -207,7 +209,7 @@ int build_full_path(char *dst, const char *path, const char *file)
     strncpy(dst + len, file, PATH_MAX - len);
 
     return 0;
-}
+}*/
 
 bool copy_file_to_filesystem(const char *path_on_host, const char *new_name,
                              int32_t dir_inode_on_fs)

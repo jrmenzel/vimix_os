@@ -105,6 +105,7 @@ ssize_t sysfs_init_fs_super_block(struct super_block *sb_in, const void *data)
     sysfs_nodes_init(sb_in);
     sysfs_register_kobject_and_children(&g_kobjects_root, NULL);
 
+    kobject_init(&sb_in->kobj, NULL);
     return 0;
 }
 

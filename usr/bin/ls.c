@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <vimixutils/path.h>
 
 #if defined(BUILD_ON_HOST)
 #include <linux/limits.h>
@@ -141,7 +142,7 @@ int print_file(const char *file_name, const char *full_path,
 
     return 0;
 }
-
+/*
 int build_full_path(char *dst, const char *path, const char *file)
 {
     strncpy(dst, path, PATH_MAX);
@@ -159,7 +160,7 @@ int build_full_path(char *dst, const char *path, const char *file)
     strncpy(dst + len, file, PATH_MAX - len);
 
     return S_OK;
-}
+}*/
 
 enum FileVisibility
 {

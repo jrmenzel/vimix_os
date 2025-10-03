@@ -21,7 +21,7 @@ host: directories $(B_DEPLOY_DIR_HOST)/mkfs $(B_DEPLOY_DIR_HOST)/fsck.xv6fs
 ###########################################################
 # compiling apps for VIMIX
 
-$(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a
+$(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a $(LIB_PATH)/vimixutils.a
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) -T ../user-$(ARCH).ld -o $@ $^
 
@@ -29,16 +29,25 @@ $(B_BUILD_DIR)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
+$(LIB_PATH)/stdlib.a: 
+	@$(MAKE) -C ../../lib stdlib;
+
+$(LIB_PATH)/vimixutils.a: 
+	@$(MAKE) -C ../../lib vimixutils;
+
 ###########################################################
 # compiling apps for the host
 
-$(B_DEPLOY_DIR_HOST)/%: $(B_BUILD_DIR_HOST)/%.o
+$(B_DEPLOY_DIR_HOST)/%: $(B_BUILD_DIR_HOST)/%.o $(LIB_PATH_HOST)/vimixutils.a
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(CC_HOST) $(CFLAGS_HOST) -o $@ $^
 
 $(B_BUILD_DIR_HOST)/%.o: %.c 
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
 	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_PARAMS_HOST) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
+
+$(LIB_PATH_HOST)/vimixutils.a: 
+	@$(MAKE) -C ../../lib vimixutils;
 
 ###########################################################
 

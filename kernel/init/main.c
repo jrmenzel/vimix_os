@@ -142,7 +142,7 @@ void init_by_first_thread(void *dtb)
     printk("\n");
     printk("VIMIX OS " __ARCH_bits_string " bit " FEATURE_STRING
            " kernel version " str_from_define(GIT_HASH) " is booting\n");
-    print_kernel_info();
+    // print_kernel_info();
     if (con_idx < 0)
     {
         printk("Console: SBI\n");
@@ -176,7 +176,7 @@ void init_by_first_thread(void *dtb)
     }
 #endif
 
-    print_memory_map(&memory_map);
+    // print_memory_map(&memory_map);
     kalloc_init(&memory_map);         // physical page allocator
     kvm_init(&memory_map, dev_list);  // create kernel page table,
                                       // memory map found devices

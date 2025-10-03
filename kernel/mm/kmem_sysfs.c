@@ -1,30 +1,97 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <init/main.h>  // bss_start, bss_end
 #include <kernel/kernel.h>
 #include <kernel/kobject.h>
 #include <mm/cache.h>
 #include <mm/kalloc.h>
+#include <mm/kernel_memory.h>
 #include <mm/kmem_sysfs.h>
 
 // /sys/kmem
 
+enum KM_ATTRIBUTE_INDEX
+{
+    KM_MEM_TOTAL = 0,
+    KM_MEM_FREE,
+    KM_PAGES_ALLOC,
+    KM_KERNEL_START,
+    KM_KERNEL_END,
+    KM_BSS_START,
+    KM_BSS_END,
+    KM_RAM_START,
+    KM_RAM_END,
+    KM_INITRD_START,
+    KM_INITRD_END,
+    KM_DTB_START,
+    KM_DTB_END
+};
+
 struct sysfs_attribute km_attributes[] = {
-    {.name = "mem_total", .mode = 0444},
-    {.name = "mem_free", .mode = 0444},
-    {.name = "pages_alloc", .mode = 0444}};
+    [KM_MEM_TOTAL] = {.name = "mem_total", .mode = 0444},
+    [KM_MEM_FREE] = {.name = "mem_free", .mode = 0444},
+    [KM_PAGES_ALLOC] = {.name = "pages_alloc", .mode = 0444},
+    [KM_KERNEL_START] = {.name = "kernel_start", .mode = 0444},
+    [KM_KERNEL_END] = {.name = "kernel_end", .mode = 0444},
+    [KM_BSS_START] = {.name = "bss_start", .mode = 0444},
+    [KM_BSS_END] = {.name = "bss_end", .mode = 0444},
+    [KM_RAM_START] = {.name = "ram_start", .mode = 0444},
+    [KM_RAM_END] = {.name = "ram_end", .mode = 0444},
+    [KM_INITRD_START] = {.name = "initrd_start", .mode = 0444},
+    [KM_INITRD_END] = {.name = "initrd_end", .mode = 0444},
+    [KM_DTB_START] = {.name = "dtb_start", .mode = 0444},
+    [KM_DTB_END] = {.name = "dtb_end", .mode = 0444}};
 
 ssize_t km_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx, char *buf,
                           size_t n)
 {
+    struct kernel_memory *kmem = kernel_memory_from_kobj(kobj);
+    struct Minimal_Memory_Map *map = &kmem->memory_map;
+
+    ssize_t ret = -1;
     switch (attribute_idx)
     {
-        case 0: return snprintf(buf, n, "%zu\n", kalloc_get_total_memory());
-        case 1: return snprintf(buf, n, "%zu\n", kalloc_get_free_memory());
-        case 2: return snprintf(buf, n, "%zu\n", kalloc_get_allocation_count());
+        case KM_MEM_TOTAL:
+            ret = snprintf(buf, n, "%zu\n", kalloc_get_total_memory());
+            break;
+        case KM_MEM_FREE:
+            ret = snprintf(buf, n, "%zu\n", kalloc_get_free_memory());
+            break;
+        case KM_PAGES_ALLOC:
+            ret = snprintf(buf, n, "%zu\n", kalloc_get_allocation_count());
+            break;
+        case KM_KERNEL_START:
+            ret = snprintf(buf, n, "%zu\n", map->kernel_start);
+            break;
+        case KM_KERNEL_END:
+            ret = snprintf(buf, n, "%zu\n", map->kernel_end);
+            break;
+        case KM_BSS_START:
+            ret = snprintf(buf, n, "%zu\n", (size_t)bss_start);
+            break;
+        case KM_BSS_END:
+            ret = snprintf(buf, n, "%zu\n", (size_t)bss_end);
+            break;
+        case KM_RAM_START:
+            ret = snprintf(buf, n, "%zu\n", map->ram_start);
+            break;
+        case KM_RAM_END: ret = snprintf(buf, n, "%zu\n", map->ram_end); break;
+        case KM_INITRD_START:
+            ret = snprintf(buf, n, "%zu\n", map->initrd_begin);
+            break;
+        case KM_INITRD_END:
+            ret = snprintf(buf, n, "%zu\n", map->initrd_end);
+            break;
+        case KM_DTB_START:
+            ret = snprintf(buf, n, "%zu\n", map->dtb_file_start);
+            break;
+        case KM_DTB_END:
+            ret = snprintf(buf, n, "%zu\n", map->dtb_file_end);
+            break;
         default: break;
     }
 
-    return -1;
+    return ret;
 }
 
 ssize_t km_sysfs_ops_store(struct kobject *kobj, size_t attribute_idx,

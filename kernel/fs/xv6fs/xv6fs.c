@@ -3,6 +3,7 @@
 #include <fs/vfs.h>
 #include <fs/xv6fs/log.h>
 #include <fs/xv6fs/xv6fs.h>
+#include <fs/xv6fs/xv6fs_sysfs.h>
 #include <kernel/bio.h>
 #include <kernel/buf.h>
 #include <kernel/container_of.h>
@@ -150,6 +151,7 @@ ssize_t xv6fs_init_fs_super_block(struct super_block *sb_in, const void *data)
     sb_in->i_op = &xv6fs_i_op;
     sb_in->f_op = &xv6fs_f_op;
 
+    kobject_init(&sb_in->kobj, &xv6fs_kobj_ktype);
     return 0;
 }
 

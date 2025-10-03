@@ -129,18 +129,19 @@ dev_t init_device(struct Devices_List *dev_list, size_t index)
             }
         }
 
-        printk("init device %s... ", dev->driver->dtb_name);
         dev_t dev_num = dev->driver->init_func(&(dev->init_parameters),
                                                dev->driver->dtb_name);
         dev->dev_num = dev_num;
         if (dev_num == 0)
         {
-            printk("FAILED\n");
+            // silently fail, some devices are optional like qemus virtio
+            // devices
             return INVALID_DEVICE;
         }
         else
         {
-            printk("OK (%d,%d)\n", MAJOR(dev_num), MINOR(dev_num));
+            printk("init device %s... OK (%d,%d)\n", dev->driver->dtb_name,
+                   MAJOR(dev_num), MINOR(dev_num));
             return dev_num;
         }
     }
