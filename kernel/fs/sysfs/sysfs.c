@@ -134,12 +134,12 @@ struct sysfs_inode *sysfs_create_inode_from_node(struct sysfs_node *node)
     sys_ip->ino.i_mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
     if (node->attribute != NULL)
     {
-        sys_ip->ino.i_mode |= S_IFREG;
+        sys_ip->ino.i_mode = node->attribute->mode | S_IFREG;
         sys_ip->ino.size = 0;
     }
     else
     {
-        sys_ip->ino.i_mode |= S_IFDIR;
+        sys_ip->ino.i_mode = 0555 | S_IFDIR;
         sys_ip->ino.size = 0;
     }
     sys_ip->ino.nlink = 1;

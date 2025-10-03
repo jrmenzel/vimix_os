@@ -5,10 +5,21 @@
 #include <kernel/kobject.h>
 #include <mm/kmem_sysfs.h>
 
-struct sysfs_attribute bio_attributes[] = {{.name = "num", .mode = 0444},
-                                           {.name = "free", .mode = 0444},
-                                           {.name = "min", .mode = 0444},
-                                           {.name = "max_free", .mode = 0444}};
+// /sys/kmem/bio
+
+enum BIO_ATTRIBUTE_INDEX
+{
+    BIO_NUM = 0,
+    BIO_FREE,
+    BIO_MIN,
+    BIO_MAX_FREE
+};
+
+struct sysfs_attribute bio_attributes[] = {
+    [BIO_NUM] = {.name = "num", .mode = 0444},
+    [BIO_FREE] = {.name = "free", .mode = 0444},
+    [BIO_MIN] = {.name = "min", .mode = 0644},
+    [BIO_MAX_FREE] = {.name = "max_free", .mode = 0644}};
 
 ssize_t bio_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
                            char *buf, size_t n)
@@ -19,10 +30,18 @@ ssize_t bio_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
     ssize_t ret = -1;
     switch (attribute_idx)
     {
-        case 0: ret = snprintf(buf, n, "%zu\n", cache->num_buffers); break;
-        case 1: ret = snprintf(buf, n, "%zu\n", cache->free_buffers); break;
-        case 2: ret = snprintf(buf, n, "%zu\n", cache->min_buffers); break;
-        case 3: ret = snprintf(buf, n, "%zu\n", cache->max_free_buffers); break;
+        case BIO_NUM:
+            ret = snprintf(buf, n, "%zu\n", cache->num_buffers);
+            break;
+        case BIO_FREE:
+            ret = snprintf(buf, n, "%zu\n", cache->free_buffers);
+            break;
+        case BIO_MIN:
+            ret = snprintf(buf, n, "%zu\n", cache->min_buffers);
+            break;
+        case BIO_MAX_FREE:
+            ret = snprintf(buf, n, "%zu\n", cache->max_free_buffers);
+            break;
         default: break;
     }
 
@@ -43,8 +62,10 @@ ssize_t bio_sysfs_ops_store(struct kobject *kobj, size_t attribute_idx,
     ssize_t ret = -1;
     switch (attribute_idx)
     {
-        case 2: ret = bio_cache_set_min_buffers(cache, value); break;
-        case 3: ret = bio_cache_set_max_free_buffers(cache, value); break;
+        case BIO_MIN: ret = bio_cache_set_min_buffers(cache, value); break;
+        case BIO_MAX_FREE:
+            ret = bio_cache_set_max_free_buffers(cache, value);
+            break;
         default: break;
     }
 
