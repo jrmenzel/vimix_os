@@ -24,3 +24,6 @@ a3e92cba6b45b1c777b45c4a040f8a9cc0f9a0c2
 
 # renamings of defines and mmio base address in devices
 f51ef6eea27de43982c357eafd365f4cef13140b
+
+# Renamed xv6fs to VimixFS
+fc3fc935b697d37de5d7c6735d852f0d3f8928d4
