@@ -66,10 +66,6 @@ struct inode_operations vimixfs_i_op = {
 
 struct file_operations vimixfs_f_op = {fops_write : vimixfs_fops_write};
 
-vimixfs_file_type imode_to_vimixfs_file_type(mode_t imode);
-
-mode_t vimixfs_file_type_to_imode(vimixfs_file_type type);
-
 ssize_t vimixfs_init_fs_super_block(struct super_block *sb_in,
                                     const void *data);
 void vimixfs_kill_sb(struct super_block *sb_in);
@@ -90,26 +86,6 @@ void vimixfs_init()
     vimixfs_file_system_type.kill_sb = vimixfs_kill_sb;
 
     register_file_system(&vimixfs_file_system_type);
-}
-
-vimixfs_file_type imode_to_vimixfs_file_type(mode_t imode)
-{
-    if (S_ISREG(imode)) return VIMIXFS_FT_FILE;
-    if (S_ISDIR(imode)) return VIMIXFS_FT_DIR;
-    if (S_ISCHR(imode)) return VIMIXFS_FT_CHAR_DEVICE;
-    if (S_ISBLK(imode)) return VIMIXFS_FT_BLOCK_DEVICE;
-
-    return VIMIXFS_FT_UNUSED;
-}
-
-mode_t vimixfs_file_type_to_imode(vimixfs_file_type type)
-{
-    if (type == VIMIXFS_FT_FILE) return S_IFREG | DEFAULT_ACCESS_MODES;
-    if (type == VIMIXFS_FT_DIR) return S_IFDIR | DEFAULT_ACCESS_MODES;
-    if (type == VIMIXFS_FT_CHAR_DEVICE) return S_IFCHR | DEFAULT_ACCESS_MODES;
-    if (type == VIMIXFS_FT_BLOCK_DEVICE) return S_IFBLK | DEFAULT_ACCESS_MODES;
-
-    return 0;
 }
 
 ssize_t vimixfs_init_fs_super_block(struct super_block *sb_in, const void *data)
@@ -348,13 +324,12 @@ struct inode *vimixfs_sops_alloc_inode(struct super_block *sb, mode_t mode)
         struct vimixfs_dinode *dip =
             (struct vimixfs_dinode *)bp->data + inum % VIMIXFS_INODES_PER_BLOCK;
 
-        if (dip->type == VIMIXFS_FT_UNUSED)
+        if (dip->mode == VIMIXFS_INVALID_MODE)
         {
             // a free inode
             memset(dip, 0, sizeof(*dip));
-            dip->type = imode_to_vimixfs_file_type(mode);
-            dip->major = 0;
-            dip->minor = 0;
+            dip->mode = mode;
+            dip->dev = INVALID_DEVICE;
             log_write(&(priv->log), bp);  // mark it allocated on the disk
             bio_release(bp);
             return vimixfs_iget(sb, inum);
@@ -377,18 +352,16 @@ int vimixfs_sops_write_inode(struct inode *ip)
     struct buf *bp = bio_read(ip->i_sb->dev, block_of_inode);
     struct vimixfs_dinode *dip =
         (struct vimixfs_dinode *)bp->data + ip->inum % VIMIXFS_INODES_PER_BLOCK;
-    dip->type = imode_to_vimixfs_file_type(ip->i_mode);
+    dip->mode = ip->i_mode;
 
     if (ip->dev == ip->i_sb->dev)
     {
         // map whatever device the filesystem is on to 0
-        dip->major = 0;
-        dip->minor = 0;
+        dip->dev = INVALID_DEVICE;
     }
     else
     {
-        dip->major = MAJOR(ip->dev);
-        dip->minor = MINOR(ip->dev);
+        dip->dev = ip->dev;
     }
 
     dip->nlink = ip->nlink;
@@ -411,16 +384,16 @@ void vimixfs_iops_read_in(struct inode *ip)
     struct buf *bp = bio_read(ip->i_sb->dev, block_of_inode);
     struct vimixfs_dinode *dip =
         (struct vimixfs_dinode *)bp->data + ip->inum % VIMIXFS_INODES_PER_BLOCK;
-    ip->i_mode = vimixfs_file_type_to_imode(dip->type);
+    ip->i_mode = dip->mode;
 
-    if (dip->major == 0 && dip->minor == 0)
+    if (dip->dev == INVALID_DEVICE)
     {
         ip->dev = ip->i_sb->dev;  // unmap device 0 to whatever device the
                                   // filesystem is on
     }
     else
     {
-        ip->dev = MKDEV(dip->major, dip->minor);
+        ip->dev = dip->dev;
     }
 
     ip->nlink = dip->nlink;

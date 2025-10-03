@@ -31,6 +31,12 @@ typedef int FILE_DESCRIPTOR;
 /// access rights (rxwrxwrxw), see stat.h.
 typedef uint32_t mode_t;
 
+/// @brief User ID, negative values mean invalid
+typedef int32_t uid_t;
+
+/// @brief Group ID, negative values mean invalid
+typedef int32_t gid_t;
+
 #endif  // __USE_REAL_STDC
 
 #define INVALID_FILE_DESCRIPTOR (-1)

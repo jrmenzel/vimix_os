@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <kernel/major.h>
 #include <kernel/vimixfs.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -9,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 struct vimixfs_in_file
@@ -171,7 +173,7 @@ int check_dinode(struct vimixfs_in_file *file, struct vimixfs_dinode *dinode,
         exit(1);
     }
 
-    if (dinode->type == VIMIXFS_FT_UNUSED)
+    if (dinode->mode == VIMIXFS_INVALID_MODE)
     {
         file->inodes[inum] = INODE_UNUSED;
         return 0;
@@ -181,25 +183,29 @@ int check_dinode(struct vimixfs_in_file *file, struct vimixfs_dinode *dinode,
         printf("%zd (block %zd, %zd) ", inum, (inum / VIMIXFS_INODES_PER_BLOCK),
                inum % VIMIXFS_INODES_PER_BLOCK);
 
-    switch (dinode->type)
+    switch ((dinode->mode) & S_IFMT)
     {
-        case VIMIXFS_FT_DIR:
+        case S_IFDIR:
             if (verbose) printf("dir");
             break;
-        case VIMIXFS_FT_FILE:
+        case S_IFREG:
             if (verbose) printf("file");
             break;
-        case VIMIXFS_FT_CHAR_DEVICE:
-            if (verbose) printf("c dev (%d,%d)", dinode->major, dinode->minor);
+        case S_IFCHR:
+            if (verbose)
+                printf("c dev (%d,%d)", MAJOR(dinode->dev), MINOR(dinode->dev));
             break;
-        case VIMIXFS_FT_BLOCK_DEVICE:
-            if (verbose) printf("b dev (%d,%d)", dinode->major, dinode->minor);
+        case S_IFBLK:
+            if (verbose)
+                printf("b dev (%d,%d)", MAJOR(dinode->dev), MINOR(dinode->dev));
             break;
-        default: printf("UNKNOWN inode type %d\n", dinode->type); return 0;
+        default:
+            printf("UNKNOWN inode type %d\n", dinode->mode & S_IFMT);
+            return 0;
     }
     file->inodes[inum] = file->inodes[inum] & INODE_DEFINE;
 
-    if (dinode->type == VIMIXFS_FT_DIR || dinode->type == VIMIXFS_FT_FILE)
+    if ((dinode->mode & S_IFDIR) || (dinode->mode & S_IFREG))
     {
         for (size_t i = 0; i < VIMIXFS_N_DIRECT_BLOCKS; ++i)
         {

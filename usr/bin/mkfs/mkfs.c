@@ -45,7 +45,7 @@ void write_sector(uint32_t, void *);
 void write_dinode(ino_t, struct vimixfs_dinode *);
 void read_dinode(ino_t inum, struct vimixfs_dinode *ip);
 void read_sector(uint32_t sec, void *buf);
-uint32_t i_alloc(uint16_t type);
+uint32_t i_alloc(v_mode_t mode);
 void iappend(ino_t inum, void *p, int n);
 void die(const char *);
 
@@ -84,7 +84,7 @@ void add_directory_entry(uint32_t inode_new_entry, uint32_t inode_dir,
 
 uint32_t create_root_directory()
 {
-    uint32_t inode = i_alloc(VIMIXFS_FT_DIR);
+    uint32_t inode = i_alloc(S_IFDIR | 0755);
     assert(inode == VIMIXFS_ROOT_INODE);
 
     add_directory_entry(VIMIXFS_ROOT_INODE, VIMIXFS_ROOT_INODE, ".");
@@ -95,7 +95,7 @@ uint32_t create_root_directory()
 
 uint32_t create_directory(uint32_t inode_parent, const char *dir_name)
 {
-    uint32_t inode = i_alloc(VIMIXFS_FT_DIR);
+    uint32_t inode = i_alloc(S_IFDIR | 0755);
 
     add_directory_entry(inode, inode, ".");
     add_directory_entry(inode_parent, inode, "..");
@@ -231,7 +231,7 @@ bool copy_file_to_filesystem(const char *path_on_host, const char *new_name,
         return false;       // skip file
     }
 
-    ino_t inum = i_alloc(VIMIXFS_FT_FILE);
+    ino_t inum = i_alloc(st.st_mode);
 
     add_directory_entry(inum, dir_inode_on_fs, new_name);
 
@@ -361,8 +361,13 @@ ssize_t inode_get_dirent(int32_t inode_dir, struct vimixfs_dirent *dir_entry,
     struct vimixfs_dinode din;
     read_dinode(inode_dir, &din);
 
-    vimixfs_file_type type = xshort(din.type);
-    if (type != VIMIXFS_FT_DIR)
+    // vimixfs_file_type type = xshort(din.type);
+    // if (type != VIMIXFS_FT_DIR)
+    //{
+    //     return -1;
+    // }
+    v_mode_t mode = xint(din.mode);
+    if ((mode & S_IFDIR) == 0)
     {
         return -1;
     }
@@ -387,8 +392,13 @@ void copy_out_file(int32_t inode, const char *filename)
     struct vimixfs_dinode din;
     read_dinode(inode, &din);
 
-    vimixfs_file_type type = xshort(din.type);
-    if (type != VIMIXFS_FT_FILE)
+    // vimixfs_file_type type = xshort(din.type);
+    // if (type != VIMIXFS_FT_FILE)
+    //{
+    //     return;
+    // }
+    v_mode_t mode = xint(din.mode);
+    if ((mode & S_IFREG) == 0)
     {
         return;
     }
@@ -445,8 +455,10 @@ bool copy_filesystem_to_dir(int32_t dir_inode_on_fs, const char *sub_path,
         build_full_path(full_file_path_on_host, full_path_on_host,
                         dir_entry.name);
 
-        vimixfs_file_type type = xshort(din.type);
-        if (type == VIMIXFS_FT_DIR)
+        // vimixfs_file_type type = xshort(din.type);
+        v_mode_t mode = xint(din.mode);
+
+        if (mode & S_IFDIR)
         {
             printf("create dir %s\n", full_file_path_on_host);
 
@@ -455,7 +467,7 @@ bool copy_filesystem_to_dir(int32_t dir_inode_on_fs, const char *sub_path,
 
             copy_filesystem_to_dir(dir_entry.inum, new_sub_path, dir_on_host);
         }
-        else if (type == VIMIXFS_FT_FILE)
+        else if (mode & S_IFREG)
         {
             printf("create file %s\n", full_file_path_on_host);
             copy_out_file(dir_entry.inum, full_file_path_on_host);
@@ -558,15 +570,15 @@ void read_sector(uint32_t sec, void *buf)
 /// @brief Allocates a new unique inode number and creates a disk inode.
 /// @param type type of the new inode
 /// @return number of the new inode
-uint32_t i_alloc(uint16_t type)
+uint32_t i_alloc(v_mode_t mode)
 {
     ino_t inum = g_freeinode++;
     struct vimixfs_dinode din;
 
     memset(&din, 0, sizeof(din));
 
-    din.type = xshort(type);
-    din.nlink = xshort(1);
+    din.mode = xint(mode);
+    din.nlink = xint(1);
     din.size = xint(0);
     write_dinode(inum, &din);
     return inum;

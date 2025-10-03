@@ -7,14 +7,15 @@
 // with system headers from the host)
 
 #include <kernel/kernel.h>
+#include <kernel/time.h>
 
 #define VIMIXFS_ROOT_INODE 1  // root i-number
 
-/// Magic number to identify a xv6 filesystem
-#define VIMIXFS_MAGIC 0x10203040
+/// Magic number to identify a VIMIX file system
+#define VIMIXFS_MAGIC 0x10203042
 
 /// Number of blocks a file points to directly
-#define VIMIXFS_N_DIRECT_BLOCKS 12
+#define VIMIXFS_N_DIRECT_BLOCKS 21
 
 /// Number of blocks a file points to indirectly
 #define VIMIXFS_N_INDIRECT_BLOCKS (BLOCK_SIZE / sizeof(uint32_t))
@@ -42,12 +43,8 @@
 /// Max file name length (without the NULL-terminator)
 #define VIMIXFS_NAME_MAX 14
 
-// values of inode types:
-#define VIMIXFS_FT_UNUSED 0        ///< init value
-#define VIMIXFS_FT_DIR 1           ///< Directory
-#define VIMIXFS_FT_FILE 2          ///< File
-#define VIMIXFS_FT_CHAR_DEVICE 3   ///< Character Device
-#define VIMIXFS_FT_BLOCK_DEVICE 4  ///< Block Device
+/// Mark unused inodes with mode 0
+#define VIMIXFS_INVALID_MODE (0)
 
 /// Bitmap bits per block
 #define VIMIXFS_BMAP_BITS_PER_BLOCK (BLOCK_SIZE * 8)
@@ -84,14 +81,27 @@ _Static_assert((sizeof(struct vimixfs_superblock) < BLOCK_SIZE),
 /// which block on the device contains the fs superblock?
 #define VIMIXFS_SUPER_BLOCK_NUMBER 1
 
+// the following types are identical to their non-v_ counterparts on VIMIX but
+// might differ on another host system. So define them explicitly to ensure mkfs
+// etc work.
+typedef uint32_t v_mode_t;
+typedef int32_t v_dev_t;
+typedef int32_t v_uid_t;
+typedef int32_t v_gid_t;
+typedef int64_t v_time_t;
+
 /// On-disk inode structure
 struct vimixfs_dinode
 {
-    vimixfs_file_type type;  ///< File type
-    int16_t major;           ///< Major device number (VIMIXFS_FT_*_DEVICE only)
-    int16_t minor;           ///< Minor device number (VIMIXFS_FT_*_DEVICE only)
-    int16_t nlink;           ///< Number of links to inode in file system
-    uint32_t size;           ///< Size of file (bytes)
+    v_mode_t mode;   ///< File type and permissions
+    v_dev_t dev;     ///< Device number (VIMIXFS_FT_*_DEVICE only)
+    uint32_t nlink;  ///< Number of links to inode in file system
+    uint32_t size;   ///< Size of file (bytes)
+    v_uid_t uid;     ///< User ID of owner
+    v_gid_t gid;     ///< Group ID of owner
+    v_time_t ctime;  ///< Creation time
+    v_time_t mtime;  ///< Last modification time
+    // 40 bytes so far
     uint32_t addrs[VIMIXFS_N_DIRECT_BLOCKS + 1];  ///< Data block addresses
 };
 _Static_assert((BLOCK_SIZE % sizeof(struct vimixfs_dinode)) == 0,
