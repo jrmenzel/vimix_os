@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <drivers/rtc.h>
 #include <fs/sysfs/sysfs_node.h>
 #include <kernel/string.h>
 #include <mm/kalloc.h>
@@ -46,6 +47,7 @@ struct sysfs_node *sysfs_node_alloc_init(struct kobject *kobj,
     node->kobj = kobj;
     node->sysfs_node_index = sysfs_entry_index;
     node->attribute = entry;
+    node->ctime = node->mtime = rtc_get_time();
 
     list_init(&node->child_list);
     list_init(&node->sibling_list);

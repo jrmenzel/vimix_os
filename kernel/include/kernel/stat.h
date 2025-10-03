@@ -5,6 +5,7 @@
 #pragma once
 
 #include <kernel/kernel.h>
+#include <kernel/time.h>
 
 struct stat
 {
@@ -12,10 +13,14 @@ struct stat
     ino_t st_ino;       ///< Inode number
     mode_t st_mode;     ///< File mode
     int16_t st_nlink;   ///< Number of links to file
+    uid_t st_uid;       ///< User ID of file's owner
+    gid_t st_gid;       ///< Group ID of file's group
     dev_t st_rdev;      ///< Device number if file is a char/block device
     size_t st_size;     ///< Size of file in bytes
     size_t st_blksize;  ///< Optimal block size for I/O
     size_t st_blocks;   ///< Number 512-byte blocks allocated
+    time_t st_ctime;    ///< Time of last status change
+    time_t st_mtime;    ///< Time of last modification
 };
 
 /// Traditional mask definitions for st_mode.

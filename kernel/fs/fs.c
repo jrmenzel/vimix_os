@@ -60,6 +60,10 @@ void inode_init(struct inode *ip, struct super_block *sb, ino_t inum)
     ip->nlink = 0;
     ip->size = 0;
     ip->is_mounted_on = NULL;
+    ip->uid = 0;
+    ip->gid = 0;
+    ip->ctime = 0;
+    ip->mtime = 0;
     sleep_lock_init(&ip->lock, "inode sleeplock");
 
     // add to super block inode list
@@ -191,6 +195,10 @@ void inode_stat(struct inode *ip, struct stat *st)
     st->st_size = ip->size;
     st->st_blksize = BLOCK_SIZE;
     st->st_blocks = (ip->size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    st->st_uid = ip->uid;
+    st->st_gid = ip->gid;
+    st->st_mtime = ip->mtime;
+    st->st_ctime = ip->ctime;
 }
 
 ssize_t inode_read(struct inode *ip, bool addr_is_userspace, size_t dst,

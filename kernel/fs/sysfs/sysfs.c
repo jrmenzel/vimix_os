@@ -143,6 +143,10 @@ struct sysfs_inode *sysfs_create_inode_from_node(struct sysfs_node *node)
         sys_ip->ino.size = 0;
     }
     sys_ip->ino.nlink = 1;
+    sys_ip->ino.uid = 0;
+    sys_ip->ino.gid = 0;
+    sys_ip->ino.ctime = node->ctime;
+    sys_ip->ino.mtime = node->mtime;
 
     // init sysfs specifics
     sys_ip->node = node;
@@ -356,9 +360,12 @@ void sysfs_iops_put(struct inode *ip)
             rwspin_write_unlock(&ip->i_sb->fs_inode_list_lock);
             return;
         }
-        inode_del(ip);
+
         struct sysfs_inode *sysfs_ip = sysfs_inode_from_inode(ip);
-        sysfs_ip->node->sysfs_ip = NULL;  // tell the node that inode is gone
+        sysfs_ip->node->sysfs_ip = NULL;    // tell the node that inode is gone
+        sysfs_ip->node->mtime = ip->mtime;  // preserve mtime
+        inode_del(ip);
+
         rwspin_write_unlock(&ip->i_sb->fs_inode_list_lock);
         kfree(sysfs_ip);
     }

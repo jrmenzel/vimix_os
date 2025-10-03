@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include <vimixutils/path.h>
 
@@ -128,39 +129,24 @@ int print_file(const char *file_name, const char *full_path,
         return S_SERIOUS_ERROR;
     }
 
-    // print_padded(st.st_ino, 4, false);
-    // printf(" ");
     print_access(st.st_mode);
 
-    // print_padded(st.st_uid, 3, true);
-    // print_padded(st.st_gid, 3, true);
+    printf(" %4d %4d", (int32_t)st.st_uid, (int32_t)st.st_gid);
+    printf(" %8zd B  ", st.st_size);
 
-    print_padded(st.st_size, 8, true);
-    printf(" B ");
+    time_t now = st.st_mtime;
+    struct tm *cal_time = localtime(&now);
+    int n = printf("%d.%d.%d", cal_time->tm_mday, cal_time->tm_mon + 1,
+                   1970 + cal_time->tm_year);
+    for (size_t i = n; i < 11; i++) printf(" ");
+
+    printf("%02d:%02d:%02d ", cal_time->tm_hour, cal_time->tm_min,
+           cal_time->tm_sec);
 
     printf("%s\n", file_name);
 
     return 0;
 }
-/*
-int build_full_path(char *dst, const char *path, const char *file)
-{
-    strncpy(dst, path, PATH_MAX);
-    size_t len = strlen(dst);
-    if (dst[len - 1] != '/')
-    {
-        dst[len] = '/';
-        len++;
-    }
-    size_t name_len = strlen(file);
-    if (len + name_len > PATH_MAX - 1)
-    {
-        return S_SERIOUS_ERROR;
-    }
-    strncpy(dst + len, file, PATH_MAX - len);
-
-    return S_OK;
-}*/
 
 enum FileVisibility
 {

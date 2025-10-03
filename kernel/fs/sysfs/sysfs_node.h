@@ -11,6 +11,8 @@ struct sysfs_node
 {
     ino_t inode_number;  ///< inode number of this entry
     const char *name;    ///< name of this entry
+    time_t ctime;        ///< creation time of this entry
+    time_t mtime;        ///< last modification time of this entry
 
     struct kobject *kobj;  ///< associated kobject
     size_t sysfs_node_index;

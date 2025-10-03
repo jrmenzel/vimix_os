@@ -79,6 +79,11 @@ struct inode
     int16_t nlink;  ///< links to this inode
     uint32_t size;
 
+    uid_t uid;     ///< owner user id
+    gid_t gid;     ///< owner group id
+    time_t ctime;  ///< inode creation time
+    time_t mtime;  ///< time of last modification of file content
+
     struct super_block *is_mounted_on;  ///< if set a file system is mounted on
                                         ///< this (dir) inode
 

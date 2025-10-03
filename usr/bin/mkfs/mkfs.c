@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include <vimixutils/minmax.h>
 #include <vimixutils/path.h>
@@ -45,11 +46,11 @@ void write_sector(uint32_t, void *);
 void write_dinode(ino_t, struct vimixfs_dinode *);
 void read_dinode(ino_t inum, struct vimixfs_dinode *ip);
 void read_sector(uint32_t sec, void *buf);
-uint32_t i_alloc(v_mode_t mode);
+uint32_t i_alloc(struct stat *st);
 void iappend(ino_t inum, void *p, int n);
 void die(const char *);
 
-/// convert to riscv byte order
+/// convert byte order
 uint16_t xshort(uint16_t x)
 {
     uint16_t y;
@@ -59,7 +60,7 @@ uint16_t xshort(uint16_t x)
     return y;
 }
 
-/// convert to riscv byte order
+/// convert byte order
 uint32_t xint(uint32_t x)
 {
     uint32_t y;
@@ -68,6 +69,22 @@ uint32_t xint(uint32_t x)
     a[1] = x >> 8;
     a[2] = x >> 16;
     a[3] = x >> 24;
+    return y;
+}
+
+/// convert byte order
+uint64_t xint64(uint64_t x)
+{
+    uint64_t y;
+    uint8_t *a = (uint8_t *)&y;
+    a[0] = x;
+    a[1] = x >> 8;
+    a[2] = x >> 16;
+    a[3] = x >> 24;
+    a[4] = x >> 32;
+    a[5] = x >> 40;
+    a[6] = x >> 48;
+    a[7] = x >> 56;
     return y;
 }
 
@@ -82,9 +99,22 @@ void add_directory_entry(uint32_t inode_new_entry, uint32_t inode_dir,
     iappend(inode_dir, &de, sizeof(de));
 }
 
+void make_default_stat(struct stat *st, mode_t mode)
+{
+    memset(st, 0, sizeof(*st));
+    st->st_mode = mode;
+    st->st_nlink = 1;
+    st->st_uid = 0;
+    st->st_gid = 0;
+    st->st_size = 0;
+    st->st_mtime = st->st_ctime = time(NULL);
+}
+
 uint32_t create_root_directory()
 {
-    uint32_t inode = i_alloc(S_IFDIR | 0755);
+    struct stat st;
+    make_default_stat(&st, S_IFDIR | 0755);
+    uint32_t inode = i_alloc(&st);
     assert(inode == VIMIXFS_ROOT_INODE);
 
     add_directory_entry(VIMIXFS_ROOT_INODE, VIMIXFS_ROOT_INODE, ".");
@@ -93,9 +123,10 @@ uint32_t create_root_directory()
     return inode;
 }
 
-uint32_t create_directory(uint32_t inode_parent, const char *dir_name)
+uint32_t create_directory(uint32_t inode_parent, const char *dir_name,
+                          struct stat *st)
 {
-    uint32_t inode = i_alloc(S_IFDIR | 0755);
+    uint32_t inode = i_alloc(st);
 
     add_directory_entry(inode, inode, ".");
     add_directory_entry(inode_parent, inode, "..");
@@ -191,26 +222,6 @@ bool is_dot_or_dotdot(const char *file_name)
     return false;
 }
 
-/*
-int build_full_path(char *dst, const char *path, const char *file)
-{
-    strncpy(dst, path, PATH_MAX);
-    size_t len = strlen(dst);
-    if (dst[len - 1] != '/' && file[0] != '/')
-    {
-        dst[len] = '/';
-        len++;
-    }
-    size_t name_len = strlen(file);
-    if (len + name_len > PATH_MAX - 1)
-    {
-        return -1;
-    }
-    strncpy(dst + len, file, PATH_MAX - len);
-
-    return 0;
-}*/
-
 bool copy_file_to_filesystem(const char *path_on_host, const char *new_name,
                              int32_t dir_inode_on_fs)
 {
@@ -231,7 +242,7 @@ bool copy_file_to_filesystem(const char *path_on_host, const char *new_name,
         return false;       // skip file
     }
 
-    ino_t inum = i_alloc(st.st_mode);
+    ino_t inum = i_alloc(&st);
 
     add_directory_entry(inum, dir_inode_on_fs, new_name);
 
@@ -270,7 +281,7 @@ bool copy_dir_to_filesystem(const char *dir_on_host, int32_t dir_inode_on_fs)
         if (S_ISDIR(st.st_mode))
         {
             uint32_t new_dir =
-                create_directory(dir_inode_on_fs, dir_entry->d_name);
+                create_directory(dir_inode_on_fs, dir_entry->d_name, &st);
 
             all_ok &= copy_dir_to_filesystem(full_path, new_dir);
         }
@@ -568,18 +579,22 @@ void read_sector(uint32_t sec, void *buf)
 }
 
 /// @brief Allocates a new unique inode number and creates a disk inode.
-/// @param type type of the new inode
+/// @param st stats of the new inode
 /// @return number of the new inode
-uint32_t i_alloc(v_mode_t mode)
+uint32_t i_alloc(struct stat *st)
 {
     ino_t inum = g_freeinode++;
     struct vimixfs_dinode din;
 
     memset(&din, 0, sizeof(din));
 
-    din.mode = xint(mode);
+    din.mode = xint(st->st_mode);
     din.nlink = xint(1);
     din.size = xint(0);
+    din.uid = xint(st->st_uid);
+    din.gid = xint(st->st_gid);
+    din.ctime = xint64(st->st_ctime);
+    din.mtime = xint64(st->st_mtime);
     write_dinode(inum, &din);
     return inum;
 }

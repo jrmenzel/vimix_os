@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <drivers/device.h>
+#include <drivers/rtc.h>
 #include <fs/devfs/devfs.h>
 #include <kernel/errno.h>
 #include <kernel/param.h>
@@ -211,6 +212,8 @@ void devfs_init()
 
 ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
 {
+    time_t now = rtc_get_time();
+
     sb_in->s_fs_info = NULL;
     sb_in->s_type = &devfs_file_system_type;
     sb_in->s_op = &devfs_s_op;
@@ -222,6 +225,10 @@ ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
     devfs_itable.inode[0].inum = 0;
     devfs_itable.inode[0].i_mode |= S_IFDIR;
     devfs_itable.inode[0].i_sb = sb_in;
+    devfs_itable.inode[0].uid = 0;
+    devfs_itable.inode[0].gid = 0;
+    devfs_itable.inode[0].ctime = now;
+    devfs_itable.inode[0].mtime = now;
     kref_init(&devfs_itable.inode[0].ref);
     devfs_itable.used_inodes = 1;
 
@@ -237,6 +244,11 @@ ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
 
         devfs_itable.inode[inode_idx].inum = ++found_devices;
         devfs_itable.inode[inode_idx].i_sb = sb_in;
+        devfs_itable.inode[inode_idx].uid = 0;
+        devfs_itable.inode[inode_idx].gid = 0;
+        devfs_itable.inode[inode_idx].ctime = now;
+        devfs_itable.inode[inode_idx].mtime = now;
+
         if (dev->type == CHAR)
         {
             devfs_itable.inode[inode_idx].i_mode |= S_IFCHR;

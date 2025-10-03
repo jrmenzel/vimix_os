@@ -366,6 +366,10 @@ int vimixfs_sops_write_inode(struct inode *ip)
 
     dip->nlink = ip->nlink;
     dip->size = ip->size;
+    dip->uid = ip->uid;
+    dip->gid = ip->gid;
+    dip->ctime = ip->ctime;
+    dip->mtime = ip->mtime;
     struct vimixfs_inode *xv_ip = vimixfs_inode_from_inode(ip);
     memmove(dip->addrs, xv_ip->addrs, sizeof(xv_ip->addrs));
     log_write(&(priv->log), bp);
@@ -398,6 +402,10 @@ void vimixfs_iops_read_in(struct inode *ip)
 
     ip->nlink = dip->nlink;
     ip->size = dip->size;
+    ip->uid = dip->uid;
+    ip->gid = dip->gid;
+    ip->ctime = dip->ctime;
+    ip->mtime = dip->mtime;
     struct vimixfs_inode *xv_ip = vimixfs_inode_from_inode(ip);
     memmove(xv_ip->addrs, dip->addrs, sizeof(xv_ip->addrs));
     bio_release(bp);

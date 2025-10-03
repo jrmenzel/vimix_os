@@ -6,6 +6,7 @@
 
 #include <drivers/block_device.h>
 #include <drivers/character_device.h>
+#include <drivers/rtc.h>
 #include <ipc/pipe.h>
 #include <kernel/errno.h>
 #include <kernel/fcntl.h>
@@ -205,10 +206,8 @@ void file_close(struct file *f)
 
 int32_t file_stat(struct file *f, size_t addr)
 {
-    if (INODE_HAS_TYPE(f->mode) == false)
-    {
-        panic("file_stat(): inode has no type");
-    }
+    DEBUG_EXTRA_PANIC(INODE_HAS_TYPE(f->mode),
+                      "file_stat(): inode has no type");
 
     if (S_ISREG(f->mode) || S_ISDIR(f->mode) || S_ISCHR(f->mode) ||
         S_ISBLK(f->mode))
@@ -289,6 +288,17 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
     return read_bytes;
 }
 
+void file_update_mtime(struct file *f)
+{
+    DEBUG_EXTRA_PANIC((S_ISREG(f->mode) || S_ISDIR(f->mode)),
+                      "file_update_mtime() on non-regular file");
+
+    time_t now = rtc_get_time();
+    inode_lock(f->ip);
+    f->ip->mtime = now;
+    inode_unlock(f->ip);
+}
+
 ssize_t file_write(struct file *f, size_t addr, size_t n)
 {
     ssize_t ret = 0;
@@ -325,6 +335,7 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
     else if (S_ISREG(f->mode))
     {
         ret = VFS_FILE_WRITE(f, addr, n);
+        if (ret > 0) file_update_mtime(f);
     }
     else if (S_ISDIR(f->mode))
     {
