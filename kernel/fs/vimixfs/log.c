@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <fs/xv6fs/log.h>
-#include <fs/xv6fs/xv6fs.h>
+#include <fs/vimixfs/log.h>
+#include <fs/vimixfs/vimixfs.h>
 #include <kernel/bio.h>
 #include <kernel/buf.h>
 #include <kernel/errno.h>
@@ -12,13 +12,13 @@
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
-#include <kernel/xv6fs.h>
+#include <kernel/vimixfs.h>
 #include <mm/kalloc.h>
 
 static void recover_from_log(struct log *log);
 static void commit(struct log *log);
 
-ssize_t log_init(struct log *log, dev_t dev, struct xv6fs_superblock *sb)
+ssize_t log_init(struct log *log, dev_t dev, struct vimixfs_superblock *sb)
 {
     spin_lock_init(&log->lock, "log");
     log->start = sb->logstart;
@@ -57,7 +57,8 @@ static void install_trans(struct log *log, bool recovering)
         int minor = MINOR(log->dev);
         int major = MAJOR(log->dev);
         printk(
-            "xv6fs: Replaying %d uncommited filesystem transactions on device "
+            "vimixfs: Replaying %d uncommited filesystem transactions on "
+            "device "
             "(%d,%d)\n",
             log->lh_n, minor, major);
     }
@@ -81,7 +82,7 @@ static void install_trans(struct log *log, bool recovering)
 static void read_head(struct log *log)
 {
     struct buf *buf = bio_read(log->dev, log->start);
-    struct xv6fs_log_header *lh = (struct xv6fs_log_header *)(buf->data);
+    struct vimixfs_log_header *lh = (struct vimixfs_log_header *)(buf->data);
     log->lh_n = lh->n;
 
     for (size_t i = 0; i < log->lh_n; i++)
@@ -97,7 +98,7 @@ static void read_head(struct log *log)
 static void write_head(struct log *log)
 {
     struct buf *buf = bio_read(log->dev, log->start);
-    struct xv6fs_log_header *hb = (struct xv6fs_log_header *)(buf->data);
+    struct vimixfs_log_header *hb = (struct vimixfs_log_header *)(buf->data);
     hb->n = log->lh_n;
     for (size_t i = 0; i < log->lh_n; i++)
     {
@@ -118,7 +119,8 @@ static void recover_from_log(struct log *log)
 /// called at the start of each FS system call.
 void log_begin_fs_transaction(struct super_block *sb)
 {
-    struct xv6fs_sb_private *priv = ((struct xv6fs_sb_private *)sb->s_fs_info);
+    struct vimixfs_sb_private *priv =
+        ((struct vimixfs_sb_private *)sb->s_fs_info);
     struct log *log = &priv->log;
     struct process *proc = get_current();
     proc->debug_log_depth++;
@@ -152,7 +154,8 @@ void log_begin_fs_transaction(struct super_block *sb)
 /// commits if this was the last outstanding operation.
 void log_end_fs_transaction(struct super_block *sb)
 {
-    struct xv6fs_sb_private *priv = ((struct xv6fs_sb_private *)sb->s_fs_info);
+    struct vimixfs_sb_private *priv =
+        ((struct vimixfs_sb_private *)sb->s_fs_info);
     struct log *log = &priv->log;
     bool do_commit = false;
 

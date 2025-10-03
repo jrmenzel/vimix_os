@@ -87,7 +87,7 @@ $
 	- [/dev/null](docs/userspace/dev/null.md), [/dev/zero](docs/userspace/dev/zero.md), [/dev/random](docs/userspace/dev/random.md)
 	- [ramdisk](docs/kernel/devices/ramdisk.md)
 	- [jh7110 temperature sensor](docs/userspace/dev/temp.md)
-- [xv6 file system](docs/kernel/file_system/xv6fs/xv6fs.md) was changed to differentiate between character and block [devices](docs/kernel/devices/devices.md). It was also moved behind a [virtual file system](docs/kernel/file_system/vfs.md) abstraction.
+- The [file system](docs/kernel/file_system/vimixfs/vimixfs.md) was changed to differentiate between character and block [devices](docs/kernel/devices/devices.md). It was also moved behind a [virtual file system](docs/kernel/file_system/vfs.md) abstraction.
 - Parse the [device tree](docs/misc/device_tree.md) at [boot](docs/kernel/overview/boot_process.md).
 - Added [/dev](docs/kernel/file_system/devfs/devfs.md) as a special file system exposing all devices.
 - Added [/sys](docs/kernel/file_system/sysfs/sysfs.md) as a special file system exposing various kernel objects.

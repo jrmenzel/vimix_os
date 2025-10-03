@@ -3,7 +3,7 @@
 #include <arch/cpu.h>
 #include <arch/trap.h>
 #include <arch/trapframe.h>
-#include <fs/xv6fs/xv6fs.h>
+#include <fs/vimixfs/vimixfs.h>
 #include <kernel/cpu.h>
 #include <kernel/errno.h>
 #include <kernel/exec.h>
@@ -692,7 +692,7 @@ void forkret()
         // regular process (e.g., because it calls sleep), and thus cannot
         // be run from main().
         first = false;
-        mount_root(ROOT_DEVICE_NUMBER, XV6_FS_NAME);
+        mount_root(ROOT_DEVICE_NUMBER, VIMIXFS_FS_NAME);
         printk("forkret() mounting /... OK\n");
 
         // We can involve execv() after file system is initialized.

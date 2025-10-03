@@ -1,29 +1,29 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#include <fs/xv6fs/log.h>
+#include <fs/vimixfs/log.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
-#include <kernel/xv6fs.h>
+#include <kernel/vimixfs.h>
 
-extern const char *XV6_FS_NAME;
+extern const char *VIMIXFS_FS_NAME;
 
-struct xv6fs_sb_private
+struct vimixfs_sb_private
 {
-    struct xv6fs_superblock sb;
+    struct vimixfs_superblock sb;
     struct log log;
 };
 
 /// @brief Call before mounting.
-void xv6fs_init();
+void vimixfs_init();
 
-struct inode *xv6fs_sops_alloc_inode(struct super_block *sb, mode_t mode);
+struct inode *vimixfs_sops_alloc_inode(struct super_block *sb, mode_t mode);
 
 /// @brief Copy a modified in-memory inode to disk.
 /// Must be called after every change to an ip->xxx field
 /// that lives on disk.
 /// Caller must hold ip->lock.
-int xv6fs_sops_write_inode(struct inode *ip);
+int vimixfs_sops_write_inode(struct inode *ip);
 
 /// @brief Opens the inode inside of directory iparent with the given name or
 /// creates one if none existed.
@@ -33,21 +33,21 @@ int xv6fs_sops_write_inode(struct inode *ip);
 /// @param flags Create flags
 /// @param device Device of the inode in case it's a device file
 /// @return NULL on failure, requested inode otherwise.
-struct inode *xv6fs_iops_create(struct inode *iparent, char name[NAME_MAX],
-                                mode_t mode, int32_t flags, dev_t device);
+struct inode *vimixfs_iops_create(struct inode *iparent, char name[NAME_MAX],
+                                  mode_t mode, int32_t flags, dev_t device);
 
 /// @brief Opens the inode inside of directory iparent with the given name.
 /// @param iparent Parent directory inode, unlocked
 /// @param name File name
 /// @param flags Truncate inode content if O_TRUNC is set (regular files only)
 /// @return NULL on failure, requested inode otherwise.
-struct inode *xv6fs_iops_open(struct inode *iparent, char name[NAME_MAX],
-                              int32_t flags);
+struct inode *vimixfs_iops_open(struct inode *iparent, char name[NAME_MAX],
+                                int32_t flags);
 
 /// @brief Reads the inode metadata from disk, called during the first
 /// inode_lock().
 /// @param ip Inode with attribute valid == false.
-void xv6fs_iops_read_in(struct inode *ip);
+void vimixfs_iops_read_in(struct inode *ip);
 
 /// @brief Find the inode with number inum on super_block sb.
 /// Does not lock the inode and does not read it from disk.
@@ -55,19 +55,19 @@ void xv6fs_iops_read_in(struct inode *ip);
 /// @param sb The filesystem to look on.
 /// @param inum Inode number.
 /// @return in-memory copy of inode, (NOT locked)
-struct inode *xv6fs_iget(struct super_block *sb, ino_t inum);
+struct inode *vimixfs_iget(struct super_block *sb, ino_t inum);
 
 /// @brief Returns the root inode of the file system.
-static inline struct inode *xv6fs_sops_iget_root(struct super_block *sb)
+static inline struct inode *vimixfs_sops_iget_root(struct super_block *sb)
 {
-    return xv6fs_iget(sb, XV6FS_ROOT_INODE);
+    return vimixfs_iget(sb, VIMIXFS_ROOT_INODE);
 }
 
 /// @brief Decreases ref count. If the inode was "deleted" (zero links) and this
 /// was the last reference, delete on disk. Note that this can require a new log
 /// begin/end.
 /// @param ip Inode with held reference.
-void xv6fs_iops_put(struct inode *ip);
+void vimixfs_iops_put(struct inode *ip);
 
 /// @brief Look for a directory entry in a directory.
 /// Increases ref count (release with inode_put()).
@@ -76,15 +76,15 @@ void xv6fs_iops_put(struct inode *ip);
 /// @param poff Pointer to a returned offset inside of the dir. Can be NULL.
 /// @return Inode of entry on success or NULL. Returned inode is NOT locked, and
 /// has an increases ref count (release with inode_put()).
-struct inode *xv6fs_iops_dir_lookup(struct inode *dir, const char *name,
-                                    uint32_t *poff);
+struct inode *vimixfs_iops_dir_lookup(struct inode *dir, const char *name,
+                                      uint32_t *poff);
 
 /// @brief Write a new directory entry (name, inum) into the directory `dir`.
 /// @param dir directory to edit
 /// @param name file name of new entry
 /// @param inum inode of new entry
 /// @return 0 on success, -1 on failure (e.g. out of disk blocks).
-int xv6fs_iops_dir_link(struct inode *dir, char *name, ino_t inum);
+int vimixfs_iops_dir_link(struct inode *dir, char *name, ino_t inum);
 
 /// @brief For the syscall to get directory entries get_dirent() from dirent.h.
 /// @param dir Directory inode
@@ -92,8 +92,8 @@ int xv6fs_iops_dir_link(struct inode *dir, char *name, ino_t inum);
 /// @param addr_is_userspace True if dir_entry_addr is a user virtual address.
 /// @param seek_pos A seek pos previously returned by inode_get_dirent or 0.
 /// @return next seek_pos on success, 0 on dir end and -1 on error.
-ssize_t xv6fs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
-                              bool addr_is_userspace, ssize_t seek_pos);
+ssize_t vimixfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
+                                bool addr_is_userspace, ssize_t seek_pos);
 
 /// @brief Read data from inode.
 /// Caller must hold ip->lock.
@@ -104,8 +104,8 @@ ssize_t xv6fs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
 /// @param off Offset in file where to read from.
 /// @param n Maximum number of bytes to read.
 /// @return Number of bytes successfully read.
-ssize_t xv6fs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
-                        size_t off, size_t n);
+ssize_t vimixfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
+                          size_t off, size_t n);
 
 /// @brief Write data to inode.
 /// Caller must hold ip->lock.
@@ -119,15 +119,15 @@ ssize_t xv6fs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
 /// @param off Offset in file.
 /// @param n Number of bytes to write.
 /// @return Number of bytes successfully written.
-ssize_t xv6fs_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
-                    size_t off, size_t n);
+ssize_t vimixfs_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
+                      size_t off, size_t n);
 
-ssize_t xv6fs_iops_link(struct inode *dir, struct inode *ip,
-                        char name[NAME_MAX]);
+ssize_t vimixfs_iops_link(struct inode *dir, struct inode *ip,
+                          char name[NAME_MAX]);
 
-ssize_t xv6fs_iops_unlink(struct inode *dir, char name[NAME_MAX],
-                          bool delete_files, bool delete_directories);
+ssize_t vimixfs_iops_unlink(struct inode *dir, char name[NAME_MAX],
+                            bool delete_files, bool delete_directories);
 
 struct file;
 
-ssize_t xv6fs_fops_write(struct file *f, size_t addr, size_t n);
+ssize_t vimixfs_fops_write(struct file *f, size_t addr, size_t n);

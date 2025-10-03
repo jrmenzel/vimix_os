@@ -2,7 +2,7 @@
 
 #include <fs/devfs/devfs.h>
 #include <fs/vfs.h>
-#include <fs/xv6fs/xv6fs.h>
+#include <fs/vimixfs/vimixfs.h>
 #include <kernel/bio.h>
 #include <kernel/buf.h>
 #include <kernel/errno.h>

@@ -3,7 +3,7 @@
 #include <fs/devfs/devfs.h>
 #include <fs/sysfs/sysfs.h>
 #include <fs/vfs.h>
-#include <fs/xv6fs/xv6fs.h>
+#include <fs/vimixfs/vimixfs.h>
 #include <kernel/errno.h>
 #include <kernel/string.h>
 
@@ -18,7 +18,7 @@ void init_virtual_file_system()
     // init all file system implementations
     devfs_init();
     sysfs_init();
-    xv6fs_init();
+    vimixfs_init();
 }
 
 // reused code from Linux kernel ;-)

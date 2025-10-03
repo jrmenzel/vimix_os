@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <kernel/xv6fs.h>
+#include <kernel/vimixfs.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -26,13 +26,13 @@
 // Disk layout:
 // [ boot block | sb block | log | inode blocks | free bit map | data blocks ]
 
-int ninodeblocks = MAX_ACTIVE_INODESS / XV6FS_INODES_PER_BLOCK + 1;
+int ninodeblocks = MAX_ACTIVE_INODESS / VIMIXFS_INODES_PER_BLOCK + 1;
 int nlog = (MAX_OP_BLOCKS * 3);  ///< max data blocks in on-disk log
 int nmeta;  // Number of meta blocks (boot, g_super_block, nlog, inode, bitmap)
 int nblocks;  // Number of data blocks
 
 int g_filesystem_fd;
-struct xv6fs_superblock g_super_block;
+struct vimixfs_superblock g_super_block;
 char zero_block[BLOCK_SIZE] = {0};
 
 /// @brief next free inode number
@@ -42,8 +42,8 @@ uint32_t freeblock;
 
 void balloc(int);
 void write_sector(uint32_t, void *);
-void write_dinode(ino_t, struct xv6fs_dinode *);
-void read_dinode(ino_t inum, struct xv6fs_dinode *ip);
+void write_dinode(ino_t, struct vimixfs_dinode *);
+void read_dinode(ino_t inum, struct vimixfs_dinode *ip);
 void read_sector(uint32_t sec, void *buf);
 uint32_t i_alloc(uint16_t type);
 void iappend(ino_t inum, void *p, int n);
@@ -74,28 +74,28 @@ uint32_t xint(uint32_t x)
 void add_directory_entry(uint32_t inode_new_entry, uint32_t inode_dir,
                          const char *filename)
 {
-    struct xv6fs_dirent de;
+    struct vimixfs_dirent de;
     memset(&de, 0, sizeof(de));
 
     de.inum = xshort(inode_new_entry);
-    strncpy(de.name, filename, XV6_NAME_MAX);
+    strncpy(de.name, filename, VIMIXFS_NAME_MAX);
     iappend(inode_dir, &de, sizeof(de));
 }
 
 uint32_t create_root_directory()
 {
-    uint32_t inode = i_alloc(XV6_FT_DIR);
-    assert(inode == XV6FS_ROOT_INODE);
+    uint32_t inode = i_alloc(VIMIXFS_FT_DIR);
+    assert(inode == VIMIXFS_ROOT_INODE);
 
-    add_directory_entry(XV6FS_ROOT_INODE, XV6FS_ROOT_INODE, ".");
-    add_directory_entry(XV6FS_ROOT_INODE, XV6FS_ROOT_INODE, "..");
+    add_directory_entry(VIMIXFS_ROOT_INODE, VIMIXFS_ROOT_INODE, ".");
+    add_directory_entry(VIMIXFS_ROOT_INODE, VIMIXFS_ROOT_INODE, "..");
 
     return inode;
 }
 
 uint32_t create_directory(uint32_t inode_parent, const char *dir_name)
 {
-    uint32_t inode = i_alloc(XV6_FT_DIR);
+    uint32_t inode = i_alloc(VIMIXFS_FT_DIR);
 
     add_directory_entry(inode, inode, ".");
     add_directory_entry(inode_parent, inode, "..");
@@ -122,7 +122,7 @@ uint32_t create_empty_filesystem(const char *filename, size_t fs_size)
         exit(-1);
     }
     size_t fs_size_in_blocks = fs_size / BLOCK_SIZE;
-    int nbitmap = XV6_BLOCKS_FOR_BITMAP(fs_size_in_blocks);
+    int nbitmap = VIMIXFS_BLOCKS_FOR_BITMAP(fs_size_in_blocks);
     nmeta = 2 + nlog + ninodeblocks + nbitmap;
 
     // open and/or create output file
@@ -135,7 +135,7 @@ uint32_t create_empty_filesystem(const char *filename, size_t fs_size)
     // 1 fs block = 1 disk sector
     nblocks = fs_size_in_blocks - nmeta;
 
-    g_super_block.magic = XV6FS_MAGIC;
+    g_super_block.magic = VIMIXFS_MAGIC;
     g_super_block.size = xint(fs_size_in_blocks);
     g_super_block.nblocks = xint(nblocks);
     g_super_block.ninodes = xint(MAX_ACTIVE_INODESS);
@@ -160,7 +160,7 @@ uint32_t create_empty_filesystem(const char *filename, size_t fs_size)
     char block_buffer[BLOCK_SIZE];
     memset(block_buffer, 0, sizeof(block_buffer));
     memmove(block_buffer, &g_super_block, sizeof(g_super_block));
-    write_sector(XV6FS_SUPER_BLOCK_NUMBER, block_buffer);
+    write_sector(VIMIXFS_SUPER_BLOCK_NUMBER, block_buffer);
 
     uint32_t rootino = create_root_directory();
     return rootino;
@@ -169,7 +169,7 @@ uint32_t create_empty_filesystem(const char *filename, size_t fs_size)
 void fix_dir_size(int32_t inode)
 {
     // fix size of dir inode: round up offset to BLOCK_SIZE
-    struct xv6fs_dinode din;
+    struct vimixfs_dinode din;
     read_dinode(inode, &din);
     uint32_t off = xint(din.size);
     if (off % BLOCK_SIZE != 0)
@@ -217,7 +217,7 @@ bool copy_file_to_filesystem(const char *path_on_host, const char *new_name,
     int fd = open(path_on_host, O_RDONLY);
     if (fd < 0) die(path_on_host);
 
-    size_t max_file_size = XV6FS_MAX_FILE_SIZE_BLOCKS * BLOCK_SIZE;
+    size_t max_file_size = VIMIXFS_MAX_FILE_SIZE_BLOCKS * BLOCK_SIZE;
     struct stat st;
     if (fstat(fd, &st) < 0) return false;
     if (st.st_size > max_file_size)
@@ -231,7 +231,7 @@ bool copy_file_to_filesystem(const char *path_on_host, const char *new_name,
         return false;       // skip file
     }
 
-    ino_t inum = i_alloc(XV6_FT_FILE);
+    ino_t inum = i_alloc(VIMIXFS_FT_FILE);
 
     add_directory_entry(inum, dir_inode_on_fs, new_name);
 
@@ -295,13 +295,13 @@ int32_t open_filesystem(const char *filename)
     }
 
     char block_buffer[BLOCK_SIZE];
-    read_sector(XV6FS_SUPER_BLOCK_NUMBER, block_buffer);
+    read_sector(VIMIXFS_SUPER_BLOCK_NUMBER, block_buffer);
     memmove(&g_super_block, block_buffer, sizeof(g_super_block));
 
-    return XV6FS_ROOT_INODE;
+    return VIMIXFS_ROOT_INODE;
 }
 
-size_t read_inode(struct xv6fs_dinode *din, void *buffer, size_t off,
+size_t read_inode(struct vimixfs_dinode *din, void *buffer, size_t off,
                   size_t size)
 {
     size_t inode_size = xshort(din->size);
@@ -314,8 +314,9 @@ size_t read_inode(struct xv6fs_dinode *din, void *buffer, size_t off,
         size = inode_size - off;
     }
 
-    uint32_t indirect[XV6FS_N_INDIRECT_BLOCKS];
-    size_t sector_of_indirect_blocks = xint(din->addrs[XV6FS_N_DIRECT_BLOCKS]);
+    uint32_t indirect[VIMIXFS_N_INDIRECT_BLOCKS];
+    size_t sector_of_indirect_blocks =
+        xint(din->addrs[VIMIXFS_N_DIRECT_BLOCKS]);
     if (sector_of_indirect_blocks != 0)
     {
         read_sector(sector_of_indirect_blocks, (void *)indirect);
@@ -331,13 +332,13 @@ size_t read_inode(struct xv6fs_dinode *din, void *buffer, size_t off,
         size_t read_from_sector = BLOCK_SIZE - off_in_block;
         if (read_from_sector > size) read_from_sector = size;
         size_t sector;
-        if (block < XV6FS_N_DIRECT_BLOCKS)
+        if (block < VIMIXFS_N_DIRECT_BLOCKS)
         {
             sector = xint(din->addrs[block]);
         }
         else
         {
-            sector = xint(indirect[block - XV6FS_N_DIRECT_BLOCKS]);
+            sector = xint(indirect[block - VIMIXFS_N_DIRECT_BLOCKS]);
         }
 
         read_sector(sector, buf);
@@ -352,16 +353,16 @@ size_t read_inode(struct xv6fs_dinode *din, void *buffer, size_t off,
     return read_total;
 }
 
-ssize_t inode_get_dirent(int32_t inode_dir, struct xv6fs_dirent *dir_entry,
+ssize_t inode_get_dirent(int32_t inode_dir, struct vimixfs_dirent *dir_entry,
                          ssize_t seek_pos)
 {
     if (seek_pos < 0) return -1;
 
-    struct xv6fs_dinode din;
+    struct vimixfs_dinode din;
     read_dinode(inode_dir, &din);
 
-    xv6fs_file_type type = xshort(din.type);
-    if (type != XV6_FT_DIR)
+    vimixfs_file_type type = xshort(din.type);
+    if (type != VIMIXFS_FT_DIR)
     {
         return -1;
     }
@@ -370,8 +371,8 @@ ssize_t inode_get_dirent(int32_t inode_dir, struct xv6fs_dirent *dir_entry,
     do {
         size_t read_bytes;
         read_bytes = read_inode(&din, (void *)dir_entry, (size_t)new_seek_pos,
-                                sizeof(struct xv6fs_dirent));
-        if (read_bytes != sizeof(struct xv6fs_dirent))
+                                sizeof(struct vimixfs_dirent));
+        if (read_bytes != sizeof(struct vimixfs_dirent))
         {
             return -1;
         }
@@ -383,11 +384,11 @@ ssize_t inode_get_dirent(int32_t inode_dir, struct xv6fs_dirent *dir_entry,
 
 void copy_out_file(int32_t inode, const char *filename)
 {
-    struct xv6fs_dinode din;
+    struct vimixfs_dinode din;
     read_dinode(inode, &din);
 
-    xv6fs_file_type type = xshort(din.type);
-    if (type != XV6_FT_FILE)
+    vimixfs_file_type type = xshort(din.type);
+    if (type != VIMIXFS_FT_FILE)
     {
         return;
     }
@@ -428,7 +429,7 @@ bool copy_filesystem_to_dir(int32_t dir_inode_on_fs, const char *sub_path,
         close(fd);
     }
 
-    struct xv6fs_dirent dir_entry;
+    struct vimixfs_dirent dir_entry;
     ssize_t next_entry = 0;
     while (true)
     {
@@ -437,15 +438,15 @@ bool copy_filesystem_to_dir(int32_t dir_inode_on_fs, const char *sub_path,
 
         if (is_dot_or_dotdot(dir_entry.name)) continue;
 
-        struct xv6fs_dinode din;
+        struct vimixfs_dinode din;
         read_dinode(dir_entry.inum, &din);
 
         char full_file_path_on_host[PATH_MAX];
         build_full_path(full_file_path_on_host, full_path_on_host,
                         dir_entry.name);
 
-        xv6fs_file_type type = xshort(din.type);
-        if (type == XV6_FT_DIR)
+        vimixfs_file_type type = xshort(din.type);
+        if (type == VIMIXFS_FT_DIR)
         {
             printf("create dir %s\n", full_file_path_on_host);
 
@@ -454,7 +455,7 @@ bool copy_filesystem_to_dir(int32_t dir_inode_on_fs, const char *sub_path,
 
             copy_filesystem_to_dir(dir_entry.inum, new_sub_path, dir_on_host);
         }
-        else if (type == XV6_FT_FILE)
+        else if (type == VIMIXFS_FT_FILE)
         {
             printf("create file %s\n", full_file_path_on_host);
             copy_out_file(dir_entry.inum, full_file_path_on_host);
@@ -516,26 +517,26 @@ void write_sector(uint32_t sec, void *buf)
     if (write(g_filesystem_fd, buf, BLOCK_SIZE) != BLOCK_SIZE) die("write");
 }
 
-void write_dinode(ino_t inum, struct xv6fs_dinode *ip)
+void write_dinode(ino_t inum, struct vimixfs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
-    struct xv6fs_dinode *dip;
+    struct vimixfs_dinode *dip;
 
-    uint32_t block_index = XV6FS_BLOCK_OF_INODE(inum, g_super_block);
+    uint32_t block_index = VIMIXFS_BLOCK_OF_INODE(inum, g_super_block);
     read_sector(block_index, buf);
-    dip = ((struct xv6fs_dinode *)buf) + (inum % XV6FS_INODES_PER_BLOCK);
+    dip = ((struct vimixfs_dinode *)buf) + (inum % VIMIXFS_INODES_PER_BLOCK);
     *dip = *ip;  // copy struct of the inode to dip (== copy into buf)
     write_sector(block_index, buf);
 }
 
-void read_dinode(ino_t inum, struct xv6fs_dinode *ip)
+void read_dinode(ino_t inum, struct vimixfs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
-    struct xv6fs_dinode *dip;
+    struct vimixfs_dinode *dip;
 
-    uint32_t block_index = XV6FS_BLOCK_OF_INODE(inum, g_super_block);
+    uint32_t block_index = VIMIXFS_BLOCK_OF_INODE(inum, g_super_block);
     read_sector(block_index, buf);
-    dip = ((struct xv6fs_dinode *)buf) + (inum % XV6FS_INODES_PER_BLOCK);
+    dip = ((struct vimixfs_dinode *)buf) + (inum % VIMIXFS_INODES_PER_BLOCK);
     *ip = *dip;  // copy struct into ip
 }
 
@@ -560,7 +561,7 @@ void read_sector(uint32_t sec, void *buf)
 uint32_t i_alloc(uint16_t type)
 {
     ino_t inum = g_freeinode++;
-    struct xv6fs_dinode din;
+    struct vimixfs_dinode din;
 
     memset(&din, 0, sizeof(din));
 
@@ -594,9 +595,9 @@ void balloc(int used)
 #pragma GCC diagnostic ignored "-Wanalyzer-use-of-uninitialized-value"
 void iappend(ino_t inum, void *xp, int n)
 {
-    struct xv6fs_dinode din;
+    struct vimixfs_dinode din;
     char buf[BLOCK_SIZE];
-    uint32_t indirect[XV6FS_N_INDIRECT_BLOCKS];
+    uint32_t indirect[VIMIXFS_N_INDIRECT_BLOCKS];
 
     read_dinode(inum, &din);
     uint32_t off = xint(din.size);
@@ -614,8 +615,8 @@ void iappend(ino_t inum, void *xp, int n)
         uint32_t x;
 
         uint32_t fbn = off / BLOCK_SIZE;
-        assert(fbn < XV6FS_MAX_FILE_SIZE_BLOCKS);
-        if (fbn < XV6FS_N_DIRECT_BLOCKS)
+        assert(fbn < VIMIXFS_MAX_FILE_SIZE_BLOCKS);
+        if (fbn < VIMIXFS_N_DIRECT_BLOCKS)
         {
             if (xint(din.addrs[fbn]) == 0)
             {
@@ -625,19 +626,19 @@ void iappend(ino_t inum, void *xp, int n)
         }
         else
         {
-            if (xint(din.addrs[XV6FS_N_DIRECT_BLOCKS]) == 0)
+            if (xint(din.addrs[VIMIXFS_N_DIRECT_BLOCKS]) == 0)
             {
-                din.addrs[XV6FS_N_DIRECT_BLOCKS] = xint(freeblock++);
+                din.addrs[VIMIXFS_N_DIRECT_BLOCKS] = xint(freeblock++);
             }
-            read_sector(xint(din.addrs[XV6FS_N_DIRECT_BLOCKS]),
+            read_sector(xint(din.addrs[VIMIXFS_N_DIRECT_BLOCKS]),
                         (char *)indirect);
-            if (indirect[fbn - XV6FS_N_DIRECT_BLOCKS] == 0)
+            if (indirect[fbn - VIMIXFS_N_DIRECT_BLOCKS] == 0)
             {
-                indirect[fbn - XV6FS_N_DIRECT_BLOCKS] = xint(freeblock++);
-                write_sector(xint(din.addrs[XV6FS_N_DIRECT_BLOCKS]),
+                indirect[fbn - VIMIXFS_N_DIRECT_BLOCKS] = xint(freeblock++);
+                write_sector(xint(din.addrs[VIMIXFS_N_DIRECT_BLOCKS]),
                              (char *)indirect);
             }
-            x = xint(indirect[fbn - XV6FS_N_DIRECT_BLOCKS]);
+            x = xint(indirect[fbn - VIMIXFS_N_DIRECT_BLOCKS]);
         }
         uint32_t n1 = min(n, (fbn + 1) * BLOCK_SIZE - off);
         read_sector(x, buf);

@@ -62,7 +62,7 @@ int main()
     {
         close(fd_dev);
         printf("init mounting /home... ");
-        int ret = mount("/dev/virtio1", "/home", "xv6fs", 0, NULL);
+        int ret = mount("/dev/virtio1", "/home", "vimixfs", 0, NULL);
         if (ret < 0)
         {
             printf("failed. Error %d\n", errno);

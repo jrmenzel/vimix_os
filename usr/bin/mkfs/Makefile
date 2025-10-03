@@ -1,5 +1,5 @@
 #
-# Build xv6fs tools
+# Build vimixfs tools
 #
 ROOT := ../../..
 BUILD_DIR_SUFFIX := bin/mkfs
@@ -14,9 +14,9 @@ USER_SPACE_INC_PARAMS_HOST := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
 KERNEL_SPACE_INC := ./include # public kernel API
 KERNEL_SPACE_INC_PARAMS := $(foreach d, $(KERNEL_SPACE_INC), -I../../../kernel/$d)
 
-vimix: directories $(B_DEPLOY_DIR)/mkfs $(B_DEPLOY_DIR)/fsck.xv6fs
+vimix: directories $(B_DEPLOY_DIR)/mkfs $(B_DEPLOY_DIR)/fsck.vimixfs
 
-host: directories $(B_DEPLOY_DIR_HOST)/mkfs $(B_DEPLOY_DIR_HOST)/fsck.xv6fs
+host: directories $(B_DEPLOY_DIR_HOST)/mkfs $(B_DEPLOY_DIR_HOST)/fsck.vimixfs
 
 ###########################################################
 # compiling apps for VIMIX
@@ -57,6 +57,6 @@ directories: # make temp build directories
 
 clean: # delete binary
 	-@rm -rf $(B_DEPLOY_DIR)/mkfs
-	-@rm -rf $(B_DEPLOY_DIR)/fsck.xv6fs
+	-@rm -rf $(B_DEPLOY_DIR)/fsck.vimixfs
 	-@rm -rf $(B_DEPLOY_DIR_HOST)/mkfs
-	-@rm -rf $(B_DEPLOY_DIR_HOST)/fsck.xv6fs
+	-@rm -rf $(B_DEPLOY_DIR_HOST)/fsck.vimixfs

@@ -13,7 +13,7 @@ The boot CPU inits in `main.c`:
 
 ## Part 2: In a Kernel Process
 
-The actual file system gets initialized from the first spawned process in `forkret()` (calling `mount_root(ROOT_DEVICE_NUMBER, "xv6fs");`). This is triggered via [init_userspace](../processes/init_userspace.md) and [mounts](../syscalls/mount.md) the root file system.
+The actual file system gets initialized from the first spawned process in `forkret()` (calling `mount_root(ROOT_DEVICE_NUMBER, "vimixfs");`). This is triggered via [init_userspace](../processes/init_userspace.md) and [mounts](../syscalls/mount.md) the root file system.
 
 While belonging to the first process (`init`), this still runs in [S-mode](../../riscv/S-mode.md).
 
@@ -30,4 +30,4 @@ Lastly [init](../../userspace/bin/init.md) will mount [/dev](devfs/devfs.md) and
 
 **Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
 
-**File System:** [init_filesystem](init_filesystem.md) | [vfs](vfs.md) | [xv6fs](xv6fs/xv6fs.md) | [devfs](devfs.md) | [sysfs](sysfs.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)
+**File System:** [init_filesystem](init_filesystem.md) | [vfs](vfs.md) | [vimixfs](vimixfs/vimixfs.md) | [devfs](devfs.md) | [sysfs](sysfs.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)

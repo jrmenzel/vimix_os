@@ -35,9 +35,9 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	fs/sysfs/sysfs_node.o \
 	fs/vfs.o \
 	fs/devfs/devfs.o \
-	fs/xv6fs/log.o \
-	fs/xv6fs/xv6fs.o \
-	fs/xv6fs/xv6fs_sysfs.o \
+	fs/vimixfs/log.o \
+	fs/vimixfs/vimixfs.o \
+	fs/vimixfs/vimixfs_sysfs.o \
 	init/dtb.o \
 	init/main.o \
 	init/start.o \
@@ -96,7 +96,7 @@ SUB_DIRS := \
   fs \
   fs/devfs \
   fs/sysfs \
-  fs/xv6fs \
+  fs/vimixfs \
   init \
   ipc \
   kernel \

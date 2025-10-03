@@ -848,7 +848,7 @@ void writebig(char *s)
         exit(1);
     }
 
-    for (size_t i = 0; i < XV6FS_MAX_FILE_SIZE_BLOCKS; i++)
+    for (size_t i = 0; i < VIMIXFS_MAX_FILE_SIZE_BLOCKS; i++)
     {
         ((int *)buf)[0] = i;
         if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
@@ -873,7 +873,7 @@ void writebig(char *s)
         ssize_t i = read(fd, buf, BLOCK_SIZE);
         if (i == 0)
         {
-            if (blocks_read != XV6FS_MAX_FILE_SIZE_BLOCKS)
+            if (blocks_read != VIMIXFS_MAX_FILE_SIZE_BLOCKS)
             {
                 printf("%s: read only %zd blocks from big", s, blocks_read);
                 exit(1);
@@ -2354,7 +2354,7 @@ void fourteen(char *s)
 {
     int fd;
 
-    // XV6_NAME_MAX is 14.
+    // VIMIXFS_NAME_MAX is 14.
 
     if (mkdir("12345678901234", 0755) != 0)
     {
@@ -3615,7 +3615,7 @@ void diskfull(char *s)
             done = true;
             break;
         }
-        for (size_t i = 0; i < XV6FS_MAX_FILE_SIZE_BLOCKS; i++)
+        for (size_t i = 0; i < VIMIXFS_MAX_FILE_SIZE_BLOCKS; i++)
         {
             char buf[BLOCK_SIZE];
             if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)

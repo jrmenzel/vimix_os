@@ -7,7 +7,7 @@
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 
-// A file system like xv6fs
+// A file system like vimixfs, SysFS, etc
 struct file_system_type
 {
     const char *name;  //< short identifier

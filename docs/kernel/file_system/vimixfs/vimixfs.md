@@ -1,4 +1,4 @@
-# xv6fs
+# VimixFS
 
 Modified variant of the [file_system](file_system.md) found in xv6, which was designed after the original file system of UNIX version 6.
 
@@ -16,19 +16,19 @@ The disk is organized in blocks of `1024` bytes.
 The first block is reserved for the boot loader for historic reasons. This block is currently not used.
 
 **Super Block:**
-This block contains the struct `xv6fs_superblock` which describes the [file_system](file_system.md), including the position and size of the following areas. Everything in here stays static after the file system got created.
+This block contains the struct `vimixfs_superblock` which describes the [file_system](file_system.md), including the position and size of the following areas. Everything in here stays static after the file system got created.
 
 **Log Area:**
 The first block contains the log header struct `logheader`. It contains a count of blocks to be commited and the destication block adresses. The following blocks are used to store the data for blocks to be committed from the log. The number is of blocks is stored in the FS super block. For each of these blocks the header stores the destination block address.
 
-See [xv6fs_log](xv6fs_log.md).
+See [vimixfs_log](vimixfs_log.md).
 
 **Inode Area:**
-The [inodes](inode.md) are stored sequentially on disk in an array as `struct xv6fs_dinode` (disk inode). The inode number is the index into this array. The amount of blocks reserved for this inode array defines the maximum of supported inodes and thus files and directories. 
+The [inodes](inode.md) are stored sequentially on disk in an array as `struct vimixfs_dinode` (disk inode). The inode number is the index into this array. The amount of blocks reserved for this inode array defines the maximum of supported inodes and thus files and directories. 
 
 Inode 1 is by definition the root directory of the file system.
 
-[Directories](directory.md) are stored as files containing an array of `struct xv6fs_dirent`.
+[Directories](directory.md) are stored as files containing an array of `struct vimixfs_dirent`.
 [Files](file.md) are stored in blocks in the data blocks area. The disk inode contains an array of block addresses for the files content. An additional block can be allocated for block addresses of larger files.
 
 **BMap Area:**
@@ -41,25 +41,25 @@ Unstructured data blocks with the contents of the files and directories. Size of
 ## Limits
 
 **Max files:**
-File and directory count are limited by the inode count. This is defined at file system creation in `mkfs` (see `MAX_ACTIVE_INODESS`). As [directories](directory.md) references inodes with a 16-bit unsigned integer, the maximal number of inodes in xv6fs is 65,535 (0 is a reserved value).
+File and directory count are limited by the inode count. This is defined at file system creation in `mkfs` (see `MAX_ACTIVE_INODESS`). As [directories](directory.md) references inodes with a 16-bit unsigned integer, the maximal number of inodes in VimixFS is 65,535 (0 is a reserved value).
 
 **Max files per directory;**
-A `struct xv6fs_dirent` is `16` bytes long, thus 64 directory entries can be stored in one block. A file can be up to `12+256` blocks large. This limits the number of directory entries per directory to `17152` entries. Each dir contains `.` and `..`, so `17150` files or sub directories can be stored in one xv6fs directory.
+A `struct vimixfs_dirent` is `16` bytes long, thus 64 directory entries can be stored in one block. A file can be up to `12+256` blocks large. This limits the number of directory entries per directory to `17152` entries. Each dir contains `.` and `..`, so `17150` files or sub directories can be stored in one VimixFS directory.
 
 **Max file size:**
 Currently a disk inode can reference `12` data blocks. One additional block can be used as a second array of `1024/sizeof(uint32_t)` = `256` block addresses. The maximal file size supported is thus `(12+256)*1024` = 268 kb.
 
 **Max file system size:**
-Blocks are indexed by 32-bit unsigned integers. Thus file systems of up to 4 GB should be possible. xv6fs supports a maximum of 65,535 files with 268 kb each = 16 GB in total. So filling up such a huge disk is possible.
+Blocks are indexed by 32-bit unsigned integers. Thus file systems of up to 4 GB should be possible. VimixFS supports a maximum of 65,535 files with 268 kb each = 16 GB in total. So filling up such a huge disk is possible.
 
 **Max file name:**
-Just 14 chars, limited by `XV6_NAME_MAX` and indirectly by the size of one `struct xv6fs_dirent`.
+Just 14 chars, limited by `XV6_NAME_MAX` and indirectly by the size of one `struct vimixfs_dirent`.
 
 
 ## Changes compared to xv6
 
-- Refactored and renamed some defines, moved code to separate generic and xv6fs specific code.
-- Moved out non-file system specific function calls (e.g. file system tree traversal calls) from [xv6fs_log](xv6fs_log.md) specific calls. This allows a [virtual file system](../vfs.md) abstraction and [mounting](../../syscalls/mount.md). It also changes the order of lock acquire/releases compared to xv6.
+- Refactored and renamed some defines, moved code to separate generic and VimixFS specific code.
+- Moved out non-file system specific function calls (e.g. file system tree traversal calls) from [vimixfs_log](vimixfs_log.md) specific calls. This allows a [virtual file system](../vfs.md) abstraction and [mounting](../../syscalls/mount.md). It also changes the order of lock acquire/releases compared to xv6.
 - Split device disk inodes into char and block devices to correctly store different types of [devices](../../devices/devices.md).
 
 
@@ -70,4 +70,4 @@ Video about the original xv6 file system: https://www.youtube.com/watch?v=o9sYiW
 ---
 **Overview:** [kernel](kernel.md) | [file_system](file_system.md)
 
-**File System:** [init_filesystem](init_filesystem.md) | [vfs](vfs.md) | [xv6fs](xv6fs/xv6fs.md) | [devfs](devfs.md) | [sysfs](sysfs.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)
+**File System:** [init_filesystem](init_filesystem.md) | [vfs](vfs.md) | [vimixfs](vimixfs.md) | [devfs](devfs.md) | [sysfs](sysfs.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)

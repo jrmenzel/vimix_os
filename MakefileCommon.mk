@@ -4,8 +4,7 @@
 
 BUILD_TYPE := debug
 #BUILD_TYPE := release
-# release builds with debug symbols increase the binary sizes and can 
-# push usertests over the limit of fitting on a xv6 filesystem
+# release builds with debug symbols increase the binary sizes
 #REL_WITH_DEBUG := yes
 
 #####

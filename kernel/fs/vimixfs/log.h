@@ -25,9 +25,9 @@
 // Log appends are synchronous.
 
 #include <kernel/buf.h>
-#include <kernel/xv6fs.h>
+#include <kernel/vimixfs.h>
 
-struct xv6fs_sb_private;
+struct vimixfs_sb_private;
 struct super_block;
 
 struct log
@@ -48,7 +48,7 @@ struct log
 /// @param dev For log->dev
 /// @param sb Super block of the FS using this log
 /// @return 0 on success, negative error code on failure
-ssize_t log_init(struct log *log, dev_t dev, struct xv6fs_superblock *sb);
+ssize_t log_init(struct log *log, dev_t dev, struct vimixfs_superblock *sb);
 
 /// @brief Called at FS unmount
 /// @param log Log to deinitialize

@@ -2,7 +2,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <kernel/xv6fs.h>
+#include <kernel/vimixfs.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -11,15 +11,15 @@
 #include <string.h>
 #include <unistd.h>
 
-struct xv6fs_in_file
+struct vimixfs_in_file
 {
     int fd;
 
     // super block of opened file system:
-    struct xv6fs_superblock super_block;
+    struct vimixfs_superblock super_block;
 
     // log header of the opened file system:
-    struct xv6fs_log_header log_header;
+    struct vimixfs_log_header log_header;
 
     // to build a bitmap of used blocks and compare it to the bitmap of the fs
     // later:
@@ -38,7 +38,7 @@ struct xv6fs_in_file
 
 } g_fs_file;
 
-void read_block(struct xv6fs_in_file *file, size_t block_id, uint8_t *buffer)
+void read_block(struct vimixfs_in_file *file, size_t block_id, uint8_t *buffer)
 {
     off_t offset = lseek(file->fd, block_id * BLOCK_SIZE, SEEK_SET);
     if (offset < 0)
@@ -58,15 +58,15 @@ void read_block(struct xv6fs_in_file *file, size_t block_id, uint8_t *buffer)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wanalyzer-use-of-uninitialized-value"
-void mark_block_as_used(struct xv6fs_in_file *file, uint32_t addr)
+void mark_block_as_used(struct vimixfs_in_file *file, uint32_t addr)
 {
     if (file == NULL || file->bitmap == NULL) return;
 
     // the offset is 0 instead of bmapstart as the bitmap is the array g_bitmap
     // and not the in-file bitmap
-    size_t block = XV6FS_BMAP_BLOCK_OF_BIT(addr, 0);
+    size_t block = VIMIXFS_BMAP_BLOCK_OF_BIT(addr, 0);
     uint8_t *bitmap_block = file->bitmap + (BLOCK_SIZE * block);
-    int32_t local_addr = addr % XV6FS_BMAP_BITS_PER_BLOCK;
+    int32_t local_addr = addr % VIMIXFS_BMAP_BITS_PER_BLOCK;
 
     uint8_t bit_to_set = 1 << (local_addr % 8);
     local_addr = local_addr / 8;
@@ -80,11 +80,11 @@ void mark_block_as_used(struct xv6fs_in_file *file, uint32_t addr)
 }
 #pragma GCC diagnostic pop
 
-void print_fs_layout(struct xv6fs_in_file *file)
+void print_fs_layout(struct vimixfs_in_file *file)
 {
-    struct xv6fs_superblock *sb = &file->super_block;
-    size_t blocks_for_bitmap = XV6_BLOCKS_FOR_BITMAP(sb->size);
-    size_t blocks_for_inodes = (sb->ninodes / XV6FS_INODES_PER_BLOCK) + 1;
+    struct vimixfs_superblock *sb = &file->super_block;
+    size_t blocks_for_bitmap = VIMIXFS_BLOCKS_FOR_BITMAP(sb->size);
+    size_t blocks_for_inodes = (sb->ninodes / VIMIXFS_INODES_PER_BLOCK) + 1;
 
     printf("Blocks:\n");
     printf("[0]         = Reserved for boot loader\n");
@@ -93,7 +93,7 @@ void print_fs_layout(struct xv6fs_in_file *file)
     printf("[%d] - [%d]  = Log Entries\n", sb->logstart + 1,
            sb->logstart + sb->nlog - 1);
     printf("[%d] - [%zd] = Inodes (%zd inodes per block)\n", sb->inodestart,
-           sb->inodestart + blocks_for_inodes - 1, XV6FS_INODES_PER_BLOCK);
+           sb->inodestart + blocks_for_inodes - 1, VIMIXFS_INODES_PER_BLOCK);
     size_t bmap_end = sb->bmapstart + blocks_for_bitmap - 1;
     if (blocks_for_bitmap == 1)
     {
@@ -117,11 +117,11 @@ void print_fs_layout(struct xv6fs_in_file *file)
     }
 }
 
-void print_super_block_info(struct xv6fs_in_file *file)
+void print_super_block_info(struct vimixfs_in_file *file)
 {
-    struct xv6fs_superblock *sb = &file->super_block;
+    struct vimixfs_superblock *sb = &file->super_block;
     printf("Super Block\n");
-    printf("Magic: %x (expected: %x)\n", sb->magic, XV6FS_MAGIC);
+    printf("Magic: %x (expected: %x)\n", sb->magic, VIMIXFS_MAGIC);
     printf("Size:         %d\n", sb->size);
     printf("Data Blocks:  %d\n", sb->nblocks);
     printf("Max Inodes:   %d\n", sb->ninodes);
@@ -131,9 +131,9 @@ void print_super_block_info(struct xv6fs_in_file *file)
     printf("Bitmap Start: %d\n", sb->bmapstart);
 }
 
-void print_log_header(struct xv6fs_in_file *file)
+void print_log_header(struct vimixfs_in_file *file)
 {
-    struct xv6fs_log_header *log = &file->log_header;
+    struct vimixfs_log_header *log = &file->log_header;
     if (log->n == 0)
     {
         printf("Log clean\n");
@@ -147,13 +147,13 @@ void print_log_header(struct xv6fs_in_file *file)
     }
 }
 
-void check_dirents(struct xv6fs_in_file *file, uint32_t addr)
+void check_dirents(struct vimixfs_in_file *file, uint32_t addr)
 {
     uint8_t buf[BLOCK_SIZE];
     read_block(file, addr, buf);
-    struct xv6fs_dirent *dir = (struct xv6fs_dirent *)buf;
+    struct vimixfs_dirent *dir = (struct vimixfs_dirent *)buf;
 
-    size_t dirents_per_block = BLOCK_SIZE % sizeof(struct xv6fs_dirent);
+    size_t dirents_per_block = BLOCK_SIZE % sizeof(struct vimixfs_dirent);
     for (size_t i = 0; i < dirents_per_block; ++i)
     {
         size_t inum = dir[i].inum;
@@ -162,7 +162,7 @@ void check_dirents(struct xv6fs_in_file *file, uint32_t addr)
 }
 
 // returns 1 if the disk inode is in use, 0 otherwise
-int check_dinode(struct xv6fs_in_file *file, struct xv6fs_dinode *dinode,
+int check_dinode(struct vimixfs_in_file *file, struct vimixfs_dinode *dinode,
                  size_t inum, bool verbose)
 {
     if (file == NULL || file->inodes == NULL || dinode == NULL)
@@ -171,37 +171,37 @@ int check_dinode(struct xv6fs_in_file *file, struct xv6fs_dinode *dinode,
         exit(1);
     }
 
-    if (dinode->type == XV6_FT_UNUSED)
+    if (dinode->type == VIMIXFS_FT_UNUSED)
     {
         file->inodes[inum] = INODE_UNUSED;
         return 0;
     }
 
     if (verbose)
-        printf("%zd (block %zd, %zd) ", inum, (inum / XV6FS_INODES_PER_BLOCK),
-               inum % XV6FS_INODES_PER_BLOCK);
+        printf("%zd (block %zd, %zd) ", inum, (inum / VIMIXFS_INODES_PER_BLOCK),
+               inum % VIMIXFS_INODES_PER_BLOCK);
 
     switch (dinode->type)
     {
-        case XV6_FT_DIR:
+        case VIMIXFS_FT_DIR:
             if (verbose) printf("dir");
             break;
-        case XV6_FT_FILE:
+        case VIMIXFS_FT_FILE:
             if (verbose) printf("file");
             break;
-        case XV6_FT_CHAR_DEVICE:
+        case VIMIXFS_FT_CHAR_DEVICE:
             if (verbose) printf("c dev (%d,%d)", dinode->major, dinode->minor);
             break;
-        case XV6_FT_BLOCK_DEVICE:
+        case VIMIXFS_FT_BLOCK_DEVICE:
             if (verbose) printf("b dev (%d,%d)", dinode->major, dinode->minor);
             break;
         default: printf("UNKNOWN inode type %d\n", dinode->type); return 0;
     }
     file->inodes[inum] = file->inodes[inum] & INODE_DEFINE;
 
-    if (dinode->type == XV6_FT_DIR || dinode->type == XV6_FT_FILE)
+    if (dinode->type == VIMIXFS_FT_DIR || dinode->type == VIMIXFS_FT_FILE)
     {
-        for (size_t i = 0; i < XV6FS_N_DIRECT_BLOCKS; ++i)
+        for (size_t i = 0; i < VIMIXFS_N_DIRECT_BLOCKS; ++i)
         {
             if (dinode->addrs[i] != 0)
             {
@@ -210,16 +210,16 @@ int check_dinode(struct xv6fs_in_file *file, struct xv6fs_dinode *dinode,
                 if (verbose) printf(" [%d]", dinode->addrs[i]);
             }
         }
-        if (dinode->addrs[XV6FS_N_DIRECT_BLOCKS] != 0)
+        if (dinode->addrs[VIMIXFS_N_DIRECT_BLOCKS] != 0)
         {
-            mark_block_as_used(file, dinode->addrs[XV6FS_N_DIRECT_BLOCKS]);
+            mark_block_as_used(file, dinode->addrs[VIMIXFS_N_DIRECT_BLOCKS]);
             uint8_t *buffer = malloc(BLOCK_SIZE);
             if (buffer == NULL)
             {
                 printf("ERROR: out of memory\n");
                 exit(1);
             }
-            read_block(file, dinode->addrs[XV6FS_N_DIRECT_BLOCKS], buffer);
+            read_block(file, dinode->addrs[VIMIXFS_N_DIRECT_BLOCKS], buffer);
             uint32_t *addr = (uint32_t *)buffer;
             for (size_t i = 0; i < BLOCK_SIZE / sizeof(uint32_t); ++i)
             {
@@ -239,18 +239,19 @@ int check_dinode(struct xv6fs_in_file *file, struct xv6fs_dinode *dinode,
     return 1;
 }
 
-void check_inodes(struct xv6fs_in_file *file, bool verbose)
+void check_inodes(struct vimixfs_in_file *file, bool verbose)
 {
-    struct xv6fs_superblock *sb = &file->super_block;
+    struct vimixfs_superblock *sb = &file->super_block;
     uint8_t buffer[BLOCK_SIZE];
     size_t used = 0;
     ino_t inum = INVALID_INODE;
-    size_t inode_end = (sb->ninodes / XV6FS_INODES_PER_BLOCK) + sb->inodestart;
+    size_t inode_end =
+        (sb->ninodes / VIMIXFS_INODES_PER_BLOCK) + sb->inodestart;
     for (size_t block = sb->inodestart; block < inode_end; ++block)
     {
         read_block(file, block, buffer);
-        struct xv6fs_dinode *dinode = (struct xv6fs_dinode *)buffer;
-        for (size_t i = 0; i < XV6FS_INODES_PER_BLOCK; ++i)
+        struct vimixfs_dinode *dinode = (struct vimixfs_dinode *)buffer;
+        for (size_t i = 0; i < VIMIXFS_INODES_PER_BLOCK; ++i)
         {
             used += check_dinode(file, &dinode[i], inum, verbose);
             inum++;
@@ -303,10 +304,10 @@ size_t check_bitmap_block(uint8_t *bm_file, uint8_t *bm_calculated,
     return errors;
 }
 
-void check_bitmap(struct xv6fs_in_file *file)
+void check_bitmap(struct vimixfs_in_file *file)
 {
     uint8_t buffer[BLOCK_SIZE];
-    size_t blocks = XV6_BLOCKS_FOR_BITMAP(file->super_block.size);
+    size_t blocks = VIMIXFS_BLOCKS_FOR_BITMAP(file->super_block.size);
 
     file->bitmap_errors = 0;
     for (size_t i = 0; i < blocks; ++i)
@@ -314,7 +315,7 @@ void check_bitmap(struct xv6fs_in_file *file)
         read_block(file, i + file->super_block.bmapstart, buffer);
         file->bitmap_errors +=
             check_bitmap_block(buffer, file->bitmap + (BLOCK_SIZE * i),
-                               i * XV6FS_BMAP_BITS_PER_BLOCK);
+                               i * VIMIXFS_BMAP_BITS_PER_BLOCK);
     }
 
     printf("Bitmap check done, %zd errors\n", file->bitmap_errors);
@@ -322,14 +323,14 @@ void check_bitmap(struct xv6fs_in_file *file)
 
 int check_file_system(int fd, bool verbose)
 {
-    struct xv6fs_in_file file;
+    struct vimixfs_in_file file;
     file.fd = fd;
 
     uint8_t buffer[BLOCK_SIZE];
     read_block(&file, 1, buffer);
-    memcpy(&file.super_block, buffer, sizeof(struct xv6fs_superblock));
+    memcpy(&file.super_block, buffer, sizeof(struct vimixfs_superblock));
     file.bitmap =
-        malloc(BLOCK_SIZE * XV6_BLOCKS_FOR_BITMAP(file.super_block.size));
+        malloc(BLOCK_SIZE * VIMIXFS_BLOCKS_FOR_BITMAP(file.super_block.size));
     file.inodes = malloc(file.super_block.ninodes);
     if (file.inodes == NULL)
     {
@@ -345,7 +346,7 @@ int check_file_system(int fd, bool verbose)
     print_fs_layout(&file);
 
     read_block(&file, file.super_block.logstart, buffer);
-    memcpy(&file.log_header, buffer, sizeof(struct xv6fs_log_header));
+    memcpy(&file.log_header, buffer, sizeof(struct vimixfs_log_header));
 
     print_log_header(&file);
 
@@ -395,6 +396,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Could not open file %s\n", argv[1]);
         return 1;
     }
-    fprintf(stderr, "Usage: fsck.xv6fs fs.img\n");
+    fprintf(stderr, "Usage: fsck.vimixfs fs.img\n");
     return 1;
 }

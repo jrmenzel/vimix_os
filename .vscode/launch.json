@@ -85,7 +85,9 @@
             // when debuggign the usertests
             "name": "host: usertests",
             "program": "${workspaceRoot}/build_host/root/usr/bin/usertests",
-            "args": ["lseek_test"],
+            "args": [
+                "lseek_test"
+            ],
             "cwd": "${workspaceRoot}",
             "type": "cppdbg",
             "request": "launch",
@@ -115,7 +117,11 @@
             // debug a user space application on the host
             "name": "host: mkfs",
             "program": "${workspaceRoot}/build_host/root/usr/bin/mkfs",
-            "args": ["fs.img", "--in", "foo"],
+            "args": [
+                "fs.img",
+                "--in",
+                "foo"
+            ],
             "cwd": "${workspaceRoot}",
             "type": "cppdbg",
             "request": "launch",
@@ -143,9 +149,11 @@
         },
         {
             // debug a user space application on the host
-            "name": "host: fsck.xv6fs",
-            "program": "${workspaceRoot}/build_host/root/usr/bin/fsck.xv6fs",
-            "args": ["build/filesystem.img"],
+            "name": "host: fsck.vimixfs",
+            "program": "${workspaceRoot}/build_host/root/usr/bin/fsck.vimixfs",
+            "args": [
+                "build/filesystem.img"
+            ],
             "cwd": "${workspaceRoot}",
             "type": "cppdbg",
             "request": "launch",

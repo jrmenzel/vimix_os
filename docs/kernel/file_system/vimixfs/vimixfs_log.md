@@ -1,4 +1,4 @@
-# xv6 File System Log
+# VimixFS Log
 
 ## Motivation
 
@@ -22,15 +22,15 @@ All reads happen via `bio_read()` from the [Block IO Cache](block_io.md). But wr
 All blocks which are uncommitted in the log are also in the buffer cache, so reads will always get the updated version from the cache.
 
 
-## Log in xv6fs
+## Log in VimixFS
 
 The log from the motivation was keeping track of all block writes of one system call. If multiple threads want to access the file system in parallel, multiple system calls must be tracked in the log at once (the alternative is a global lock for file system transactions).
 
-System calls that can modify the [xv6fs file system](xv6fs.md) must call `log_begin_fs_transaction()` / `log_end_fs_transaction()` before/after all function calls that might modify the file system. These calls keep track of the number of active system calls to be tracked (`outstanding`). If there are already enough active calls to potentially fill up the log space, the thread waits in `log_begin_fs_transaction()` until the log is committed. It also waits if a commit is in process. `log_end_fs_transaction()` will also trigger a commit in case it was the last active syscall.
+System calls that can modify the [Vimix file system](vimixfs.md) must call `log_begin_fs_transaction()` / `log_end_fs_transaction()` before/after all function calls that might modify the file system. These calls keep track of the number of active system calls to be tracked (`outstanding`). If there are already enough active calls to potentially fill up the log space, the thread waits in `log_begin_fs_transaction()` until the log is committed. It also waits if a commit is in process. `log_end_fs_transaction()` will also trigger a commit in case it was the last active syscall.
 
 A commit is called when the log filled up or if no system calls are tracked anymore. It will write out all blocks from the log. While the log contains blocks from potentially multiple system calls, the process of writing the log first to a log area, then to the destination is the same as in the motivation above.
 
-If multiple xv6fs file systems are [mounted](../../syscalls/mount.md) at the same time, each will have its own log (it is tied to the log area on the block device!).
+If multiple VimixFS file systems are [mounted](../../syscalls/mount.md) at the same time, each will have its own log (it is tied to the log area on the block device!).
 
 
 ### Limitations
@@ -41,4 +41,4 @@ A [write](../../syscalls/write.md) system call can be split into multiple log tr
 ---
 **Overview:** [kernel](kernel.md) | [file_system](file_system.md)
 
-**File System:** [init_filesystem](init_filesystem.md) | [xv6fs](xv6fs.md) | [xv6fs_log](xv6fs_log.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)
+**File System:** [init_filesystem](init_filesystem.md) | [vimixfs](vimixfs.md) | [vimixfs_log](vimixfs_log.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)

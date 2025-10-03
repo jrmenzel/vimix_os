@@ -19,7 +19,7 @@ ssize_t mount(const char *source, const char *target,
 /// no inode to be mounted on. Also the source is a raw device number, no device
 /// inode.
 /// @param dev Device number of root file system.
-/// @param filesystemtype String with the file system type (e.g. "xv6fs").
+/// @param filesystemtype String with the file system type (e.g. "vimixfs").
 void mount_root(dev_t dev, const char *filesystemtype);
 
 /// @brief Helper for mount() and mount_root().

@@ -35,7 +35,7 @@ The sub-directory structure was inspired by Linux:
 - `drivers` ([devices](kernel/devices/devices.md)) drivers by category
 - `fs` ([file_system](kernel/file_system/file_system.md))
 	- `fs/devfs` virtual [devfs](kernel/file_system/devfs/devfs.md) file system exposing all [devices](kernel/devices/devices.md).
-	- `fs/xv6fs` [xv6fs](kernel/file_system/xv6fs/xv6fs.md) is a simple file system based on the one from xv6 (which was inspired by the UNIX 6 file system)
+	- `fs/vimixfs` [vimixfs](kernel/file_system/vimixfs/vimixfs.md) is a simple file system based on the one from xv6 (which was inspired by the UNIX 6 file system)
 - `include` kernel API for kernel code (e.g. drivers)
 	- [user space](userspace/userspace.md) kernel API: `usr/include/sys`
 - `init` ([init_overview](kernel/overview/init_overview.md)) boot and init of all subsystems
@@ -63,8 +63,8 @@ Tools for the development environment.
 [user space](userspace/userspace.md) applications and libs for VIMIX.
 - `usr/bin`: All default apps
 - `usr/bin/mkfs`:
-	- `mkfs`: The tool to create [xv6fs](kernel/file_system/xv6fs/xv6fs.md) file systems.
-	- `fsck.xv6fs`: A simple [xv6fs](kernel/file_system/xv6fs/xv6fs.md) file system checker.
+	- `mkfs`: The tool to create [vimixfs](kernel/file_system/vimixfs/vimixfs.md) file systems.
+	- `fsck.vimixfs`: A simple [vimixfs](kernel/file_system/vimixfs/vimixfs.md) file system checker.
 - `usr/bin/usertests`: The [usertests](userspace/tests/usertests.md) app.
 - `usr/include`: user space headers
 - `usr/include/sys`: user space [kernel](kernel/kernel.md) API
