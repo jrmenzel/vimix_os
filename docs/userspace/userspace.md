@@ -30,6 +30,7 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [rm](bin/rm.md) - remove files
 - [rmdir](bin/rmdir.md) - remove directories
 - [stat](bin/stat.md) - get file status
+- [statvfs](bin/statvfs.md) - get [file system](../kernel/file_system/file_system.md) statistics
 
 **Misc:**
 - [cat](bin/cat.md) - concatenate input files and print them

@@ -64,3 +64,5 @@ entry("rmdir");
 entry("mount");
 entry("umount");
 entry("ioctl");
+entry("statvfs");
+entry("fstatvfs");

@@ -7,6 +7,7 @@
 struct super_block;
 struct inode;
 struct file;
+struct statvfs;
 
 struct super_operations
 {
@@ -15,6 +16,8 @@ struct super_operations
     struct inode *(*alloc_inode)(struct super_block *sb, mode_t mode);
 
     int (*write_inode)(struct inode *ip);
+
+    ssize_t (*statvfs)(struct super_block *sb, struct statvfs *to_fill);
 };
 
 /// @brief Get root inode of file system. Not locked.

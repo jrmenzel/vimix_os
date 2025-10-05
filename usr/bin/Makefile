@@ -39,6 +39,7 @@ UPROGS_NAME_BOTH := cat\
 	sh\
 	sleep\
 	stat\
+	statvfs\
 	time\
 	wc\
 	which\

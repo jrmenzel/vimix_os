@@ -12,6 +12,7 @@
 #include <kernel/file.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
+#include <kernel/statvfs.h>
 #include <kernel/string.h>
 #include <kernel/vimixfs.h>
 #include <lib/minmax.h>
@@ -46,7 +47,8 @@ const char *VIMIXFS_FS_NAME = "vimixfs";
 struct super_operations vimixfs_s_op = {
     iget_root : vimixfs_sops_iget_root,
     alloc_inode : vimixfs_sops_alloc_inode,
-    write_inode : vimixfs_sops_write_inode
+    write_inode : vimixfs_sops_write_inode,
+    statvfs : vimix_sops_statvfs
 };
 
 // inode operations
@@ -378,6 +380,62 @@ int vimixfs_sops_write_inode(struct inode *ip)
     return 0;
 }
 
+ssize_t vimix_sops_statvfs(struct super_block *sb, struct statvfs *to_fill)
+{
+    DEBUG_EXTRA_PANIC(sb != NULL && to_fill != NULL,
+                      "vimix_sops_statvfs: NULL pointers given");
+
+    struct vimixfs_sb_private *priv =
+        (struct vimixfs_sb_private *)sb->s_fs_info;
+    struct vimixfs_superblock *vsb = &(priv->sb);
+
+    to_fill->f_bsize = BLOCK_SIZE;
+    to_fill->f_frsize = BLOCK_SIZE;
+    to_fill->f_blocks = vsb->size;  // total data blocks in file system
+    // count free blocks
+    uint32_t free_blocks = 0;
+    for (uint32_t b = 0; b < vsb->size; b += VIMIXFS_BMAP_BITS_PER_BLOCK)
+    {
+        struct buf *bp =
+            bio_read(sb->dev, VIMIXFS_BMAP_BLOCK_OF_BIT(b, vsb->bmapstart));
+        for (uint32_t bi = 0;
+             bi < VIMIXFS_BMAP_BITS_PER_BLOCK && b + bi < vsb->size; bi++)
+        {
+            uint32_t m = 1 << (bi % 8);
+            if ((bp->data[bi / 8] & m) == 0)
+            {  // Is block free?
+                free_blocks++;
+            }
+        }
+        bio_release(bp);
+    }
+    to_fill->f_bfree = free_blocks;   // free blocks in fs
+    to_fill->f_bavail = free_blocks;  // free blocks for unprivileged users
+    to_fill->f_files = vsb->ninodes;  // total file nodes in file system
+    // count free inodes
+    uint32_t free_inodes = 0;
+    for (ino_t inum = 1; inum < vsb->ninodes; inum++)
+    {
+        struct buf *bp = bio_read(sb->dev, VIMIXFS_BLOCK_OF_INODE_P(inum, vsb));
+        struct vimixfs_dinode *dip =
+            (struct vimixfs_dinode *)bp->data + inum % VIMIXFS_INODES_PER_BLOCK;
+
+        if (dip->mode == VIMIXFS_INVALID_MODE)
+        {
+            // a free inode
+            free_inodes++;
+        }
+        bio_release(bp);
+    }
+    to_fill->f_ffree = free_inodes;   // free file nodes in fs
+    to_fill->f_favail = free_inodes;  // free file nodes for unprivileged users
+    to_fill->f_fsid = sb->dev;        // file system id
+    to_fill->f_flag = sb->s_mountflags;  // mount flags
+    to_fill->f_namemax = NAME_MAX;       // maximum filename length
+
+    return 0;
+}
+
 void vimixfs_iops_read_in(struct inode *ip)
 {
     struct vimixfs_superblock *xsb =
@@ -636,8 +694,8 @@ void vimixfs_iops_put(struct inode *ip)
     inode_del(ip);  // removes from inode list -> can't get discovered anymore
     rwspin_write_unlock(list_lock);
 
-    // If the inode has no links and no other references: truncate and free on
-    // disk.
+    // If the inode has no links and no other references: truncate and free
+    // on disk.
     if (ip->valid && ip->nlink == 0)
     {
         struct process *proc = get_current();

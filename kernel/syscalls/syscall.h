@@ -99,6 +99,17 @@ ssize_t sys_get_dirent();
 ssize_t sys_lseek();
 
 // ********************************************************
+// System information and control from sys_filesystem.c
+//
+
+/// @brief Syscall "int statvfs(const char *path, struct statvfs *buf);" from
+/// statvfs.h
+ssize_t sys_statvfs();
+
+/// @brief Syscall "int fstatvfs(int fd, struct statvfs *buf);" from statvfs.h
+ssize_t sys_fstatvfs();
+
+// ********************************************************
 // System information and control from sys_system.c
 //
 

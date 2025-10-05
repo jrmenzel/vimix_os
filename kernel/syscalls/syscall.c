@@ -158,6 +158,8 @@ static ssize_t (*syscalls[])() = {
     [SYS_mount] sys_mount,
     [SYS_umount] sys_umount,
     [SYS_ioctl] sys_ioctl,
+    [SYS_statvfs] sys_statvfs,
+    [SYS_fstatvfs] sys_fstatvfs
 };
 // clang-format on
 
@@ -219,6 +221,9 @@ static const char *g_syscall_names[] = {
     [SYS_rmdir] "rmdir",
     [SYS_mount] "sys_mount",
     [SYS_umount] "sys_umount",
+    [SYS_ioctl] "ioctl",
+    [SYS_statvfs] "statvfs",
+    [SYS_fstatvfs] "fstatvfs"
 };
 // clang-format on
 

@@ -62,6 +62,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	mm/vm.o \
 	syscalls/sys_device.o \
 	syscalls/sys_file.o \
+	syscalls/sys_filesystem.o \
 	syscalls/sys_ipc.o \
 	syscalls/sys_system.o \
 	syscalls/sys_process.o \

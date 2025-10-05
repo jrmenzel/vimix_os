@@ -5,6 +5,7 @@
 #include <fs/vfs.h>
 #include <fs/vimixfs/vimixfs.h>
 #include <kernel/errno.h>
+#include <kernel/statvfs.h>
 #include <kernel/string.h>
 
 struct file_system_type *g_file_systems;
@@ -58,6 +59,27 @@ struct inode *sops_alloc_inode_default_ro(struct super_block *sb, mode_t mode)
 }
 
 int sops_write_inode_default_ro(struct inode *ip) { return 0; }
+
+ssize_t sops_statvfs_default(struct super_block *sb, struct statvfs *to_fill)
+{
+    DEBUG_EXTRA_PANIC(sb != NULL && to_fill != NULL,
+                      "sops_statvfs_default: NULL pointers given");
+
+    // dummy values
+    to_fill->f_bsize = BLOCK_SIZE;
+    to_fill->f_frsize = BLOCK_SIZE;
+    to_fill->f_blocks = 0;
+    to_fill->f_bfree = 0;
+    to_fill->f_bavail = 0;
+    to_fill->f_files = 0;
+    to_fill->f_ffree = 0;
+    to_fill->f_favail = 0;
+    to_fill->f_fsid = sb->dev;
+    to_fill->f_flag = sb->s_mountflags;
+    to_fill->f_namemax = NAME_MAX;
+
+    return 0;
+}
 
 struct inode *iops_create_default_ro(struct inode *iparent, char name[NAME_MAX],
                                      mode_t mode, int32_t flags, dev_t device)

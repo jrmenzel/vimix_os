@@ -31,6 +31,8 @@
 #define SYS_mount 27
 #define SYS_umount 28
 #define SYS_ioctl 29
+#define SYS_statvfs 30
+#define SYS_fstatvfs 31
 
 #define SEEK_SET 0  //< Seek from beginning of file
 #define SEEK_CUR 1  //< Seek from current position

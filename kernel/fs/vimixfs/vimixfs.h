@@ -25,6 +25,12 @@ struct inode *vimixfs_sops_alloc_inode(struct super_block *sb, mode_t mode);
 /// Caller must hold ip->lock.
 int vimixfs_sops_write_inode(struct inode *ip);
 
+/// @brief Exposes file system statistics.
+/// @param sb Super block of VIMIX FS file system.
+/// @param to_fill Pointer to an allocated buffer to fill.
+/// @return 0 on success, -ERRNO on failure.
+ssize_t vimix_sops_statvfs(struct super_block *sb, struct statvfs *to_fill);
+
 /// @brief Opens the inode inside of directory iparent with the given name or
 /// creates one if none existed.
 /// @param iparent Parent directory inode, unlocked

@@ -38,6 +38,7 @@ See also: [calling_syscall](calling_syscall.md).
 - [mount](mount.md) - mount [file_system](../file_system/file_system.md)
 - [umount](umount.md) - unmount file system
 - [uptime](uptime.md) - returns how log the system is running
+- [statvfs](../../userspace/bin/statvfs.md) - get file system statistics
 
 **Communication**
 - [pipe](pipe.md)

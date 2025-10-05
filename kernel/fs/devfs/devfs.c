@@ -43,6 +43,7 @@ struct super_operations devfs_s_op = {
     iget_root : devfs_sops_iget_root,
     alloc_inode : sops_alloc_inode_default_ro,
     write_inode : sops_write_inode_default_ro,
+    statvfs : sops_statvfs_default
 };
 
 struct inode *devfs_iops_open(struct inode *iparent, char name[NAME_MAX],
