@@ -226,7 +226,7 @@ static void commit(struct log *log)
 void log_write(struct log *log, struct buf *b)
 {
     spin_lock(&log->lock);
-    if (log->lh_n >= log->size - 1)
+    if (log->lh_n >= log->size)
     {
         panic("too big a transaction");
     }
