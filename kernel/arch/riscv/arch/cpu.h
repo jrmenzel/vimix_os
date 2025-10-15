@@ -28,19 +28,16 @@ static inline size_t __arch_smp_processor_id()
 static inline void cpu_set_interrupt_mask()
 {
     // enable external, timer, software interrupts
-    rv_write_csr_sie(rv_read_csr_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
+    rv_set_csr_sie(SIE_SEIE | SIE_STIE | SIE_SSIE);
 }
 
 /// enable device interrupts
-static inline void cpu_enable_interrupts()
-{
-    rv_write_csr_sstatus(rv_read_csr_sstatus() | SSTATUS_SIE);
-}
+static inline void cpu_enable_interrupts() { rv_set_csr_sstatus(SSTATUS_SIE); }
 
 /// disable device interrupts
 static inline void cpu_disable_interrupts()
 {
-    rv_write_csr_sstatus(rv_read_csr_sstatus() & ~SSTATUS_SIE);
+    rv_clear_csr_sstatus(SSTATUS_SIE);
 }
 
 /// are device interrupts enabled?

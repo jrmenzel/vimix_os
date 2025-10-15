@@ -32,20 +32,20 @@ extern void _entry_s_mode();
 /// enable machine mode interrupts by setting bit MSTATUS_MIE in mstatus
 static inline void cpu_enable_m_mode_interrupts()
 {
-    rv_write_csr_mstatus(rv_read_csr_mstatus() | MSTATUS_MIE | MSTATUS_MPIE);
-    rv_write_csr_mie(rv_read_csr_mie() | MIE_MSIE);
+    rv_set_csr_mstatus(MSTATUS_MIE | MSTATUS_MPIE);
+    rv_set_csr_mie(MIE_MSIE);
 }
 
 /// enable machine mode timer interrupts
 static inline void cpu_enable_m_mode_timer_interrupt()
 {
-    rv_write_csr_mie(rv_read_csr_mie() | MIE_MTIE);
+    rv_set_csr_mie(MIE_MTIE);
 }
 
 /// disable machine mode timer interrupts
 static inline void cpu_disable_m_mode_timer_interrupt()
 {
-    rv_write_csr_mie(rv_read_csr_mie() & ~MIE_MTIE);
+    rv_clear_csr_mie(MIE_MTIE);
 }
 
 /// Set the Machine-mode trap vector (interrupt handler) function
@@ -93,20 +93,20 @@ void m_mode_start(size_t hart_id)
     rv_write_csr_pmpcfg0(PMP_R | PMP_W | PMP_X | PMP_MATCH_NAPOT);
 
     // allow supervisor to use stimecmp and time.
-    rv_write_csr_mcounteren(rv_read_csr_mcounteren() | 2);
+    rv_set_csr_mcounteren(2);
 
 #if defined(__RISCV_EXT_SSTC)
     // enable the sstc extension (i.e. csr stimecmp)
     // the menvcfg csr is 64 bit (even on 32 bit systems)
     // enable sstc by setting bit 63
 #if defined(__ARCH_32BIT)
-    rv_write_csr_menvcfgh(rv_read_csr_menvcfgh() | HIGHEST_BIT);
+    rv_set_csr_menvcfgh(HIGHEST_BIT);
 #else
-    rv_write_csr_menvcfg(rv_read_csr_menvcfg() | HIGHEST_BIT);
+    rv_set_csr_menvcfg(HIGHEST_BIT);
 #endif
 
     // enable supervisor-mode timer interrupts.
-    rv_write_csr_mie(rv_read_csr_mie() | MIE_STIE);
+    rv_set_csr_mie(MIE_STIE);
 #endif  // __RISCV_EXT_SSTC
 
     // set interrupt handler and enable interrupts
@@ -343,7 +343,7 @@ void m_mode_interrupt_handler(xlen_t *stack)
 
         // arrange for a supervisor software interrupt
         // after this handler returns so S Mode gets a timer interrupt
-        rv_write_csr_sip(rv_read_csr_sip() | SIP_SSIP);
+        rv_set_csr_sip(SIP_SSIP);
     }
     else if (mcause == MCAUSE_MACHINE_SOFTWARE)
     {
@@ -359,7 +359,7 @@ void m_mode_interrupt_handler(xlen_t *stack)
         {
             // arrange for a supervisor software interrupt
             // after this handler returns so S Mode gets an IPI
-            rv_write_csr_sip(rv_read_csr_sip() | SIP_SSIP);
+            rv_set_csr_sip(SIP_SSIP);
         }
     }
     else if (mcause == MCAUSE_ILLEGAL_INSTRUCTION)

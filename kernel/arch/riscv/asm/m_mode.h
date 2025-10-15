@@ -68,6 +68,8 @@ rv_write_csr_(pmpcfg0);
 
 rv_read_csr_(mstatus);
 rv_write_csr_(mstatus);
+rv_set_csr_(mstatus);
+rv_clear_csr_(mstatus);
 
 // machine exception program counter, holds the
 // instruction address to which a return from
@@ -83,6 +85,8 @@ rv_write_csr_(mcause);
 
 rv_read_csr_(mie);  // machine-mode Interrupt Enable
 rv_write_csr_(mie);
+rv_set_csr_(mie);
+rv_clear_csr_(mie);
 
 // Machine Exception Delegation
 rv_read_csr_(medeleg);
@@ -116,6 +120,8 @@ rv_write_csr_(mtvec);
 // Machine-mode Counter-Enable
 rv_read_csr_(mcounteren);
 rv_write_csr_(mcounteren);
+rv_set_csr_(mcounteren);
+rv_clear_csr_(mcounteren);
 
 // physical memory protection: register 0 is the range END, register 1 is the
 // start
@@ -125,9 +131,13 @@ rv_write_csr_(pmpaddr1);
 // environment config register
 rv_read_csr_(menvcfg);
 rv_write_csr_(menvcfg);
+rv_set_csr_(menvcfg);
+rv_clear_csr_(menvcfg);
 #if (__riscv_xlen == 32)
 rv_read_csr_(menvcfgh);
 rv_write_csr_(menvcfgh);
+rv_set_csr_(menvcfgh);
+rv_clear_csr_(menvcfgh);
 #endif
 
 #endif  // __ASSEMBLY__

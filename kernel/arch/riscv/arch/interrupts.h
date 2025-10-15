@@ -108,14 +108,8 @@ static inline size_t int_ctx_get_exception_pc(struct Interrupt_Context *ctx)
 
 /// @brief acknowledge the software interrupt by clearing
 /// the S-Mode Timer Interrupt bit in sip
-static inline void int_acknowledge_timer()
-{
-    rv_write_csr_sip(rv_read_csr_sip() & ~SIP_STIP);
-}
+static inline void int_acknowledge_timer() { rv_clear_csr_sip(SIP_STIP); }
 
 /// @brief acknowledge the software interrupt by clearing
 /// the S-Mode Software Interrupt bit in sip
-static inline void int_acknowledge_software()
-{
-    rv_write_csr_sip(rv_read_csr_sip() & ~SIP_SSIP);
-}
+static inline void int_acknowledge_software() { rv_clear_csr_sip(SIP_SSIP); }

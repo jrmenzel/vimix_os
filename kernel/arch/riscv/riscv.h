@@ -60,32 +60,76 @@ typedef size_t xlen_t;
 
 #ifndef __ASSEMBLY__
 
-// CSR read macro:
-#define rv_read_csr_(name)                         \
-    static inline xlen_t rv_read_csr_##name()      \
-    {                                              \
-        xlen_t x;                                  \
-        asm volatile("csrr %0, " #name : "=r"(x)); \
-        return x;                                  \
+// read CSR:
+#define rv_read_csr_(name)                                      \
+    static inline xlen_t rv_read_csr_##name()                   \
+    {                                                           \
+        xlen_t x;                                               \
+        asm volatile("csrr %0, " #name : "=r"(x) : : "memory"); \
+        return x;                                               \
     }
 
-// CSR write macro:
-#define rv_write_csr_(name)                            \
-    static inline void rv_write_csr_##name(xlen_t x)   \
-    {                                                  \
-        asm volatile("csrw " #name ", %0" : : "r"(x)); \
+// write CSR:
+#define rv_write_csr_(name)                                       \
+    static inline void rv_write_csr_##name(xlen_t x)              \
+    {                                                             \
+        asm volatile("csrw " #name ", %0" : : "r"(x) : "memory"); \
+    }
+
+// set bits in CSR:
+#define rv_set_csr_(name)                                          \
+    static inline void rv_set_csr_##name(xlen_t x)                 \
+    {                                                              \
+        asm volatile("csrs " #name ", %0" : : "rK"(x) : "memory"); \
+    }
+
+// read old CSR value and set bits:
+#define rv_read_set_csr_(name)                               \
+    static inline xlen_t rv_read_set_csr_##name(xlen_t flag) \
+    {                                                        \
+        xlen_t x;                                            \
+        asm volatile("csrrs %0, " #name ", %1"               \
+                     : "=r"(x)                               \
+                     : "rK"(flag)                            \
+                     : "memory");                            \
+        return x;                                            \
+    }
+
+// clear bits in CSR:
+#define rv_clear_csr_(name)                                        \
+    static inline void rv_clear_csr_##name(xlen_t x)               \
+    {                                                              \
+        asm volatile("csrc " #name ", %0" : : "rK"(x) : "memory"); \
+    }
+
+// read old CSR value and clear bits:
+#define rv_read_clear_csr_(name)                               \
+    static inline xlen_t rv_read_clear_csr_##name(xlen_t flag) \
+    {                                                          \
+        xlen_t x;                                              \
+        asm volatile("csrrc %0, " #name ", %1"                 \
+                     : "=r"(x)                                 \
+                     : "rK"(flag)                              \
+                     : "memory");                              \
+        return x;                                              \
     }
 
 //
 // supervisor mode (OS mode)
 rv_read_csr_(sstatus);
 rv_write_csr_(sstatus);
+rv_set_csr_(sstatus);
+rv_clear_csr_(sstatus);
 
 rv_read_csr_(sip);  // Supervisor Interrupt Pending
 rv_write_csr_(sip);
+rv_set_csr_(sip);
+rv_clear_csr_(sip);
 
 rv_read_csr_(sie);  // Supervisor Interrupt Enable
 rv_write_csr_(sie);
+rv_set_csr_(sie);
+rv_clear_csr_(sie);
 
 // supervisor exception program counter, holds the
 // instruction address to which a return from
