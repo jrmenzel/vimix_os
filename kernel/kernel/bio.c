@@ -22,9 +22,9 @@ void bio_init()
 
     g_buf_cache.num_buffers = 0;
     g_buf_cache.free_buffers = 0;
-    g_buf_cache.max_free_buffers = MAX_OP_BLOCKS;
-    spin_lock(&g_buf_cache.lock);  // the setter tests for the lock
-    bio_cache_set_min_buffers(&g_buf_cache, MAX_OP_BLOCKS);
+    g_buf_cache.max_free_buffers = 16;  // arbitrary default
+    spin_lock(&g_buf_cache.lock);       // the setter tests for the lock
+    bio_cache_set_min_buffers(&g_buf_cache, 16);  // arbitrary default
     spin_unlock(&g_buf_cache.lock);
 }
 
@@ -32,7 +32,8 @@ void bio_init()
 /// If the block was cached, increase the ref count and return.
 /// If not found, allocate a buffer.
 /// In either case, return a locked buffer.
-static struct buf *bio_get_from_cache(dev_t dev, uint32_t blockno)
+/// Buffer content is not zeroed.
+struct buf *bio_get_from_cache(dev_t dev, uint32_t blockno)
 {
     spin_lock(&g_buf_cache.lock);
 

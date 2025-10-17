@@ -1,8 +1,8 @@
-# FSInfo
+# FSBench
 
-Prints info on [mounted](../../kernel/syscalls/mount.md) [file systems](../../kernel/file_system/file_system.md). Queries these from [sysfs](../../kernel/file_system/sysfs/sysfs.md).
+A simple [file system](../../kernel/file_system/file_system.md) benchmark used during development.
 
-> fsinfo
+> fsbench
 
 
 ---

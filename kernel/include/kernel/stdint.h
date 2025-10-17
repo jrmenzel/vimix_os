@@ -8,20 +8,22 @@
 typedef unsigned char       uint8_t;
 typedef unsigned short      uint16_t;
 typedef unsigned int        uint32_t;
-typedef unsigned long long  uint64_t;
 
 typedef          char       int8_t;
 typedef          short      int16_t;
 typedef          int        int32_t;
-typedef          long long  int64_t;
 
 
 #if defined(__ARCH_32BIT)
-typedef unsigned int  size_t;
+typedef unsigned int size_t;
 typedef          int ssize_t;
+typedef unsigned long long int uint64_t;
+typedef   signed long long int int64_t;
 #else
-typedef unsigned long int  size_t;
+typedef unsigned long int size_t;
 typedef          long int ssize_t;
+typedef unsigned long int uint64_t;
+typedef   signed long int int64_t;
 #endif
 // clang-format on
 

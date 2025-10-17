@@ -16,7 +16,7 @@ size_t get_from_sysfs(const char *path)
     {
         fprintf(stderr, "open of %s failed: %s (%d)\n", path, strerror(errno),
                 errno);
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 
     const size_t BUF_SIZE = 128;
@@ -26,7 +26,7 @@ size_t get_from_sysfs(const char *path)
         fprintf(stderr, "read of %s failed: %s (%d)\n", path, strerror(errno),
                 errno);
         close(fd);
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
     close(fd);
     buf[BUF_SIZE - 1] = 0;  // ensure 0-termination

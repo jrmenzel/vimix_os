@@ -25,6 +25,7 @@ See also: [calling_syscall](calling_syscall.md).
 - [read](read.md) - read from file
 - [write](write.md) - write to file
 - [lseek](lseek.md) - get / set file read position
+- [truncate](truncate.md) - Change file size.
 - [dup](dup.md) - duplicate file handle
 - [link](link.md) - create hard link
 - [unlink](unlink.md) - remove a hard link, also used to delete files
@@ -44,7 +45,7 @@ See also: [calling_syscall](calling_syscall.md).
 - [pipe](pipe.md)
 
 **Misc**
-- [get_time](get_time.md) - UNIX time
+- [clock_gettime](clock_gettime.md) - UNIX time
 
 
 ---

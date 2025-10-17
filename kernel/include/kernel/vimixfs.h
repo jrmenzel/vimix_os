@@ -15,14 +15,20 @@
 #define VIMIXFS_MAGIC 0x10203042
 
 /// Number of blocks a file points to directly
-#define VIMIXFS_N_DIRECT_BLOCKS 21
+#define VIMIXFS_N_DIRECT_BLOCKS 20
+#define VIMIXFS_INDIRECT_BLOCK_IDX (VIMIXFS_N_DIRECT_BLOCKS)
+#define VIMIXFS_DOUBLE_INDIRECT_BLOCK_IDX (VIMIXFS_N_DIRECT_BLOCKS + 1)
 
 /// Number of blocks a file points to indirectly
 #define VIMIXFS_N_INDIRECT_BLOCKS (BLOCK_SIZE / sizeof(uint32_t))
 
 /// Max file size in blocks (== kb)
-#define VIMIXFS_MAX_FILE_SIZE_BLOCKS \
-    (VIMIXFS_N_DIRECT_BLOCKS + VIMIXFS_N_INDIRECT_BLOCKS)
+#define VIMIXFS_MAX_FILE_SIZE_BLOCKS                       \
+    (VIMIXFS_N_DIRECT_BLOCKS + VIMIXFS_N_INDIRECT_BLOCKS + \
+     VIMIXFS_N_INDIRECT_BLOCKS * VIMIXFS_N_INDIRECT_BLOCKS)
+
+// #define VIMIXFS_MAX_FILE_SIZE_BLOCKS
+//     (VIMIXFS_N_DIRECT_BLOCKS + VIMIXFS_N_INDIRECT_BLOCKS)
 
 // dublicate for mkfs
 #ifndef BLOCK_SIZE
@@ -41,7 +47,7 @@
     ((i) / VIMIXFS_INODES_PER_BLOCK + (sb)->inodestart)
 
 /// Max file name length (without the NULL-terminator)
-#define VIMIXFS_NAME_MAX 14
+#define VIMIXFS_NAME_MAX 60
 
 /// Mark unused inodes with mode 0
 #define VIMIXFS_INVALID_MODE (0)
@@ -99,10 +105,11 @@ struct vimixfs_dinode
     uint32_t size;   ///< Size of file (bytes)
     v_uid_t uid;     ///< User ID of owner
     v_gid_t gid;     ///< Group ID of owner
-    v_time_t ctime;  ///< Creation time
-    v_time_t mtime;  ///< Last modification time
-    // 40 bytes so far
-    uint32_t addrs[VIMIXFS_N_DIRECT_BLOCKS + 1];  ///< Data block addresses
+    v_time_t ctime;  ///< Change time (inode metadata change time)
+    v_time_t mtime;  ///< Last modification time (content change time)
+
+    ///< Data block addresses plus one indirect and one double indirect block
+    uint32_t addrs[VIMIXFS_N_DIRECT_BLOCKS + 2];
 };
 _Static_assert((BLOCK_SIZE % sizeof(struct vimixfs_dinode)) == 0,
                "Size of one block (1024 bytes) must be a multiple of the size "
@@ -112,7 +119,7 @@ _Static_assert((BLOCK_SIZE % sizeof(struct vimixfs_dinode)) == 0,
 /// structures.
 struct vimixfs_dirent
 {
-    uint16_t inum;
+    uint32_t inum;
     char name[VIMIXFS_NAME_MAX];
 };
 _Static_assert((BLOCK_SIZE % sizeof(struct vimixfs_dirent)) == 0,

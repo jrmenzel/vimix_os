@@ -1,17 +1,22 @@
-# Syscall read
+# Syscall truncate
 
 ## User Mode
 
 ```C
 #include <unistd.h>
-ssize_t read(int fd, void *buffer, size_t n);
+int32_t truncate(const char *path, off_t length);
+
+int32_t ftruncate(int fd, off_t length);
 ```
 
-Read `n` chars from a [file](../file_system/file.md) to `buffer`.
+Truncates a [file](../file_system/file.md) to the given length. If the file was smaller, it gets filled with zeroes, if it was larger, the extra content gets discarded.
+
+
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_()`. 
+Implemented in `sys_file.c` as `sys_truncate()`. 
+
 
 ## See also
 

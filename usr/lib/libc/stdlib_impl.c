@@ -33,16 +33,12 @@ long sysconf(int name)
     return -1;
 }
 
-/// @brief Syscall for time().
-/// @param tloc Where to store the returned time. the time is not returned
-/// because it needs to be 64-bit on 32-bit systems as well.
-/// @return -1 on error
-ssize_t get_time(time_t *tloc);
-
 time_t time(time_t *tloc)
 {
-    time_t time;
-    get_time(&time);
+    struct timespec time_spec;
+    clock_gettime(CLOCK_REALTIME, &time_spec);
+    time_t time = time_spec.tv_sec;
+
     if (tloc != NULL)
     {
         *tloc = time;

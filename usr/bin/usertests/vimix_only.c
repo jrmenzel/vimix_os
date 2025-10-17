@@ -4,6 +4,7 @@
 
 #include <dirent.h>
 #include <mm/mm.h>  // for USER_VA_END
+#include <sys/statvfs.h>
 #include <vimixutils/sysfs.h>
 
 //
@@ -85,7 +86,7 @@ static inline void let_init_free_children(size_t expected_proc_count)
 void prepare_test_environment()
 {
     // make memory usage more predictable
-    set_sysfs("/sys/kmem/bio/min", 30);
+    set_sysfs("/sys/kmem/bio/min", 40);
     set_sysfs("/sys/kmem/bio/max_free", 0);
 }
 
@@ -138,7 +139,7 @@ int countfree_sbrk()
             }
         }
 
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     close(fds[1]);
@@ -219,6 +220,7 @@ void copyin(char *s)
             exit(1);
         }
         ssize_t n = write(fd, (void *)addr, 8192);
+        assert_errno(EFAULT);
         if (n >= 0)
         {
             printf("write(fd, %p, 8192) returned %zd, not -1\n", addr, n);
@@ -499,11 +501,11 @@ void rwsbrk(char *s)
     }
     close(fd);
 
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 // test O_TRUNC.
-void truncate1(char *s)
+void trunc_file1(char *s)
 {
     char buf[32];
 
@@ -581,7 +583,7 @@ void truncate1(char *s)
 // this causes a write at an offset beyond the end of the file.
 // such writes fail on VIMIX (unlike POSIX) but at least
 // they don't crash.
-void truncate2(char *s)
+void trunc_file2(char *s)
 {
     unlink("truncfile");
 
@@ -602,7 +604,7 @@ void truncate2(char *s)
     close(fd2);
 }
 
-void truncate3(char *s)
+void trunc_file3(char *s)
 {
     close(open("truncfile", O_CREATE | O_TRUNC | O_WRONLY, 0755));
 
@@ -640,7 +642,7 @@ void truncate3(char *s)
             read(fd, buf, sizeof(buf));
             close(fd);
         }
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     for (size_t i = 0; i < 150; i++)
@@ -718,7 +720,7 @@ void exitiputtest(char *s)
             printf("%s: rmdir ../iputdir failed\n", s);
             exit(1);
         }
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     int32_t xstatus;
@@ -759,7 +761,7 @@ void openiputtest(char *s)
             printf("%s: open directory for write succeeded\n", s);
             exit(1);
         }
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     usleep(SHORT_SLEEP_MS * 1000);
     if (rmdir("oidir") != 0)
@@ -839,22 +841,18 @@ void writetest(char *s)
     }
 }
 
-void writebig(char *s)
+// expects an open fd for writing
+int writebig_internal(char *s, int fd, size_t file_size_blocks)
 {
-    int fd = open("big", O_CREATE | O_RDWR, 0755);
-    if (fd < 0)
+    for (size_t i = 0; i < file_size_blocks; i++)
     {
-        printf("%s: error: creat big failed!\n", s);
-        exit(1);
-    }
-
-    for (size_t i = 0; i < VIMIXFS_MAX_FILE_SIZE_BLOCKS; i++)
-    {
-        ((int *)buf)[0] = i;
+        ((size_t *)buf)[0] = i;
         if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
         {
-            printf("%s: error: write big file failed in loop %zd\n", s, i);
-            exit(1);
+            printf("%s: error: write() failed in loop %zd\n", s, i);
+            printf("%s: error: wrote %zdkb of %zdkb\n", s,
+                   i * BLOCK_SIZE / 1024, file_size_blocks * BLOCK_SIZE / 1024);
+            return 1;
         }
     }
 
@@ -864,7 +862,7 @@ void writebig(char *s)
     if (fd < 0)
     {
         printf("%s: error: open big failed!\n", s);
-        exit(1);
+        return 1;
     }
 
     size_t blocks_read = 0;
@@ -873,30 +871,71 @@ void writebig(char *s)
         ssize_t i = read(fd, buf, BLOCK_SIZE);
         if (i == 0)
         {
-            if (blocks_read != VIMIXFS_MAX_FILE_SIZE_BLOCKS)
+            if (blocks_read != file_size_blocks)
             {
                 printf("%s: read only %zd blocks from big", s, blocks_read);
-                exit(1);
+                return 1;
             }
             break;
         }
         else if (i != BLOCK_SIZE)
         {
             printf("%s: read failed %zd\n", s, i);
-            exit(1);
+            return 1;
         }
-        if (((int *)buf)[0] != blocks_read)
+        if (((size_t *)buf)[0] != blocks_read)
         {
-            printf("%s: read content of block %zd is %d\n", s, blocks_read,
-                   ((int *)buf)[0]);
-            exit(1);
+            printf("%s: read content of block %zd is %zd\n", s, blocks_read,
+                   ((size_t *)buf)[0]);
+            return 1;
         }
         blocks_read++;
     }
+
+    return 0;
+}
+
+void writebig(char *s)
+{
+    struct statvfs vfs;
+    if (statvfs(".", &vfs) < 0)
+    {
+        printf("%s: statvfs failed\n", s);
+        exit(1);
+    }
+
+    // inode, direntry, indirect block, double indirect block
+    size_t extra_blocks = 4 + VIMIXFS_N_INDIRECT_BLOCKS;
+
+    // enough to trigger double indirect blocks
+    size_t file_size_blocks = 512;
+    if (vfs.f_bfree < file_size_blocks + extra_blocks)
+    {
+        printf(
+            "%s: not enough free space to run test: %zd (data) + %zd (meta "
+            "data) needed, %zd available\n",
+            s, file_size_blocks, extra_blocks, vfs.f_bfree);
+        exit(1);
+    }
+
+    int fd = open("big", O_CREATE | O_RDWR, 0755);
+    if (fd < 0)
+    {
+        printf("%s: error: creat big failed!\n", s);
+        exit(1);
+    }
+
+    int ret = writebig_internal(s, fd, file_size_blocks);
+
     close(fd);
     if (unlink("big") < 0)
     {
         printf("%s: unlink big failed\n", s);
+        exit(1);
+    }
+
+    if (ret != 0)
+    {
         exit(1);
     }
 }
@@ -1023,7 +1062,7 @@ void exectest(char *s)
 
     if (buf[0] == 'O' && buf[1] == 'K')
     {
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
     {
@@ -1063,7 +1102,7 @@ void pipe1(char *s)
                 exit(1);
             }
         }
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else if (pid > 0)
     {
@@ -1129,7 +1168,7 @@ void killstatus(char *s)
             {
                 getpid();
             }
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         usleep(SHORT_SLEEP_MS * 1000);
         kill(pid1, SIGKILL);
@@ -1143,7 +1182,7 @@ void killstatus(char *s)
             exit(1);
         }
     }
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 // meant to be run w/ at most two CPUs
@@ -1280,12 +1319,12 @@ void reparent(char *s)
                 kill(master_pid, SIGKILL);
                 exit(1);
             }
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 
     let_init_free_children(proc_count);
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 // what if two children exit() at the same time?
@@ -1301,7 +1340,7 @@ void twochildren(char *s)
         }
         if (pid1 == 0)
         {
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         else
         {
@@ -1313,7 +1352,7 @@ void twochildren(char *s)
             }
             if (pid2 == 0)
             {
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             else
             {
@@ -1348,11 +1387,11 @@ void forkfork(char *s)
                 }
                 if (pid1 == 0)
                 {
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 }
                 wait(NULL);
             }
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 
@@ -1388,7 +1427,7 @@ void forkforkfork(char *s)
             int fd = open(file_name, O_RDONLY);
             if (fd >= 0)
             {
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             if (fork() < 0)
             {
@@ -1396,7 +1435,7 @@ void forkforkfork(char *s)
             }
         }
 
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     usleep(FORK_FORK_FORK_DURATION_MS * 1000);
@@ -1427,13 +1466,13 @@ void reparent2(char *s)
         {
             fork();
             fork();
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         wait(NULL);
     }
 
     let_init_free_children(proc_count);
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 // allocate all mem, free it, and allocate again
@@ -1463,7 +1502,7 @@ void mem(char *s)
             exit(1);
         }
         free(m1);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
     {
@@ -1474,7 +1513,7 @@ void mem(char *s)
         {
             // probably page fault, so might be lazy lab,
             // so OK.
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         exit(xstatus);
     }
@@ -1509,7 +1548,7 @@ void sharedfd(char *s)
     }
     if (pid == 0)
     {
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
     {
@@ -1545,7 +1584,7 @@ void sharedfd(char *s)
     unlink("sharedfd");
     if (nc == N * SZ && np == N * SZ)
     {
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
     {
@@ -1595,7 +1634,7 @@ void fourfiles(char *s)
                     exit(1);
                 }
             }
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 
@@ -1681,7 +1720,7 @@ void createdelete(char *s)
                     }
                 }
             }
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 
@@ -1889,7 +1928,7 @@ void concreate(char *s)
         }
         if (pid == 0)
         {
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         else
         {
@@ -1981,7 +2020,7 @@ void concreate(char *s)
             unlink(file);
         }
         if (pid == 0)
-            exit(0);
+            exit(EXIT_SUCCESS);
         else
             wait(NULL);
     }
@@ -2024,7 +2063,7 @@ void linkunlink(char *s)
     }
     else
     {
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 }
 
@@ -2259,11 +2298,11 @@ void subdir(char *s)
     }
 }
 
-// test writes that are larger than the log.
+// test writes that are larger than the log (TODO: query log size at runtime).
 void bigwrite(char *s)
 {
     unlink("bigwrite");
-    for (size_t sz = 499; sz < (MAX_OP_BLOCKS + 2) * BLOCK_SIZE; sz += 471)
+    for (size_t sz = 499; sz < (32 * BLOCK_SIZE); sz += 471)
     {
         int fd = open("bigwrite", O_CREATE | O_RDWR, 0755);
         if (fd < 0)
@@ -2278,6 +2317,7 @@ void bigwrite(char *s)
             if (cc != sz)
             {
                 printf("%s: write(%zd) ret %zd\n", s, sz, cc);
+                printf("error %s\n", strerror(errno));
                 exit(1);
             }
         }
@@ -2350,29 +2390,128 @@ void bigfile(char *s)
     unlink("bigfile.dat");
 }
 
-void fourteen(char *s)
+int max_file_name_internal(char *s, char *dir_0, char *dir_1, char *file)
 {
     int fd;
 
-    // VIMIXFS_NAME_MAX is 14.
+    if (mkdir(dir_0, 0755) != 0)
+    {
+        printf("%s: mkdir %s failed\n", s, dir_0);
+        return 1;
+    }
+    if (mkdir(dir_1, 0755) != 0)
+    {
+        printf("%s: mkdir %s failed\n", s, dir_1);
+        return 1;
+    }
+
+    fd = open(file, O_CREATE, 0755);
+    if (fd < 0)
+    {
+        printf("%s: create %s failed\n", s, file);
+        return 1;
+    }
+    close(fd);
+    fd = open(file, O_RDONLY);
+    if (fd < 0)
+    {
+        printf("%s: open %s failed\n", s, file);
+        return 1;
+    }
+    close(fd);
+
+    if (mkdir(dir_1, 0755) == 0)
+    {
+        printf("%s: mkdir %s succeeded!\n", s, dir_1);
+        return 1;
+    }
+
+    // clean up
+    unlink(file);
+    rmdir(dir_1);
+    rmdir(dir_0);
+
+    return 0;
+}
+
+void max_file_name(char *s)
+{
+    struct statvfs vfs;
+    if (statvfs(".", &vfs) < 0)
+    {
+        printf("%s: statvfs failed\n", s);
+        exit(1);
+    }
+
+    size_t max_file_name = vfs.f_namemax;
+
+    // create test file / dir names
+    size_t middle_dir_len = 3;
+    char *dir_0 = malloc(max_file_name + 1);
+    char *dir_1 = malloc(max_file_name + middle_dir_len + 2);
+    char *file = malloc(2 * max_file_name + middle_dir_len + 3);
+    if ((dir_0 == NULL) || (dir_1 == NULL) || (file == NULL))
+    {
+        printf("%s: malloc failed\n", s);
+        exit(1);
+    }
+    size_t pos = 0;
+    for (; pos < max_file_name; pos++)
+    {
+        dir_0[pos] = 'a' + (pos % 26);
+        dir_1[pos] = 'a' + (pos % 26);
+        file[pos] = 'a' + (pos % 26);
+    }
+    dir_0[pos] = '\0';
+    dir_1[pos] = '/';
+    file[pos] = '/';
+    pos++;
+    for (size_t i = 0; i < middle_dir_len; i++)
+    {
+        dir_1[pos] = 'a' + (i % 26);
+        file[pos] = 'a' + (i % 26);
+        pos++;
+    }
+    dir_1[pos] = '\0';
+    file[pos] = '/';
+    pos++;
+    for (size_t i = 0; i < max_file_name; i++)
+    {
+        file[pos] = 'a' + (i % 26);
+        pos++;
+    }
+    file[pos] = '\0';
+
+    int ret = max_file_name_internal(s, dir_0, dir_1, file);
+    free(dir_0);
+    free(dir_1);
+    free(file);
+    if (ret != 0)
+    {
+        exit(1);
+    }
+}
+/*
+    int fd;
+
+    // intended for NAME_MAX of 14.
 
     if (mkdir("12345678901234", 0755) != 0)
     {
         printf("%s: mkdir 12345678901234 failed\n", s);
         exit(1);
     }
-    if (mkdir("12345678901234/123456789012345", 0755) != 0)
+    if (mkdir("12345678901234/12345678901234", 0755) != 0)
     {
-        printf("%s: mkdir 12345678901234/123456789012345 failed\n", s);
+        printf("%s: mkdir 12345678901234/12345678901234 failed\n", s);
         exit(1);
     }
 
-    fd =
-        open("123456789012345/123456789012345/123456789012345", O_CREATE, 0755);
+    fd = open("12345678901234/12345678901234/12345678901234", O_CREATE, 0755);
     if (fd < 0)
     {
         printf(
-            "%s: create 123456789012345/123456789012345/123456789012345 "
+            "%s: create 12345678901234/12345678901234/12345678901234 "
             "failed\n",
             s);
         exit(1);
@@ -2392,20 +2531,18 @@ void fourteen(char *s)
         printf("%s: mkdir 12345678901234/12345678901234 succeeded!\n", s);
         exit(1);
     }
-    if (mkdir("123456789012345/12345678901234", 0755) == 0)
+    if (mkdir("12345678901234/12345678901234", 0755) == 0)
     {
-        printf("%s: mkdir 12345678901234/123456789012345 succeeded!\n", s);
+        printf("%s: mkdir 12345678901234/12345678901234 succeeded!\n", s);
         exit(1);
     }
 
     // clean up
-    rmdir("123456789012345/12345678901234");
     rmdir("12345678901234/12345678901234");
     unlink("12345678901234/12345678901234/12345678901234");
-    unlink("123456789012345/123456789012345/123456789012345");
-    rmdir("12345678901234/123456789012345");
+    rmdir("12345678901234/12345678901234");
     rmdir("12345678901234");
-}
+}*/
 
 void rmdot(char *s)
 {
@@ -2576,7 +2713,7 @@ void forktest(char *s)
     {
         pid_t pid = fork();
         if (pid < 0) break;
-        if (pid == 0) exit(0);
+        if (pid == 0) exit(EXIT_SUCCESS);
     }
 
     if (n == 0)
@@ -2629,7 +2766,7 @@ void sbrkbasic(char *s)
         if (a == (char *)TEST_PTR_MAX_ADDRESS)
         {
             // it's OK if this fails.
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
 
         for (b = a; b < a + TOOMUCH; b += 4096)
@@ -2679,7 +2816,7 @@ void sbrkbasic(char *s)
         printf("%s: sbrk test failed post-fork\n", s);
         exit(1);
     }
-    if (pid == 0) exit(0);
+    if (pid == 0) exit(EXIT_SUCCESS);
     wait(&xstatus);
     xstatus = WEXITSTATUS(xstatus);
     exit(xstatus);
@@ -3050,7 +3187,7 @@ void bigargtest(char *s)
         execv(bin_echo, args);
         int fd = open("bigarg-ok", O_CREATE, 0755);
         close(fd);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else if (pid < 0)
     {
@@ -3077,7 +3214,7 @@ void bigargtest(char *s)
 }
 
 // what happens when the file system runs out of blocks?
-// answer: balloc panics, so this test is not useful.
+// answer: block_alloc_init panics, so this test is not useful.
 void fsfull()
 {
     int nfiles;
@@ -3170,7 +3307,7 @@ void stack_overflow(char *s)
     xstatus = WEXITSTATUS(xstatus);
     if (xstatus == -1)  // kernel killed child?
     {
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
     {
@@ -3201,7 +3338,7 @@ void stack_underflow(char *s)
     xstatus = WEXITSTATUS(xstatus);
     if (xstatus == -1)  // kernel killed child?
     {
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
     {
@@ -3236,7 +3373,7 @@ void nowrite(char *s)
         xstatus = WEXITSTATUS(xstatus);
         if (xstatus == -1)  // kernel killed child?
         {
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         else
         {
@@ -3265,7 +3402,7 @@ void sbrkbugs(char *s)
         // causing exit() to panic.
         sbrk(-sz);
         // user page fault here.
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     wait(NULL);
 
@@ -3282,7 +3419,7 @@ void sbrkbugs(char *s)
         // page; there used to be a bug that would incorrectly
         // free the first page.
         sbrk(-(sz - 3500));
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     wait(NULL);
 
@@ -3304,11 +3441,11 @@ void sbrkbugs(char *s)
         // a panic.
         sbrk(-10);
 
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     wait(NULL);
 
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 // if process size was somewhat more than a page boundary, and then
@@ -3386,7 +3523,7 @@ void badarg(char *s)
         execv(bin_echo, argv);
     }
 
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 //
@@ -3485,7 +3622,7 @@ void manywrites(char *s)
             }
 
             unlink(name);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 
@@ -3499,12 +3636,12 @@ void manywrites(char *s)
             exit(st);
         }
     }
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 // regression test. does write() with an invalid buffer pointer cause
 // a block to be allocated for a file that is then not freed when the
-// file is deleted? if the kernel has this bug, it will panic: balloc:
+// file is deleted? if the kernel has this bug, it will panic: block_alloc_init:
 // out of blocks. assumed_free may need to be raised to be more than
 // the number of free blocks. this test takes a long time.
 void badwrite(char *s)
@@ -3539,7 +3676,7 @@ void badwrite(char *s)
     close(fd);
     unlink("junk");
 
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 // test the execv() code that cleans up if it runs out
@@ -3579,7 +3716,7 @@ void execout(char *s)
             close(STDOUT_FILENO);
             char *args[] = {"echo", "x", 0};
             execv(bin_echo, args);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         else
         {
@@ -3587,7 +3724,7 @@ void execout(char *s)
         }
     }
 
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 // can the kernel tolerate running out of disk space?
@@ -3718,9 +3855,9 @@ struct test quicktests[] = {
     {copyinstr2, "copyinstr2"},
     {copyinstr3, "copyinstr3"},
     {rwsbrk, "rwsbrk"},
-    {truncate1, "truncate1"},
-    {truncate2, "truncate2"},
-    {truncate3, "truncate3"},
+    {trunc_file1, "trunc_file1"},
+    {trunc_file2, "trunc_file2"},
+    {trunc_file3, "trunc_file3"},
     {openiputtest, "openiput"},
     {exitiputtest, "exitiput"},
     {iputtest, "iput"},
@@ -3747,7 +3884,7 @@ struct test quicktests[] = {
     {subdir, "subdir"},
     {bigwrite, "bigwrite"},
     {bigfile, "bigfile"},
-    {fourteen, "fourteen"},
+    {max_file_name, "max_file_name"},
     {rmdot, "rmdot"},
     {dirfile, "dirfile"},
     {iref, "iref"},

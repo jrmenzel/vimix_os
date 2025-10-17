@@ -229,9 +229,9 @@ void init_sbi()
     }
     if (EXT_SRST_SUPPORTED)
     {
-        printk(
-            "SBI extension SRST detected: register SBI reboot/shutdown "
-            "functions\n");
+        // printk(
+        //     "SBI extension SRST detected: register SBI reboot/shutdown "
+        //     "functions\n");
         g_machine_power_off_func = &sbi_machine_power_off;
         g_machine_restart_func = &sbi_machine_restart;
     }

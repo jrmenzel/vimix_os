@@ -24,6 +24,7 @@ struct super_operations
 #define VFS_SUPER_IGET_ROOT(sb) (sb)->s_op->iget_root((sb))
 #define VFS_SUPER_ALLOC_INODE(sb, mode) (sb)->s_op->alloc_inode((sb), (mode))
 #define VFS_SUPER_WRITE_INODE(ip) (ip)->i_sb->s_op->write_inode((ip))
+#define VFS_SUPER_STATVFS(sb, buf) (sb)->s_op->statvfs((sb), (buf))
 
 struct inode_operations
 {
@@ -55,6 +56,8 @@ struct inode_operations
 
     ssize_t (*iops_unlink)(struct inode *dir, char name[NAME_MAX],
                            bool delete_files, bool delete_directories);
+
+    ssize_t (*iops_truncate)(struct inode *ip, off_t length);
 };
 
 /// @brief Opens the inode inside of directory iparent with the given name
@@ -138,6 +141,10 @@ struct inode_operations
 #define VFS_INODE_UNLINK(dir, name, delete_files, delete_directories) \
     (dir)->i_sb->i_op->iops_unlink((dir), (name), (delete_files),     \
                                    (delete_directories))
+
+/// @brief Resize inode (discard extra contents or create empty data).
+#define VFS_INODE_TRUNCATE(ip, length) \
+    (ip)->i_sb->i_op->iops_truncate((ip), (length))
 
 struct file_operations
 {

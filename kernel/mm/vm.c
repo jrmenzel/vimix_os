@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <kernel/elf.h>
+#include <kernel/errno.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 #include <kernel/pgtable.h>

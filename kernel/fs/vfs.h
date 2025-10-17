@@ -72,3 +72,9 @@ ssize_t iops_link_default_ro(struct inode *dir, struct inode *ip,
 /// @return 0, as no files can get deleted on a read-only file system.
 ssize_t iops_unlink_default_ro(struct inode *dir, char name[NAME_MAX],
                                bool delete_files, bool delete_directories);
+
+/// @brief Default implementation of iops_truncate for read-only file systems.
+/// @param ip Inode to truncate.
+/// @param length New length of file.
+/// @return -EACCES to indicate read-only file system.
+ssize_t iops_truncate_default_ro(struct inode *ip, off_t length);

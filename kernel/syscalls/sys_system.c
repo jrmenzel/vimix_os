@@ -69,22 +69,31 @@ ssize_t sys_reboot()
     return -EOTHER;
 }
 
-ssize_t get_time_to_user(size_t tloc_va)
+ssize_t get_time_to_user(clockid_t clockid, size_t timespec_va)
 {
-    time_t time = rtc_get_time();
+    if (clockid != CLOCK_REALTIME && clockid != CLOCK_MONOTONIC)
+    {
+        return -EINVAL;
+    }
+    struct timespec time = rtc_get_time();
     struct process *proc = get_current();
 
-    int32_t res =
-        uvm_copy_out(proc->pagetable, tloc_va, (char *)&time, sizeof(time_t));
-    return (res < 0) ? -ENOMEM : res;
+    int32_t res = uvm_copy_out(proc->pagetable, timespec_va, (char *)&time,
+                               sizeof(struct timespec));
+    return (res < 0) ? -ENOMEM : 0;
 }
 
-ssize_t sys_get_time()
+ssize_t sys_clock_gettime()
 {
-    // parameter 0: time_t *tloc
-    size_t tloc_va;
-    argaddr(0, &tloc_va);
-    return get_time_to_user(tloc_va);
+    // parameter 0: cklockid
+    clockid_t clock;
+    argint(0, &clock);
+
+    // parameter 1: timespec *tp
+    size_t timespec_va;
+    argaddr(1, &timespec_va);
+
+    return get_time_to_user(clock, timespec_va);
 }
 
 ssize_t sys_mount()

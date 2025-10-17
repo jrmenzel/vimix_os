@@ -37,6 +37,19 @@ typedef int32_t uid_t;
 /// @brief Group ID, negative values mean invalid
 typedef int32_t gid_t;
 
+/// @brief Byte offset inside of a file.
+typedef ssize_t off_t;
+
+/// @brief Clock ID for clock_gettime().
+typedef int32_t clockid_t;
+
+/// @brief clockid_t for system-wide realtime clock where time 0 is 1.1.1970.
+#define CLOCK_REALTIME 0
+
+/// @brief clockid_t for a monotonic system-wide clock where time 0 is
+/// undefined.
+#define CLOCK_MONOTONIC 1
+
 #endif  // __USE_REAL_STDC
 
 #define INVALID_FILE_DESCRIPTOR (-1)

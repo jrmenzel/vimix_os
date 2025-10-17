@@ -35,7 +35,7 @@ If multiple VimixFS file systems are [mounted](../../syscalls/mount.md) at the s
 
 ### Limitations
 
-A [write](../../syscalls/write.md) system call can be split into multiple log transactions if the amount of data to write to the file exceeds the log space (see `MAX_OP_BLOCKS`).
+A [write](../../syscalls/write.md) system call can be split into multiple log transactions if the amount of data to write to the file exceeds the log space.
 
 
 ---

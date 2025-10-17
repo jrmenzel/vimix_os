@@ -101,6 +101,7 @@ ssize_t inode_create(const char *pathname, mode_t mode, dev_t device)
     }
 
     struct inode *ip = VFS_INODE_CREATE(dir, name, mode, 0, device);
+
     inode_put(dir);
     if (ip == NULL)
     {

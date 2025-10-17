@@ -152,14 +152,16 @@ static ssize_t (*syscalls[])() = {
     [SYS_close] sys_close,
     [SYS_get_dirent] sys_get_dirent,
     [SYS_reboot] sys_reboot,
-    [SYS_get_time] sys_get_time,
+    [SYS_clock_gettime] sys_clock_gettime,
     [SYS_lseek] sys_lseek,
     [SYS_rmdir] sys_rmdir,
     [SYS_mount] sys_mount,
     [SYS_umount] sys_umount,
     [SYS_ioctl] sys_ioctl,
     [SYS_statvfs] sys_statvfs,
-    [SYS_fstatvfs] sys_fstatvfs
+    [SYS_fstatvfs] sys_fstatvfs,
+    [SYS_truncate] sys_truncate,
+    [SYS_ftruncate] sys_ftruncate
 };
 // clang-format on
 
@@ -216,14 +218,16 @@ static const char *g_syscall_names[] = {
     [SYS_close] "close",
     [SYS_get_dirent] "get_dirent",
     [SYS_reboot] "reboot",
-    [SYS_get_time] "get_time",
+    [SYS_clock_gettime] "clock_gettime",
     [SYS_lseek] "lseek",
     [SYS_rmdir] "rmdir",
     [SYS_mount] "sys_mount",
     [SYS_umount] "sys_umount",
     [SYS_ioctl] "ioctl",
     [SYS_statvfs] "statvfs",
-    [SYS_fstatvfs] "fstatvfs"
+    [SYS_fstatvfs] "fstatvfs",
+    [SYS_truncate] "truncate",
+    [SYS_ftruncate] "ftruncate"
 };
 // clang-format on
 

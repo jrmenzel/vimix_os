@@ -288,3 +288,44 @@ ssize_t sys_lseek()
 
     return ret;
 }
+
+ssize_t sys_truncate()
+{
+    // parameter 0: const char *path
+    char path[PATH_MAX];
+    if (argstr(0, path, PATH_MAX) < 0)
+    {
+        return -EFAULT;
+    }
+
+    // parameter 1: off_t length
+    ssize_t length;
+    argssize_t(1, &length);
+
+    struct inode *ip = inode_from_path(path);
+    if (ip == NULL)
+    {
+        return -ENOENT;
+    }
+
+    ssize_t ret = VFS_INODE_TRUNCATE(ip, length);
+    inode_put(ip);
+    return ret;
+}
+
+ssize_t sys_ftruncate()
+{
+    // parameter 0: int fd
+    FILE_DESCRIPTOR fd;
+    struct file *f;
+    if (argfd(0, &fd, &f) < 0)
+    {
+        return -EBADF;
+    }
+
+    // parameter 1: off_t length
+    ssize_t length;
+    argssize_t(1, &length);
+
+    return VFS_INODE_TRUNCATE(f->ip, length);
+}

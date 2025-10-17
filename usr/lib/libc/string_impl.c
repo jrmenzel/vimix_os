@@ -33,6 +33,8 @@ char *strerror(int errnum)
         CODE_STRING(EINVAL, "Invalid argument");
         CODE_STRING(EMFILE, "Too many open files for this process");
         CODE_STRING(ENOTTY, "Not a TTY device file");
+        CODE_STRING(EFBIG, "File too large");
+        CODE_STRING(ENOSPC, "No space left on device");
         CODE_STRING(ESPIPE, "Illegal seek, fd is a pipe");
         CODE_STRING(ENOTEMPTY, "Dir not empty");
         CODE_STRING(EOTHER, "Other error");

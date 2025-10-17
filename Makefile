@@ -74,7 +74,7 @@ endif
 # -s = alias for "-gdb tcp:localhost:1234"
 QEMU_DEBUG_OPTS := -S -gdb tcp:localhost:$(GDB_PORT)
 
-qemu-requirements: kernel $(BUILD_DIR)/filesystem.img
+qemu-requirements: directories kernel $(BUILD_DIR)/filesystem.img
 
 # run in qemu
 qemu: qemu-requirements

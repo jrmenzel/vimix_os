@@ -6,7 +6,7 @@ Prints the current date and time.
 
 **Returns:**
 - 0 on success
-**Syscall:** [get_time](../../kernel/syscalls/get_time.md)
+**Syscall:** [clock_gettime](../../kernel/syscalls/clock_gettime.md)
 
 ---
 **Up:** [user space](../userspace.md)

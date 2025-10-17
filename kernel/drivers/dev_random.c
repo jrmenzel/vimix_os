@@ -65,7 +65,8 @@ dev_t dev_random_init(struct Device_Init_Parameters *param, const char *name)
     // init device and register it in the system
     dev_init(&g_dev_random.cdev.dev, CHAR, MKDEV(DEV_RANDOM_MAJOR, 0), "random",
              INVALID_IRQ_NUMBER, NULL);
-    g_dev_random.rand_next = rtc_get_time();
+    struct timespec time = rtc_get_time();
+    g_dev_random.rand_next = (unsigned long)(time.tv_nsec ^ time.tv_sec);
     g_dev_random.cdev.ops.read = dev_random_read;
     g_dev_random.cdev.ops.write = character_device_write_unsupported;
     g_dev_random.cdev.ops.ioctl = NULL;

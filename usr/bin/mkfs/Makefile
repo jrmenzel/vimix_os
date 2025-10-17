@@ -18,10 +18,17 @@ vimix: directories $(B_DEPLOY_DIR)/mkfs $(B_DEPLOY_DIR)/fsck.vimixfs
 
 host: directories $(B_DEPLOY_DIR_HOST)/mkfs $(B_DEPLOY_DIR_HOST)/fsck.vimixfs
 
+SHARED_O_FILES := $(B_BUILD_DIR)/libvimixfs.o
+SHARED_O_FILES_HOST := $(B_BUILD_DIR_HOST)/libvimixfs.o
+
 ###########################################################
 # compiling apps for VIMIX
 
-$(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/stdlib.a $(LIB_PATH)/vimixutils.a
+$(B_DEPLOY_DIR)/mkfs: $(B_BUILD_DIR)/mkfs.o $(LIB_PATH)/stdlib.a $(LIB_PATH)/vimixutils.a $(SHARED_O_FILES)
+	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
+	@$(LD) $(LDFLAGS) -T ../user-$(ARCH).ld -o $@ $^
+
+$(B_DEPLOY_DIR)/fsck.vimixfs: $(B_BUILD_DIR)/fsck.vimixfs.o $(LIB_PATH)/stdlib.a $(LIB_PATH)/vimixutils.a $(SHARED_O_FILES)
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) -T ../user-$(ARCH).ld -o $@ $^
 
@@ -38,7 +45,11 @@ $(LIB_PATH)/vimixutils.a:
 ###########################################################
 # compiling apps for the host
 
-$(B_DEPLOY_DIR_HOST)/%: $(B_BUILD_DIR_HOST)/%.o $(LIB_PATH_HOST)/vimixutils.a
+$(B_DEPLOY_DIR_HOST)/mkfs: $(B_BUILD_DIR_HOST)/mkfs.o $(LIB_PATH_HOST)/vimixutils.a $(SHARED_O_FILES_HOST)
+	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
+	@$(CC_HOST) $(CFLAGS_HOST) -o $@ $^
+
+$(B_DEPLOY_DIR_HOST)/fsck.vimixfs: $(B_BUILD_DIR_HOST)/fsck.vimixfs.o $(LIB_PATH_HOST)/vimixutils.a $(SHARED_O_FILES_HOST)
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(CC_HOST) $(CFLAGS_HOST) -o $@ $^
 

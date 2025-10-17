@@ -44,3 +44,6 @@ int rand(void);
 /// @brief Sets the random seed value.
 /// @param seed New seed.
 void srand(unsigned int seed);
+
+#define EXIT_SUCCESS (0)
+#define EXIT_FAILURE (-1)

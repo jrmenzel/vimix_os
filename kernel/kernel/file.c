@@ -293,7 +293,8 @@ void file_update_mtime(struct file *f)
     DEBUG_EXTRA_PANIC((S_ISREG(f->mode) || S_ISDIR(f->mode)),
                       "file_update_mtime() on non-regular file");
 
-    time_t now = rtc_get_time();
+    struct timespec time = rtc_get_time();
+    time_t now = time.tv_sec;
     inode_lock(f->ip);
     f->ip->mtime = now;
     inode_unlock(f->ip);

@@ -63,3 +63,5 @@ void bio_get(struct buf *b);
 
 /// @brief Decrease the buffers reference count.
 void bio_put(struct buf *b);
+
+struct buf *bio_get_from_cache(dev_t dev, uint32_t blockno);

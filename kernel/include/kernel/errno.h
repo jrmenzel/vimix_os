@@ -29,8 +29,8 @@
     25  ///< Not a typewriter, e.g. returned by ioctl on char devices that don't
         ///< support ioctl
 // #define ETXTBSY 26  ///< Text file busy
-// #define EFBIG 27    ///< File too large
-// #define ENOSPC 28   ///< No space left on device
+#define EFBIG 27   ///< File too large
+#define ENOSPC 28  ///< No space left on device
 #define ESPIPE 29  ///< Illegal seek, fd is a pipe
 // #define EROFS 30    ///< Read-only file system
 // #define EMLINK 31   ///< Too many links

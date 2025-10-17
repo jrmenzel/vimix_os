@@ -35,6 +35,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	fs/sysfs/sysfs_node.o \
 	fs/vfs.o \
 	fs/devfs/devfs.o \
+	fs/vimixfs/bmap.o \
 	fs/vimixfs/log.o \
 	fs/vimixfs/vimixfs.o \
 	fs/vimixfs/vimixfs_sysfs.o \

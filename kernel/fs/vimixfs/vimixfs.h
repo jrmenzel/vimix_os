@@ -14,6 +14,23 @@ struct vimixfs_sb_private
     struct log log;
 };
 
+struct vimixfs_inode
+{
+    struct inode ino;
+
+    /// Inode content
+    ///
+    /// The content (data) associated with each inode is stored
+    /// in blocks on the disk. The first VIMIXFS_N_DIRECT_BLOCKS block numbers
+    /// are listed in ip->addrs[].  The next VIMIXFS_N_INDIRECT_BLOCKS blocks
+    /// are listed in block ip->addrs[VIMIXFS_N_DIRECT_BLOCKS].
+    /// The last address points to a double indirect block.
+    uint32_t addrs[VIMIXFS_N_DIRECT_BLOCKS + 2];
+};
+
+#define vimixfs_inode_from_inode(ptr) \
+    container_of(ptr, struct vimixfs_inode, ino)
+
 /// @brief Call before mounting.
 void vimixfs_init();
 
@@ -133,6 +150,8 @@ ssize_t vimixfs_iops_link(struct inode *dir, struct inode *ip,
 
 ssize_t vimixfs_iops_unlink(struct inode *dir, char name[NAME_MAX],
                             bool delete_files, bool delete_directories);
+
+ssize_t vimixfs_iops_truncate(struct inode *ip, off_t new_size);
 
 struct file;
 

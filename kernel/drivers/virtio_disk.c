@@ -335,7 +335,7 @@ void virtio_disk_rw(struct virtio_disk *disk, struct buf *b, bool write)
     disk->desc[idx[2]].next = 0;
 
     // record struct buf for virtio_block_device_interrupt().
-    b->disk = 1;
+    b->owned_by_driver = true;
     disk->info[idx[0]].b = b;
 
     // tell the device the first index in our chain of descriptors.
@@ -352,7 +352,7 @@ void virtio_disk_rw(struct virtio_disk *disk, struct buf *b, bool write)
     MMIO_WRITE_UINT_32(disk->mmio_base, VIRTIO_MMIO_QUEUE_NOTIFY, queue_number);
 
     // Wait for virtio_block_device_interrupt() to say request has finished.
-    while (b->disk == 1)
+    while (b->owned_by_driver == true)
     {
         sleep(b, &disk->vdisk_lock);
     }
@@ -421,7 +421,7 @@ void virtio_block_device_interrupt(dev_t dev)
         }
 
         struct buf *b = disk->info[id].b;
-        b->disk = 0;  // disk is done with buf
+        b->owned_by_driver = false;  // disk is done with buf
         wakeup(b);
 
         disk->used_idx += 1;

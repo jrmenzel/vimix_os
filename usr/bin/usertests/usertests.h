@@ -22,7 +22,7 @@
 #include <kernel/limits.h>
 #endif
 
-#define BUFSZ ((MAX_OP_BLOCKS + 2) * BLOCK_SIZE)
+#define BUFSZ (32 * BLOCK_SIZE)
 extern char buf[BUFSZ];
 
 struct test

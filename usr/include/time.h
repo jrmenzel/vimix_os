@@ -30,3 +30,5 @@ time_t time(time_t *tloc);
 /// @brief Converts a time value to a calendar date. The returned struct is
 /// valid until the next call to localtime().
 struct tm *localtime(const time_t *timer);
+
+int clock_gettime(clockid_t clockid, struct timespec *tp);

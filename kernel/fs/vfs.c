@@ -123,3 +123,8 @@ ssize_t iops_unlink_default_ro(struct inode *dir, char name[NAME_MAX],
 {
     return 0;
 }
+
+ssize_t iops_truncate_default_ro(struct inode *ip, off_t length)
+{
+    return -EACCES;
+}

@@ -25,12 +25,15 @@ dev_t rtc_init(struct Device_Init_Parameters *init_parameters, const char *name)
 #define TIMER_TIME_LOW 0x00
 #define TIMER_TIME_HIGH 0x04
 
-time_t rtc_get_time()
+struct timespec rtc_get_time()
 {
     if (!rtc_is_initialized)
     {
         // no real time clock -> assume boot was at time 0 / 1.1.1970
-        return seconds_since_boot();
+        struct timespec time;
+        time.tv_sec = seconds_since_boot();
+        time.tv_nsec = 0;
+        return time;
     }
 
     uint32_t t_low;  // unsigned !
@@ -38,6 +41,11 @@ time_t rtc_get_time()
     t_low = MMIO_READ_UINT_32(goldfish_mapping.mem[0].start, TIMER_TIME_LOW);
     t_high = MMIO_READ_UINT_32(goldfish_mapping.mem[0].start, TIMER_TIME_HIGH);
 
-    int64_t nsec = ((int64_t)t_high << 32) | (int64_t)t_low;
-    return nsec / 1000000000;
+    int64_t time_in_nsec = ((int64_t)t_high << 32) | (int64_t)t_low;
+
+    struct timespec time;
+    time.tv_sec = time_in_nsec / 1000000000;
+    time.tv_nsec = time_in_nsec % 1000000000;
+
+    return time;
 }

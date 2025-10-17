@@ -172,7 +172,8 @@ struct inode_operations devfs_i_op = {
     iops_get_dirent : devfs_iops_get_dirent,
     iops_read : devfs_iops_read,
     iops_link : iops_link_default_ro,
-    iops_unlink : iops_unlink_default_ro
+    iops_unlink : iops_unlink_default_ro,
+    iops_truncate : iops_truncate_default_ro
 };
 
 ssize_t devfs_fops_write(struct file *f, size_t addr, size_t n)
@@ -213,7 +214,8 @@ void devfs_init()
 
 ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
 {
-    time_t now = rtc_get_time();
+    struct timespec time = rtc_get_time();
+    time_t now = time.tv_sec;
 
     sb_in->s_fs_info = NULL;
     sb_in->s_type = &devfs_file_system_type;

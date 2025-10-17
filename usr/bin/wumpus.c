@@ -370,7 +370,7 @@ char rline()
     r = c;
     while (c != '\n' && c != ' ')
     {
-        if (c == '\0') exit(0);
+        if (c == '\0') exit(EXIT_SUCCESS);
         c = getchar();
     }
     tchar = c;
@@ -401,7 +401,7 @@ int rin()
         {
             while (c != '\n')
             {
-                if (c == 0) exit(0);
+                if (c == 0) exit(EXIT_SUCCESS);
                 c = getchar();
             }
             return (0);

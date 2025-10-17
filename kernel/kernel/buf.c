@@ -4,8 +4,6 @@
 #include <kernel/buf.h>
 #include <mm/kalloc.h>
 
-int i = 0;
-
 struct buf *buf_alloc_init(dev_t dev, uint32_t blockno)
 {
     struct buf *b = kmalloc(sizeof(struct buf), ALLOC_FLAG_NONE);
@@ -25,8 +23,6 @@ void buf_init(struct buf *b, dev_t dev, uint32_t blockno)
 
     buf_reinit(b, dev, blockno);
 
-    b->id = i++;
-
     list_add(&b->buf_list, &g_buf_cache.buf_list);
     g_buf_cache.num_buffers++;
 }
@@ -36,7 +32,7 @@ void buf_reinit(struct buf *b, dev_t dev, uint32_t blockno)
     b->dev = dev;
     b->blockno = blockno;
     b->valid = false;
-    b->disk = 0;
+    b->owned_by_driver = false;
     b->refcnt = 1;
 }
 

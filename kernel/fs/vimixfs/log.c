@@ -13,10 +13,23 @@
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <kernel/vimixfs.h>
+#include <lib/minmax.h>
 #include <mm/kalloc.h>
 
 static void recover_from_log(struct log *log);
 static void commit(struct log *log);
+
+static inline ssize_t log_client_from_pid(struct log *log, pid_t pid)
+{
+    for (int i = 0; i < MAX_CONCURRENT_LOG_CLIENTS; i++)
+    {
+        if (log->clients[i] == pid)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
 
 ssize_t log_init(struct log *log, dev_t dev, struct vimixfs_superblock *sb)
 {
@@ -25,6 +38,7 @@ ssize_t log_init(struct log *log, dev_t dev, struct vimixfs_superblock *sb)
     log->size = sb->nlog;
     log->dev = dev;
     log->committing = 0;
+    log->blocks_used_old_clients = 0;
 
     log->lh_n = 0;
     log->lh_block =
@@ -34,6 +48,10 @@ ssize_t log_init(struct log *log, dev_t dev, struct vimixfs_superblock *sb)
         printk("log_init: out of memory");
         return -ENOMEM;
     }
+
+    memset(log->clients, 0, sizeof(log->clients));
+    memset(log->blocks_used, 0, sizeof(log->blocks_used));
+    memset(log->blocks_reserved, 0, sizeof(log->blocks_reserved));
 
     // if the FS was not shutdown correctly and a log was uncommitted,
     // finish the log write now:
@@ -66,7 +84,11 @@ static void install_trans(struct log *log, bool recovering)
     {
         struct buf *lbuf =
             bio_read(log->dev, log->start + tail + 1);  // read log block
-        struct buf *dbuf = bio_read(log->dev, log->lh_block[tail]);  // read dst
+
+        struct buf *dbuf =
+            bio_get_from_cache(log->dev, log->lh_block[tail]);  // get dst
+        dbuf->valid = true;
+
         memmove(dbuf->data, lbuf->data, BLOCK_SIZE);  // copy block to dst
         bio_write(dbuf);                              // write dst to disk
         if (recovering == false)
@@ -97,8 +119,14 @@ static void read_head(struct log *log)
 /// current transaction commits.
 static void write_head(struct log *log)
 {
-    struct buf *buf = bio_read(log->dev, log->start);
+    // use bio_get() instead of bio_read() to avoid reading
+    // log block from disk -- we don't need to read the old
+    // contents, we're going to overwrite it.
+    struct buf *buf = bio_get_from_cache(log->dev, log->start);
+    buf->valid = true;
+
     struct vimixfs_log_header *hb = (struct vimixfs_log_header *)(buf->data);
+    memset(hb, 0, sizeof(*hb));
     hb->n = log->lh_n;
     for (size_t i = 0; i < log->lh_n; i++)
     {
@@ -117,7 +145,9 @@ static void recover_from_log(struct log *log)
 }
 
 /// called at the start of each FS system call.
-void log_begin_fs_transaction(struct super_block *sb)
+size_t log_begin_fs_transaction_explicit(struct super_block *sb,
+                                         size_t request_min,
+                                         size_t request_ideal)
 {
     struct vimixfs_sb_private *priv =
         ((struct vimixfs_sb_private *)sb->s_fs_info);
@@ -126,28 +156,57 @@ void log_begin_fs_transaction(struct super_block *sb)
     proc->debug_log_depth++;
     if (proc->debug_log_depth != 1) panic("log begin: already called");
 
+    size_t client_id = 0;  // guaranteed to be set
     spin_lock(&log->lock);
     while (true)
     {
-        // worst case: assume all outstanding use max log size
-        size_t worst_case_log_size_incl_this =
-            log->lh_n + (log->outstanding + 1) * MAX_OP_BLOCKS;
         if (log->committing)
         {
             sleep(log, &log->lock);
+            continue;
         }
-        else if (worst_case_log_size_incl_this > priv->sb.nlog)
+
+        size_t reserved = log->blocks_used_old_clients;
+        for (size_t i = 0; i < MAX_CONCURRENT_LOG_CLIENTS; i++)
         {
-            // this op might exhaust log space; wait for commit.
+            reserved += log->blocks_reserved[i];
+        }
+
+        size_t available = log->size - reserved;
+        if (available < request_min)
+        {
+            // this will exhaust log space; wait for commit.
             sleep(log, &log->lock);
+            continue;
         }
-        else
+
+        // reserve space
+        size_t to_reserve = min(available, request_ideal);
+        bool found_slot = false;
+        for (int i = 0; i < MAX_CONCURRENT_LOG_CLIENTS; i++)
         {
-            log->outstanding += 1;
-            spin_unlock(&log->lock);
-            break;
+            if (log->clients[i] == 0)
+            {
+                client_id = i;
+                log->clients[i] = proc->pid;
+                log->blocks_reserved[i] = to_reserve;
+                log->blocks_used[i] = 0;
+                found_slot = true;
+                break;
+            }
         }
+        if (!found_slot)
+        {
+            sleep(log, &log->lock);
+            continue;
+        }
+
+        log->outstanding += 1;
+        spin_unlock(&log->lock);
+        break;
     }
+
+    return client_id;
 }
 
 /// called at the end of each FS system call.
@@ -160,11 +219,17 @@ void log_end_fs_transaction(struct super_block *sb)
     bool do_commit = false;
 
     spin_lock(&log->lock);
+    DEBUG_EXTRA_PANIC(log->committing == 0, "log should not be committing");
+
+    struct process *proc = get_current();
     log->outstanding -= 1;
-    if (log->committing)
-    {
-        panic("log->committing");
-    }
+    ssize_t client = log_client_from_pid(log, proc->pid);
+    DEBUG_EXTRA_PANIC(client != -1, "log_end: unknown client");
+    log->clients[client] = 0;
+    log->blocks_used_old_clients += log->blocks_used[client];
+    log->blocks_used[client] = 0;
+    log->blocks_reserved[client] = 0;
+
     if (log->outstanding == 0)
     {
         do_commit = true;
@@ -190,7 +255,6 @@ void log_end_fs_transaction(struct super_block *sb)
         spin_unlock(&log->lock);
     }
 
-    struct process *proc = get_current();
     proc->debug_log_depth--;
     if (proc->debug_log_depth != 0) panic("log end without log begin!");
 }
@@ -200,8 +264,12 @@ static void write_log(struct log *log)
 {
     for (int32_t tail = 0; tail < log->lh_n; tail++)
     {
-        struct buf *to =
-            bio_read(log->dev, log->start + tail + 1);  // log block
+        // use bio_get() instead of bio_read() to avoid reading
+        // log block from disk -- we don't need to read the old
+        // contents, we're going to overwrite it.
+        struct buf *to = bio_get_from_cache(log->dev, log->start + tail + 1);
+        to->valid = true;
+
         struct buf *from =
             bio_read(log->dev, log->lh_block[tail]);  // cache block
         memmove(to->data, from->data, BLOCK_SIZE);
@@ -220,6 +288,7 @@ static void commit(struct log *log)
         install_trans(log, false);  // Now install writes to home locations
         log->lh_n = 0;
         write_head(log);  // Erase the transaction from the log
+        log->blocks_used_old_clients = 0;
     }
 }
 
@@ -243,12 +312,36 @@ void log_write(struct log *log, struct buf *b)
             break;
         }
     }
-    log->lh_block[i] = b->blockno;
+
     if (i == log->lh_n)
     {
-        // Add new block to log?
+        // Add new block to log
+        log->lh_block[i] = b->blockno;
         bio_get(b);
         log->lh_n++;
+
+        struct process *proc = get_current();
+        ssize_t client = log_client_from_pid(log, proc->pid);
+        DEBUG_EXTRA_PANIC(client != -1, "log_write: unknown client");
+        log->blocks_used[client]++;
+
+        if (log->blocks_used[client] > log->blocks_reserved[client])
+        {
+            printk("log_write: client used more blocks than reserved");
+            printk(" pid %d used %d, reserved %d\n", proc->pid,
+                   log->blocks_used[client], log->blocks_reserved[client]);
+        }
     }
     spin_unlock(&log->lock);
+}
+
+size_t log_get_client_available_blocks(struct super_block *sb, size_t client)
+{
+    struct vimixfs_sb_private *priv =
+        ((struct vimixfs_sb_private *)sb->s_fs_info);
+    struct log *log = &priv->log;
+
+    // no locking: client is valid as it's only used by the client itself
+    // and reserved blocks are static after log_begin_fs_transaction()
+    return log->blocks_reserved[client] - log->blocks_used[client];
 }

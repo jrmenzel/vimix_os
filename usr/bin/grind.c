@@ -110,7 +110,7 @@ void go(int which_child, int max_iterations)
             pid_t pid = fork();
             if (pid == 0)
             {
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             else if (pid < 0)
             {
@@ -126,7 +126,7 @@ void go(int which_child, int max_iterations)
             {
                 fork();
                 fork();
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             else if (pid < 0)
             {
@@ -152,7 +152,7 @@ void go(int which_child, int max_iterations)
             if (pid == 0)
             {
                 close(open("a", O_CREAT | O_RDWR, 0755));
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             else if (pid < 0)
             {
@@ -173,7 +173,7 @@ void go(int which_child, int max_iterations)
             if (pid == 0)
             {
                 kill(getpid(), SIGKILL);
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             else if (pid < 0)
             {
@@ -200,7 +200,7 @@ void go(int which_child, int max_iterations)
                 char c;
                 if (read(fds[0], &c, 1) != 1)
                     printf("grind: pipe read failed\n");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             else if (pid < 0)
             {
@@ -222,7 +222,7 @@ void go(int which_child, int max_iterations)
                 rmdir("../a");
                 fd = open("x", O_CREAT | O_RDWR, 0755);
                 unlink("x");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             else if (pid < 0)
             {
@@ -375,7 +375,7 @@ void iter(size_t number_of_forks, int max_iterations)
             unsigned int r = (unsigned int)rand();
             srand(r ^ (31 * i));
             go(i, max_iterations);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 
@@ -396,7 +396,7 @@ void iter(size_t number_of_forks, int max_iterations)
     }
 
     printf("\ngrind passed\n");
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
@@ -426,7 +426,7 @@ int main(int argc, char *argv[])
     if (pid == 0)
     {
         iter(forks, max_iterations);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     if (pid > 0)
     {

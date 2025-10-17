@@ -9,7 +9,6 @@
 #define MAX_CPUS 8                ///< maximum number of CPUs
 #define MAX_FILES_PER_PROCESS 16  ///< open files per process
 #define MAX_EXEC_ARGS 32          ///< max exec arguments
-#define MAX_OP_BLOCKS 10          ///< max # of blocks any FS op writes
 
 /// all stacks start at one page and can grow to this
 #define USER_MAX_STACK_SIZE (16 * PAGE_SIZE)

@@ -98,6 +98,13 @@ ssize_t sys_get_dirent();
 /// ustd.h
 ssize_t sys_lseek();
 
+/// @brief Syscall "int32_t truncate(const char *path, off_t length);" from
+/// uinstd.h
+ssize_t sys_truncate();
+
+/// @brief Syscall "int32_t ftruncate(int fd, off_t length);" from uinstd.h
+ssize_t sys_ftruncate();
+
 // ********************************************************
 // System information and control from sys_filesystem.c
 //
@@ -121,10 +128,10 @@ ssize_t sys_uptime();
 /// @return ideally not...
 ssize_t sys_reboot();
 
-/// @brief Syscall "ssize_t get_time(time_t *tloc);" (exposed via time() in
-/// time.h)
+/// @brief Syscall "ssize_t clock_gettime(clockid_t clockid, struct timespec
+/// *tp);" (e.g. exposed via time() in time.h)
 /// @return 0 on success, -ERRNO on error
-ssize_t sys_get_time();
+ssize_t sys_clock_gettime();
 
 /// @brief Syscall "int mount(const char *source, const char *target, const char
 /// *filesystemtype, unsigned long mountflags, const void *data);" from mount.h

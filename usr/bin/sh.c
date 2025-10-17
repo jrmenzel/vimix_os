@@ -161,7 +161,7 @@ void runcmd(struct cmd *cmd)
             if (fork1() == 0) runcmd(bcmd->cmd);
             break;
     }
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 int getcmd(char *buf, int nbuf, bool print_prompt)

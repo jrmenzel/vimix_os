@@ -36,7 +36,8 @@ struct inode_operations sysfs_i_op = {
     iops_get_dirent : sysfs_iops_get_dirent,
     iops_read : sysfs_iops_read,
     iops_link : iops_link_default_ro,
-    iops_unlink : iops_unlink_default_ro
+    iops_unlink : iops_unlink_default_ro,
+    iops_truncate : iops_truncate_default_ro
 };
 
 struct file_operations sysfs_f_op = {fops_write : sysfs_fops_write};

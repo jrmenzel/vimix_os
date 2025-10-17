@@ -63,6 +63,9 @@ static inline uint32_t usleep(int32_t useconds)
 
 ///////////////////////////////////////
 // 2. File Management
+//
+// open() and creat() are in fcntl.h
+//
 
 // read [n] bytes from [fd] to [buffer]. Return bytes read or -1 on error.
 extern ssize_t read(int fd, void *buffer, size_t n);
@@ -70,10 +73,22 @@ extern ssize_t read(int fd, void *buffer, size_t n);
 // writes [n] bytes from [buffer] to [fd]. Return bytes written or -1 on error.
 extern ssize_t write(int fd, const void *buffer, size_t n);
 
-// open() and creat() are in fcntl.h
-
 // closes [fd]
 extern int32_t close(int fd);
+
+/// @brief Resize file to length bytes, discards data beyond length, fills new
+/// space with zeros.
+/// @param path file path, file must be write-able
+/// @param length New file size in bytes.
+/// @return 0 on success, -1 on failure; sets errno.
+extern int32_t truncate(const char *path, off_t length);
+
+/// @brief Resize file to length bytes, discards data beyond length, fills new
+/// space with zeros.
+/// @param fd file descriptor of file opened for writing
+/// @param length New file size in bytes.
+/// @return 0 on success, -1 on failure; sets errno.
+extern int32_t ftruncate(int fd, off_t length);
 
 // create a (hard)link [from] existing file [to] link
 extern int32_t link(const char *from, const char *to);

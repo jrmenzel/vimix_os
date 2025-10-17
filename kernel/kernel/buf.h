@@ -15,15 +15,13 @@
 struct buf
 {
     bool valid;             ///< has data been read from disk?
-    int32_t disk;           ///< does disk "own" buf?
+    bool owned_by_driver;   ///< does e.g. virtio "own" buf?
     dev_t dev;              ///< device number of the block device
     uint32_t blockno;       ///< block number
     struct sleeplock lock;  ///< Access mutex
     uint32_t refcnt;        ///< reference count, 0 == unused
 
     struct list_head buf_list;  ///< For linking all buffers
-
-    size_t id;
 
     uint8_t data[BLOCK_SIZE];  ///< payload data from the disk
 };

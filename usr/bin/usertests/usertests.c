@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
 #include "usertests.h"
+#include <vimixutils/sysfs.h>
+#include <vimixutils/time.h>
 
 //
 // drive tests
@@ -10,7 +12,7 @@
 // indicates success.
 bool run(void f(char *), char *s)
 {
-    time_t start_time = time(NULL);
+    uint64_t start_time = get_time_ms();
     size_t pages_free_start = countfree();
     printf("test %s: ", s);
 
@@ -28,7 +30,7 @@ bool run(void f(char *), char *s)
     if (pid == 0)
     {
         f(s);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     int32_t xstatus;
@@ -61,9 +63,9 @@ bool run(void f(char *), char *s)
         {
             printf("OK");
         }
-        time_t end_time = time(NULL);
-        time_t seconds = end_time - start_time;
-        printf(" - %zus\n", (size_t)seconds);
+        uint64_t end_time = get_time_ms();
+        time_t mseconds = end_time - start_time;
+        printf(" - %llu.%03llus\n", mseconds / 1000ULL, mseconds % 1000ULL);
     }
     return xstatus == 0;
 }

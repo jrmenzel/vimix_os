@@ -9,6 +9,9 @@ include $(ROOT)/usr/MakefileCommonUser.mk
 USER_SPACE_INC_PARAMS := $(foreach d, $(USER_SPACE_INC), -I$(ROOT)/$d)
 USER_SPACE_INC_PARAMS_HOST := $(foreach d, $(USER_SPACE_INC_HOST), -I$d)
 
+KERNEL_SPACE_INC := ./include # public kernel API
+KERNEL_SPACE_INC_PARAMS := $(foreach d, $(KERNEL_SPACE_INC), -I../../kernel/$d)
+
 UPROGS_VIMIX_ONLY := init\
 	fsinfo\
     grind\
@@ -28,6 +31,7 @@ UPROGS_NAME_BOTH := cat\
 	echo\
 	forktest\
 	fortune\
+	fsbench\
 	grep\
 	kill\
 	ln\
@@ -82,7 +86,7 @@ $(LIB_PATH)/vimixutils.a:
 # compiling apps for the host
 $(B_BUILD_DIR_HOST)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile for host: $(@)\n$(NO_COLOR)"
-	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_PARAMS_HOST) -c $< -o $@
+	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_PARAMS_HOST) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 $(B_DEPLOY_DIR_HOST)/%: $(B_BUILD_DIR_HOST)/%.o $(LIB_PATH_HOST)/vimixutils.a
 	@printf "$(TASK_COLOR)Link for host: $(@)\n$(NO_COLOR)"

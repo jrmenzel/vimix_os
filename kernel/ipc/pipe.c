@@ -108,7 +108,7 @@ ssize_t pipe_write(struct pipe *pipe, size_t src_user_addr, size_t n)
         else
         {
             char ch;
-            if (uvm_copy_in(proc->pagetable, &ch, src_user_addr + i, 1) == -1)
+            if (uvm_copy_in(proc->pagetable, &ch, src_user_addr + i, 1) < 0)
             {
                 break;
             }

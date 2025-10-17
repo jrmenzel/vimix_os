@@ -700,7 +700,7 @@ void getline_test(char *s)
         }
         size_t line_buf_size = 4;
         ssize_t ret = getline(&line, &line_buf_size, f);
-        if (line_buf_size < 7) exit(-1);
+        if (line_buf_size < 7) exit(EXIT_FAILURE);
         assert_same_value(ret, 7);  // incl new line
         assert_same_string(line, "abcdXY\n");
 
@@ -742,6 +742,53 @@ void strtoul_test(char *s)
     assert_same_value(*end, 'a');
 }
 
+bool truncate_;
+
+void truncate_to(char *s, const char *file_name, off_t new_size)
+{
+    struct stat st;
+    assert_no_error(truncate(file_name, new_size));
+    assert_no_error(stat(file_name, &st));
+    assert_same_value(st.st_size, new_size);
+}
+
+void truncate_test(char *s)
+{
+    const char *file_name = "truncate_test";
+    unlink(file_name);
+
+    {
+        int fd = open(file_name, O_CREAT | O_WRONLY | O_TRUNC, 0755);
+        assert_open_ok_fd(s, fd, file_name);
+        assert_no_error(close(fd));
+    }
+    truncate_to(s, file_name, 0);
+    truncate_to(s, file_name, BLOCK_SIZE);
+    truncate_to(s, file_name, 0);
+    truncate_to(s, file_name, BLOCK_SIZE * VIMIXFS_N_DIRECT_BLOCKS);
+
+    // trigger first indirect block allocation:
+    truncate_to(s, file_name, 0);
+    truncate_to(s, file_name, BLOCK_SIZE * VIMIXFS_N_DIRECT_BLOCKS + 1);
+
+    truncate_to(s, file_name, 0);
+    // trigger first double indirect block allocation:
+    truncate_to(
+        s, file_name,
+        BLOCK_SIZE * (VIMIXFS_N_DIRECT_BLOCKS + VIMIXFS_N_INDIRECT_BLOCKS) + 1);
+
+    truncate_to(s, file_name, 0);
+    truncate_to(s, file_name, BLOCK_SIZE / 2);
+    truncate_to(s, file_name, 3 * BLOCK_SIZE / 2);
+    truncate_to(s, file_name, BLOCK_SIZE - 64);
+    truncate_to(s, file_name, 2 * BLOCK_SIZE + 128);
+
+    truncate_to(s, file_name, 0);
+    truncate_to(s, file_name, 4 * 1024 * 1024);
+
+    assert_no_error(unlink(file_name));
+}
+
 struct test quicktests_common[] = {
     {dev_null, "dev_null"},
     {dev_zero, "dev_zero"},
@@ -753,6 +800,7 @@ struct test quicktests_common[] = {
     {str_test, "str"},
     {getline_test, "getline"},
     {strtoul_test, "strtoul"},
+    {truncate_test, "truncate"},
 
     {0, 0},
 };

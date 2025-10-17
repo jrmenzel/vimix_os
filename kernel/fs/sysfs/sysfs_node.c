@@ -47,7 +47,8 @@ struct sysfs_node *sysfs_node_alloc_init(struct kobject *kobj,
     node->kobj = kobj;
     node->sysfs_node_index = sysfs_entry_index;
     node->attribute = entry;
-    node->ctime = node->mtime = rtc_get_time();
+    struct timespec time = rtc_get_time();
+    node->ctime = node->mtime = time.tv_sec;
 
     list_init(&node->child_list);
     list_init(&node->sibling_list);

@@ -74,21 +74,22 @@ $
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
 - Changed [memory map](docs/kernel/mm/memory_map_process.md); app stacks grow dynamically.
 - Added applications:
-	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md), [time](docs/userspace/bin/time.md), [which](docs/userspace/bin/which.md), [meminfo](docs/userspace/bin/meminfo.md), [fsinfo](docs/userspace/bin/fsinfo.md), [statvfs](docs/userspace/bin/statvfs.md)
-- Added syscalls:
+	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md), [time](docs/userspace/bin/time.md), [which](docs/userspace/bin/which.md), [meminfo](docs/userspace/bin/meminfo.md), [fsinfo](docs/userspace/bin/fsinfo.md), [statvfs](docs/userspace/bin/statvfs.md), [fsbench](docs/userspace/bin/fsbench.md)
+- Added [syscalls](docs/kernel/syscalls/syscalls.md):
 	- [get_dirent](docs/kernel/syscalls/get_dirent.md)
 	- [reboot](docs/kernel/syscalls/reboot.md)
-	- [get_time](docs/kernel/syscalls/get_time.md)
+	- [clock_gettime](docs/kernel/syscalls/clock_gettime.md)
 	- [lseek](docs/kernel/syscalls/lseek.md)
 	- split `unlink()` into [unlink](docs/kernel/syscalls/unlink.md) and [rmdir](docs/kernel/syscalls/rmdir.md)
 	- [mount](docs/kernel/syscalls/mount.md) and [umount](docs/kernel/syscalls/umount.md)
 	- [statvfs](docs/kernel/syscalls/statvfs.md)
+	- [truncate](docs/kernel/syscalls/truncate.md)
 - Support multiple [devices](docs/kernel/devices/devices.md), not just two hard coded ones.
 - Added devices:
 	- [/dev/null](docs/userspace/dev/null.md), [/dev/zero](docs/userspace/dev/zero.md), [/dev/random](docs/userspace/dev/random.md)
 	- [ramdisk](docs/kernel/devices/ramdisk.md)
 	- [jh7110 temperature sensor](docs/userspace/dev/temp.md)
-- The [file system](docs/kernel/file_system/vimixfs/vimixfs.md) was changed to differentiate between character and block [devices](docs/kernel/devices/devices.md). It was also moved behind a [virtual file system](docs/kernel/file_system/vfs.md) abstraction.
+- The [file system](docs/kernel/file_system/vimixfs/vimixfs.md) was changed to store more meta data and support larger files. It was also moved behind a [virtual file system](docs/kernel/file_system/vfs.md) abstraction.
 - Parse the [device tree](docs/misc/device_tree.md) at [boot](docs/kernel/overview/boot_process.md).
 - Added [/dev](docs/kernel/file_system/devfs/devfs.md) as a special file system exposing all devices.
 - Added [/sys](docs/kernel/file_system/sysfs/sysfs.md) as a special file system exposing various kernel objects.

@@ -25,7 +25,7 @@
 #define SYS_close 21
 #define SYS_get_dirent 22
 #define SYS_reboot 23
-#define SYS_get_time 24
+#define SYS_clock_gettime 24
 #define SYS_lseek 25
 #define SYS_rmdir 26
 #define SYS_mount 27
@@ -33,6 +33,8 @@
 #define SYS_ioctl 29
 #define SYS_statvfs 30
 #define SYS_fstatvfs 31
+#define SYS_truncate 32
+#define SYS_ftruncate 33
 
 #define SEEK_SET 0  //< Seek from beginning of file
 #define SEEK_CUR 1  //< Seek from current position

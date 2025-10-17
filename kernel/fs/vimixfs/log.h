@@ -30,6 +30,8 @@
 struct vimixfs_sb_private;
 struct super_block;
 
+#define MAX_CONCURRENT_LOG_CLIENTS 4  ///< max number of concurrent log users
+
 struct log
 {
     struct spinlock lock;
@@ -41,6 +43,11 @@ struct log
     uint32_t lh_n;  ///< number of logged blocks
     uint32_t *lh_block;  ///< block numbers of logged blocks, dynamic array of
                          ///< size 'size'
+
+    pid_t clients[MAX_CONCURRENT_LOG_CLIENTS];
+    int32_t blocks_used[MAX_CONCURRENT_LOG_CLIENTS];
+    int32_t blocks_reserved[MAX_CONCURRENT_LOG_CLIENTS];
+    int32_t blocks_used_old_clients;
 };
 
 /// @brief Called at FS init
@@ -65,9 +72,18 @@ void log_deinit(struct log *log);
 ///   bio_release(bp)
 void log_write(struct log *log, struct buf *b);
 
+size_t log_begin_fs_transaction_explicit(struct super_block *sb,
+                                         size_t request_min,
+                                         size_t request_ideal);
+
 /// @brief FS systemcalls NEED to call this before ANY FS operations.
 /// Call log_end_fs_transaction() later
-void log_begin_fs_transaction(struct super_block *sb);
+static inline size_t log_begin_fs_transaction(struct super_block *sb)
+{
+    return log_begin_fs_transaction_explicit(sb, 10, 10);
+}
 
 /// @brief FS systemcalls NEED to call this after all FS operations.
 void log_end_fs_transaction(struct super_block *sb);
+
+size_t log_get_client_available_blocks(struct super_block *sb, size_t client);

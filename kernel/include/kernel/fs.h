@@ -77,7 +77,7 @@ struct inode
 
     mode_t i_mode;  ///< type and access rights, see stat.h
     int16_t nlink;  ///< links to this inode
-    uint32_t size;
+    uint32_t size;  ///< size of file (bytes)
 
     uid_t uid;     ///< owner user id
     gid_t gid;     ///< owner group id
