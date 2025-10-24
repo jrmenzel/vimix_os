@@ -74,7 +74,7 @@ $
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
 - Changed [memory map](docs/kernel/mm/memory_map_process.md); app stacks grow dynamically.
 - Added applications:
-	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md), [time](docs/userspace/bin/time.md), [which](docs/userspace/bin/which.md), [meminfo](docs/userspace/bin/meminfo.md), [fsinfo](docs/userspace/bin/fsinfo.md), [statvfs](docs/userspace/bin/statvfs.md), [fsbench](docs/userspace/bin/fsbench.md)
+	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md), [time](docs/userspace/bin/time.md), [which](docs/userspace/bin/which.md), [meminfo](docs/userspace/bin/meminfo.md), [fsinfo](docs/userspace/bin/fsinfo.md), [statvfs](docs/userspace/bin/statvfs.md), [fsbench](docs/userspace/bin/fsbench.md), [chown](docs/userspace/bin/chown.md), [chmod](docs/userspace/bin/chmod.md), [id](docs/userspace/bin/id.md), [login](docs/userspace/bin/login.md)
 - Added [syscalls](docs/kernel/syscalls/syscalls.md):
 	- [get_dirent](docs/kernel/syscalls/get_dirent.md)
 	- [reboot](docs/kernel/syscalls/reboot.md)
@@ -84,6 +84,10 @@ $
 	- [mount](docs/kernel/syscalls/mount.md) and [umount](docs/kernel/syscalls/umount.md)
 	- [statvfs](docs/kernel/syscalls/statvfs.md)
 	- [truncate](docs/kernel/syscalls/truncate.md)
+	- [chown](docs/kernel/syscalls/chown.md) and [chmod](docs/kernel/syscalls/chmod.md)
+	- [getresgid](getresgid.md) / [getresuid](getresuid.md)
+	- [setuid](setuid.md) / [setgid](setgid.md) / [setresgid](setresgid.md) / [setresuid](setresuid.md)
+	- [fstat](docs/kernel/syscalls/stat.md)
 - Support multiple [devices](docs/kernel/devices/devices.md), not just two hard coded ones.
 - Added devices:
 	- [/dev/null](docs/userspace/dev/null.md), [/dev/zero](docs/userspace/dev/zero.md), [/dev/random](docs/userspace/dev/random.md)

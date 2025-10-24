@@ -81,50 +81,61 @@ struct file *file_dup(struct file *f)
 FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
 {
     char name[NAME_MAX];
-    struct inode *iparent = inode_of_parent_from_path(pathname, name);
-    if (iparent == NULL)
+    struct inode *ip = NULL;
+
+    if (strncmp(pathname, "/", 2) == 0)
     {
-        return -ENOENT;
+        // special case: root directory (has no parent)
+        ip = VFS_SUPER_IGET_ROOT(ROOT_SUPER_BLOCK);
+        inode_lock(ip);
     }
-
-    struct inode *ip = VFS_INODE_OPEN(iparent, name, flags);
-
-    if (ip == NULL)
+    else
     {
-        if (flags & O_CREAT)
+        struct inode *iparent = inode_of_parent_from_path(pathname, name);
+        if (iparent == NULL)
         {
-            // only create regular files this way:
-            if (!check_and_adjust_mode(&mode, S_IFREG) || !S_ISREG(mode))
+            return -ENOENT;
+        }
+
+        ip = VFS_INODE_OPEN(iparent, name, flags);
+
+        if (ip == NULL)
+        {
+            if (flags & O_CREAT)
             {
+                // only create regular files this way:
+                if (!check_and_adjust_mode(&mode, S_IFREG) || !S_ISREG(mode))
+                {
+                    inode_put(iparent);
+                    return -EPERM;
+                }
+
+                ip = VFS_INODE_CREATE(iparent, name, mode, flags, iparent->dev);
                 inode_put(iparent);
-                return -EPERM;
+                // inode is locked if not NULL
+
+                if (ip == NULL)
+                {
+                    return -ENOENT;
+                }
             }
-
-            ip = VFS_INODE_CREATE(iparent, name, mode, flags, iparent->dev);
-            inode_put(iparent);
-            // inode is locked if not NULL
-
-            if (ip == NULL)
+            else
             {
+                // file not found
+                inode_put(iparent);
                 return -ENOENT;
             }
         }
         else
         {
-            // file not found
             inode_put(iparent);
-            return -ENOENT;
-        }
-    }
-    else
-    {
-        inode_put(iparent);
-        if (ip->is_mounted_on != NULL)
-        {
-            struct inode *tmp_ip = VFS_INODE_DUP(ip->is_mounted_on->s_root);
-            inode_unlock_put(ip);
-            inode_lock(tmp_ip);
-            ip = tmp_ip;
+            if (ip->is_mounted_on != NULL)
+            {
+                struct inode *tmp_ip = VFS_INODE_DUP(ip->is_mounted_on->s_root);
+                inode_unlock_put(ip);
+                inode_lock(tmp_ip);
+                ip = tmp_ip;
+            }
         }
     }
 
@@ -204,26 +215,18 @@ void file_close(struct file *f)
     kfree((void *)f);
 }
 
-int32_t file_stat(struct file *f, size_t addr)
+ssize_t file_stat_by_inode(struct inode *ip, size_t addr)
 {
-    DEBUG_EXTRA_PANIC(INODE_HAS_TYPE(f->mode),
-                      "file_stat(): inode has no type");
-
-    if (S_ISREG(f->mode) || S_ISDIR(f->mode) || S_ISCHR(f->mode) ||
-        S_ISBLK(f->mode))
+    struct stat st;
+    struct process *proc = get_current();
+    inode_lock(ip);
+    inode_stat(ip, &st);
+    inode_unlock(ip);
+    if (uvm_copy_out(proc->pagetable, addr, (char *)&st, sizeof(st)) < 0)
     {
-        struct stat st;
-        struct process *proc = get_current();
-
-        inode_lock(f->ip);
-        inode_stat(f->ip, &st);
-        inode_unlock(f->ip);
-        if (uvm_copy_out(proc->pagetable, addr, (char *)&st, sizeof(st)) < 0)
-        {
-            return -EFAULT;
-        }
-        return 0;
+        return -EFAULT;
     }
+    return 0;
     return -EBADF;
 }
 

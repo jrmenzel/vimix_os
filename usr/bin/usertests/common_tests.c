@@ -740,6 +740,16 @@ void strtoul_test(char *s)
     n = strtoul(test_str3, &end, 10);
     assert_same_value(n, -123456);
     assert_same_value(*end, 'a');
+
+    const char *test_str4 = "755";
+    n = strtoul(test_str4, &end, 8);
+    assert_same_value(n, 493);
+    assert_same_value(*end, 0);
+
+    const char *test_str5 = "1001";
+    n = strtoul(test_str5, &end, 2);
+    assert_same_value(n, 9);
+    assert_same_value(*end, 0);
 }
 
 bool truncate_;

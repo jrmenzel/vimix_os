@@ -4,17 +4,17 @@ See also: [calling_syscall](calling_syscall.md).
 
 
 **Process Control**
-- [fork](fork.md)
-- [execv](execv.md)
-- [exit](exit.md)
-- [kill](kill.md)
-- [ms_sleep](ms_sleep.md)
-- [wait](wait.md)
-- [chdir](chdir.md) - the current directory is process state (see proc cwd)
-- [sbrk](sbrk.md) - allocate/free process heap
+- [fork](fork.md) - Fork process.
+- [execv](execv.md) - Execute another binary.
+- [exit](exit.md) - Exit process.
+- [kill](kill.md) - Send signal to a process.
+- [ms_sleep](ms_sleep.md) - Sleep for some time.
+- [wait](wait.md) - Wait for child process to exit.
+- [chdir](chdir.md) - Change the current directory (see proc cwd).
+- [sbrk](sbrk.md) - Allocate/free process heap.
 
 **Process Information**
-- [getpid](getpid.md) get PID of the current [process](../processes/processes.md).
+- [getpid](getpid.md) Get PID of the current [process](../processes/processes.md).
 
 **File Management**
 - [mkdir](mkdir.md) - create [directory](file_system/directory.md)
@@ -31,8 +31,18 @@ See also: [calling_syscall](calling_syscall.md).
 - [unlink](unlink.md) - remove a hard link, also used to delete files
 - [rmdir](rmdir.md) - remove empty directories
 
+**File Meta Data Management**
+- [chown](chown.md) - Change file ownership.
+- [chmod](chmod.md) - Change file mode.
+- [getresgid](getresgid.md) - Get [process](../processes/processes.md) [group IDs](../security/user_group_id.md).
+- [getresuid](getresuid.md) - Get [process](../processes/processes.md) [user IDs](../security/user_group_id.md).
+- [setuid](setuid.md) - Set [process](../processes/processes.md) effective [user ID](../security/user_group_id.md).
+- [setgid](setgid.md) - Set [process](../processes/processes.md) effective [group IDs](../security/user_group_id.md).
+- [setresgid](setresgid.md) - Set any [process](../processes/processes.md) [user ID](../security/user_group_id.md).
+- [setresuid](setresuid.md) - Set any [process](../processes/processes.md) [user ID](../security/user_group_id.md).
+
 **File Information**
-- [fstat](fstat.md) - get file metadata
+- [stat / fstat](stat.md) - get file metadata
 
 **System**
 - [reboot](reboot.md) - halt or reboot the system
@@ -42,10 +52,10 @@ See also: [calling_syscall](calling_syscall.md).
 - [statvfs](../../userspace/bin/statvfs.md) - get file system statistics
 
 **Communication**
-- [pipe](pipe.md)
+- [pipe](pipe.md) - Pipe between two processes.
 
 **Misc**
-- [clock_gettime](clock_gettime.md) - UNIX time
+- [clock_gettime](clock_gettime.md) - Get the current UNIX time.
 
 
 ---

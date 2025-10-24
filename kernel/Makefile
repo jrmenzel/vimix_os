@@ -52,6 +52,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/buf.o \
 	kernel/file.o \
 	kernel/exec.o \
+	kernel/process.o \
 	kernel/reset.o \
 	kernel/scheduler.o \
 	kernel/trap.o \
@@ -61,8 +62,10 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	mm/kmem_sysfs.o \
 	mm/slab.o \
 	mm/vm.o \
+	syscalls/sys_cred.o \
 	syscalls/sys_device.o \
 	syscalls/sys_file.o \
+	syscalls/sys_file_meta.o \
 	syscalls/sys_filesystem.o \
 	syscalls/sys_ipc.o \
 	syscalls/sys_system.o \

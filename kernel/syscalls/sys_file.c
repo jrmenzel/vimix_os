@@ -91,6 +91,30 @@ ssize_t sys_close()
     return 0;
 }
 
+ssize_t sys_stat()
+{
+    // parameter 0: const char *path
+    char path[PATH_MAX];
+    if (argstr(0, path, PATH_MAX) < 0)
+    {
+        return -EFAULT;
+    }
+
+    // parameter 1: stat *buffer
+    size_t stat_buffer;  // user pointer to struct stat
+    argaddr(1, &stat_buffer);
+
+    struct inode *ip = inode_from_path(path);
+    if (ip == NULL)
+    {
+        return -ENOENT;
+    }
+    ssize_t ret = file_stat_by_inode(ip, stat_buffer);
+    inode_put(ip);
+
+    return ret;
+}
+
 ssize_t sys_fstat()
 {
     // parameter 0: int fd
@@ -99,12 +123,13 @@ ssize_t sys_fstat()
     {
         return -EBADF;
     }
+    DEBUG_EXTRA_PANIC(INODE_HAS_TYPE(f->mode), "sys_fstat(): file has no type");
 
     // parameter 1: stat *buffer
     size_t stat_buffer;  // user pointer to struct stat
     argaddr(1, &stat_buffer);
 
-    return file_stat(f, stat_buffer);
+    return file_stat_by_inode(f->ip, stat_buffer);
 }
 
 ssize_t sys_link()

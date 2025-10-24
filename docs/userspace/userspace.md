@@ -11,7 +11,8 @@ This normally starts a shell ([sh](bin/sh.md)) for users to start any applicatio
 
 ### System Applications
 
-[/usr/bin/init](bin/init.md) - the first process
+- [/usr/bin/init](bin/init.md) - the first process
+- [/usr/bin/login](bin/login.md) - login user
 
 
 ### User Applications
@@ -31,6 +32,11 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [rmdir](bin/rmdir.md) - remove directories
 - [stat](bin/stat.md) - get file status
 - [statvfs](bin/statvfs.md) - get [file system](../kernel/file_system/file_system.md) statistics
+
+**File Ownership:**
+- [chgrp](bin/chgrp.md) - Change group.
+- [chmod](bin/chmod.md) - Change mode.
+- [chown](bin/chown.md) - Change owner.
 
 **Misc:**
 - [cat](bin/cat.md) - concatenate input files and print them
@@ -71,19 +77,25 @@ Some user space apps compile also on Linux. See [build_instructions](../build_in
 
 ## File System
 
-**/etc**
-- Config files
 
-**/dev:**
-- All devices, automatically added by the [devfs](../kernel/file_system/devfs/devfs.md)
+**/dev:** - All devices, automatically added by the [devfs](../kernel/file_system/devfs/devfs.md)
 - [/dev/console](dev/console.md)
 - [/dev/null](dev/null.md)
 - [/dev/random](dev/random.md)
 - [/dev/zero](dev/zero.md)
 - [/dev/temp](dev/temp.md) (optional)
 
-**/home:**
-- [mount point](bin/mount.md) for an optional second file system
+**/etc** - Config files
+- [group](etc/group.md)
+- [passwd](etc/passwd.md)
+- [shadow](etc/shadow.md)
+
+**/home:** - Can be a [mount point](bin/mount.md) for an optional second file system
+- /user home of the user account
+
+**/root** - home of the root user (to be present even if `/home` is not mounted)
+
+**/sys** - [sysfs](../kernel/file_system/sysfs/sysfs.md)
 
 **/tests:**
 - Shell scripts for automated testing

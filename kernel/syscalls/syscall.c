@@ -161,7 +161,20 @@ static ssize_t (*syscalls[])() = {
     [SYS_statvfs] sys_statvfs,
     [SYS_fstatvfs] sys_fstatvfs,
     [SYS_truncate] sys_truncate,
-    [SYS_ftruncate] sys_ftruncate
+    [SYS_ftruncate] sys_ftruncate,
+    [SYS_getresuid] sys_getresuid,
+    [SYS_getresgid] sys_getresgid,
+    [SYS_setuid] sys_setuid,
+    [SYS_setgid] sys_setgid,
+    [SYS_setresuid] sys_setresuid,
+    [SYS_setresgid] sys_setresgid,
+    [SYS_chown] sys_chown,
+    [SYS_fchown] sys_fchown,
+    [SYS_chmod] sys_chmod,
+    [SYS_fchmod] sys_fchmod,
+    [SYS_stat] sys_stat,
+    [SYS_setgroups] sys_setgroups,
+    [SYS_getgroups] sys_getgroups,
 };
 // clang-format on
 
@@ -227,7 +240,20 @@ static const char *g_syscall_names[] = {
     [SYS_statvfs] "statvfs",
     [SYS_fstatvfs] "fstatvfs",
     [SYS_truncate] "truncate",
-    [SYS_ftruncate] "ftruncate"
+    [SYS_ftruncate] "ftruncate",
+    [SYS_getresuid] "getresuid",
+    [SYS_getresgid] "getresgid",
+    [SYS_setuid] "setuid",
+    [SYS_setgid] "setgid",
+    [SYS_setresuid] "setresuid",
+    [SYS_setresgid] "setresgid",
+    [SYS_chown] "chown",
+    [SYS_fchown] "fchown",
+    [SYS_chmod] "chmod",
+    [SYS_fchmod] "fchmod",
+    [SYS_stat] "stat",
+    [SYS_setgroups] "setgroups",
+    [SYS_getgroups] "getgroups",
 };
 // clang-format on
 

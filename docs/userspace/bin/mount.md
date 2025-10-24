@@ -9,7 +9,7 @@ Mounts a [file_system](../../kernel/file_system/file_system.md).
 - `target dir` must be a directory and will be the mount point
 
 **Returns:**
-- 0 on success and sets errno
+- 0 on success
 **Syscall:** [mount](../../kernel/syscalls/mount.md)
 
 ---

@@ -42,6 +42,11 @@ void path_list_add(struct path_list *list, const char *path)
         // space
         size_t newcap = list->capacity ? list->capacity * 2 : 16;
         list->items = realloc(list->items, newcap * sizeof(char *));
+        if (list->items == NULL)
+        {
+            fprintf(stderr, "rm: out of memory\n");
+            exit(1);
+        }
         list->capacity = newcap;
     }
     list->items[list->count++] = strdup(path);

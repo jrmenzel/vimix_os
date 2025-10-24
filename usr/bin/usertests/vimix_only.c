@@ -842,13 +842,21 @@ void writetest(char *s)
 }
 
 // expects an open fd for writing
-int writebig_internal(char *s, int fd, size_t file_size_blocks)
+int writebig_internal(char *s, size_t file_size_blocks)
 {
+    int fd = open("big", O_CREATE | O_RDWR, 0755);
+    if (fd < 0)
+    {
+        printf("%s: error: creat big failed!\n", s);
+        exit(1);
+    }
+
     for (size_t i = 0; i < file_size_blocks; i++)
     {
         ((size_t *)buf)[0] = i;
         if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
         {
+            close(fd);
             printf("%s: error: write() failed in loop %zd\n", s, i);
             printf("%s: error: wrote %zdkb of %zdkb\n", s,
                    i * BLOCK_SIZE / 1024, file_size_blocks * BLOCK_SIZE / 1024);
@@ -857,7 +865,6 @@ int writebig_internal(char *s, int fd, size_t file_size_blocks)
     }
 
     close(fd);
-
     fd = open("big", O_RDONLY);
     if (fd < 0)
     {
@@ -873,6 +880,7 @@ int writebig_internal(char *s, int fd, size_t file_size_blocks)
         {
             if (blocks_read != file_size_blocks)
             {
+                close(fd);
                 printf("%s: read only %zd blocks from big", s, blocks_read);
                 return 1;
             }
@@ -880,11 +888,13 @@ int writebig_internal(char *s, int fd, size_t file_size_blocks)
         }
         else if (i != BLOCK_SIZE)
         {
+            close(fd);
             printf("%s: read failed %zd\n", s, i);
             return 1;
         }
         if (((size_t *)buf)[0] != blocks_read)
         {
+            close(fd);
             printf("%s: read content of block %zd is %zd\n", s, blocks_read,
                    ((size_t *)buf)[0]);
             return 1;
@@ -892,6 +902,7 @@ int writebig_internal(char *s, int fd, size_t file_size_blocks)
         blocks_read++;
     }
 
+    close(fd);
     return 0;
 }
 
@@ -918,16 +929,8 @@ void writebig(char *s)
         exit(1);
     }
 
-    int fd = open("big", O_CREATE | O_RDWR, 0755);
-    if (fd < 0)
-    {
-        printf("%s: error: creat big failed!\n", s);
-        exit(1);
-    }
+    int ret = writebig_internal(s, file_size_blocks);
 
-    int ret = writebig_internal(s, fd, file_size_blocks);
-
-    close(fd);
     if (unlink("big") < 0)
     {
         printf("%s: unlink big failed\n", s);

@@ -112,7 +112,7 @@ void runcmd(struct cmd *cmd)
             // simply the smallest unused).
             // This will not work on e.g. Linux, use dup2() there.
             close(rcmd->fd);
-            if (open(rcmd->file, rcmd->mode, 0755) < 0)
+            if (open(rcmd->file, rcmd->mode, 0644) < 0)
             {
                 fprintf(stderr, "open %s failed\n", rcmd->file);
                 exit(1);

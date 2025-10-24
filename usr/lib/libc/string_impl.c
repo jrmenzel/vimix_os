@@ -57,3 +57,36 @@ char *strdup(const char *s)
     strcpy(copy, s);
     return copy;
 }
+
+char *strtok_r(char *str, const char *delim, char **saveptr)
+{
+    char *start;
+    char *end;
+
+    if (str != NULL)
+        start = str;
+    else
+        start = *saveptr;
+
+    if (*start == '\0')
+    {
+        *saveptr = start;
+        return NULL;
+    }
+
+    // find end of token
+    end = start;
+    while (*end && !strchr(delim, *end)) end++;
+
+    if (*end != '\0')
+    {
+        *end = '\0';
+        *saveptr = end + 1;
+    }
+    else
+    {
+        *saveptr = end;
+    }
+
+    return start;
+}

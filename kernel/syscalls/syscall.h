@@ -16,37 +16,44 @@ void syscall(struct process *proc);
 // Process control from sys_process.c
 //
 
-/// @brief Syscall "pid_t fork()" from uinstd.h.
+/// @brief Syscall "pid_t fork()" from unistd.h.
 /// @return Child PID to parent and 0 to child.
 ssize_t sys_fork();
 
 /// @brief Syscall "int32_t execv(const char *pathname, char *argv[])" from
-/// uinstd.h.
+/// unistd.h.
 /// @return Does not return on success, -ERRNO on error.
 ssize_t sys_execv();
 
-/// @brief  Syscall "void exit(int32_t status)" from uinstd.h.
+/// @brief  Syscall "void exit(int32_t status)" from unistd.h.
 /// @return Does not return.
 ssize_t sys_exit();
 
 /// @brief Syscall "int32_t kill(pid_t pid, int sig)" from signal.h
 ssize_t sys_kill();
 
-/// @brief Syscall "int32_t ms_sleep(int32_t mseconds)" from uinstd.h.
+/// @brief Syscall "int32_t ms_sleep(int32_t mseconds)" from unistd.h.
 /// Also int32_t sleep(seconds)
 ssize_t sys_ms_sleep();
 
 /// @brief Syscall "pid_t wait(int *wstatus)" from wait.h
 ssize_t sys_wait();
 
-/// @brief Syscall "int32_t chdir(const char *path)" from uinstd.h.
+/// @brief Syscall "int32_t chdir(const char *path)" from unistd.h.
 ssize_t sys_chdir();
 
-/// @brief Syscall "void *sbrk(intptr_t increment)" from uinstd.h.
+/// @brief Syscall "void *sbrk(intptr_t increment)" from unistd.h.
 ssize_t sys_sbrk();
 
-/// @brief Syscall "pid_t getpid()" from uinstd.h.
+/// @brief Syscall "pid_t getpid()" from unistd.h.
 ssize_t sys_getpid();
+
+/// @brief Syscall "int getgroups(int size, gid_t *list)" from unistd.h.
+ssize_t sys_getgroups();
+
+/// @brief Syscall "int setgroups(size_t size, const gid_t *list)" from
+/// unistd.h.
+ssize_t sys_setgroups();
 
 // ********************************************************
 // File management from sys_file.c
@@ -63,28 +70,32 @@ ssize_t sys_mknod();
 /// fcntl.h.
 ssize_t sys_open();
 
-/// @brief Syscall "int32_t close(int fd)" from uinstd.h.
+/// @brief Syscall "int32_t close(int fd)" from unistd.h.
 ssize_t sys_close();
 
-/// @brief Syscall "ssize_t read(int fd, void *buffer, size_t n)" from uinstd.h.
+/// @brief Syscall "ssize_t read(int fd, void *buffer, size_t n)" from unistd.h.
 ssize_t sys_read();
 
 /// @brief Syscall "ssize_t write(int fd, const void *buffer, size_t n)" from
-/// uinstd.h.
+/// unistd.h.
 ssize_t sys_write();
 
-/// @brief Syscall "int dup(int fd)" from uinstd.h.
+/// @brief Syscall "int dup(int fd)" from unistd.h.
 ssize_t sys_dup();
 
 /// @brief Syscall "int32_t link(const char *from, const char *to)" from
-/// uinstd.h.
+/// unistd.h.
 ssize_t sys_link();
 
-/// @brief Syscall "int32_t unlink(const char *pathname)" from uinstd.h.
+/// @brief Syscall "int32_t unlink(const char *pathname)" from unistd.h.
 ssize_t sys_unlink();
 
-/// @brief Syscall "int rmdir(const char *path)" from uinstd.h.
+/// @brief Syscall "int rmdir(const char *path)" from unistd.h.
 ssize_t sys_rmdir();
+
+/// @brief Syscall "int32_t fstat(char *path, struct stat *buffer)" from
+/// stat.h.
+ssize_t sys_stat();
 
 /// @brief Syscall "int32_t fstat(FILE_DESCRIPTOR fd, struct stat *buffer)" from
 /// stat.h.
@@ -99,10 +110,10 @@ ssize_t sys_get_dirent();
 ssize_t sys_lseek();
 
 /// @brief Syscall "int32_t truncate(const char *path, off_t length);" from
-/// uinstd.h
+/// unistd.h
 ssize_t sys_truncate();
 
-/// @brief Syscall "int32_t ftruncate(int fd, off_t length);" from uinstd.h
+/// @brief Syscall "int32_t ftruncate(int fd, off_t length);" from unistd.h
 ssize_t sys_ftruncate();
 
 // ********************************************************
@@ -117,10 +128,29 @@ ssize_t sys_statvfs();
 ssize_t sys_fstatvfs();
 
 // ********************************************************
+// File metadata control from sys_file_meta.c
+//
+
+/// @brief Syscall "int chmod(const char *path, mode_t mode);" from
+/// sys/stat.h
+ssize_t sys_chmod();
+
+/// @brief Syscall "int fchmod(int fd, mode_t mode);" from sys/stat.h
+ssize_t sys_fchmod();
+
+/// @brief Syscall "int chown(const char *path, uid_t owner, gid_t group);" from
+/// unistd.h
+ssize_t sys_chown();
+
+/// @brief Syscall "int fchown(int fd, uid_t owner, gid_t group);" from
+/// unistd.h
+ssize_t sys_fchown();
+
+// ********************************************************
 // System information and control from sys_system.c
 //
 
-/// @brief Syscall "int32_t uptime()" from uinstd.h.
+/// @brief Syscall "int32_t uptime()" from unistd.h.
 /// @return how many clock tick interrupts have occurred
 ssize_t sys_uptime();
 
@@ -146,7 +176,7 @@ ssize_t sys_umount();
 // IPC from sys_ipc.c
 //
 
-/// @brief Syscall "int32_t pipe(int pipe_descriptors[2])" from uinstd.h.
+/// @brief Syscall "int32_t pipe(int pipe_descriptors[2])" from unistd.h.
 ssize_t sys_pipe();
 
 // ********************************************************
@@ -155,6 +185,32 @@ ssize_t sys_pipe();
 
 /// @brief Syscall "int ioctl(int fd, unsigned long request, ...)" from ioctl.h.
 ssize_t sys_ioctl();
+
+// ********************************************************
+// Credential control functions from sys_cred.c
+//
+
+/// @brief Syscall "int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);"
+/// from unistd.h
+ssize_t sys_getresuid();
+
+/// @brief Syscall "int getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid);"
+/// from unistd.h
+ssize_t sys_getresgid();
+
+/// @brief Syscall "int setuid(uid_t uid);" from unistd.h
+ssize_t sys_setuid();
+
+/// @brief Syscall "int setgid(gid_t gid);" from unistd.h
+ssize_t sys_setgid();
+
+/// @brief Syscall "int setresuid(uid_t ruid, uid_t euid, uid_t suid);"
+/// from unistd.h
+ssize_t sys_setresuid();
+
+/// @brief Syscall "int setresgid(gid_t rgid, gid_t egid, gid_t sgid);"
+/// from unistd.h
+ssize_t sys_setresgid();
 
 // ********************************************************
 // Helper functions to get syscall parameters

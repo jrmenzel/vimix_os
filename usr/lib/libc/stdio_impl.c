@@ -65,7 +65,14 @@ char *get_from_fd(char *buf, int32_t max, FILE_DESCRIPTOR fd, int returned_char)
             if (cc <= 0)
             {
                 // error or EOF
-                break;
+                if (i == 0)
+                {
+                    return NULL;
+                }
+                else
+                {
+                    break;
+                }
             }
             buf[i++] = c;
             if (is_newline(c))

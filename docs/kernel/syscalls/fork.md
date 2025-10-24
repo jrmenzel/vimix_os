@@ -3,7 +3,7 @@
 ## User Mode
 
 ```C
-#include <uinstd.h>
+#include <unistd.h>
 pid_t fork();
 ```
 
@@ -13,7 +13,7 @@ All process memory is copied during fork.
 
 ## Kernel Mode
 
-Implemented in `sys_process.c` as `sys_fork()`. 
+Implemented in `sys_process.c` as `sys_fork()`.
 
 ## See also
 

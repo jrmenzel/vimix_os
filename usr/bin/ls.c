@@ -3,6 +3,8 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
+#include <pwd.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -82,14 +84,19 @@ void print_access(mode_t mode)
     str[0] = type_to_char(mode);
 
     size_t pos = 9;
+    mode_t mode_copy = mode;
     for (size_t i = 0; i < 9; ++i)
     {
-        mode_t bit = mode & 0x01;
-        mode = mode >> 1;
+        mode_t bit = mode_copy & 0x01;
+        mode_copy = mode_copy >> 1;
 
         if (!bit) str[pos] = '-';
         pos--;
     }
+
+    if (mode & S_ISUID) str[3] = (str[3] == 'x') ? 's' : 'S';
+    if (mode & S_ISGID) str[6] = (str[6] == 'x') ? 's' : 'S';
+    if (mode & S_ISVTX) str[9] = (str[9] == 'x') ? 't' : 'T';
 
     printf("%s", str);
 }
@@ -119,6 +126,29 @@ void print_padded(size_t value, size_t min_chars_wide, bool min_one_space)
     printf("%zd", value);
 }
 
+void print_user_group(uid_t uid, gid_t gid)
+{
+    struct passwd *pw = getpwuid(uid);
+    struct group *gr = getgrgid(gid);
+
+    if (pw)
+    {
+        printf(" %s", pw->pw_name);
+    }
+    else
+    {
+        printf(" %4d", (int32_t)uid);
+    }
+    if (gr)
+    {
+        printf(" %s", gr->gr_name);
+    }
+    else
+    {
+        printf(" %4d", (int32_t)gid);
+    }
+}
+
 int print_file(const char *file_name, const char *full_path,
                struct Parameters *parameters)
 {
@@ -130,8 +160,8 @@ int print_file(const char *file_name, const char *full_path,
     }
 
     print_access(st.st_mode);
+    print_user_group(st.st_uid, st.st_gid);
 
-    printf(" %4d %4d", (int32_t)st.st_uid, (int32_t)st.st_gid);
     printf(" %8zd B  ", st.st_size);
 
     time_t now = st.st_mtime;
@@ -209,7 +239,12 @@ int print_dir(const char *path_name, struct Parameters *parameters)
 int ls(const char *path_name, struct Parameters *parameters)
 {
     struct stat st;
-    if (stat(path_name, &st) < 0) return S_SERIOUS_ERROR;
+    if (stat(path_name, &st) < 0)
+    {
+        fprintf(stderr, "stat (%s) error (errno: %s)\n", path_name,
+                strerror(errno));
+        return S_SERIOUS_ERROR;
+    }
 
     int return_code = S_OK;
     if (S_ISDIR(st.st_mode))

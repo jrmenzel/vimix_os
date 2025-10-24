@@ -51,7 +51,9 @@ struct inode_operations vimixfs_i_op = {
     iops_read : vimixfs_iops_read,
     iops_link : vimixfs_iops_link,
     iops_unlink : vimixfs_iops_unlink,
-    iops_truncate : vimixfs_iops_truncate
+    iops_truncate : vimixfs_iops_truncate,
+    iops_chmod : vimixfs_iops_chmod,
+    iops_chown : vimixfs_iops_chown
 };
 
 struct file_operations vimixfs_f_op = {fops_write : vimixfs_fops_write};
@@ -213,6 +215,9 @@ struct inode *vimixfs_iops_create_internal(struct inode *iparent,
         ip->dev = ip->i_sb->dev;
     }
     ip->nlink = 1;
+    struct process *proc = get_current();
+    ip->uid = proc->cred.euid;
+    ip->gid = proc->cred.egid;
     vimixfs_sops_write_inode(ip);
 
 #if defined(CONFIG_DEBUG_INODE_PATH_NAME)
@@ -1174,6 +1179,38 @@ ssize_t vimixfs_iops_truncate(struct inode *ip, off_t new_size)
         // printk("truncated to %zd (wanted %zd)\n", file_size, new_size);
 
     } while (file_size != new_size);
+
+    return 0;
+}
+
+ssize_t vimixfs_iops_chmod(struct inode *ip, mode_t mode)
+{
+    // will only change the inode data on disk, one block
+    log_begin_fs_transaction_explicit(ip->i_sb, 1, 1);
+
+    inode_lock(ip);
+    mode_t type = ip->i_mode & S_IFMT;
+    ip->i_mode = mode | type;
+    vimixfs_sops_write_inode(ip);
+    inode_unlock(ip);
+
+    log_end_fs_transaction(ip->i_sb);
+
+    return 0;
+}
+
+ssize_t vimixfs_iops_chown(struct inode *ip, uid_t uid, gid_t gid)
+{
+    // will only change the inode data on disk, one block
+    log_begin_fs_transaction_explicit(ip->i_sb, 1, 1);
+
+    inode_lock(ip);
+    if (uid >= 0) ip->uid = uid;
+    if (gid >= 0) ip->gid = gid;
+    vimixfs_sops_write_inode(ip);
+    inode_unlock(ip);
+
+    log_end_fs_transaction(ip->i_sb);
 
     return 0;
 }

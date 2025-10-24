@@ -15,11 +15,13 @@ KERNEL_SPACE_INC_PARAMS := $(foreach d, $(KERNEL_SPACE_INC), -I../../kernel/$d)
 UPROGS_VIMIX_ONLY := init\
 	fsinfo\
     grind\
+	login\
     shutdown\
 	mount\
 	umount\
 	meminfo\
-	skill
+	skill\
+	su
 
 # Some user space apps can be compiled on the host as well,
 # e.g. as native Linux apps. This can be helpful for app
@@ -27,12 +29,16 @@ UPROGS_VIMIX_ONLY := init\
 #
 UPROGS_NAME_BOTH := cat\
 	cp\
+	chmod\
+	chgrp\
+	chown\
 	date\
 	echo\
 	forktest\
 	fortune\
 	fsbench\
 	grep\
+	id\
 	kill\
 	ln\
 	ls\

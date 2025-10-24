@@ -501,8 +501,7 @@ bool read_sector(uint32_t sec, void *buf)
 {
     if (sec >= g_fs_file.super_block.size)
     {
-        printf("read_sector: out of range\n");
-        return false;
+        die("read_sector: out of range\n");
     }
     if (lseek(g_fs_file.fd, sec * BLOCK_SIZE, 0) != sec * BLOCK_SIZE)
     {
@@ -612,8 +611,6 @@ uint32_t get_block_index(struct vimixfs_dinode *din, uint32_t block_number)
     return 0;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wanalyzer-use-of-uninitialized-value"
 void iappend(ino_t inum, void *xp, int n)
 {
     struct vimixfs_dinode din;
@@ -654,7 +651,6 @@ void iappend(ino_t inum, void *xp, int n)
     din.size = off;
     write_dinode(inum, &din);
 }
-#pragma GCC diagnostic pop
 
 /// @brief Exit the program after printing a error message
 /// @param error_message the message

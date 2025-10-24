@@ -212,7 +212,8 @@ int _is_whitespace(char c)
 // from stdlib for libfdt:
 unsigned long strtoul(const char *string, char **end, int base)
 {
-    if (base != 10) return 0;
+    char highest_number = '0' + base - 1;
+    if ((base < 2) || (base > 10)) return 0;
 
     while (_is_whitespace(*string))
     {
@@ -226,9 +227,9 @@ unsigned long strtoul(const char *string, char **end, int base)
     }
 
     unsigned long n = 0;
-    while ('0' <= *string && *string <= '9')
+    while ('0' <= *string && *string <= highest_number)
     {
-        n = n * 10 + *string++ - '0';
+        n = n * base + *string++ - '0';
     }
 
     if (end)

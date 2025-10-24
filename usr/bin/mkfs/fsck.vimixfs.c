@@ -156,7 +156,7 @@ void check_block_range(struct vimixfs *file, uint32_t *range, size_t range_len,
 // caller must free the returned pointer
 uint32_t *read_indirect_block(struct vimixfs *file, uint32_t addr)
 {
-    if (addr == 0) return NULL;
+    if (addr == 0) exit(1);  // should not happen
 
     mark_block_as_used(file, addr);
     uint8_t *buffer = malloc(BLOCK_SIZE);

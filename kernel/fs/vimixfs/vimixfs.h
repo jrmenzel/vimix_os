@@ -156,3 +156,7 @@ ssize_t vimixfs_iops_truncate(struct inode *ip, off_t new_size);
 struct file;
 
 ssize_t vimixfs_fops_write(struct file *f, size_t addr, size_t n);
+
+ssize_t vimixfs_iops_chmod(struct inode *ip, mode_t mode);
+
+ssize_t vimixfs_iops_chown(struct inode *ip, uid_t uid, gid_t gid);

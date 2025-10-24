@@ -1,19 +1,16 @@
 # Processes
 
-
 The main struct to hold all data of one process is `struct process` (in Linux it's `struct task_struct`, in xv6 it's `struct proc`).
 
-All processes in the system are managed in the linked list `struct process_list g_process_list`. This struct also hold a bitmap of available [kernel stack addresses](../mm/memory_map_kernel.md). 
-
+All processes in the system are managed in the linked list `struct process_list g_process_list`. This struct also hold a bitmap of available [kernel stack addresses](../mm/memory_map_kernel.md).
 
 ## Overview
 
 - The first user space process is created in `init_userspace()` ([init_userspace](init_userspace.md)).
 - Processes go through the [life_cycle_user_application](../overview/life_cycle_user_application.md).
-	- In short: New processes are created via `alloc_process()`, triggered by sys call [fork](syscalls/fork.md).
-	- They exit by calling [exit](syscalls/exit.md) or if they are terminated explicitly via [kill](kill).
+  - In short: New processes are created via `process_alloc_init()`, triggered by sys call [fork](syscalls/fork.md).
+  - They exit by calling [exit](syscalls/exit.md) or if they are terminated explicitly via [kill](kill).
 - See also [scheduling](scheduling.md).
-
 
 ## User Mode
 

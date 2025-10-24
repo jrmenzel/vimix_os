@@ -74,7 +74,20 @@ ssize_t iops_unlink_default_ro(struct inode *dir, char name[NAME_MAX],
                                bool delete_files, bool delete_directories);
 
 /// @brief Default implementation of iops_truncate for read-only file systems.
-/// @param ip Inode to truncate.
-/// @param length New length of file.
+/// @param ip Ignored.
+/// @param length Ignored.
 /// @return -EACCES to indicate read-only file system.
 ssize_t iops_truncate_default_ro(struct inode *ip, off_t length);
+
+/// @brief Default implementation of iops_chmod for read-only file systems.
+/// @param ip Ignored.
+/// @param mode Ignored.
+/// @return -EACCES to indicate read-only file system.
+ssize_t iops_chmod_default_ro(struct inode *ip, mode_t mode);
+
+/// @brief Default implementation of iops_chown for read-only file systems.
+/// @param ip Ignored.
+/// @param uid Ignored.
+/// @param gid Ignored.
+/// @return -EACCES to indicate read-only file system.
+ssize_t iops_chown_default_ro(struct inode *ip, uid_t uid, gid_t gid);

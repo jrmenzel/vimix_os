@@ -6,7 +6,6 @@
 ssize_t statvfs_internal(struct super_block *sb, size_t buf_addr)
 {
     struct statvfs buf;
-    // sb->s_op->statvfs(sb, &buf);
     VFS_SUPER_STATVFS(sb, &buf);
 
     if (uvm_copy_out(get_current()->pagetable, buf_addr, (char *)&buf,

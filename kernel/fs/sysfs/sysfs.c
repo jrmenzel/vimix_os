@@ -37,7 +37,9 @@ struct inode_operations sysfs_i_op = {
     iops_read : sysfs_iops_read,
     iops_link : iops_link_default_ro,
     iops_unlink : iops_unlink_default_ro,
-    iops_truncate : iops_truncate_default_ro
+    iops_truncate : iops_truncate_default_ro,
+    iops_chmod : iops_chmod_default_ro,
+    iops_chown : iops_chown_default_ro
 };
 
 struct file_operations sysfs_f_op = {fops_write : sysfs_fops_write};
@@ -133,15 +135,17 @@ struct sysfs_inode *sysfs_create_inode_from_node(struct sysfs_node *node)
     // init base inode
     inode_init(&sys_ip->ino, sb, node->inode_number);
     sys_ip->ino.valid = true;  // inode has been "read from disk"
-    sys_ip->ino.i_mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
+
     if (node->attribute != NULL)
     {
+        // it's a file
         sys_ip->ino.i_mode = node->attribute->mode | S_IFREG;
         sys_ip->ino.size = 0;
     }
     else
     {
-        sys_ip->ino.i_mode = 0555 | S_IFDIR;
+        // it's a directory
+        sys_ip->ino.i_mode = 0755 | S_IFDIR;
         sys_ip->ino.size = 0;
     }
     sys_ip->ino.nlink = 1;

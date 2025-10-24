@@ -51,10 +51,10 @@ void file_init();
 ssize_t file_read(struct file *f, size_t addr, size_t n);
 
 /// @brief Get metadata about file.
-/// @param f file to get stats from.
+/// @param ip inode to get stats from.
 /// @param addr a user virtual address, pointing to a struct stat.
 /// @return 0 on success, -1 on error
-int32_t file_stat(struct file *f, size_t addr);
+ssize_t file_stat_by_inode(struct inode *ip, size_t addr);
 
 /// @brief Write to file.
 /// @param f File to write to.

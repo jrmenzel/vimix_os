@@ -6,7 +6,7 @@ A directory is a list of [inodes](inode.md) and [file](file.md) names. When a di
 
 Related [syscalls](../syscalls/syscalls.md):
 - Create dir: [mkdir](../syscalls/mkdir.md) (app [mkdir](../../userspace/bin/mkdir.md))
-- Get statistics: [fstat](../syscalls/fstat.md) (app [stat](../../userspace/bin/stat.md))
+- Get statistics: [stat](../syscalls/stat.md) (app [stat](../../userspace/bin/stat.md))
 - Get directory entries: [get_dirent](../syscalls/get_dirent.md) (app [ls](../../userspace/bin/ls.md))
 - Delete dir: [rmdir](../syscalls/rmdir.md) (app [rmdir](../../userspace/bin/rmdir.md))
 

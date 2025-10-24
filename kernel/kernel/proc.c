@@ -14,6 +14,7 @@
 #include <kernel/kticks.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
+#include <kernel/process.h>
 #include <kernel/signal.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
@@ -33,9 +34,6 @@ struct process_list g_process_list;
 /// Created in userspace_init(), the only process not created by fork()
 struct process *g_initial_user_process;
 
-atomic_int32_t g_next_pid = 1;
-
-extern void forkret();
 void wakeup_holding_plist_lock(void *chan);
 
 extern char trampoline[];  // u_mode_trap_vector.S
@@ -62,42 +60,6 @@ size_t proc_get_kernel_stack()
     spin_unlock(&g_process_list.kernel_stack_lock);
     // printk("alloc kstack va 0x%zd\n", KSTACK_VA_FROM_INDEX(idx));
     return KSTACK_VA_FROM_INDEX(idx);
-}
-
-void proc_free_kernel_stack(size_t stack_va)
-{
-    spin_lock(&g_process_list.kernel_stack_lock);
-    // printk("free kstack va 0x%zd\n", stack_va);
-    size_t idx = KSTACK_INDEX_FROM_VA(stack_va);
-    clear_bit(idx, g_process_list.kernel_stack_in_use);
-    spin_unlock(&g_process_list.kernel_stack_lock);
-}
-
-bool proc_init_kernel_stack(pagetable_t kpage_table, struct process *proc,
-                            size_t kstack_va)
-{
-    spin_lock(&g_kernel_pagetable_lock);
-    for (size_t i = 0; i < KERNEL_STACK_PAGES; ++i)
-    {
-        char *pa = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
-        if (pa == NULL)
-        {
-            spin_unlock(&g_kernel_pagetable_lock);
-            return false;
-        }
-        kvm_map_or_panic(kpage_table, kstack_va + (i * PAGE_SIZE), (size_t)pa,
-                         PAGE_SIZE, PTE_KERNEL_STACK);
-    }
-    mmu_set_page_table((size_t)kpage_table,
-                       0);  // update pagetable, flush cache
-
-    spin_unlock(&g_kernel_pagetable_lock);
-
-    // tell other cores to also to reload the kernel page table
-    cpu_mask mask = ipi_cpu_mask_all_but_self();
-    ipi_send_interrupt(mask, IPI_KERNEL_PAGETABLE_CHANGED, NULL);
-
-    return true;
 }
 
 /// initialize the g_process_array table.
@@ -135,142 +97,6 @@ struct process *get_current()
     struct process *proc = c->proc;
     cpu_pop_disable_device_interrupt_stack();
     return proc;
-}
-
-/// Get a new unique process ID
-pid_t alloc_pid() { return (pid_t)atomic_fetch_add(&g_next_pid, 1); }
-
-void proc_free_kobject(struct kobject *kobj)
-{
-    if (kobj == NULL) return;
-
-    struct process *proc = process_from_kobj(kobj);
-    proc_free(proc);
-}
-struct kobj_type proc_ktype = {.release = proc_free_kobject,
-                               .sysfs_ops = NULL,
-                               .attribute = NULL,
-                               .n_attributes = 0};
-
-/// Creates a new process:
-/// If allocated, initialize state required to run in the kernel,
-/// and return with `proc->lock` held.
-/// If there are no free processes, or a memory allocation fails, return NULL.
-static struct process *alloc_process()
-{
-    struct process *proc =
-        kmalloc(sizeof(struct process), ALLOC_FLAG_ZERO_MEMORY);
-    if (proc == NULL)
-    {
-        return NULL;
-    }
-    // proc_free() (called from last proc_put()) can free partially initialized
-    // structs, but the lock is expected to be helt
-    kobject_init(&proc->kobj, &proc_ktype);
-    spin_lock_init(&proc->lock, "proc");
-    spin_lock(&proc->lock);
-
-    // kernel stack
-    proc->kstack = proc_get_kernel_stack();
-    if (proc->kstack == 0)
-    {
-        proc_put(proc);
-        return NULL;
-    }
-
-    bool pagetable_updated =
-        proc_init_kernel_stack(g_kernel_pagetable, proc, proc->kstack);
-    if (pagetable_updated == false)
-    {
-        // a bit special case: free_proc() expects the kernel stack to be set in
-        // the pagetable if proc->kstack != 0is set. So free the kernel stack
-        // part that is not the pagetable manually here. proc_put() will call
-        // free_proc().
-        proc_free_kernel_stack(proc->kstack);
-        proc->kstack = 0;
-        proc_put(proc);
-        return NULL;
-    }
-
-    // Allocate a trapframe page (full page as it gets it's own memory mapping
-    // to a compile time known location).
-    _Static_assert(sizeof(struct trapframe) <= PAGE_SIZE,
-                   "struct trapframe is too big");
-    proc->trapframe = (struct trapframe *)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
-    if (proc->trapframe == NULL)
-    {
-        proc_put(proc);
-        return NULL;
-    }
-
-    // An empty user page table.
-    proc->pagetable = proc_pagetable(proc);
-    if (proc->pagetable == NULL)
-    {
-        proc_put(proc);
-        return NULL;
-    }
-
-    // other members and state
-    list_init(&proc->plist);
-    proc->pid = alloc_pid();
-    proc->state = USED;
-
-    // printk(
-    //     "CPU %zd: new  process %d at kstack: 0x%zx (lower address) trapframe:
-    //     " "0x%zx\n",
-    //     __arch_smp_processor_id(), proc->pid, proc->kstack,
-    //     (size_t)proc->trapframe);
-
-    // Set up new context to start executing at forkret,
-    // which returns to user space.
-    // proc was zero initialized, so is proc->context at this point
-    context_set_return_register(&proc->context, (xlen_t)forkret);
-    context_set_stack_pointer(&proc->context, proc->kstack + KERNEL_STACK_SIZE);
-
-    DEBUG_ASSERT_CPU_HOLDS_LOCK(&proc->lock);
-    return proc;
-}
-
-/// free a struct process structure and the data hanging from it,
-/// including user pages.
-/// proc->lock must be held.
-void proc_free(struct process *proc)
-{
-    DEBUG_ASSERT_CPU_HOLDS_LOCK(&proc->lock);
-
-    if (proc->trapframe)
-    {
-        free_page((void *)proc->trapframe);
-    }
-    proc->trapframe = NULL;
-
-    if (proc->pagetable)
-    {
-        proc_free_pagetable(proc->pagetable);
-    }
-    proc->pagetable = INVALID_PAGETABLE_T;
-
-    // unmap and free kernel stack:
-    if (proc->kstack != 0)
-    {
-        proc_free_kernel_stack(proc->kstack);
-        spin_lock(&g_kernel_pagetable_lock);
-        uvm_unmap(g_kernel_pagetable, proc->kstack, KERNEL_STACK_PAGES, true);
-        vm_trim_pagetable(g_kernel_pagetable, proc->kstack);
-        mmu_set_page_table((size_t)g_kernel_pagetable,
-                           0);  // update pagetable, flush cache
-        spin_unlock(&g_kernel_pagetable_lock);
-
-        // tell other cores to also to reload the kernel page table
-        cpu_mask mask = ipi_cpu_mask_all_but_self();
-        ipi_send_interrupt(mask, IPI_KERNEL_PAGETABLE_CHANGED, NULL);
-
-        proc->kstack = 0;
-    }
-
-    spin_unlock(&proc->lock);
-    kfree(proc);
 }
 
 /// Create a user page table for a given process, with no user memory,
@@ -322,9 +148,10 @@ void proc_free_pagetable(pagetable_t pagetable)
 /// This creates the only process not created by fork()
 void userspace_init()
 {
-    g_initial_user_process = alloc_process();
+    g_initial_user_process = process_alloc_init();
     if (g_initial_user_process == NULL)
         panic("userspace_init() already out of memory");
+    g_initial_user_process->cred.groups = groups_alloc(0);
     g_initial_user_process->state = RUNNABLE;
 
     // add to kobject tree
@@ -395,10 +222,10 @@ int32_t proc_copy_memory(struct process *src, struct process *dst)
     return 0;
 }
 
-ssize_t fork()
+ssize_t do_fork()
 {
     // Allocate new process.
-    struct process *np = alloc_process();
+    struct process *np = process_alloc_init();
     if (np == NULL)
     {
         return -ENOMEM;
@@ -433,7 +260,12 @@ ssize_t fork()
     // Copy name
     safestrcpy(np->name, parent->name, sizeof(parent->name));
 
+    // copy IDs
     pid_t pid = np->pid;
+    np->cred = parent->cred;
+    np->cred.groups = get_group_info(parent->cred.groups);
+
+    np->debug_log_depth = 0;
 
     spin_unlock(&np->lock);
 
@@ -443,7 +275,6 @@ ssize_t fork()
 
     spin_lock(&np->lock);
     np->state = RUNNABLE;
-    np->debug_log_depth = 0;
     spin_unlock(&np->lock);
 
     // add to kobject tree
@@ -479,7 +310,7 @@ void reparent(struct process *proc)
 /// Exit the current process.  Does not return.
 /// An exited process remains in the zombie state
 /// until its parent calls wait().
-void exit(int32_t status)
+void do_exit(int32_t status)
 {
     struct process *proc = get_current();
 
@@ -574,7 +405,7 @@ pid_t wait(int32_t *wstatus)
                     list_del(&pp->plist);
 
                     // remove from kobject tree, if that was the last reference,
-                    // proc_free() will be called
+                    // process_free() will be called
                     kobject_del(&pp->kobj);
 
                     spin_unlock(&g_wait_lock);

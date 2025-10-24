@@ -128,3 +128,10 @@ ssize_t iops_truncate_default_ro(struct inode *ip, off_t length)
 {
     return -EACCES;
 }
+
+ssize_t iops_chmod_default_ro(struct inode *ip, mode_t mode) { return -EACCES; }
+
+ssize_t iops_chown_default_ro(struct inode *ip, uid_t uid, gid_t gid)
+{
+    return -EACCES;
+}

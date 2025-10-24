@@ -3,12 +3,12 @@
 ## User Mode
 
 ```C
-#include <uinstd.h>
+#include <unistd.h>
 void exit(int32_t status);
 ```
 
 Terminates the program with status as the return code.
-Closes all open files. 
+Closes all open files.
 Reparents child processes to init.
 The process remains in the zombie state until its parent calls [wait](wait.md).
 

@@ -128,7 +128,13 @@ bool vimixfs_open(struct vimixfs *vifs, const char *filename)
     }
 
     char block_buffer[BLOCK_SIZE];
-    vimixfs_read_sector(vifs, VIMIXFS_SUPER_BLOCK_NUMBER, block_buffer);
+    bool read_ok =
+        vimixfs_read_sector(vifs, VIMIXFS_SUPER_BLOCK_NUMBER, block_buffer);
+    if (!read_ok)
+    {
+        vimixfs_close(vifs);
+        return false;
+    }
     memmove(&vifs->super_block, block_buffer, sizeof(vifs->super_block));
 
     return true;

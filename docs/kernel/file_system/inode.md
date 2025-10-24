@@ -42,7 +42,7 @@ An inode number is a unique [file](file.md) identifier per [file system](file_sy
 
 ## User space
 
-The application [stat](../../userspace/bin/stat.md) can print the inode number of a file using the [syscall](../syscalls/syscalls.md) [fstat](../syscalls/fstat.md).
+The application [stat](../../userspace/bin/stat.md) can print the inode number of a file using the [syscall](../syscalls/syscalls.md) [stat](../syscalls/stat.md).
 
 
 ---

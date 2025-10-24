@@ -7,7 +7,7 @@ Prints file or directory stats like size and [inode](../../kernel/file_system/in
 
 **Returns:**
 - 0 on success
-**Syscall:** [fstat](../../kernel/syscalls/fstat.md)
+**Syscall:** [stat](../../kernel/syscalls/stat.md)
 
 ---
 **Up:** [user space](../userspace.md)

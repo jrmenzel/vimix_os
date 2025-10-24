@@ -173,7 +173,9 @@ struct inode_operations devfs_i_op = {
     iops_read : devfs_iops_read,
     iops_link : iops_link_default_ro,
     iops_unlink : iops_unlink_default_ro,
-    iops_truncate : iops_truncate_default_ro
+    iops_truncate : iops_truncate_default_ro,
+    iops_chmod : iops_chmod_default_ro,
+    iops_chown : iops_chown_default_ro
 };
 
 ssize_t devfs_fops_write(struct file *f, size_t addr, size_t n)
@@ -202,7 +204,7 @@ void devfs_init()
         devfs_itable.inode[i].i_sb = NULL;
         sleep_lock_init(&devfs_itable.inode[i].lock, "devfs inode");
         devfs_itable.inode[i].valid = true;
-        devfs_itable.inode[i].i_mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
+        devfs_itable.inode[i].i_mode = 0644;
         devfs_itable.inode[i].nlink = 1;
         devfs_itable.inode[i].size = 0;
         devfs_itable.inode[i].is_mounted_on = NULL;
@@ -226,7 +228,7 @@ ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
 
     // inode 0 is the dev root directory:
     devfs_itable.inode[0].inum = 0;
-    devfs_itable.inode[0].i_mode |= S_IFDIR;
+    devfs_itable.inode[0].i_mode = 0755 | S_IFDIR;
     devfs_itable.inode[0].i_sb = sb_in;
     devfs_itable.inode[0].uid = 0;
     devfs_itable.inode[0].gid = 0;

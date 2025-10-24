@@ -34,6 +34,7 @@ Most syscalls return a negative value on error which encodes a value from `errno
 - Add a macro call to `usys.pl` (`entry("my_call");`)
 - Add the kernel side function declaration to `syscall.h` (`void sys_my_call();`) and add it to the `syscalls` array which maps the syscall numbers to functions (`[SYS_my_call] sys_my_call,`).
 - Implement `void sys_my_call();` (other implementations are in `syscalls/sys_*.c`).
+- Add documentation and add it to the [syscalls list](syscalls.md).
 
 
 ---

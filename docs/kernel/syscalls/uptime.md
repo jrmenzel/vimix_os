@@ -3,7 +3,7 @@
 ## User Mode
 
 ```C
-#include <uinstd.h>
+#include <unistd.h>
 int32_t uptime();
 ```
 

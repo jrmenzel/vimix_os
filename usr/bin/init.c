@@ -75,10 +75,9 @@ int main()
 
     while (true)
     {
-        const char *SHELL_PATH = "/usr/bin/sh";
-        printf("init starting %s\n", SHELL_PATH);
-        pid_t pid = fork();
+        tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios);
 
+        pid_t pid = fork();
         if (pid < 0)
         {
             printf("init: fork failed\n");
@@ -90,21 +89,24 @@ int main()
             // if /tests/autoexec.sh exists, run it. It should contain a system
             // shutdown.
             struct stat st;
-            char *SHELL_ARGV[] = {"sh", 0};
+
             char *SHELL_ARGV_AUTORUN[] = {"sh", "/tests/autoexec.sh", 0};
             if (stat(SHELL_ARGV_AUTORUN[1], &st) == 0)
             {
-                tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios);
+                const char *SHELL_PATH = "/usr/bin/sh";
+                printf("init starting %s\n", SHELL_PATH);
                 execv(SHELL_PATH, SHELL_ARGV_AUTORUN);
             }
             else
             {
                 // default path, just start a shell:
-                tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios);
-                execv(SHELL_PATH, SHELL_ARGV);
+                const char *LOGIN_PATH = "/usr/bin/login";
+                char *LOGIN_ARGV[] = {"login", 0};
+                printf("init starting %s\n", LOGIN_PATH);
+                execv(LOGIN_PATH, LOGIN_ARGV);
             }
 
-            printf("init: execv sh failed\n");
+            printf("init: execv failed\n");
             exit(1);
         }
 
@@ -117,8 +119,8 @@ int main()
             status = WEXITSTATUS(status);
             if (wpid == pid)
             {
-                // the shell exited; restart it.
-                printf("shell exited with status %d\n", status);
+                // the login exited; restart it.
+                // printf("login exited with status %d\n", status);
                 break;
             }
             else if (wpid < 0)

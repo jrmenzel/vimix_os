@@ -58,6 +58,10 @@ struct inode_operations
                            bool delete_files, bool delete_directories);
 
     ssize_t (*iops_truncate)(struct inode *ip, off_t length);
+
+    ssize_t (*iops_chmod)(struct inode *ip, mode_t mode);
+
+    ssize_t (*iops_chown)(struct inode *ip, uid_t uid, gid_t gid);
 };
 
 /// @brief Opens the inode inside of directory iparent with the given name
@@ -146,6 +150,12 @@ struct inode_operations
 #define VFS_INODE_TRUNCATE(ip, length) \
     (ip)->i_sb->i_op->iops_truncate((ip), (length))
 
+/// @brief Change mode of a file.
+#define VFS_INODE_CHMOD(ip, mode) (ip)->i_sb->i_op->iops_chmod((ip), (mode))
+
+/// @brief Change owner and group of a file.
+#define VFS_INODE_CHOWN(ip, uid, gid) \
+    (ip)->i_sb->i_op->iops_chown((ip), (uid), (gid))
 struct file_operations
 {
     ssize_t (*fops_write)(struct file *f, size_t addr, size_t n);

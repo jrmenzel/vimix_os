@@ -39,10 +39,51 @@ struct process_list
     struct spinlock kernel_stack_lock;  ///< lock for kernel_stack_in_use
 };
 
+struct group_info
+{
+    struct kref usage;
+    size_t ngroups;
+    gid_t *gid;
+};
+
+struct group_info *groups_alloc(size_t ngroups);
+
+void groups_free(struct group_info *gi);
+
+static inline struct group_info *get_group_info(struct group_info *gi)
+{
+    kref_get(&gi->usage);
+    return gi;
+}
+
+static inline void put_group_info(struct group_info *gi)
+{
+    if (kref_put(&gi->usage))
+    {
+        groups_free(gi);
+    }
+}
+
+struct cred
+{
+    uid_t uid;   ///< user id
+    uid_t euid;  ///< effective user id
+    uid_t suid;  ///< saved user id
+
+    gid_t gid;   ///< group id
+    gid_t egid;  ///< effective group id
+    gid_t sgid;  ///< saved group id
+
+    struct group_info *groups;  ///< supplementary groups
+};
+
+#define IS_SUPERUSER(cred_ptr) ((cred_ptr)->euid == 0)
+#define IS_NOT_SUPERUSER(cred_ptr) ((cred_ptr)->euid != 0)
+
 /// Per-process state
 /// Central struct to schedule processes.
 ///
-/// Freed at proc_free()
+/// Freed at process_free()
 struct process
 {
     struct kobject kobj;     ///< Kernel object for this process
@@ -81,6 +122,8 @@ struct process
     size_t current_syscall;  ///< More info in process listing via CTRL+P
 #endif
 
+    struct cred cred;  ///< Process credentials (uid, gid, etc.)
+
     int32_t debug_log_depth;  // debug
 };
 
@@ -88,3 +131,12 @@ extern struct process_list g_process_list;
 
 #define process_from_list(ptr) container_of(ptr, struct process, plist)
 #define process_from_kobj(ptr) container_of(ptr, struct process, kobj)
+
+struct process *process_alloc_init();
+
+void process_free(struct process *proc);
+
+bool proc_init_kernel_stack(pagetable_t kpage_table, struct process *proc,
+                            size_t kstack_va);
+
+void proc_free_kernel_stack(size_t stack_va);

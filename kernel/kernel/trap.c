@@ -52,7 +52,7 @@ void user_mode_interrupt_handler(size_t *stack)
     if (int_ctx_is_system_call(&ctx))
     {
         // system call
-        if (proc_is_killed(proc)) exit(-1);
+        if (proc_is_killed(proc)) do_exit(-1);
 
         // sepc points to the ecall instruction,
         // but we want to return to the next instruction.
@@ -116,7 +116,7 @@ void user_mode_interrupt_handler(size_t *stack)
 
     if (proc_is_killed(proc))
     {
-        exit(-1);
+        do_exit(-1);
     }
 
     if (yield_process)

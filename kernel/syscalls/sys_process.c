@@ -18,13 +18,13 @@ ssize_t sys_exit()
     int32_t status;
     argint(0, &status);
 
-    exit(status);
+    do_exit(status);
     return 0;  // not reached
 }
 
 ssize_t sys_getpid() { return get_current()->pid; }
 
-ssize_t sys_fork() { return fork(); }
+ssize_t sys_fork() { return do_fork(); }
 
 ssize_t sys_wait()
 {
@@ -149,4 +149,103 @@ ssize_t sys_execv()
         free_page(argv[i]);
     }
     return error_code;
+}
+
+ssize_t do_getgroups(int32_t size, size_t list_addr)
+{
+    struct process *proc = get_current();
+
+    if (size == 0)
+    {
+        // return group count
+        return proc->cred.groups->ngroups;
+    }
+
+    if (size < proc->cred.groups->ngroups)
+    {
+        return -EINVAL;
+    }
+
+    if (size > NGROUPS_MAX)
+    {
+        return -EINVAL;
+    }
+
+    size_t to_copy = proc->cred.groups->ngroups;
+    if (uvm_copy_out(proc->pagetable, list_addr, (char *)proc->cred.groups->gid,
+                     to_copy * sizeof(gid_t)) < 0)
+    {
+        return -EFAULT;
+    }
+
+    return to_copy;
+}
+
+ssize_t sys_getgroups()
+{
+    // parameter 0: int size
+    int32_t size;
+    argint(0, &size);
+
+    // parameter 1: gid_t *list
+    size_t list_addr;
+    argaddr(1, &list_addr);
+
+    return do_getgroups(size, list_addr);
+}
+
+ssize_t do_setgroups(int32_t size, size_t list_addr)
+{
+    struct process *proc = get_current();
+
+    if (IS_NOT_SUPERUSER(&proc->cred))
+    {
+        return -EPERM;
+    }
+
+    if (size == 0)
+    {
+        // return group count
+        return proc->cred.groups->ngroups;
+    }
+
+    if (size > NGROUPS_MAX)
+    {
+        return -EINVAL;
+    }
+
+    struct group_info *new_groups = groups_alloc(size);
+    if (new_groups == NULL)
+    {
+        return -ENOMEM;
+    }
+
+    size_t to_copy = size;
+
+    if (uvm_copy_in(proc->pagetable, (char *)new_groups->gid, list_addr,
+                    to_copy * sizeof(gid_t)) < 0)
+    {
+        return -EFAULT;
+    }
+
+    if (proc->cred.groups != NULL)
+    {
+        put_group_info(proc->cred.groups);
+    }
+    proc->cred.groups = new_groups;  // stil ref count 1 from alloc
+
+    return 0;
+}
+
+ssize_t sys_setgroups()
+{
+    // parameter 0: int size
+    int32_t size;
+    argint(0, &size);
+
+    // parameter 1: gid_t *list
+    size_t list_addr;
+    argaddr(1, &list_addr);
+
+    return do_setgroups(size, list_addr);
 }

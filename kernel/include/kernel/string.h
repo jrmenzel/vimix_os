@@ -104,6 +104,7 @@ char *strstr(const char *haystack, const char *needle);
 /// @param string The string with optional leading whitespaces.
 /// @param end If not NULL the position of the first non digit char is returned
 /// in end.
-/// @param base Must be 10. (should be any base from 2 to 36).
+/// @param base Must be between 2 and 10. (standart implementations support up
+/// to 36).
 /// @return The int or 0 on error.
 unsigned long strtoul(const char *string, char **end, int base);

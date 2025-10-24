@@ -186,3 +186,31 @@ int isatty(int fd)
 
     return (tcgetattr(fd, &t) != -1);
 }
+
+uid_t getuid()
+{
+    uid_t ruid;
+    getresuid(&ruid, NULL, NULL);
+    return ruid;
+}
+
+uid_t getgid()
+{
+    gid_t rgid;
+    getresgid(&rgid, NULL, NULL);
+    return rgid;
+}
+
+uid_t geteuid()
+{
+    uid_t euid;
+    getresuid(NULL, &euid, NULL);
+    return euid;
+}
+
+uid_t getegid()
+{
+    gid_t egid;
+    getresgid(NULL, &egid, NULL);
+    return egid;
+}

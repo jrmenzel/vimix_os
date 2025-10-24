@@ -49,11 +49,11 @@ extern struct spinlock g_cpus_ipi_lock;
 
 /// @brief Exit process.
 /// @param status Exit code ( return value from main() )
-void exit(int32_t status);
+void do_exit(int32_t status);
 
 /// @brief Create a new process, copying the parent.
 /// Sets up child kernel stack to return as if from fork() system call.
-ssize_t fork();
+ssize_t do_fork();
 
 /// @brief Grow or shrink user memory by n bytes.
 /// @param n bytes to grow/shrink
@@ -143,7 +143,7 @@ static inline void proc_put(struct process *proc) { kobject_put(&proc->kobj); }
 
 /// @brief Frees all allocated memory of a process and the process struct itself
 /// @param proc Process, lock must be held.
-void proc_free(struct process *proc);
+void process_free(struct process *proc);
 
 /// @brief Prints the processes kernel call stack.
 /// @param proc A not running process.
@@ -174,3 +174,7 @@ void debug_print_process_list(bool print_call_stack_user,
 /// @param f the file
 /// @return the file descriptor or -1 on failure
 FILE_DESCRIPTOR fd_alloc(struct file *f);
+
+void forkret();
+
+size_t proc_get_kernel_stack();

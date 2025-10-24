@@ -136,6 +136,104 @@ extern int32_t pipe(int pipe_descriptors[2]);
 ///////////////////////////////////////
 // 6. Protection
 
+/// @brief Get (real) user ID of calling process.
+/// @return Real user ID.
+uid_t getuid();
+
+/// @brief Get (real) group ID of calling process.
+/// @return Real group ID.
+uid_t getgid();
+
+/// @brief Get effective user ID of calling process.
+/// @return Effective user ID.
+uid_t geteuid();
+
+/// @brief Get effective group ID of calling process.
+/// @return Effective group ID.
+uid_t getegid();
+
+/// @brief Get real, effective and saved user IDs of calling process.
+/// @param ruid Real user ID will be stored here
+/// @param euid Effective user ID will be stored here
+/// @param suid Saved user ID will be stored here
+/// @return 0 on success, -1 on failure. Sets errno.
+extern int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
+
+/// @brief Get real, effective and saved group IDs of calling process.
+/// @param rgid Real group ID will be stored here
+/// @param egid Effective group ID will be stored here
+/// @param sgid Saved group ID will be stored here
+/// @return 0 on success, -1 on failure. Sets errno.
+extern int getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid);
+
+/// @brief Sets real, effective and saved user IDs of calling process.
+/// If the caller is un-privileged, the new IDs must be equal to the real,
+/// effective or saved user ID.
+/// @param ruid New real user ID or -1 to leave unchanged.
+/// @param euid New effective user ID or -1 to leave unchanged.
+/// @param suid New saved user ID or -1 to leave unchanged.
+/// @return 0 on success, -1 on failure. Sets errno.
+extern int setresuid(uid_t ruid, uid_t euid, uid_t suid);
+
+/// @brief Sets real, effective and saved group IDs of calling process.
+/// If the caller is un-privileged, the new IDs must be equal to the real,
+/// effective or saved group ID.
+/// @param rgid New group group ID or -1 to leave unchanged.
+/// @param egid New effective group ID or -1 to leave unchanged.
+/// @param sgid New saved group ID or -1 to leave unchanged.
+/// @return 0 on success, -1 on failure. Sets errno.
+extern int setresgid(gid_t rgid, gid_t egid, gid_t sgid);
+
+/// @brief
+/// @param uid User ID to set.
+/// @return 0 on success, -1 on failure. Sets errno.
+extern int setuid(uid_t uid);
+
+/// @brief
+/// @param uid Group ID to set.
+/// @return 0 on success, -1 on failure. Sets errno.
+extern int setgid(gid_t gid);
+
+/// @brief Sets the effective user ID of the calling process.
+/// @param euid New effective user ID. If the caller is un-privileged, the
+/// value must be equal to the real, effective or saved user ID.
+/// @return 0 on success, -1 on failure. Sets errno.
+static inline int seteuid(uid_t euid) { return setresuid(-1, euid, -1); }
+
+/// @brief Sets the effective group ID of the calling process.
+/// @param egid New effective group ID. If the caller is un-privileged, the
+/// value must be equal to the real, effective or saved group ID.
+/// @return 0 on success, -1 on failure. Sets errno.
+static inline int setegid(gid_t egid) { return setresgid(-1, egid, -1); }
+
+/// @brief Get additional group IDs of calling process.
+/// @param size Size of list array.
+/// @param list Destination array for group IDs.
+/// @return Total number of groups if size is 0; otherwise, number of groups
+/// copied to list. On failure, -1 is returned and errno is set.
+extern int getgroups(int size, gid_t *list);
+
+/// @brief Set additional group IDs of calling process. Will replace previously
+/// set groups.
+/// @param size Size of the list array.
+/// @param list Array of group IDs to set.
+/// @return 0 on success, -1 on failure. Sets errno.
+extern int setgroups(size_t size, const gid_t *list);
+
+/// @brief Change ownership of a file.
+/// @param path Path to file.
+/// @param owner New owner user ID or -1 to leave unchanged.
+/// @param group New group ID or -1 to leave unchanged.
+/// @return 0 on success, -1 on failure. Sets errno.
+extern int chown(const char *path, uid_t owner, gid_t group);
+
+/// @brief Change ownership of a file.
+/// @param fd File descriptor of file.
+/// @param owner New owner user ID or -1 to leave unchanged.
+/// @param group New group ID or -1 to leave unchanged.
+/// @return 0 on success, -1 on failure. Sets errno.
+extern int fchown(int fd, uid_t owner, gid_t group);
+
 ///////////////////////////////////////
 
 /// @brief Change program break size / heap size.

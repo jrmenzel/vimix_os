@@ -35,6 +35,19 @@
 #define SYS_fstatvfs 31
 #define SYS_truncate 32
 #define SYS_ftruncate 33
+#define SYS_getresuid 34
+#define SYS_getresgid 35
+#define SYS_setuid 36
+#define SYS_setgid 37
+#define SYS_setresuid 38
+#define SYS_setresgid 39
+#define SYS_chown 40
+#define SYS_fchown 41
+#define SYS_chmod 42
+#define SYS_fchmod 43
+#define SYS_stat 44
+#define SYS_setgroups 45
+#define SYS_getgroups 46
 
 #define SEEK_SET 0  //< Seek from beginning of file
 #define SEEK_CUR 1  //< Seek from current position
