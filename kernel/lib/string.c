@@ -209,8 +209,40 @@ int _is_whitespace(char c)
     return (('\t' <= c && c <= '\r') || (c == ' '));
 }
 
+size_t strspn(const char *s, const char *accept)
+{
+    if ((s == NULL) || (accept == NULL))
+    {
+        return 0;
+    }
+
+    size_t count = 0;
+    const char *p = s;
+    while (*p != '\0')
+    {
+        const char *a = accept;
+        bool found = false;
+        while (*a != '\0')
+        {
+            if (*p == *a)
+            {
+                found = true;
+                break;
+            }
+            a++;
+        }
+        if (!found)
+        {
+            break;
+        }
+        count++;
+        p++;
+    }
+    return count;
+}
+
 // from stdlib for libfdt:
-unsigned long strtoul(const char *string, char **end, int base)
+long long strtoll(const char *string, char **end, int base)
 {
     char highest_number = '0' + base - 1;
     if ((base < 2) || (base > 10)) return 0;
@@ -226,7 +258,7 @@ unsigned long strtoul(const char *string, char **end, int base)
         sign = *string++;
     }
 
-    unsigned long n = 0;
+    long long n = 0;
     while ('0' <= *string && *string <= highest_number)
     {
         n = n * base + *string++ - '0';
@@ -242,6 +274,21 @@ unsigned long strtoul(const char *string, char **end, int base)
         n = n * (-1);
     }
     return n;
+}
+
+long strtol(const char *nptr, char **endptr, int base)
+{
+    return (long)strtoll(nptr, endptr, base);
+}
+
+unsigned long strtoul(const char *string, char **end, int base)
+{
+    return (unsigned long)strtoll(string, end, base);
+}
+
+unsigned long long strtoull(const char *nptr, char **endptr, int base)
+{
+    return (unsigned long long)strtoll(nptr, endptr, base);
 }
 
 char *strstr(const char *haystack, const char *needle)

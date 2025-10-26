@@ -83,11 +83,19 @@ void assert_write_to_file(const char *test_name, int fd, const char *string);
         exit(1);                                                              \
     }
 
-#define assert_no_error(value)                                              \
-    if (value < 0)                                                          \
-    {                                                                       \
-        printf("%s: error: -1 returned (errno: %s)\n", s, strerror(errno)); \
-        exit(1);                                                            \
+#define assert_error(value)                                              \
+    if (value >= 0)                                                      \
+    {                                                                    \
+        printf("%s: error: call succeeded but should have failed\n", s); \
+        exit(1);                                                         \
+    }
+
+#define assert_no_error(value)                                        \
+    if (value < 0)                                                    \
+    {                                                                 \
+        printf("%s: error: %d returned (errno: %s)\n", s, (int)value, \
+               strerror(errno));                                      \
+        exit(1);                                                      \
     }
 
 #define assert_no_ptr_error(ptr)                                              \

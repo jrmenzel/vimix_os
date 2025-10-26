@@ -78,7 +78,7 @@ $(B_BUILD_DIR)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
-$(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/vimixutils.a $(LIB_PATH)/stdlib.a 
+$(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(LIB_PATH)/vimixutils.a $(LIB_PATH)/tomlc17.a $(LIB_PATH)/stdlib.a
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) -T user-$(ARCH).ld $^ -o $@
 
@@ -88,18 +88,24 @@ $(LIB_PATH)/stdlib.a:
 $(LIB_PATH)/vimixutils.a: 
 	@$(MAKE) -C ../lib vimixutils;
 
+$(LIB_PATH)/tomlc17.a: 
+	@$(MAKE) -C ../lib tomlc17;
+
 ###########################################################
 # compiling apps for the host
 $(B_BUILD_DIR_HOST)/%.o: %.c
 	@printf "$(TASK_COLOR)Compile for host: $(@)\n$(NO_COLOR)"
 	@$(CC_HOST) $(CFLAGS_HOST) $(USER_SPACE_INC_PARAMS_HOST) $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
-$(B_DEPLOY_DIR_HOST)/%: $(B_BUILD_DIR_HOST)/%.o $(LIB_PATH_HOST)/vimixutils.a
+$(B_DEPLOY_DIR_HOST)/%: $(B_BUILD_DIR_HOST)/%.o $(LIB_PATH_HOST)/vimixutils.a $(LIB_PATH_HOST)/tomlc17.a
 	@printf "$(TASK_COLOR)Link for host: $(@)\n$(NO_COLOR)"
 	@$(CC_HOST) $(CFLAGS_HOST) $^ -o $@
 
 $(LIB_PATH_HOST)/vimixutils.a: 
 	@$(MAKE) -C ../lib vimixutils;
+
+$(LIB_PATH_HOST)/tomlc17.a: 
+	@$(MAKE) -C ../lib tomlc17;
 
 ###########################################################
 

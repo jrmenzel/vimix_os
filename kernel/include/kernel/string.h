@@ -100,6 +100,22 @@ char *strrchr(const char *s, int c);
 /// @return Pointer to found substring or NULL if not found.
 char *strstr(const char *haystack, const char *needle);
 
+/// @brief Returns the length of the initial segment of s which consists
+/// entirely of characters in accept.
+/// @param s String to test.
+/// @param accept Allowed chars.
+/// @return Counted length.
+size_t strspn(const char *s, const char *accept);
+
+/// @brief Convert a string to an integer.
+/// @param string The string with optional leading whitespaces.
+/// @param end If not NULL the position of the first non digit char is returned
+/// in end.
+/// @param base Must be between 2 and 10. (standart implementations support up
+/// to 36).
+/// @return The int or 0 on error.
+long strtol(const char *nptr, char **endptr, int base);
+
 /// @brief Convert a string to an unsigned integer.
 /// @param string The string with optional leading whitespaces.
 /// @param end If not NULL the position of the first non digit char is returned
@@ -108,3 +124,21 @@ char *strstr(const char *haystack, const char *needle);
 /// to 36).
 /// @return The int or 0 on error.
 unsigned long strtoul(const char *string, char **end, int base);
+
+/// @brief Convert a string to a 64-bit integer.
+/// @param string The string with optional leading whitespaces.
+/// @param end If not NULL the position of the first non digit char is returned
+/// in end.
+/// @param base Must be between 2 and 10. (standart implementations support up
+/// to 36).
+/// @return The int or 0 on error.
+long long strtoll(const char *nptr, char **endptr, int base);
+
+/// @brief Convert a string to an unsigned 64-bit integer.
+/// @param string The string with optional leading whitespaces.
+/// @param end If not NULL the position of the first non digit char is returned
+/// in end.
+/// @param base Must be between 2 and 10. (standart implementations support up
+/// to 36).
+/// @return The int or 0 on error.
+unsigned long long strtoull(const char *nptr, char **endptr, int base);

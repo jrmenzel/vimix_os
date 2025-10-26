@@ -281,3 +281,53 @@ ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream)
     (*lineptr)[bytes_read] = 0;
     return bytes_read;
 }
+
+int feof(FILE *stream)
+{
+    if (stream == NULL)
+    {
+        return 0;
+    }
+
+    if (stream->returned_char != _FILE_NO_RETURNED_CHAR)
+    {
+        return 0;  // we have a returned char, so not EOF
+    }
+
+    // Try to read one character
+    char c;
+    int32_t bytes_read = read(stream->fd, &c, 1);
+    if (bytes_read < 1)
+    {
+        return 1;  // EOF
+    }
+
+    // Not EOF, so store the character for next read
+    stream->returned_char = c;
+    return 0;
+}
+
+int ferror(FILE *stream)
+{
+    // Not implemented yet
+    return 0;
+}
+
+size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+    if ((nmemb == 0) || (size == 0)) return 0;
+    if ((ptr == NULL) || (stream == NULL)) return 0;
+
+    size_t idx = 0;
+    if (stream->returned_char != _FILE_NO_RETURNED_CHAR)
+    {
+        ((char *)ptr)[idx++] = (char)stream->returned_char;
+        stream->returned_char = _FILE_NO_RETURNED_CHAR;
+    }
+
+    size_t bytes_to_read = (size * nmemb) - idx;
+    ssize_t bytes_read = read(stream->fd, &((char *)ptr)[idx], bytes_to_read);
+    bytes_read += idx;
+
+    return bytes_read / size;
+}

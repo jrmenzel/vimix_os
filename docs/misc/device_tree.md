@@ -5,7 +5,7 @@ Spec: https://www.devicetree.org/
 
 The device tree can also be embedded into the VIMIX kernel image (useful for simple emulators).
 
-Parsing is done with libfdt from https://github.com/dgibson/dtc (see `kernel/lib/libfdt/readme.txt` for details).
+Parsing is done with libfdt from https://github.com/dgibson/dtc (see [contributors](../contributors.md)).
 
 The device tree gets parsed early in the boot process in [main()](../kernel/overview/init_overview.md). This defines the [memory_map_kernel](../kernel/mm/memory_map_kernel.md) (total RAM, mapped devices) and a list of [devices](../kernel/devices/devices.md) to init (it also tries to find init order dependencies).
 

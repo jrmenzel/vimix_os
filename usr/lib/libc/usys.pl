@@ -81,3 +81,4 @@ entry("chmod");
 entry("fchmod");
 entry("setgroups");
 entry("getgroups");
+entry("umask");

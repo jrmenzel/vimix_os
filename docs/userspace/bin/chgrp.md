@@ -12,4 +12,4 @@ Changes the [file](../../kernel/file_system/file.md) [group](../../kernel/securi
 ---
 **Up:** [user space](../userspace.md)
 
-**File Meta Data:** [chgrp](chgrp.md) | [chmod](chmod.md) | [chown](chown.md)
+**File Meta Data:** [chgrp](chgrp.md) | [chmod](chmod.md) | [chown](chown.md) 

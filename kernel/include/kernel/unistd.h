@@ -48,6 +48,7 @@
 #define SYS_stat 44
 #define SYS_setgroups 45
 #define SYS_getgroups 46
+#define SYS_umask 47
 
 #define SEEK_SET 0  //< Seek from beginning of file
 #define SEEK_CUR 1  //< Seek from current position

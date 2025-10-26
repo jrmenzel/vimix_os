@@ -22,6 +22,8 @@ LIB_PATH_HOST := $(ROOT)/$(BUILD_DIR_HOST)/usr/lib
 USER_SPACE_INC := usr/include           # /usr/include : general purpose C headers for userspace
 USER_SPACE_INC += kernel/include        # OS public API, required for stdlib
 USER_SPACE_INC += usr/lib/libvimixutils # <vimixutils/foo> headers
+USER_SPACE_INC += usr/lib/tomlc17/src   # tomlc17 headers
 
 USER_SPACE_INC_HOST := /usr/include
 USER_SPACE_INC_HOST += $(ROOT)/usr/lib/libvimixutils # <vimixutils/foo> headers
+USER_SPACE_INC_HOST += $(ROOT)/usr/lib/tomlc17/src   # tomlc17 headers

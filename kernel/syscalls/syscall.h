@@ -146,6 +146,9 @@ ssize_t sys_chown();
 /// unistd.h
 ssize_t sys_fchown();
 
+/// @brief Syscall "mode_t umask(mode_t mask);" from sys/stat.h
+ssize_t sys_umask();
+
 // ********************************************************
 // System information and control from sys_system.c
 //

@@ -27,6 +27,7 @@ int main()
     int ret = mount("dev", "/dev", "devfs", 0, NULL);
     if (ret < 0) return -errno;
 
+    umask(022);  // default umask for init
     int stdin_fd = open("/dev/console", O_RDWR);
     if (stdin_fd < 0)
     {
@@ -47,7 +48,8 @@ int main()
     ret = mount("sys", "/sys", "sysfs", 0, NULL);
     if (ret < 0)
     {
-        printf("init mounting /sys failed. Error %s\n", strerror(errno));
+        fprintf(stderr, "init mounting /sys failed. Error %s\n",
+                strerror(errno));
     }
     else
     {
@@ -80,33 +82,21 @@ int main()
         pid_t pid = fork();
         if (pid < 0)
         {
-            printf("init: fork failed\n");
+            fprintf(stderr, "init: fork failed\n");
             exit(1);
         }
         if (pid == 0)
         {
-            // HACK to enable automated testing:
-            // if /tests/autoexec.sh exists, run it. It should contain a system
-            // shutdown.
-            struct stat st;
-
-            char *SHELL_ARGV_AUTORUN[] = {"sh", "/tests/autoexec.sh", 0};
-            if (stat(SHELL_ARGV_AUTORUN[1], &st) == 0)
+            const char *login_path = "/usr/bin/login";
+            char *login_argv[] = {"login", 0};
+            printf("init starting %s\n", login_path);
+            if (execv(login_path, login_argv) < 0)
             {
-                const char *SHELL_PATH = "/usr/bin/sh";
-                printf("init starting %s\n", SHELL_PATH);
-                execv(SHELL_PATH, SHELL_ARGV_AUTORUN);
-            }
-            else
-            {
-                // default path, just start a shell:
-                const char *LOGIN_PATH = "/usr/bin/login";
-                char *LOGIN_ARGV[] = {"login", 0};
-                printf("init starting %s\n", LOGIN_PATH);
-                execv(LOGIN_PATH, LOGIN_ARGV);
+                fprintf(stderr, "init: execv %s failed, errno: %s\n",
+                        login_path, strerror(errno));
             }
 
-            printf("init: execv failed\n");
+            fprintf(stderr, "init: execv %s failed\n", login_path);
             exit(1);
         }
 

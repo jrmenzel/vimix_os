@@ -8,9 +8,9 @@ Changes the [file](../../kernel/file_system/file.md) [owner (and optionally grou
 
 **Returns:**
 - 0 on success
-**Syscall:** [chown](chown.md)
+**Syscall:** [chown](../../kernel/syscalls/chown.md)
 
 ---
 **Up:** [user space](../userspace.md)
 
-**File Meta Data:** [chgrp](chgrp.md) | [chmod](chmod.md) | [chown](chown.md)
+**File Meta Data:** [chgrp](chgrp.md) | [chmod](chmod.md) | [chown](chown.md) 

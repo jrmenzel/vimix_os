@@ -113,3 +113,8 @@ static inline ssize_t getline(char **lineptr, size_t *n, FILE *stream)
 {
     return getdelim(lineptr, n, '\n', stream);
 }
+
+int feof(FILE *stream);
+int ferror(FILE *stream);
+
+size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);

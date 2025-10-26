@@ -42,3 +42,8 @@ extern int chmod(const char *path, mode_t mode);
 /// @param mode New file mode.
 /// @return 0 on success, -1 on failure. Sets errno.
 extern int fchmod(int fd, mode_t mode);
+
+/// @brief Sets the processes file mode creation mask.
+/// @param mask New mask to set.
+/// @return Old mask value. Olways successful.
+extern mode_t umask(mode_t mask);

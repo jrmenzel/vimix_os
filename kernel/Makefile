@@ -52,6 +52,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/buf.o \
 	kernel/file.o \
 	kernel/exec.o \
+	kernel/permission.o \
 	kernel/process.o \
 	kernel/reset.o \
 	kernel/scheduler.o \

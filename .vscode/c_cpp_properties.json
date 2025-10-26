@@ -25,6 +25,7 @@
             "${workspaceFolder}/kernel/include",
             "${workspaceFolder}/usr/lib/libc",
             "${workspaceFolder}/usr/lib/libvimixutils",
+            "${workspaceFolder}/usr/lib/tomlc17/src",
             "${workspaceFolder}/usr/include"
         ]
     },
@@ -94,7 +95,8 @@
                 "/usr/include",
                 "/usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include",
                 "${workspaceFolder}/kernel/include",
-                "${workspaceFolder}/usr/lib/libvimixutils"
+                "${workspaceFolder}/usr/lib/libvimixutils",
+                "${workspaceFolder}/usr/lib/tomlc17/src"
             ],
             "defines": [
                 "MEMORY_SIZE=64",

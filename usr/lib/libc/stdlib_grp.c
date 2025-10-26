@@ -177,10 +177,12 @@ struct group *getgrent()
         g_gb.ret_group.gr_name = grp_name;
         g_gb.ret_group.gr_passwd = grp_passwd;
         g_gb.ret_group.gr_gid = (uid_t)atoi(grp_gid_str);
-        g_gb.ret_group.gr_mem = g_gb.member_list;
 
         // can fail due to no memory. in that case errno is set.
         if (!create_group_list(&g_gb, grp_members)) return NULL;
+
+        // set after create_group_list() as it might realloc the member_list
+        g_gb.ret_group.gr_mem = g_gb.member_list;
 
         return &g_gb.ret_group;
     }

@@ -1,23 +1,17 @@
-# Syscalls chmod and fchmod
+# Syscall umask
 
 ## User Mode
 
 ```C
 #include <sys/stat.h>
-int chmod(const char *path, mode_t mode);
-
-int fchmod(int fd, mode_t mode);
+mode_t umask(mode_t mask);
 ```
 
-Change the file mode.
-
-## User Apps
-
-The app [chmod](../../userspace/bin/chmod.md) exposes this syscall.
+Change the [processes](../processes/processes.md) `umask`, will return the old mask and never fail. See [file mode](../security/mode.md) regarding how the `umask` impacts the file mode of newly created [files](../file_system/file.md).
 
 ## Kernel Mode
 
-Implemented in `sys_file_meta.c` as `sys_chmod()` / `sys_fchmod()`. 
+Implemented in `sys_file_meta.c` as `sys_umask()`. 
 
 ## See also
 

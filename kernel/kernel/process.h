@@ -123,6 +123,7 @@ struct process
 #endif
 
     struct cred cred;  ///< Process credentials (uid, gid, etc.)
+    mode_t umask;      ///< File mode creation mask
 
     int32_t debug_log_depth;  // debug
 };

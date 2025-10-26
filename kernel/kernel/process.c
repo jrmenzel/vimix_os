@@ -123,6 +123,7 @@ struct process *process_alloc_init()
     // all user and group IDs to 0
     memset(&proc->cred, 0, sizeof(struct cred));
     proc->cred.groups = NULL;
+    proc->umask = 0;
 
     // printk(
     //     "CPU %zd: new  process %d at kstack: 0x%zx (lower address) trapframe:

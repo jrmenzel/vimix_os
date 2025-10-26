@@ -14,7 +14,7 @@ User and group IDs on Linux come in four flavors:
 		- If binary has `setuid bit` set: eUID = UID from file.
 		- If binary has `setgid bit` set: eGID = GID from file.
 		- If binary has no special bits set: a copy of the real IDs.
-	- Can be changed by some syscalls.
+	- Can be changed by some [syscalls](../syscalls/syscalls.md).
 	- IDs used for access checks.
 - saved
 	- Privilege level the process can return to.
@@ -28,18 +28,23 @@ User and group IDs on Linux come in four flavors:
 
 All syscalls and wrappers are found in `unistd.h`.
 
-| UID       | GID       | Real ID = 0? | Description                        | Implementation       |
-| --------- | --------- | ------------ | ---------------------------------- | -------------------- |
-| getuid    | getgid    |              | Get real IDs                       | Wrapper of getresXid |
-| geteuid   | getegid   |              | Get effective IDs                  | Wrapper of getresXid |
-| getresuid | getresgid |              | Get real, effective and saved IDs. | sys_getresXid        |
-| setuid    | setgid    | no           | Set effective IDs if allowed (1).  | sys_setXid           |
-| setuid    | setgid    | yes          | Set all IDs.                       | sys_setXid           |
-| seteuid   | setegid   | no           | Set effective IDs if allowed (1).  | Wrapper of setresXid |
-| seteuid   | setegid   | yes          | Set effective ID.                  | Wrapper of setresXid |
-| setresuid | setresgid | no           | Set all IDs if allowed (2).        | sys_setresXid        |
-| setresuid | setresgid | yes          | Set all ID.                        | sys_setresXid        |
+| UID                                   | GID                                   | Real ID = 0? | Description                        | Implementation       |
+| ------------------------------------- | ------------------------------------- | ------------ | ---------------------------------- | -------------------- |
+| getuid                                | getgid                                |              | Get real IDs                       | Wrapper of getresXid |
+| geteuid                               | getegid                               |              | Get effective IDs                  | Wrapper of getresXid |
+| [getresuid](../syscalls/getresuid.md) | [getresgid](../syscalls/getresgid.md) |              | Get real, effective and saved IDs. | sys_getresXid        |
+| [setuid](../syscalls/setuid.md)       | [setgid](../syscalls/setgid.md)       | no           | Set effective IDs if allowed (1).  | sys_setXid           |
+| [setuid](../syscalls/setuid.md)       | [setgid](../syscalls/setgid.md)       | yes          | Set all IDs.                       | sys_setXid           |
+| seteuid                               | setegid                               | no           | Set effective IDs if allowed (1).  | Wrapper of setresXid |
+| seteuid                               | setegid                               | yes          | Set effective ID.                  | Wrapper of setresXid |
+| [setresuid](../syscalls/setresuid.md) | [setresgid](../syscalls/setresgid.md) | no           | Set all IDs if allowed (2).        | sys_setresXid        |
+| [setresuid](../syscalls/setresuid.md) | [setresgid](../syscalls/setresgid.md) | yes          | Set all ID.                        | sys_setresXid        |
 
 1. Unprivileged processes can set the effective IDs to the current value, the saved ID or the real ID.
 2. Unprivileged processes can set any ID to any value of the currently set (real, effective, saved) IDs.
 
+
+---
+**Overview:** [kernel](../kernel.md)
+
+**Security:** [mode](mode.md) | [user_group_id](user_group_id.md)

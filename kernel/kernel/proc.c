@@ -264,6 +264,7 @@ ssize_t do_fork()
     pid_t pid = np->pid;
     np->cred = parent->cred;
     np->cred.groups = get_group_info(parent->cred.groups);
+    np->umask = parent->umask;
 
     np->debug_log_depth = 0;
 

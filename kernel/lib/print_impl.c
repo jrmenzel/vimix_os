@@ -203,6 +203,48 @@ int32_t print_unsigned_hex(_PUT_CHAR_FP func, size_t payload, ssize_t padding,
     return num_len;
 }
 
+int32_t print_unsigned_octal(_PUT_CHAR_FP func, size_t payload, ssize_t padding,
+                             char padding_char, size_t value)
+{
+#if defined(__ARCH_32BIT)
+    const size_t MAX_LEN = 11;  // 40 000 000 000
+#else
+    const size_t MAX_LEN = 22;  // 1 777 777 777 777 777 777 777
+#endif
+    char buffer[MAX_LEN];
+
+    size_t num_len = 0;
+    for (size_t i = 0; i < MAX_LEN; ++i)
+    {
+        size_t rem = value % 8;
+        value = value / 8;
+        buffer[MAX_LEN - i - 1] = INT_2_ASCII(rem);
+
+        if (value == 0)
+        {
+            num_len = i + 1;
+            break;
+        }
+    }
+
+    if (padding > num_len)
+    {
+        padding -= num_len;
+        while (padding > 0)
+        {
+            buffer[MAX_LEN - num_len - 1] = padding_char;
+            num_len++;
+            padding--;
+        }
+    }
+
+    for (size_t i = 0; i < num_len; ++i)
+    {
+        func(buffer[MAX_LEN - num_len + i], payload);
+    }
+    return num_len;
+}
+
 int32_t print_string(_PUT_CHAR_FP func, size_t payload, const char *value)
 {
     int32_t charsWritten = 0;
@@ -351,6 +393,12 @@ int32_t print_impl(_PUT_CHAR_FP func, size_t payload, const char *format,
                 int32_t value = va_arg(vl, int32_t);
                 charsWritten++;
                 func(value, payload);
+            }
+            else if (*format == 'o')
+            {
+                size_t value = va_arg(vl, size_t);
+                charsWritten += print_unsigned_octal(
+                    func, payload, padding, padding_char, (size_t)value);
             }
             format++;
         }

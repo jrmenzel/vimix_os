@@ -14,6 +14,7 @@
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
+#include <kernel/permission.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
@@ -103,14 +104,22 @@ FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
         {
             if (flags & O_CREAT)
             {
+                // apply process umask
+                mode_t create_mode = mode & 0777;
+                struct process *proc = get_current();
+                create_mode &= ~(proc->umask);
+                create_mode |= (mode & S_IFMT);
+
                 // only create regular files this way:
-                if (!check_and_adjust_mode(&mode, S_IFREG) || !S_ISREG(mode))
+                if (!check_and_adjust_mode(&create_mode, S_IFREG) ||
+                    !S_ISREG(create_mode))
                 {
                     inode_put(iparent);
                     return -EPERM;
                 }
 
-                ip = VFS_INODE_CREATE(iparent, name, mode, flags, iparent->dev);
+                ip = VFS_INODE_CREATE(iparent, name, create_mode, flags,
+                                      iparent->dev);
                 inode_put(iparent);
                 // inode is locked if not NULL
 
@@ -128,7 +137,19 @@ FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
         }
         else
         {
+            // file exists already, put parent inode
             inode_put(iparent);
+
+            // check permissions
+            ssize_t perm_ok = check_inode_permission(get_current(), ip, flags);
+            if (perm_ok < 0)
+            {
+                inode_unlock_put(ip);
+                return perm_ok;
+            }
+
+            // if it's a mount point, we need to open the root of the mounted
+            // filesystem instead
             if (ip->is_mounted_on != NULL)
             {
                 struct inode *tmp_ip = VFS_INODE_DUP(ip->is_mounted_on->s_root);
@@ -202,7 +223,7 @@ void file_close(struct file *f)
 
     if (S_ISFIFO(f->mode))
     {
-        bool close_writing_end = (f->flags & O_WRONLY) || (f->flags & O_RDWR);
+        bool close_writing_end = (f->flags == O_WRONLY) || (f->flags == O_RDWR);
         pipe_close(f->pipe, close_writing_end);
     }
     else if (S_ISCHR(f->mode) || S_ISBLK(f->mode) || S_ISDIR(f->mode) ||
@@ -234,9 +255,10 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
 {
     ssize_t read_bytes = 0;
 
-    if (f->flags & O_WRONLY)
+    ssize_t perm_ok = check_file_permission(get_current(), f, MAY_READ);
+    if (perm_ok < 0)
     {
-        return -EACCES;
+        return perm_ok;
     }
 
     if (S_ISFIFO(f->mode))
@@ -307,9 +329,10 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
 {
     ssize_t ret = 0;
 
-    if (!((f->flags & O_WRONLY) || (f->flags & O_RDWR)))
+    ssize_t perm_ok = check_file_permission(get_current(), f, MAY_WRITE);
+    if (perm_ok < 0)
     {
-        return -EACCES;
+        return perm_ok;
     }
 
     if (S_ISFIFO(f->mode))
@@ -379,6 +402,13 @@ ssize_t file_link(char *path_from, char *path_to)
     }
 
     inode_lock_two(dir, ip);
+
+    // ssize_t perm_ok = check_inode_permission(get_current(), dir, MAY_WRITE);
+    // if (perm_ok < 0)
+    //{
+    //     return perm_ok;
+    // }
+
     if (dir->dev != ip->dev)
     {
         inode_unlock_put(ip);

@@ -1,6 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 
+// required on linux for getresuid/getresgid
+#define _GNU_SOURCE
+#include <unistd.h>
+
 #include <ctype.h>
+#include <grp.h>
+#include <pwd.h>
 #include <vimixutils/minmax.h>
 #include "usertests.h"
 
@@ -505,6 +511,14 @@ void printf_test(char *s)
     assert_same_string(buf, "0xDEADF00D");
     assert_same_value(ret, 10);
 
+    ret = snprintf(buf, MAX_STRING, "%lo", (long int)(0755));
+    assert_same_string(buf, "755");
+    assert_same_value(ret, 3);
+
+    ret = snprintf(buf, MAX_STRING, "%o", (int)(0640));
+    assert_same_string(buf, "640");
+    assert_same_value(ret, 3);
+
     if (sizeof(size_t) == 8)
     {
         ret = snprintf(buf, MAX_STRING, "%zu", (size_t)(-1));
@@ -799,6 +813,235 @@ void truncate_test(char *s)
     assert_no_error(unlink(file_name));
 }
 
+void assert_user_is_root(char *s)
+{
+    uid_t uid = getuid();
+    gid_t gid = getgid();
+
+    if (uid != 0)
+    {
+        fprintf(stderr, "%s: error: test must run as root\n", s);
+        exit(1);
+    }
+    assert_same_value(uid, 0);
+    assert_same_value(gid, 0);
+}
+
+void user_id(char *s)
+{
+    uid_t uid = getuid();
+    gid_t gid = getgid();
+
+    assert_user_is_root(s);
+
+    gid_t groups[NGROUPS_MAX];
+    size_t ngroups = getgroups(NGROUPS_MAX, groups);
+
+    if (ngroups < 1)
+    {
+        fprintf(stderr, "%s: error: getgroups() returned %zd\n", s, ngroups);
+        exit(1);
+    }
+
+    uid_t ruid, euid, suid;
+    gid_t rgid, egid, sgid;
+
+    if (getresuid(&ruid, &euid, &suid) < 0) exit(1);
+    if (getresgid(&rgid, &egid, &sgid) < 0) exit(1);
+
+    assert_same_value(ruid, 0);
+    assert_same_value(euid, 0);
+    assert_same_value(suid, 0);
+    assert_same_value(rgid, 0);
+    assert_same_value(egid, 0);
+    assert_same_value(sgid, 0);
+
+    struct passwd *pw = getpwuid(uid);
+    struct group *gr = getgrgid(gid);
+    assert_no_ptr_error(pw);
+    assert_no_ptr_error(gr);
+
+    assert_same_string(pw->pw_name, "root");
+    assert_same_string(gr->gr_name, "root");
+
+    // become a user with less privileges (e.g., "user" with uid/gid 1000)
+    pw = getpwuid(1000);
+    gr = getgrgid(1000);
+    assert_no_ptr_error(pw);
+    assert_no_ptr_error(gr);
+
+    assert_no_error(initgroups(pw->pw_name, pw->pw_gid));
+    assert_no_error(setgid(pw->pw_gid));
+    assert_no_error(setuid(pw->pw_uid));
+
+    if (getresuid(&ruid, &euid, &suid) < 0) exit(1);
+    if (getresgid(&rgid, &egid, &sgid) < 0) exit(1);
+
+    assert_same_value(ruid, 1000);
+    assert_same_value(euid, 1000);
+    assert_same_value(suid, 1000);
+    assert_same_value(rgid, 1000);
+    assert_same_value(egid, 1000);
+    assert_same_value(sgid, 1000);
+}
+
+struct test_file
+{
+    // char *name;
+    mode_t mode;
+    uid_t uid;
+    gid_t gid;
+    bool is_readable;
+    bool is_writable;
+};
+
+// clang-format off
+struct test_file test_files[] = {
+    {0200, 0, 0, false, false},
+    {0222, 0, 0, false, true},
+    {0444, 0, 0, true, false},
+    {0666, 0, 0, true, true},
+    {0777, 0, 0, true, true},
+    {0750, 0, 0, false, false},
+    {0755, 1000, 1000, true, true},
+    {0700, 1000, 1000, true, true},
+    {0444, 1000, 1000, true, false},
+    {0600, 1000, 1000, true, true},
+    {0077, 1000, 1000, false, false},
+    {0007, 1000, 1000, false, false},
+    {0000, 1000, 1000, false, false},
+    {0, 0},
+};
+// clang-format on
+
+void test_read_access(const char *file_name, bool should_succeed, const char *s)
+{
+    int expected_errno = should_succeed ? 0 : EACCES;
+
+    errno = 0;
+    int fd = open(file_name, O_RDONLY);
+    assert_same_value(errno, expected_errno);
+    if (should_succeed)
+    {
+        assert_open_ok_fd(s, fd, file_name);
+        char buffer[1];
+        read(fd, buffer, 1);  // test read after open
+        assert_same_value(errno, 0);
+
+        errno = 0;
+        assert_error(write(fd, buffer, 1));  // not opened to write
+        assert_same_value(errno, EBADF);
+
+        assert_no_error(close(fd));
+    }
+}
+
+void test_write_access(const char *file_name, bool should_succeed,
+                       const char *s)
+{
+    int expected_errno = should_succeed ? 0 : EACCES;
+
+    errno = 0;
+    int fd = open(file_name, O_WRONLY);
+    assert_same_value(errno, expected_errno);
+    if (should_succeed)
+    {
+        assert_open_ok_fd(s, fd, file_name);
+        char buffer[1];
+
+        errno = 0;
+        assert_error(read(fd, buffer,
+                          1));  // test read after open -> but opened write only
+        assert_same_value(errno, EBADF);
+
+        errno = 0;
+        assert_no_error(write(fd, buffer, 1));  // test write after open
+        assert_same_value(errno, 0);
+
+        assert_no_error(close(fd));
+    }
+}
+
+void file_access(char *s)
+{
+    assert_user_is_root(s);
+    mode_t old = umask(0);
+
+    for (size_t i = 0; test_files[i].mode != 0; ++i)
+    {
+        const char *file_name = "file_access_test_file";
+        unlink(file_name);
+
+        // create test file
+        int fd = open(file_name, O_CREAT, test_files[i].mode);
+        assert_open_ok_fd(s, fd, file_name);
+        assert_no_error(close(fd));
+
+        struct stat st;
+        assert_no_error(stat(file_name, &st));
+
+        assert_same_value((st.st_mode & 0777), test_files[i].mode);
+
+        // set ownership
+        assert_no_error(chown(file_name, test_files[i].uid, test_files[i].gid));
+
+        pid_t pid = fork();
+        if (pid < 0)
+        {
+            fprintf(stderr, "%s: error: fork() failed (errno: %s)\n", s,
+                    strerror(errno));
+            exit(1);
+        }
+        else if (pid == 0)
+        {
+            // child process: still root
+            // root should always have access
+            // printf("Testing file with mode %o, uid %d, gid %d as root\n",
+            //       test_files[i].mode, test_files[i].uid, test_files[i].gid);
+            test_read_access(file_name, true, s);
+            // printf("now writing:\n");
+            test_write_access(file_name, true, s);
+            // printf("done.\n");
+
+            // child process: switch to user with uid/gid 1000
+            struct passwd *pw = getpwuid(1000);
+            struct group *gr = getgrgid(1000);
+            assert_no_ptr_error(pw);
+            assert_no_ptr_error(gr);
+            assert_no_error(initgroups(pw->pw_name, pw->pw_gid));
+            assert_no_error(setgid(pw->pw_gid));
+            assert_no_error(setuid(pw->pw_uid));
+            // test read access
+            // printf("Testing file with mode %o, uid %d, gid %d as user\n",
+            //       test_files[i].mode, test_files[i].uid, test_files[i].gid);
+            test_read_access(file_name, test_files[i].is_readable, s);
+            // printf("now writing:\n");
+            test_write_access(file_name, test_files[i].is_writable, s);
+            // printf("done.\n");
+            exit(0);
+        }
+        else
+        {
+            // parent process: wait for child
+            int status;
+            assert_no_error(wait(&status));
+            if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+            {
+                fprintf(stderr,
+                        "%s: error: child process failed for mode %o, uid "
+                        "%d, gid %d\n",
+                        s, test_files[i].mode, test_files[i].uid,
+                        test_files[i].gid);
+                exit(1);
+            }
+        }
+
+        // clean up
+        assert_no_error(unlink(file_name));
+    }
+    umask(old);
+}
+
 struct test quicktests_common[] = {
     {dev_null, "dev_null"},
     {dev_zero, "dev_zero"},
@@ -811,6 +1054,8 @@ struct test quicktests_common[] = {
     {getline_test, "getline"},
     {strtoul_test, "strtoul"},
     {truncate_test, "truncate"},
+    {user_id, "user_id"},
+    {file_access, "file_access"},
 
     {0, 0},
 };

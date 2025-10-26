@@ -175,6 +175,7 @@ static ssize_t (*syscalls[])() = {
     [SYS_stat] sys_stat,
     [SYS_setgroups] sys_setgroups,
     [SYS_getgroups] sys_getgroups,
+    [SYS_umask] sys_umask,
 };
 // clang-format on
 
@@ -254,6 +255,7 @@ static const char *g_syscall_names[] = {
     [SYS_stat] "stat",
     [SYS_setgroups] "setgroups",
     [SYS_getgroups] "getgroups",
+    [SYS_umask] "umask",
 };
 // clang-format on
 

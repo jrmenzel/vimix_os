@@ -121,3 +121,16 @@ ssize_t sys_fchown()
 
     return chown_internal(f->ip, uid, gid);
 }
+
+ssize_t sys_umask()
+{
+    // parameter 0: mode_t (int32_t) mask
+    int32_t mask;
+    argint(0, &mask);
+
+    struct process *proc = get_current();
+    mode_t old_mask = proc->umask;
+    proc->umask = mask & 0777;  // only permission bits
+
+    return old_mask;
+}

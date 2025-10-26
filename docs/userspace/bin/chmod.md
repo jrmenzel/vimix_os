@@ -13,4 +13,4 @@ Changes the [file](../../kernel/file_system/file.md) mode.
 ---
 **Up:** [user space](../userspace.md)
 
-**File Meta Data:** [chgrp](chgrp.md) | [chmod](chmod.md) | [chown](chown.md)
+**File Meta Data:** [chgrp](chgrp.md) | [chmod](chmod.md) | [chown](chown.md) 
