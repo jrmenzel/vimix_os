@@ -2,20 +2,19 @@
 # Build all userspace libs
 #
 
-.PHONY: all clean stdlib vimixutils tomlc17
+.PHONY: all clean
 
-all: stdlib vimixutils tomlc17
+ifeq ($(TARGET), host)
 
-stdlib:
-	@$(MAKE) -C libc all;
+all:
+	@$(MAKE) TARGET=$(TARGET) -C libvimixutils all;
+	@$(MAKE) TARGET=$(TARGET) -C tomlc17 all;
 
-vimixutils:
-	@$(MAKE) -C libvimixutils all;
+else
 
-tomlc17:
-	@$(MAKE) -C tomlc17 all;
+all:
+	@$(MAKE) TARGET=$(TARGET) -C libc all;
+	@$(MAKE) TARGET=$(TARGET) -C libvimixutils all;
+	@$(MAKE) TARGET=$(TARGET) -C tomlc17 all;
 
-clean:
-	@$(MAKE) -C libc clean;
-	@$(MAKE) -C libvimixutils clean;
-	@$(MAKE) -C tomlc17 clean;
+endif

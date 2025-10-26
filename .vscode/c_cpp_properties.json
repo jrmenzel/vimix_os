@@ -12,7 +12,7 @@
         "kernel_defines": [
             "DEBUG",
             "MEMORY_SIZE=64",
-            "USER_TEXT_START=0x1000"
+            "USER_TEXT_START=0x400000"
         ],
         "kernel_defines_riscv": [
             "__ARCH_riscv",

@@ -16,8 +16,8 @@ function build_config {
     # build VIMIX
     echo -e "${YELLOW}Build config: $1 $2 $3${NC}"
     BUILD_DIR=${BUILD_ROOT}/build_$1_$2_$3
-    make clean BUILD_DIR=${BUILD_DIR}
-    make -j $(nproc) ARCH=$1 PLATFORM=$2 BUILD_TYPE=$3 BUILD_DIR=${BUILD_DIR} || exit 1
+    make clean BUILD_PREFIX=${BUILD_DIR}
+    make -j $(nproc) ARCH=$1 PLATFORM=$2 BUILD_TYPE=$3 BUILD_PREFIX=${BUILD_DIR} || exit 1
 }
 
 # platform debug|release|compiler
@@ -26,8 +26,8 @@ function build_config_compiler {
     # build VIMIX
     echo -e "${YELLOW}Build config: $1 $2 on gcc$3 ${NC}"
     BUILD_DIR=${BUILD_ROOT}/build_$1_$2_gcc$3
-    make clean BUILD_DIR=${BUILD_DIR}
-    make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} TOOLPREFIX=riscv64-linux-gnu- GCCPOSTFIX=-$3 || exit 1
+    make clean BUILD_PREFIX=${BUILD_DIR}
+    make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 BUILD_PREFIX=${BUILD_DIR} TOOLPREFIX=riscv64-linux-gnu- GCCPOSTFIX=-$3 || exit 1
 }
 
 # $1 = arch
@@ -63,18 +63,12 @@ function test_config {
     EXPECTED_RESULT="$5"
     echo -e "${YELLOW}Test config: $1 $2 ${NC}"
     # copy test
-    cp ${BUILD_DIR}/root/tests/$4.sh ${BUILD_DIR}/root/tests/autoexec.sh
+    cp ${BUILD_DIR}/build/root/tests/$4.sh ${BUILD_DIR}/build/root/tests/autoexec.sh
     # re-create fs image
-    make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 EXTERNAL_KERNEL_FLAGS="${EXTERNAL_KERNEL_FLAGS}" BUILD_DIR=${BUILD_DIR} ${BUILD_DIR}/filesystem.img || exit 1
+    make -j $(nproc) PLATFORM=$1 BUILD_TYPE=$2 EXTERNAL_KERNEL_FLAGS="${EXTERNAL_KERNEL_FLAGS}" BUILD_PREFIX=${BUILD_DIR} ${BUILD_DIR}/build/filesystem.img || exit 1
     # run test
-    echo -e "${YELLOW}Test config: make PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} CPUS=$6 ${EMU_FLAGS} $3 ${NC}"
-    make PLATFORM=$1 BUILD_TYPE=$2 BUILD_DIR=${BUILD_DIR} CPUS=$6 ${EMU_FLAGS} $3 > ${RESULT_FILE} || exit 1
-    # get file system content, clear target dir fist:
-    #if [ -d ${BUILD_DIR}/root_out ]
-    #then
-    #rm -rf ${BUILD_DIR}/root_out/*
-    #fi
-    #./build_host/root/usr/bin/mkfs ${BUILD_DIR}/filesystem.img --out ${BUILD_DIR}/root_out
+    echo -e "${YELLOW}Test config: make PLATFORM=$1 BUILD_TYPE=$2 BUILD_PREFIX=${BUILD_DIR} CPUS=$6 ${EMU_FLAGS} $3 ${NC}"
+    make PLATFORM=$1 BUILD_TYPE=$2 BUILD_PREFIX=${BUILD_DIR} CPUS=$6 ${EMU_FLAGS} $3 > ${RESULT_FILE} || exit 1
 
     set +e
     # check test result
@@ -153,7 +147,7 @@ function test_functional {
 function print_stats {
     # print stats
     echo "Kernels:"
-    ls -lh ${BUILD_ROOT}/*/boot/kernel-vimix
+    ls -lh ${BUILD_ROOT}/*/build/boot/kernel-vimix
 
     echo "Passed:"
     ls ${BUILD_ROOT} | grep PASS

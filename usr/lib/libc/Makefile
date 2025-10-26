@@ -3,7 +3,6 @@
 #
 ROOT := ../../..
 include ../../MakefileCommonUser.mk
-USER_SPACE_INC_PARAMS := $(foreach d, $(USER_SPACE_INC), -I../../../$d)
 
 # for all libs:
 LIB_BUILD_DIR := $(ROOT)/$(BUILD_DIR)/usr/lib
@@ -55,7 +54,6 @@ $(LIBC_BUILD_DIR)/usys.S : usys.pl
 $(LIBC_BUILD_DIR)/usys.o : $(LIBC_BUILD_DIR)/usys.S
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) -c -o $(LIBC_BUILD_DIR)/usys.o $(LIBC_BUILD_DIR)/usys.S $(USER_SPACE_INC_PARAMS)
-
 
 directories: # temp build directories
 	@mkdir -p $(LIBC_BUILD_DIR)

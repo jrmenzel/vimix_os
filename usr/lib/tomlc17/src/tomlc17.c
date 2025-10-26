@@ -783,7 +783,8 @@ toml_result_t toml_parse_file(FILE *fp)
                 else
                 {
                     snprintf(result.errmsg, sizeof(result.errmsg),
-                             "file is bigger than %ld bytes", INT_MAX - 1);
+                             "file is bigger than %d bytes",
+                             (int)(INT_MAX - 1));
                     FREE(buf);
                     return result;
                 }

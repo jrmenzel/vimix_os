@@ -21,16 +21,15 @@ endif
 kernel: $(KERNEL_REQS)
 	@$(MAKE) -C kernel all;
 
-userspace_lib: # user space clib
+userspace: # user space apps and libs
 	@$(MAKE) -C usr/lib all;
-
-userspace: userspace_lib # user space apps and libs
 	@$(MAKE) -C usr/bin all;
 	@$(MAKE) -C usr/local/bin/dhrystone all;
 
 host: # some user space apps for the host (Linux)
-	@$(MAKE) -C usr/bin host;
-	@$(MAKE) -C usr/local/bin/dhrystone host; 
+	@$(MAKE) TARGET=host -C usr/lib all;
+	@$(MAKE) TARGET=host -C usr/bin all;
+	@$(MAKE) TARGET=host -C usr/local/bin/dhrystone all; 
 
 build_root: README.md userspace host # target filesystem in build/root
 	@cp README.md $(BUILD_DIR)/root/
@@ -43,9 +42,9 @@ boot_dir: kernel $(BUILD_DIR)/filesystem.img boot/boot.cmd # boot directory cont
 
 
 # filesystem in a file containing userspace as initrd (kernel is set manually)
-$(BUILD_DIR)/filesystem.img: build_root
+$(BUILD_DIR)/filesystem.img: build_root host
 	@printf "$(TASK_COLOR)Create file system: $(@)\n$(NO_COLOR)"
-	$(BUILD_DIR_HOST)/root/usr/bin/mkfs $(BUILD_DIR)/filesystem.img --in $(BUILD_DIR)/root/ 
+	@$(BUILD_DIR_HOST)/root/usr/bin/mkfs $(BUILD_DIR)/filesystem.img --in $(BUILD_DIR)/root/ 
 
 ###
 # qemu
@@ -152,9 +151,5 @@ spike-dump-tree: spike-requirements
 	$(SPIKE) --dump-dts $(SPIKE_OPTIONS) > tree_$(PLATFORM).dts
 
 clean: # clean up
-	@$(MAKE) -C kernel clean;
-	@$(MAKE) -C usr/lib clean;
-	@$(MAKE) -C usr/bin clean;
-	@$(MAKE) -C usr/local/bin/dhrystone clean;
-	-@rm -rf $(BUILD_DIR)/root/*
-	-@rm -rf $(BUILD_DIR_HOST)/root/*
+	-@rm -rf build/*
+	-@rm -rf build_host/*

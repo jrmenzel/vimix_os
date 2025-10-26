@@ -22,7 +22,17 @@ include $(ROOT_DIR_MK_COMMON)kernel/arch/$(ARCH)/MakefileArch.mk
 # So if this gets changed, the Makefiles should be fine, but externel
 # configs and scripts might need to be updated.
 # (e.g. launch.json).
-BUILD_DIR := build
+ifdef BUILD_PREFIX
+BUILD_PREFIX_2 := $(BUILD_PREFIX)/
+endif
+
+ifeq ($(TARGET), host)
+BUILD_DIR := $(BUILD_PREFIX_2)build_host
+else
+BUILD_DIR := $(BUILD_PREFIX_2)build
+endif
+BUILD_DIR_HOST := $(BUILD_PREFIX_2)build_host
+
 
 KERNEL_NAME := kernel-vimix
 KERNEL_FILE := $(BUILD_DIR)/boot/$(KERNEL_NAME)
@@ -37,25 +47,23 @@ USER_TEXT_START := "0x400000"
 
 #####
 # tools
+ifeq ($(TARGET), host)
+CC := gcc
+AR := ar
+LD := ld
+else
 CC := $(TOOLPREFIX)gcc$(GCCPOSTFIX)
 AS := $(TOOLPREFIX)gas
 AR := $(TOOLPREFIX)ar
 LD := $(TOOLPREFIX)ld
 OBJCOPY := $(TOOLPREFIX)objcopy
 OBJDUMP := $(TOOLPREFIX)objdump
-
-# for compiling userspace apps on the host platform
-CC_HOST := gcc
-AR_HOST := ar
-HOST_GCC_VERSION_AT_LEAST_12 := $(shell expr `$(CC_HOST) -dumpversion | cut -f1 -d.` \>= 12)
-HOST_GCC_VERSION_AT_LEAST_13 := $(shell expr `$(CC_HOST) -dumpversion | cut -f1 -d.` \>= 13)
-HOST_GCC_VERSION_AT_LEAST_14 := $(shell expr `$(CC_HOST) -dumpversion | cut -f1 -d.` \>= 14)
-
-git-hash=$(shell git log --pretty=format:'%h' -n 1)
-CFLAGS_COMMON := -DGIT_HASH=$(git-hash)
+endif
 
 #####
 # C compile flags
+git-hash=$(shell git log --pretty=format:'%h' -n 1)
+CFLAGS_COMMON := -DGIT_HASH=$(git-hash)
 CFLAGS_COMMON += -fno-omit-frame-pointer
 CFLAGS_COMMON += -Wall -Werror -Wno-stringop-truncation
 CFLAGS_COMMON += -I.
@@ -80,21 +88,25 @@ CFLAGS_COMMON += $(DEBUG_FLAGS)
 endif
 endif
 
-CFLAGS_TARGET_ONLY += $(ARCH_CFLAGS) -D__ARCH_$(BITWIDTH)BIT
+CFLAGS_TARGET_ONLY := $(ARCH_CFLAGS) -D__ARCH_$(BITWIDTH)BIT
 CFLAGS_TARGET_ONLY += -ffreestanding -fno-common -nostdlib
 CFLAGS_TARGET_ONLY += -nostdinc
 CFLAGS_TARGET_ONLY += -fno-stack-protector
 
+ifeq ($(TARGET), host)
+# c flags for the user space apps on the host OS (with host stdlib):
+CFLAGS := $(CFLAGS_COMMON) -DBUILD_ON_HOST -D__USE_REAL_STDC 
+
+# linker command and flags
+LINKER := $(CC) $(CFLAGS)
+else
 # c flags for the kernel and user space apps on the target OS:
 CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_TARGET_ONLY)
-# c flags for the user space apps on the host OS (with host stdlib):
-CFLAGS_HOST := $(CFLAGS_COMMON) -DBUILD_ON_HOST -D__USE_REAL_STDC 
 
-#####
-# linker flags
+# linker command and flags
 LDFLAGS := -z max-page-size=4096 $(ARCH_LFLAGS)
-
-BUILD_DIR_HOST := build_host
+LINKER := $(LD)
+endif
 
 TASK_COLOR  := \033[0;34m
 YELLOW      := \033[93m
