@@ -1,27 +1,36 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <stdint.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+void write_or_quit(int fd, const char *buf, size_t n)
+{
+    ssize_t written = write(fd, buf, n);
+    if (written != n)
+    {
+        fprintf(stderr, "echo: write error, errno %s\n", strerror(errno));
+        exit(-1);
+    }
+}
 
 int main(int argc, char *argv[])
 {
     for (size_t i = 1; i < argc; i++)
     {
         size_t str_len = strlen(argv[i]);
-        ssize_t written = write(STDOUT_FILENO, argv[i], str_len);
-        if (written != str_len) return -1;
+        write_or_quit(STDOUT_FILENO, argv[i], str_len);
 
         if (i + 1 < argc)
         {
-            written = write(STDOUT_FILENO, " ", 1);
-            if (written != 1) return -1;
+            write_or_quit(STDOUT_FILENO, " ", 1);
         }
         else
         {
-            written = write(STDOUT_FILENO, "\n", 1);
-            if (written != 1) return -1;
+            write_or_quit(STDOUT_FILENO, "\n", 1);
         }
     }
 

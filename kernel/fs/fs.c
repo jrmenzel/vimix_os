@@ -22,6 +22,7 @@
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <kernel/mount.h>
+#include <kernel/permission.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
@@ -99,6 +100,16 @@ ssize_t inode_create(const char *pathname, mode_t mode, dev_t device)
     {
         return -ENOENT;
     }
+
+    // need write permission in directory where link is created
+    inode_lock(dir);
+    ssize_t perm_ok = check_inode_permission(get_current(), dir, MAY_WRITE);
+    if (perm_ok < 0)
+    {
+        inode_unlock_put(dir);
+        return perm_ok;
+    }
+    inode_unlock(dir);
 
     struct inode *ip = VFS_INODE_CREATE(dir, name, mode, 0, device);
 

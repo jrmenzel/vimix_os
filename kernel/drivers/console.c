@@ -400,6 +400,7 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
     g_console.cdev.ops.read = console_read;
     g_console.cdev.ops.write = console_write;
     g_console.cdev.ops.ioctl = console_ioctl;
+    g_console.cdev.dev.mode = 0666;
 
     memset(&g_console.termios, sizeof(struct termios), 0);
     g_console.termios.c_lflag = ECHO | ICANON | ICRNL;

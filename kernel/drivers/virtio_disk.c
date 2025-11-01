@@ -165,6 +165,7 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     disk->disk.bdev.size = config->capacity * 512;
     disk->disk.bdev.ops.read_buf = virtio_block_device_read;
     disk->disk.bdev.ops.write_buf = virtio_block_device_write;
+    disk->disk.bdev.dev.mode = 0600;
 
     register_device(&disk->disk.bdev.dev);
 

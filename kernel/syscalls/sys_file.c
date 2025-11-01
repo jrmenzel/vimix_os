@@ -11,6 +11,7 @@
 #include <kernel/fcntl.h>
 #include <kernel/file.h>
 #include <kernel/kernel.h>
+#include <kernel/permission.h>
 #include <kernel/proc.h>
 #include <kernel/stat.h>
 #include <kernel/string.h>
@@ -263,6 +264,14 @@ ssize_t sys_chdir()
         inode_unlock_put(ip);
         return -ENOTDIR;
     }
+
+    ssize_t perm_check = check_inode_permission(proc, ip, O_EXEC);
+    if (perm_check < 0)
+    {
+        inode_unlock_put(ip);
+        return perm_check;
+    }
+
     inode_unlock(ip);
 
     inode_put(proc->cwd);

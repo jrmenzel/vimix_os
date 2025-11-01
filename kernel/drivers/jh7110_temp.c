@@ -94,6 +94,7 @@ dev_t jh7110_temp_init(struct Device_Init_Parameters *init_parameters,
              init_parameters->interrupt, jh7110_temp_interrupt);
     g_jh7110_temp.cdev.ops.read = jh7110_temp_read;
     g_jh7110_temp.cdev.ops.write = character_device_write_unsupported;
+    g_jh7110_temp.cdev.dev.mode = 0444;
     register_device(&g_jh7110_temp.cdev.dev);
 
     g_jh7110_temp.is_initialized = true;

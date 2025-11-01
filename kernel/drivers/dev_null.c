@@ -31,6 +31,7 @@ dev_t dev_null_init(struct Device_Init_Parameters *param, const char *name)
     g_dev_null.cdev.ops.read = dev_null_read;
     g_dev_null.cdev.ops.write = dev_null_write;
     g_dev_null.cdev.ops.ioctl = NULL;
+    g_dev_null.cdev.dev.mode = 0666;
     register_device(&g_dev_null.cdev.dev);
 
     return g_dev_null.cdev.dev.device_number;

@@ -17,6 +17,7 @@ void dev_init(struct Device *dev, device_type type, dev_t device_number,
     dev->dev_ops.interrupt_handler = interrupt_handler;
     dev->device_number = device_number;
     dev->name = name;
+    dev->mode = 0600;  ///< default mode, can be changed later
 
     // init kobject
     kobject_init(&dev->kobj, NULL);

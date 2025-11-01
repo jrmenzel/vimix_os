@@ -43,10 +43,10 @@
         },
         {
             // debug a user space application
-            "name": "userspace: sh",
+            "name": "userspace: login",
             "type": "cppdbg",
             "request": "launch",
-            "program": "build/root/usr/bin/sh",
+            "program": "build/root/usr/bin/login",
             "cwd": "${workspaceRoot}",
             "miDebuggerPath": "riscv64-elf-gdb",
             "miDebuggerServerAddress": "127.0.0.1:26000",
@@ -115,37 +115,54 @@
         },
         {
             // debug a user space application on the host
-            "name": "host: mkfs",
+            "name": "host: mkfs cp in",
             "program": "${workspaceRoot}/build_host/root/usr/bin/mkfs",
             "args": [
-                "fs.img",
+                "--fs",
+                "build/filesystem.img",
                 "--in",
-                "foo"
+                "build/root/",
+                "/"
             ],
             "cwd": "${workspaceRoot}",
             "type": "cppdbg",
             "request": "launch",
             "MIMode": "gdb",
             "stopAtEntry": false,
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    // https://sourceware.org/gdb/onlinedocs/gdb/Forks.html
-                    "description": "Fork follows Child process",
-                    "text": "set follow-fork-mode child",
-                    "ignoreFailures": true
-                },
-                {
-                    // https://sourceware.org/gdb/onlinedocs/gdb/Forks.html
-                    "description": "Fork will keep the other process attached to debugger",
-                    "text": "set detach-on-fork off",
-                    "ignoreFailures": true
-                }
-            ]
+        },
+        {
+            // debug a user space application on the host
+            "name": "host: mkfs change meta",
+            "program": "${workspaceRoot}/build_host/root/usr/bin/mkfs",
+            "args": [
+                "--fs",
+                "build/filesystem.img",
+                "--meta",
+                "/root",
+                "--dmode",
+                "0750",
+            ],
+            "cwd": "${workspaceRoot}",
+            "type": "cppdbg",
+            "request": "launch",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
+        },
+        {
+            // debug a user space application on the host
+            "name": "host: mkfs create",
+            "program": "${workspaceRoot}/build_host/root/usr/bin/mkfs",
+            "args": [
+                "--fs",
+                "build/filesystem.img",
+                "--create",
+                "8192"
+            ],
+            "cwd": "${workspaceRoot}",
+            "type": "cppdbg",
+            "request": "launch",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
         },
         {
             // debug a user space application on the host

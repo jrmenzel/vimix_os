@@ -41,7 +41,7 @@ Unstructured data blocks with the contents of the files and directories as well 
 ## Limits
 
 **Max files:**
-File and directory count are limited by the inode count. This is defined at file system creation in `mkfs` (see `ninodes` in `vimixfs_superblock`). As [directories](directory.md) references inodes with a 16-bit unsigned integer, the maximal number of inodes in VimixFS is 65,535 (0 is a reserved value). Per default `mkfs` will use about 2% of the disk area for inodes (`1/64`).
+File and directory count are limited by the inode count. This is defined at file system creation in `mkfs` (see `ninode_blocks` in `vimixfs_superblock` and `VIMIXFS_INODES_PER_BLOCK`). As [directories](directory.md) references inodes with a 16-bit unsigned integer, the maximal number of inodes in VimixFS is 65,535 (0 is a reserved value). Per default `mkfs` will use about 2% of the disk area for inodes (`1/64`).
 
 **Max file size:**
 Currently a disk inode can reference `20` data blocks directly. One additional block can be used as a second array of `1024/sizeof(uint32_t)` = `256` block addresses. Another block can be used to index additional indirect blocks for `256*256` additional data blocks.

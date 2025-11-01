@@ -253,6 +253,7 @@ ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
         devfs_itable.inode[inode_idx].gid = 0;
         devfs_itable.inode[inode_idx].ctime = now;
         devfs_itable.inode[inode_idx].mtime = now;
+        devfs_itable.inode[inode_idx].i_mode = dev->mode & 0777;
 
         if (dev->type == CHAR)
         {

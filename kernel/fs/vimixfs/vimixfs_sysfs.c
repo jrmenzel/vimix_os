@@ -13,19 +13,18 @@ struct sysfs_attribute vimixfs_attributes[] = {
     {.name = "dev", .mode = 0444},
     {.name = "mount_flags", .mode = 0444}};
 
-ssize_t vimixfs_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
-                               char *buf, size_t n)
+ssize_t vimixfs_sysfs_ops_show(struct kobject* kobj, size_t attribute_idx,
+                               char* buf, size_t n)
 {
-    struct super_block *sb = super_block_from_kobj(kobj);
-    struct vimixfs_sb_private *priv =
-        (struct vimixfs_sb_private *)sb->s_fs_info;
-    struct vimixfs_superblock *xsb = &(priv->sb);
+    struct super_block* sb = super_block_from_kobj(kobj);
+    struct vimixfs_sb_private* priv = (struct vimixfs_sb_private*)sb->s_fs_info;
+    struct vimixfs_superblock* xsb = &(priv->sb);
 
     ssize_t ret = -1;
     switch (attribute_idx)
     {
         case 0: ret = snprintf(buf, n, "%d\n", xsb->nblocks); break;
-        case 1: ret = snprintf(buf, n, "%d\n", xsb->ninodes); break;
+        case 1: ret = snprintf(buf, n, "%d\n", xsb->ninode_blocks); break;
         case 2: ret = snprintf(buf, n, "%d\n", xsb->nlog); break;
         case 3: ret = snprintf(buf, n, "%d\n", sb->dev); break;
         case 4: ret = snprintf(buf, n, "%ld\n", sb->s_mountflags); break;
@@ -35,8 +34,8 @@ ssize_t vimixfs_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
     return ret;
 }
 
-ssize_t vimixfs_sysfs_ops_store(struct kobject *kobj, size_t attribute_idx,
-                                const char *buf, size_t n)
+ssize_t vimixfs_sysfs_ops_store(struct kobject* kobj, size_t attribute_idx,
+                                const char* buf, size_t n)
 {
     return -1;
 }

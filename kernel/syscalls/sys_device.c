@@ -7,6 +7,7 @@
 #include <drivers/character_device.h>
 #include <kernel/file.h>
 #include <kernel/kernel.h>
+#include <kernel/permission.h>
 #include <kernel/stat.h>
 #include <syscalls/syscall.h>
 
@@ -36,6 +37,12 @@ ssize_t sys_ioctl()
     // parameter 2:
     size_t ip;
     argaddr(2, &ip);
+
+    ssize_t perm = check_file_permission(get_current(), f, MAY_READ);
+    if (perm < 0)
+    {
+        return perm;
+    }
 
     struct Character_Device *cdev = get_character_device(f->ip->dev);
     if (cdev == NULL)

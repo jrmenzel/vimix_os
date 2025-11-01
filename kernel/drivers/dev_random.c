@@ -70,6 +70,7 @@ dev_t dev_random_init(struct Device_Init_Parameters *param, const char *name)
     g_dev_random.cdev.ops.read = dev_random_read;
     g_dev_random.cdev.ops.write = character_device_write_unsupported;
     g_dev_random.cdev.ops.ioctl = NULL;
+    g_dev_random.cdev.dev.mode = 0666;
     sleep_lock_init(&g_dev_random.lock, "random");
     register_device(&g_dev_random.cdev.dev);
 

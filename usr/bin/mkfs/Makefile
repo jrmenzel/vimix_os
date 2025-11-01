@@ -15,11 +15,11 @@ SHARED_O_FILES := $(B_BUILD_DIR)/libvimixfs.o
 ###########################################################
 # compiling apps for VIMIX
 
-$(B_DEPLOY_DIR)/mkfs: $(B_BUILD_DIR)/mkfs.o $(COMMON_LIBS) $(SHARED_O_FILES)
+$(B_DEPLOY_DIR)/mkfs: $(B_BUILD_DIR)/mkfs.o $(SHARED_O_FILES) $(COMMON_LIBS) 
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LINKER)  $(LDFLAGS) -o $@ $^
 
-$(B_DEPLOY_DIR)/fsck.vimixfs: $(B_BUILD_DIR)/fsck.vimixfs.o $(COMMON_LIBS) $(SHARED_O_FILES)
+$(B_DEPLOY_DIR)/fsck.vimixfs: $(B_BUILD_DIR)/fsck.vimixfs.o $(SHARED_O_FILES) $(COMMON_LIBS) 
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LINKER)  $(LDFLAGS) -o $@ $^
 

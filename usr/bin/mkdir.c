@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -19,7 +21,7 @@ int main(int argc, char *argv[])
     {
         if (mkdir(argv[i], 0755) < 0)
         {
-            fprintf(stderr, "mkdir: %s failed to create\n", argv[i]);
+            fprintf(stderr, "mkdir: %s : %s\n", argv[i], strerror(errno));
             some_dirs_failed = 1;
         }
     }

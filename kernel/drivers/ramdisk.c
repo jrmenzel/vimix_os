@@ -104,6 +104,7 @@ dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
              device_name, INVALID_IRQ_NUMBER, NULL);
     rdisk->disk.bdev.ops.read_buf = ramdisk_block_device_read;
     rdisk->disk.bdev.ops.write_buf = ramdisk_block_device_write;
+    rdisk->disk.bdev.dev.mode = 0600;
     register_device(&rdisk->disk.bdev.dev);
 
     return MKDEV(RAMDISK_MAJOR, minor);

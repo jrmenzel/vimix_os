@@ -31,20 +31,15 @@ host: # some user space apps for the host (Linux)
 	@$(MAKE) TARGET=host -C usr/bin all;
 	@$(MAKE) TARGET=host -C usr/local/bin/dhrystone all; 
 
-build_root: README.md userspace host # target filesystem in build/root
-	@cp README.md $(BUILD_DIR)/root/
-	@cp -r root/* $(BUILD_DIR)/root/
-
 boot_dir: kernel $(BUILD_DIR)/filesystem.img boot/boot.cmd # boot directory content for deployment
 	@cp -r boot/* $(BUILD_DIR)/boot
 	@mkimage -C none -A riscv -T script -d $(BUILD_DIR)/boot/boot.cmd $(BUILD_DIR)/boot/boot.scr
 	@cp $(BUILD_DIR)/filesystem.img $(BUILD_DIR)/boot
 
-
 # filesystem in a file containing userspace as initrd (kernel is set manually)
-$(BUILD_DIR)/filesystem.img: build_root host
+$(BUILD_DIR)/filesystem.img: host userspace 
 	@printf "$(TASK_COLOR)Create file system: $(@)\n$(NO_COLOR)"
-	@$(BUILD_DIR_HOST)/root/usr/bin/mkfs $(BUILD_DIR)/filesystem.img --in $(BUILD_DIR)/root/ 
+	@./tools/make_filesystem.sh $(BUILD_DIR) $(BUILD_DIR_HOST)
 
 ###
 # qemu

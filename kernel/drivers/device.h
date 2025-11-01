@@ -40,6 +40,7 @@ struct Device
     dev_t device_number;  ///< Major and Minor device number, use MKDEV macro
 
     const char *name;  ///< for DEV FS in /dev
+    mode_t mode;       ///< access mode for the device file
 };
 
 #define device_from_kobj(ptr) container_of(ptr, struct Device, kobj)

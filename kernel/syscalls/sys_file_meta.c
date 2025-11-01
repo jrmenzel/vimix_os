@@ -5,19 +5,15 @@
 //
 
 #include <kernel/kernel.h>
+#include <kernel/permission.h>
 #include <kernel/proc.h>
 #include <kernel/process.h>
 #include <syscalls/syscall.h>
 
 ssize_t chmod_internal(struct inode *ip, mode_t mode)
 {
-    struct process *proc = get_current();
-
     // only superuser or file owner can change mode
-    if (IS_NOT_SUPERUSER(&proc->cred) && proc->cred.euid != ip->uid)
-    {
-        return -EPERM;
-    }
+    ASSERT_IS_FILE_OWNER(get_current(), ip);
 
     mode = mode & ~S_IFMT;  // remove file type bits from mode parameter
     return VFS_INODE_CHMOD(ip, mode);

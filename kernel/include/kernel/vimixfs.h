@@ -38,13 +38,23 @@
 /// Inodes per block.
 #define VIMIXFS_INODES_PER_BLOCK (BLOCK_SIZE / sizeof(struct vimixfs_dinode))
 
+#define VIMIXFS_BLOCK_IDX_OF_INODE(i) ((i) / VIMIXFS_INODES_PER_BLOCK)
+
 /// Block containing inode i
 #define VIMIXFS_BLOCK_OF_INODE(i, sb) \
-    ((i) / VIMIXFS_INODES_PER_BLOCK + sb.inodestart)
+    (VIMIXFS_BLOCK_IDX_OF_INODE(i) + sb.inodestart)
 
 /// Block containing inode i
 #define VIMIXFS_BLOCK_OF_INODE_P(i, sb) \
     ((i) / VIMIXFS_INODES_PER_BLOCK + (sb)->inodestart)
+
+#define VIMIXFS_DINODE_OFFSET_IN_BLOCK(i) ((i) % VIMIXFS_INODES_PER_BLOCK)
+
+#define VIMIXFS_GET_DINODE(buf, i) \
+    ((struct vimixfs_dinode*)((buf)->data) + VIMIXFS_DINODE_OFFSET_IN_BLOCK(i))
+
+#define VIMIXFS_INUM_OF_DINODE(block_idx, offset) \
+    ((block_idx) * VIMIXFS_INODES_PER_BLOCK + (offset))
 
 /// Max file name length (without the NULL-terminator)
 #define VIMIXFS_NAME_MAX 60
@@ -72,14 +82,14 @@ typedef int16_t vimixfs_file_type;
 /// super block describes the disk layout:
 struct vimixfs_superblock
 {
-    uint32_t magic;       ///< Must be VIMIXFS_MAGIC
-    uint32_t size;        ///< Size of file system image (blocks)
-    uint32_t nblocks;     ///< Number of data blocks
-    uint32_t ninodes;     ///< Number of inodes.
-    uint32_t nlog;        ///< Number of log blocks
-    uint32_t logstart;    ///< Block number of first log block
-    uint32_t inodestart;  ///< Block number of first inode block
-    uint32_t bmapstart;   ///< Block number of first free map block
+    uint32_t magic;          ///< Must be VIMIXFS_MAGIC
+    uint32_t size;           ///< Size of file system image (blocks)
+    uint32_t nblocks;        ///< Number of data blocks
+    uint32_t ninode_blocks;  ///< Number of inode blocks
+    uint32_t nlog;           ///< Number of log blocks
+    uint32_t logstart;       ///< Block number of first log block
+    uint32_t inodestart;     ///< Block number of first inode block
+    uint32_t bmapstart;      ///< Block number of first free map block
 };
 _Static_assert((sizeof(struct vimixfs_superblock) < BLOCK_SIZE),
                "vimixfs_superblock must fit in one buf->data");

@@ -248,7 +248,6 @@ ssize_t file_stat_by_inode(struct inode *ip, size_t addr)
         return -EFAULT;
     }
     return 0;
-    return -EBADF;
 }
 
 ssize_t file_read(struct file *f, size_t addr, size_t n)
@@ -403,11 +402,14 @@ ssize_t file_link(char *path_from, char *path_to)
 
     inode_lock_two(dir, ip);
 
-    // ssize_t perm_ok = check_inode_permission(get_current(), dir, MAY_WRITE);
-    // if (perm_ok < 0)
-    //{
-    //     return perm_ok;
-    // }
+    // need write permission in directory where link is created
+    ssize_t perm_ok = check_inode_permission(get_current(), dir, MAY_WRITE);
+    if (perm_ok < 0)
+    {
+        inode_unlock_put(ip);
+        inode_unlock_put(dir);
+        return perm_ok;
+    }
 
     if (dir->dev != ip->dev)
     {
@@ -436,6 +438,16 @@ ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
         inode_put(dir);
         return -EPERM;
     }
+
+    // need write permission in directory where file gets unlinked
+    inode_lock(dir);
+    ssize_t perm_ok = check_inode_permission(get_current(), dir, MAY_WRITE);
+    if (perm_ok < 0)
+    {
+        inode_unlock_put(dir);
+        return perm_ok;
+    }
+    inode_unlock(dir);
 
     return VFS_INODE_UNLINK(dir, name, delete_files, delete_directories);
 }

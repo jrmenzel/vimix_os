@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
         int ret = rm(argv[i], flags);
         if (ret != 0)
         {
-            fprintf(stderr, "rm: %s failed to delete\n", argv[i]);
+            fprintf(stderr, "rm: %s : %s\n", argv[i], strerror(errno));
             return ret;
         }
     }

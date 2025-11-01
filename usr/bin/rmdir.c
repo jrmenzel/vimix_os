@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 int main(int argc, char *argv[])
@@ -17,7 +19,7 @@ int main(int argc, char *argv[])
     {
         if (rmdir(argv[i]) < 0)
         {
-            fprintf(stderr, "rmdir: %s failed to delete\n", argv[i]);
+            fprintf(stderr, "rmdir: %s : %s\n", argv[i], strerror(errno));
             return 1;
         }
     }

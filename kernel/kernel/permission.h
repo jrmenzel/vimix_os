@@ -21,3 +21,11 @@ ssize_t check_file_permission(struct process *proc, struct file *f,
 
 ssize_t check_inode_permission(struct process *proc, struct inode *ip,
                                int32_t flags);
+
+#define ASSERT_IS_FILE_OWNER(proc, ip)                                         \
+    do {                                                                       \
+        if (IS_NOT_SUPERUSER(&(proc)->cred) && (proc)->cred.euid != (ip)->uid) \
+        {                                                                      \
+            return -EPERM;                                                     \
+        }                                                                      \
+    } while (0)
