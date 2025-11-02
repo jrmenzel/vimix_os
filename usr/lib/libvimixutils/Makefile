@@ -12,6 +12,7 @@ LIB_VIMIXUTILS_BUILD_DIR := $(LIB_BUILD_DIR)/libvimixutils
 
 LIB_VIMIXUTILS_O := \
 	path.o \
+	security.o \
 	sysfs.o \
 	time.o
 

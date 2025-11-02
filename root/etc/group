@@ -1,3 +1,5 @@
 root:x:0:root
+wheel:x:42:root,user
 user:x:1000:user
-test:x:1001:root,user
+ada:x:1001:ada
+users:x:2000:ada,user

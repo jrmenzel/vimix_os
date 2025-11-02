@@ -687,9 +687,9 @@ void iputtest(char *s)
         printf("%s: rmdir ../iputdir failed\n", s);
         exit(1);
     }
-    if (chdir("/utests-tmp") < 0)
+    if (chdir("/tmp/utests") < 0)
     {
-        printf("%s: chdir /utests-tmp failed\n", s);
+        printf("%s: chdir /tmp/utests failed\n", s);
         exit(1);
     }
 }
@@ -2094,9 +2094,9 @@ void subdir(char *s)
         exit(1);
     }
 
-    if (mkdir("/utests-tmp/dd/dd", 0755) != 0)
+    if (mkdir("/tmp/utests/dd/dd", 0755) != 0)
     {
-        printf("%s: subdir mkdir /utests-tmp/dd/dd failed\n", s);
+        printf("%s: subdir mkdir /tmp/utests/dd/dd failed\n", s);
         exit(1);
     }
 
@@ -2152,9 +2152,9 @@ void subdir(char *s)
         printf("%s: chdir dd/../../dd failed\n", s);
         exit(1);
     }
-    if (chdir("dd/../../../utests-tmp/dd") != 0)
+    if (chdir("dd/../../../utests/dd") != 0)
     {
-        printf("%s: chdir dd/../../../utests-tmp/dd failed\n", s);
+        printf("%s: chdir dd/../../../utests/dd failed\n", s);
         exit(1);
     }
     if (chdir("./..") != 0)
@@ -2569,9 +2569,9 @@ void rmdot(char *s)
         printf("%s: rm .. worked!\n", s);
         exit(1);
     }
-    if (chdir("/utests-tmp") != 0)
+    if (chdir("/tmp/utests") != 0)
     {
-        printf("%s: chdir /utests-tmp failed\n", s);
+        printf("%s: chdir /tmp/utests failed\n", s);
         exit(1);
     }
     if (rmdir("dots/.") == 0)
@@ -2610,7 +2610,7 @@ void dirfile(char *s)
         printf("%s: create dirfile/xx succeeded!\n", s);
         exit(1);
     }
-    assert_errno(ENOENT);
+    assert_errno(ENOTDIR);
 
     fd = open("dirfile/xx", O_CREATE, 0755);
     if (fd >= 0)
@@ -2676,7 +2676,7 @@ void iref(char *s)
         }
 
         mkdir("", 0755);
-        assert_errno(ENOENT);
+        assert_errno(EINVAL);
 
         link("README", "");
         assert_errno(ENOENT);
@@ -2701,7 +2701,7 @@ void iref(char *s)
         assert_no_error(rmdir("irefd"));
     }
 
-    assert_no_error(chdir("/utests-tmp"));
+    assert_no_error(chdir("/tmp/utests"));
 }
 
 // test that fork fails gracefully

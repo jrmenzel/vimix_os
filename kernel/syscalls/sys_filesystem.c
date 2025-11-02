@@ -29,10 +29,11 @@ ssize_t sys_statvfs()
     size_t buf_addr;
     argaddr(1, &buf_addr);
 
-    struct inode *ip = inode_from_path(path);
+    ssize_t error = 0;
+    struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
-        return -ENOENT;
+        return error;
     }
     ssize_t ret = statvfs_internal(ip->i_sb, buf_addr);
     inode_put(ip);

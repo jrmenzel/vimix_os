@@ -13,6 +13,7 @@
 #include <tomlc17.h>
 #include <unistd.h>
 #include <vimixutils/minmax.h>
+#include <vimixutils/security.h>
 
 #define MAX_USERNAME_LEN 64
 #define MAX_PASSWORD_LEN 64
@@ -93,37 +94,50 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (config.autologin == false)
+    if (config.autologin == true)
     {
-        if (argc < 2)
+        struct stat st;
+        if (stat(config.autorun_script, &st) == 0)
         {
-            printf("username: ");
-            if (fgets(buf_name, sizeof(buf_name), stdin) == NULL)
-            {
-                fprintf(stderr, "login: failed to read username\n");
-                return 1;
-            }
-            username = remove_newline(buf_name);
+            impersonate_user(config.username, true, true, false);
+            // start autorun script
+            char *shell_argv[] = {"usr/bin/sh", config.autorun_script, NULL};
+            execv("/usr/bin/sh", shell_argv);
+            fprintf(stderr, "login: execv(%s) failed: %s\n",
+                    config.autorun_script, strerror(errno));
         }
         else
         {
-            username = argv[1];
+            // just login the user
+            impersonate_user(config.username, true, true, true);
         }
+        return 1;
+    }
 
-        printf("password: ");
-        if (fgets(buf_password, sizeof(buf_password), stdin) == NULL)
+    if (argc < 2)
+    {
+        printf("username: ");
+        if (fgets(buf_name, sizeof(buf_name), stdin) == NULL)
         {
-            fprintf(stderr, "login: failed to read password\n");
+            fprintf(stderr, "login: failed to read username\n");
             return 1;
         }
-        password = remove_newline(buf_password);
+        username = remove_newline(buf_name);
     }
     else
     {
-        username = config.username;
-        password = "";  // no password needed for autologin
+        username = argv[1];
     }
 
+    printf("password: ");
+    if (fgets(buf_password, sizeof(buf_password), stdin) == NULL)
+    {
+        fprintf(stderr, "login: failed to read password\n");
+        return 1;
+    }
+    password = remove_newline(buf_password);
+
+    // check password
     struct spwd *spw = getspnam(username);
     if (!spw)
     {
@@ -131,64 +145,17 @@ int main(int argc, char **argv)
                 username, strerror(errno));
         return 1;
     }
-    struct passwd *pw = getpwnam(spw->sp_namp);
-    if (!pw)
-    {
-        fprintf(stderr, "User '%s' not found in passwd database: %s\n",
-                username, strerror(errno));
-        return 1;
-    }
 
-    if ((config.autologin == false) && (strcmp(spw->sp_pwdp, password) != 0))
+    if (strcmp(spw->sp_pwdp, password) != 0)
     {
         fprintf(stderr, "login: incorrect password for user '%s'\n", username);
         return 1;
     }
 
-    chdir(pw->pw_dir);
-
-    if (initgroups(pw->pw_name, pw->pw_gid) < 0)
+    if (!impersonate_user(username, true, true, true))
     {
-        fprintf(stderr, "login: initgroups(%s, %d) failed: %s\n", pw->pw_name,
-                pw->pw_gid, strerror(errno));
+        fprintf(stderr, "login: failed to impersonate user '%s'\n", username);
         return 1;
     }
-
-    if (setuid(pw->pw_uid) < 0)
-    {
-        fprintf(stderr, "login: setuid(%d) failed: %s\n", pw->pw_uid,
-                strerror(errno));
-        return 1;
-    }
-
-    char *binary = strrchr(pw->pw_shell, '/');
-    if (binary == NULL)
-    {
-        fprintf(stderr, "login: invalid shell path '%s'\n", pw->pw_shell);
-        return 1;
-    }
-    else
-    {
-        binary++;  // skip '/'
-    }
-    char *shell_argv[] = {binary, 0, 0};
-
-    // if autorun script is specified, and it exists, set it as argv[1]
-    if (config.autologin && (strlen(config.autorun_script) > 0))
-    {
-        struct stat st;
-        if (stat(config.autorun_script, &st) == 0)
-        {
-            shell_argv[1] = config.autorun_script;
-        }
-    }
-
-    // execute the user's shell
-    if (execv(pw->pw_shell, shell_argv) < 0)
-    {
-        fprintf(stderr, "login: execv(%s) failed: %s\n", pw->pw_shell,
-                strerror(errno));
-        return 1;
-    }
-    return 1;  // should not be reached
+    return 1;  // should not get reached
 }

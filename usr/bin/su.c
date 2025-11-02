@@ -7,29 +7,26 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <vimixutils/security.h>
 
 int main(int argc, char *argv[])
 {
-    uid_t uid = 0;
-    if (argc != 2)
+    char *user = "root";
+    if (argc == 2)
     {
-        fprintf(stderr, "Usage: %s <USERID>\n", argv[0]);
+        user = argv[1];
+    }
+    if (argc > 2)
+    {
+        fprintf(stderr, "Usage: %s <USER>\n", argv[0]);
         return 1;
     }
 
-    uid = (uid_t)atoi(argv[1]);
-
-    if (setuid(uid) < 0)
+    if (!impersonate_user(user, true, false, true))
     {
-        fprintf(stderr, "su: setuid(%d) failed: %s\n", uid, strerror(errno));
+        fprintf(stderr, "login: failed to impersonate user '%s'\n", user);
         return 1;
     }
 
-    char *shell_argv[] = {"sh", 0};
-    if (execv("/usr/bin/sh", shell_argv) < 0)
-    {
-        fprintf(stderr, "su: execv(/usr/bin/sh) failed: %s\n", strerror(errno));
-        return 1;
-    }
     return 1;  // should not be reached
 }

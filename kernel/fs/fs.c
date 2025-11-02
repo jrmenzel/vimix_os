@@ -94,11 +94,12 @@ void inode_del(struct inode *ip)
 
 ssize_t inode_create(const char *pathname, mode_t mode, dev_t device)
 {
+    ssize_t error = 0;
     char name[NAME_MAX];
-    struct inode *dir = inode_of_parent_from_path(pathname, name);
+    struct inode *dir = inode_of_parent_from_path(pathname, name, &error);
     if (dir == NULL)
     {
-        return -ENOENT;
+        return error;
     }
 
     // need write permission in directory where link is created
@@ -301,7 +302,8 @@ static const char *skipelem(const char *path, char *name)
 /// If get_parent == true, return the inode for the parent and copy the final
 /// path element into name, which must have room for NAME_MAX bytes.
 /// Must be called inside a transaction since it calls inode_put().
-static struct inode *namex(const char *path, bool get_parent, char *name)
+static struct inode *namex(const char *path, bool get_parent, char *name,
+                           ssize_t *error)
 {
     struct inode *ip;
 
@@ -328,8 +330,17 @@ static struct inode *namex(const char *path, bool get_parent, char *name)
         if (!S_ISDIR(ip->i_mode))
         {
             inode_unlock_put(ip);
+            if (error) *error = -ENOTDIR;
             return NULL;
         }
+
+        if (check_inode_permission(get_current(), ip, MAY_EXEC) < 0)
+        {
+            inode_unlock_put(ip);
+            if (error) *error = -EACCES;
+            return NULL;
+        }
+
         if (get_parent && *path == '\0')
         {
             // Stop one level early, return parent ip
@@ -342,6 +353,7 @@ static struct inode *namex(const char *path, bool get_parent, char *name)
         if (next == NULL)
         {
             inode_unlock_put(ip);
+            if (error) *error = -ENOENT;
             return NULL;
         }
         if (next->is_mounted_on)
@@ -352,25 +364,28 @@ static struct inode *namex(const char *path, bool get_parent, char *name)
         }
 
         inode_unlock_put(ip);
+
         ip = next;
     }
     if (get_parent)
     {
         inode_put(ip);
+        if (error) *error = -EINVAL;
         return NULL;
     }
     return ip;  // return ip
 }
 
-struct inode *inode_from_path(const char *path)
+struct inode *inode_from_path(const char *path, ssize_t *error)
 {
     char name[NAME_MAX];
-    return namex(path, false, name);
+    return namex(path, false, name, error);
 }
 
-struct inode *inode_of_parent_from_path(const char *path, char *name)
+struct inode *inode_of_parent_from_path(const char *path, char *name,
+                                        ssize_t *error)
 {
-    return namex(path, true, name);
+    return namex(path, true, name, error);
 }
 
 void debug_print_inode(struct inode *ip)

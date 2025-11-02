@@ -7,4 +7,4 @@
 /// @param pathname Name of ELF file to execute
 /// @param argv Command arguments
 /// @return -1 on failure
-ssize_t execv(char *pathname, char **argv);
+ssize_t do_execv(char *pathname, char **argv);

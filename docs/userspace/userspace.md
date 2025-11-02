@@ -57,6 +57,7 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [umount](bin/umount.md) - unmounts a [file system](../kernel/file_system/file_system.md)
 - [shutdown](bin/shutdown.md) - Halts or shuts down the OS
 - [meminfo](bin/meminfo.md) - prints info on memory usage
+- [su](bin/su.md) - switch user
 
 **Games:**
 - [fortune](bin/fortune.md) - classic UNIX fortune cookie
@@ -96,6 +97,8 @@ Some user space apps compile also on Linux. See [build_instructions](../build_in
 **/root** - home of the root user (to be present even if `/home` is not mounted)
 
 **/sys** - [sysfs](../kernel/file_system/sysfs/sysfs.md)
+
+**/tmp** - space for temporary files. Has the [sticky bit](../kernel/security/mode.md) set to only allow [file owner](../kernel/security/user_group_id.md) to delete created temp files.
 
 **/tests:**
 - Shell scripts for automated testing

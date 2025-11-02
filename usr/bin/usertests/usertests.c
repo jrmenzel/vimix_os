@@ -88,10 +88,11 @@ int runtests(struct test *tests, char *justone)
 
 int drivetests(int quick, int continuous, char *justone)
 {
-    mkdir("utests-tmp", 0755);
-    if (chdir("utests-tmp") < 0) return -1;
+    mkdir("/tmp/utests", 0755);
+    if (chdir("/tmp/utests") < 0) return -1;
 
-    do {
+    do
+    {
         printf("usertests starting\n");
         size_t pages_free_start = countfree();
         if (runtests(quicktests_common, justone) ||
@@ -134,7 +135,7 @@ int drivetests(int quick, int continuous, char *justone)
     const char *s = "drivetests";
     unlink("x");  // leftover
     assert_no_error(chdir(".."));
-    assert_no_error(rmdir("utests-tmp"));
+    assert_no_error(rmdir("/tmp/utests"));
     return 0;
 }
 

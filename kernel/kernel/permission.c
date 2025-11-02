@@ -9,11 +9,43 @@
 #include <kernel/kernel.h>
 #include <kernel/permission.h>
 
+perm_mask_t perm_mask_from_open_flags(int32_t flags)
+{
+    perm_mask_t mask = 0;
+
+    if (flags == O_RDONLY)
+    {
+        mask |= MAY_READ;
+    }
+    if (flags & O_WRONLY)
+    {
+        mask |= MAY_WRITE;
+    }
+    if (flags & O_CREAT)
+    {
+        mask |= MAY_WRITE;
+    }
+    if (flags & O_RDWR)
+    {
+        mask |= MAY_READ | MAY_WRITE;
+    }
+    if (flags & O_APPEND)
+    {
+        mask |= MAY_APPEND;
+    }
+    if (flags & O_EXEC)
+    {
+        mask |= MAY_EXEC;
+    }
+
+    return mask;
+}
+
 ssize_t check_file_permission(struct process *proc, struct file *f,
                               perm_mask_t mask)
 {
     bool needs_write_access = (mask & MAY_WRITE) || (mask & MAY_APPEND);
-    bool needs_read_access = (mask & MAY_READ) || (mask & MAY_EXEC);
+    bool needs_read_access = (mask & MAY_READ);
 
     // note that root does not skip file open mode checks
 
@@ -107,30 +139,39 @@ bool permission_check_execute(struct cred *cred, mode_t mode, uid_t uid,
 }
 
 ssize_t check_inode_permission(struct process *proc, struct inode *ip,
-                               int32_t flags)
+                               perm_mask_t mask)
 {
-    bool needs_write_access = (flags & O_APPEND) || (flags & O_CREAT) ||
-                              (flags & O_TRUNC) || (flags & O_WRONLY) ||
-                              (flags & O_RDWR);
-    // note: O_RDONLY is 0, not a set bit!
-    bool needs_read_access =
-        (flags == O_RDONLY) || (flags & O_RDWR) || (flags & O_EXEC);
+    if (mask & MAY_UNLINK)
+    {
+        if (ip->i_mode & S_ISVTX)
+        {
+            // only owner or superuser can delete
+            ASSERT_IS_FILE_OWNER(proc, ip);
+            return 0;
+        }
+        else
+        {
+            // without sticky bit handle unlink as write permission to the
+            // directory
+            mask = mask | MAY_WRITE;
+        }
+    }
 
-    if (needs_read_access)
+    if (mask & MAY_READ)
     {
         if (!permission_check_read(&proc->cred, ip->i_mode, ip->uid, ip->gid))
         {
             return -EACCES;
         }
     }
-    if (needs_write_access)
+    if ((mask & MAY_WRITE) || (mask & MAY_APPEND))
     {
         if (!permission_check_write(&proc->cred, ip->i_mode, ip->uid, ip->gid))
         {
             return -EACCES;
         }
     }
-    if (flags & O_EXEC)
+    if (mask & MAY_EXEC)
     {
         if (!permission_check_execute(&proc->cred, ip->i_mode, ip->uid,
                                       ip->gid))

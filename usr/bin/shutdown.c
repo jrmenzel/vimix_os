@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/reboot.h>
 
 int main(int argc, char **argv)
@@ -10,6 +12,7 @@ int main(int argc, char **argv)
     if (argc == 1)
     {
         reboot(VIMIX_REBOOT_CMD_POWER_OFF);
+        fprintf(stderr, "ERROR shutting down, %s\n", strerror(errno));
         return -2;
     }
 
@@ -20,11 +23,13 @@ int main(int argc, char **argv)
             if (argv[1][1] == 'h')
             {
                 reboot(VIMIX_REBOOT_CMD_POWER_OFF);
+                fprintf(stderr, "ERROR shutting down, %s\n", strerror(errno));
                 return -2;
             }
             else if (argv[1][1] == 'r')
             {
                 reboot(VIMIX_REBOOT_CMD_RESTART);
+                fprintf(stderr, "ERROR rebooting, %s\n", strerror(errno));
                 return -2;
             }
         }

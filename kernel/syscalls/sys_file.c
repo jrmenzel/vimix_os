@@ -105,10 +105,11 @@ ssize_t sys_stat()
     size_t stat_buffer;  // user pointer to struct stat
     argaddr(1, &stat_buffer);
 
-    struct inode *ip = inode_from_path(path);
+    ssize_t error = 0;
+    struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
-        return -ENOENT;
+        return error;
     }
     ssize_t ret = file_stat_by_inode(ip, stat_buffer);
     inode_put(ip);
@@ -251,11 +252,12 @@ ssize_t sys_chdir()
         return -EFAULT;
     }
 
+    ssize_t error = 0;
     struct process *proc = get_current();
-    struct inode *ip = inode_from_path(path);
+    struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
-        return -ENOENT;
+        return error;
     }
 
     inode_lock(ip);
@@ -265,7 +267,7 @@ ssize_t sys_chdir()
         return -ENOTDIR;
     }
 
-    ssize_t perm_check = check_inode_permission(proc, ip, O_EXEC);
+    ssize_t perm_check = check_inode_permission(proc, ip, MAY_EXEC);
     if (perm_check < 0)
     {
         inode_unlock_put(ip);
@@ -336,10 +338,11 @@ ssize_t sys_truncate()
     ssize_t length;
     argssize_t(1, &length);
 
-    struct inode *ip = inode_from_path(path);
+    ssize_t error = 0;
+    struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
-        return -ENOENT;
+        return error;
     }
 
     ssize_t ret = VFS_INODE_TRUNCATE(ip, length);

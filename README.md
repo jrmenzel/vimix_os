@@ -48,17 +48,20 @@ init mounting /dev... OK
 init mounting /sys... OK
 init mounting /home... OK
 init starting /usr/bin/sh
-$ ls
-drwxr-xr-x    1104 B .
-drwxr-xr-x    1104 B ..
-drwxr-xr-x      64 B usr
-.rwxr-xr-x    5311 B README.md
-drw-rw----       0 B dev
-drwxr-xr-x    1024 B etc
-drwxr-xr-x     112 B home
-drw-rw----       0 B sys
-drwxr-xr-x    7168 B tests
-$ cat README.md | grep RISC | wc
+$ ls /
+/:
+drwxr-xr-x root root     1024 B  2.11.2025  19:48:58 .
+drwxr-xr-x root root     1024 B  2.11.2025  19:48:58 ..
+.rw-r--r-- root root     5911 B  2.11.2025  19:43:25 README.md
+drwxr-xr-x root root        0 B  2.11.2025  19:48:58 dev
+drwxr-xr-x root root     5120 B  1.11.2025  12:38:22 etc
+drwxr-xr-x root root      256 B  2.11.2025  09:34:08 home
+drwxr-x--- root root      128 B  19.10.2025 08:45:18 root
+drwxr-xr-x root root        0 B  2.11.2025  19:48:58 sys
+drwxr-xr-x root root     7168 B  26.10.2025 16:43:02 tests
+drwxrwxrwt root root      128 B  31.10.2025 23:16:27 tmp
+drwxr-xr-x root root      256 B  31.10.2025 21:40:22 usr
+$ cat /README.md | grep RISC | wc
 4 78 607 
 $ fortune
 I'd spell creat with an e. - Ken Thompson when asked what he would do differently if he were to redesign UNIX
@@ -74,7 +77,7 @@ $
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
 - Changed [memory map](docs/kernel/mm/memory_map_process.md); app stacks grow dynamically.
 - Added applications:
-	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md), [time](docs/userspace/bin/time.md), [which](docs/userspace/bin/which.md), [meminfo](docs/userspace/bin/meminfo.md), [fsinfo](docs/userspace/bin/fsinfo.md), [statvfs](docs/userspace/bin/statvfs.md), [fsbench](docs/userspace/bin/fsbench.md), [chown](docs/userspace/bin/chown.md), [chmod](docs/userspace/bin/chmod.md), [id](docs/userspace/bin/id.md), [login](docs/userspace/bin/login.md)
+	- [stat](docs/userspace/bin/stat.md), [shutdown](docs/userspace/bin/shutdown.md), [mknod](docs/userspace/bin/mknod.md), [date](docs/userspace/bin/date.md), [sleep](docs/userspace/bin/sleep.md), [rmdir](docs/userspace/bin/rmdir.md), [cp](docs/userspace/bin/cp.md), [mount](docs/userspace/bin/mount.md), [umount](docs/userspace/bin/umount.md), [fortune](docs/userspace/bin/fortune.md), [wumpus](docs/userspace/bin/wumpus.md), [time](docs/userspace/bin/time.md), [which](docs/userspace/bin/which.md), [meminfo](docs/userspace/bin/meminfo.md), [fsinfo](docs/userspace/bin/fsinfo.md), [statvfs](docs/userspace/bin/statvfs.md), [fsbench](docs/userspace/bin/fsbench.md), [chown](docs/userspace/bin/chown.md), [chmod](docs/userspace/bin/chmod.md), [id](docs/userspace/bin/id.md), [login](docs/userspace/bin/login.md), [su](docs/userspace/bin/su.md)
 - Added [syscalls](docs/kernel/syscalls/syscalls.md):
 	- [get_dirent](docs/kernel/syscalls/get_dirent.md)
 	- [reboot](docs/kernel/syscalls/reboot.md)

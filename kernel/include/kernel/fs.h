@@ -162,9 +162,10 @@ void inode_stat(struct inode *ip, struct stat *st);
 /// Shortly locks every inode on the path, so don't hold any inode locks when
 /// calling to avoid dead-locks!
 /// @param path Absolute or CWD relative path.
+/// @param error On error, set to negative error code.
 /// @return NULL on failure. Returned inode has an increased ref
 /// count (release with inode_put()). (NOT locked)
-struct inode *inode_from_path(const char *path);
+struct inode *inode_from_path(const char *path, ssize_t *error);
 
 /// @brief get inode of the parent directory
 /// Shortly locks every inode on the path, so don't hold any inode locks when
@@ -172,9 +173,11 @@ struct inode *inode_from_path(const char *path);
 /// @param path Absolute or CWD relative path.
 /// @param name Copy out the name component of path. Must have room for NAME_MAX
 /// bytes.
+/// @param error On error, set to negative error code.
 /// @return NULL on failure. Returned inode has an increased ref
 /// count (release with inode_put()). (NOT locked)
-struct inode *inode_of_parent_from_path(const char *path, char *name);
+struct inode *inode_of_parent_from_path(const char *path, char *name,
+                                        ssize_t *error);
 
 /// @brief Look for a directory entry in a directory.
 /// Increases ref count (release with inode_put()).

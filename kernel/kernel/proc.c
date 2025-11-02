@@ -482,8 +482,8 @@ void yield()
 /// @param init_path Absolute path to the init binary.
 void load_init_process(char *init_path)
 {
-    get_current()->cwd = inode_from_path("/");
-    int ret = execv(init_path, (char *[]){init_path, 0});
+    get_current()->cwd = inode_from_path("/", NULL);
+    int ret = do_execv(init_path, (char *[]){init_path, 0});
     if (ret < 0)
     {
         switch (ret)
@@ -719,7 +719,8 @@ void debug_print_call_stack_kernel(struct process *proc)
     size_t frame_pointer = context_get_frame_pointer(&proc->context);
     size_t return_address = context_get_return_register(&proc->context);
 
-    do {
+    do
+    {
         printk("  ra (kernel): " FORMAT_REG_SIZE "\n", return_address);
 
         return_address = *((size_t *)(frame_pointer - 1 * sizeof(size_t)));

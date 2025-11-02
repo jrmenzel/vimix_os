@@ -92,10 +92,12 @@ FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
     }
     else
     {
-        struct inode *iparent = inode_of_parent_from_path(pathname, name);
+        ssize_t error = 0;
+        struct inode *iparent =
+            inode_of_parent_from_path(pathname, name, &error);
         if (iparent == NULL)
         {
-            return -ENOENT;
+            return error;
         }
 
         ip = VFS_INODE_OPEN(iparent, name, flags);
@@ -116,6 +118,12 @@ FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
                 {
                     inode_put(iparent);
                     return -EPERM;
+                }
+
+                if (check_inode_permission(proc, iparent, MAY_WRITE) < 0)
+                {
+                    inode_put(iparent);
+                    return -EACCES;
                 }
 
                 ip = VFS_INODE_CREATE(iparent, name, create_mode, flags,
@@ -141,7 +149,8 @@ FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
             inode_put(iparent);
 
             // check permissions
-            ssize_t perm_ok = check_inode_permission(get_current(), ip, flags);
+            perm_mask_t mask = perm_mask_from_open_flags(flags);
+            ssize_t perm_ok = check_inode_permission(get_current(), ip, mask);
             if (perm_ok < 0)
             {
                 inode_unlock_put(ip);
@@ -378,10 +387,11 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
 
 ssize_t file_link(char *path_from, char *path_to)
 {
-    struct inode *ip = inode_from_path(path_from);
+    ssize_t error = 0;
+    struct inode *ip = inode_from_path(path_from, &error);
     if (ip == NULL)
     {
-        return -ENOENT;
+        return error;
     }
 
     inode_lock(ip);
@@ -393,11 +403,11 @@ ssize_t file_link(char *path_from, char *path_to)
     inode_unlock(ip);
 
     char name[NAME_MAX];
-    struct inode *dir = inode_of_parent_from_path(path_to, name);
+    struct inode *dir = inode_of_parent_from_path(path_to, name, &error);
     if (dir == NULL)
     {
         inode_put(ip);
-        return -ENOENT;
+        return error;
     }
 
     inode_lock_two(dir, ip);
@@ -425,11 +435,12 @@ ssize_t file_link(char *path_from, char *path_to)
 
 ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
 {
+    ssize_t error = 0;
     char name[NAME_MAX];
-    struct inode *dir = inode_of_parent_from_path(path, name);
+    struct inode *dir = inode_of_parent_from_path(path, name, &error);
     if (dir == NULL)
     {
-        return -ENOENT;
+        return error;
     }
 
     // Cannot unlink "." or "..".
@@ -441,7 +452,7 @@ ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
 
     // need write permission in directory where file gets unlinked
     inode_lock(dir);
-    ssize_t perm_ok = check_inode_permission(get_current(), dir, MAY_WRITE);
+    ssize_t perm_ok = check_inode_permission(get_current(), dir, MAY_UNLINK);
     if (perm_ok < 0)
     {
         inode_unlock_put(dir);

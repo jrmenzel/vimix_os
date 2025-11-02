@@ -7,6 +7,7 @@
 #include <kernel/exec.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
+#include <kernel/permission.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
@@ -75,14 +76,29 @@ bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
     return true;
 }
 
-ssize_t execv(char *path, char **argv)
+ssize_t do_execv(char *path, char **argv)
 {
-    struct inode *ip = inode_from_path(path);
+    ssize_t error = 0;
+    struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
-        return -ENOENT;
+        return error;
     }
     inode_lock(ip);
+
+    struct process *proc = get_current();
+    ssize_t perm = check_inode_permission(proc, ip, MAY_EXEC);
+    if (perm < 0)
+    {
+        inode_unlock_put(ip);
+        return perm;
+    }
+
+    // grab setuid/setgid bits while ip is locked
+    bool set_uid = S_ISUID & ip->i_mode;
+    bool set_gid = S_ISGID & ip->i_mode;
+    uid_t new_uid = ip->uid;
+    gid_t new_gid = ip->gid;
 
     // Check ELF header
     struct elfhdr elf;
@@ -93,7 +109,6 @@ ssize_t execv(char *path, char **argv)
         return -ENOEXEC;
     }
 
-    struct process *proc = get_current();
     pagetable_t pagetable = proc_pagetable(proc);
     if (pagetable == NULL)
     {
@@ -163,6 +178,18 @@ ssize_t execv(char *path, char **argv)
     trapframe_set_program_counter(proc->trapframe, elf.entry);
     trapframe_set_stack_pointer(proc->trapframe, sp);
     proc_free_pagetable(oldpagetable);
+
+    // change UID/GID after anything that could fail
+    if (set_uid)
+    {
+        proc->cred.euid = new_uid;
+        proc->cred.suid = new_uid;
+    }
+    if (set_gid)
+    {
+        proc->cred.egid = new_gid;
+        proc->cred.sgid = new_gid;
+    }
 
     // This ends up in a0, the first argument to main(argc, argv)
     // not a return value of the syscall! It does not return!

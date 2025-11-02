@@ -86,6 +86,8 @@ void execute_command(struct execcmd *ecmd)
         return;
     }
     execv(full_path, ecmd->argv);
+
+    fprintf(stderr, "exec %s failed (%s)\n", ecmd->argv[0], strerror(errno));
 }
 
 // Execute cmd.  Never returns.
@@ -114,7 +116,8 @@ void runcmd(struct cmd *cmd)
             close(rcmd->fd);
             if (open(rcmd->file, rcmd->mode, 0644) < 0)
             {
-                fprintf(stderr, "open %s failed\n", rcmd->file);
+                fprintf(stderr, "open %s failed, %s\n", rcmd->file,
+                        strerror(errno));
                 exit(1);
             }
             runcmd(rcmd->cmd);
@@ -204,7 +207,7 @@ int main(int argc, const char *argv[])
         int fd = open(argv[1], O_RDONLY);
         if (fd != STDIN_FILENO)
         {
-            fprintf(stderr, "Error reading %s\n", argv[1]);
+            fprintf(stderr, "Error reading %s, %s\n", argv[1], strerror(errno));
             return 1;
         }
         print_prompt = false;
@@ -233,7 +236,10 @@ int main(int argc, const char *argv[])
         {
             // Chdir must be called by the parent, not the child.
             buf[strlen(buf) - 1] = 0;  // chop \n
-            if (chdir(buf + 3) < 0) fprintf(stderr, "cannot cd %s\n", buf + 3);
+            if (chdir(buf + 3) < 0)
+            {
+                fprintf(stderr, "cannot cd %s, %s\n", buf + 3, strerror(errno));
+            }
             continue;
         }
         if (strcmp(buf, "exit\n") == 0)

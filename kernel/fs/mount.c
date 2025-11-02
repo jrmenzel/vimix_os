@@ -48,10 +48,11 @@ ssize_t mount(const char *source, const char *target,
     // but in special cases it is a magic constant
     if ((strcmp(source, "dev") == 0) || (strcmp(source, "sys") == 0))
     {
-        struct inode *i_target = inode_from_path(target);
+        ssize_t error = 0;
+        struct inode *i_target = inode_from_path(target, &error);
         if (i_target == NULL)
         {
-            return -ENOENT;
+            return error;
         }
         inode_lock(i_target);
         if (!S_ISDIR(i_target->i_mode))
@@ -72,10 +73,11 @@ ssize_t mount(const char *source, const char *target,
 
     // normal filesystem on a device:
 
-    struct inode *i_src = inode_from_path(source);
+    ssize_t error = 0;
+    struct inode *i_src = inode_from_path(source, &error);
     if (i_src == NULL)
     {
-        return -ENODEV;
+        return error;
     }
 
     inode_lock(i_src);
@@ -86,11 +88,11 @@ ssize_t mount(const char *source, const char *target,
     }
     inode_unlock(i_src);
 
-    struct inode *i_target = inode_from_path(target);
+    struct inode *i_target = inode_from_path(target, &error);
     if (i_target == NULL)
     {
         inode_put(i_src);
-        return -ENOENT;
+        return error;
     }
     inode_lock(i_target);
     if (!S_ISDIR(i_target->i_mode))
@@ -188,10 +190,11 @@ ssize_t mount_internal(dev_t source, struct inode *i_target,
 
 ssize_t umount(const char *target)
 {
-    struct inode *i_target = inode_from_path(target);
+    ssize_t error = 0;
+    struct inode *i_target = inode_from_path(target, &error);
     if (i_target == NULL)
     {
-        return -ENOENT;
+        return error;
     }
 
     inode_lock(i_target);

@@ -11,7 +11,7 @@ extern ssize_t reboot(int32_t cmd);
 #define VIMIX_REBOOT_CMD_RESTART 1
 ```
 
-Reboots or halts the system.
+Reboots or halts the system. Only [root](../security/user_group_id.md) can call this.
 
 ## User Apps
 

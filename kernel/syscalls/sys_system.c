@@ -44,6 +44,13 @@ ssize_t sys_reboot()
     int32_t cmd;
     argint(0, &cmd);
 
+    // this syscall is for root only
+    struct process *proc = get_current();
+    if (IS_NOT_SUPERUSER(&proc->cred))
+    {
+        return -EPERM;
+    }
+
     // validate input:
     if (cmd != VIMIX_REBOOT_CMD_POWER_OFF && cmd != VIMIX_REBOOT_CMD_RESTART)
     {

@@ -13,10 +13,13 @@
 ssize_t chmod_internal(struct inode *ip, mode_t mode)
 {
     // only superuser or file owner can change mode
+    inode_lock(ip);
     ASSERT_IS_FILE_OWNER(get_current(), ip);
+    inode_unlock(ip);
 
     mode = mode & ~S_IFMT;  // remove file type bits from mode parameter
-    return VFS_INODE_CHMOD(ip, mode);
+    ssize_t ret = VFS_INODE_CHMOD(ip, mode);
+    return ret;
 }
 
 ssize_t sys_chmod()
@@ -32,10 +35,11 @@ ssize_t sys_chmod()
     int32_t mode;
     argint(1, &mode);
 
-    struct inode *ip = inode_from_path(path);
+    ssize_t error = 0;
+    struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
-        return -ENOENT;
+        return error;
     }
     ssize_t ret = chmod_internal(ip, mode);
     inode_put(ip);
@@ -55,7 +59,10 @@ ssize_t sys_fchmod()
     int32_t mode;
     argint(1, &mode);
 
-    return chmod_internal(f->ip, mode);
+    ssize_t ret = chmod_internal(f->ip, mode);
+    f->mode = f->ip->i_mode;  // update cached mode in file struct
+
+    return ret;
 }
 
 ssize_t chown_internal(struct inode *ip, uid_t uid, gid_t gid)
@@ -88,10 +95,11 @@ ssize_t sys_chown()
     int32_t gid;
     argint(2, &gid);
 
-    struct inode *ip = inode_from_path(path);
+    ssize_t error = 0;
+    struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
-        return -ENOENT;
+        return error;
     }
     ssize_t ret = chown_internal(ip, uid, gid);
     inode_put(ip);

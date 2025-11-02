@@ -96,7 +96,8 @@ int main()
                         login_path, strerror(errno));
             }
 
-            fprintf(stderr, "init: execv %s failed\n", login_path);
+            fprintf(stderr, "init: execv %s failed, %s\n", login_path,
+                    strerror(errno));
             exit(1);
         }
 

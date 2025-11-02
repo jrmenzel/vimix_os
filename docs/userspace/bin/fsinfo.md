@@ -8,4 +8,4 @@ Prints info on [mounted](../../kernel/syscalls/mount.md) [file systems](../../ke
 ---
 **Up:** [user space](../userspace.md)
 
-**System:** [fsbench](fsbench.md) | [fsinfo](fsinfo.md) | [meminfo](meminfo.md) | [mount](mount.md) | [shutdown](shutdown.md) | [sh](sh.md) | [umount](umount.md) | [which](which.md)
+**System:** [fsbench](fsbench.md) | [fsinfo](fsinfo.md) | [meminfo](meminfo.md) | [mount](mount.md) | [shutdown](shutdown.md) | [sh](sh.md) | [su](su.md) | [umount](umount.md) | [which](which.md)

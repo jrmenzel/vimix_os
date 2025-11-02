@@ -9,7 +9,6 @@ _*
 build/*
 build_tests/*
 build_host/*
-utests-tmp/*
 
 # device tree files
 #*.dts
