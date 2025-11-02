@@ -20,6 +20,7 @@ STD_LIBC := \
 	$(LIBC_BUILD_DIR)/stdlib_impl.o \
 	$(LIBC_BUILD_DIR)/stdlib_malloc.o \
 	$(LIBC_BUILD_DIR)/stdlib_pwd.o \
+	$(LIBC_BUILD_DIR)/stdlib_qsort.o \
 	$(LIBC_BUILD_DIR)/stdlib_shadow.o \
 	$(LIBC_BUILD_DIR)/string_impl.o \
 	$(LIBC_BUILD_DIR)/termios.o \

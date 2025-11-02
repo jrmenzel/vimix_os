@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <vimixutils/minmax.h>
 #include <vimixutils/path.h>
 
 #if defined(BUILD_ON_HOST)
@@ -27,6 +28,7 @@ struct Parameters
     bool print_directory_name;
     bool print_dot_dotdot;
     bool print_hidden;
+    bool sorted;
 };
 
 void set_default_parameters(struct Parameters *parameters)
@@ -34,6 +36,7 @@ void set_default_parameters(struct Parameters *parameters)
     parameters->print_directory_name = false;
     parameters->print_dot_dotdot = false;
     parameters->print_hidden = true;
+    parameters->sorted = true;
 }
 
 const int S_OK = 0;
@@ -149,35 +152,6 @@ void print_user_group(uid_t uid, gid_t gid)
     }
 }
 
-int print_file(const char *file_name, const char *full_path,
-               struct Parameters *parameters)
-{
-    struct stat st;
-    if (stat(full_path, &st) < 0)
-    {
-        printf("stat (%s) error (errno: %s)\n", full_path, strerror(errno));
-        return S_SERIOUS_ERROR;
-    }
-
-    print_access(st.st_mode);
-    print_user_group(st.st_uid, st.st_gid);
-
-    printf(" %8zd B  ", st.st_size);
-
-    time_t now = st.st_mtime;
-    struct tm *cal_time = localtime(&now);
-    int n = printf("%d.%d.%d", cal_time->tm_mday, cal_time->tm_mon + 1,
-                   1970 + cal_time->tm_year);
-    for (size_t i = n; i < 11; i++) printf(" ");
-
-    printf("%02d:%02d:%02d ", cal_time->tm_hour, cal_time->tm_min,
-           cal_time->tm_sec);
-
-    printf("%s\n", file_name);
-
-    return 0;
-}
-
 enum FileVisibility
 {
     DOT_OR_DOTDOT,
@@ -197,6 +171,70 @@ enum FileVisibility get_visibility(const char *file_name)
     return VISIBLE;
 }
 
+struct entry_node
+{
+    char name[NAME_MAX + 1];
+    mode_t mode;
+    uid_t uid;
+    gid_t gid;
+    size_t size;
+    time_t mtime;
+    struct entry_node *next;
+};
+
+struct entry_node *entry_node_create(struct entry_node *head, const char *name,
+                                     const char *full_path)
+{
+    struct stat st;
+    if (stat(full_path, &st) < 0)
+    {
+        fprintf(stderr, "stat (%s) error (errno: %s)\n", full_path,
+                strerror(errno));
+        return head;
+    }
+
+    struct entry_node *new_node =
+        (struct entry_node *)malloc(sizeof(struct entry_node));
+
+    strncpy(new_node->name, name, NAME_MAX);
+    new_node->name[NAME_MAX] = 0;
+    new_node->mode = st.st_mode;
+    new_node->uid = st.st_uid;
+    new_node->gid = st.st_gid;
+    new_node->size = st.st_size;
+    new_node->mtime = st.st_mtime;
+    new_node->next = head;
+
+    return new_node;
+}
+
+int entry_node_cmp(const void *a, const void *b)
+{
+    const struct entry_node *ea = *(const struct entry_node **)a;
+    const struct entry_node *eb = *(const struct entry_node **)b;
+
+    return strcmp(ea->name, eb->name);
+}
+
+void entry_node_print(struct entry_node *entry, struct Parameters *parameters)
+{
+    print_access(entry->mode);
+    print_user_group(entry->uid, entry->gid);
+
+    printf(" %8zd B  ", entry->size);
+
+    time_t now = entry->mtime;
+    struct tm *cal_time = localtime(&now);
+    int n = printf("%d.%d.%d", cal_time->tm_mday, cal_time->tm_mon + 1,
+                   1970 + cal_time->tm_year);
+    for (size_t i = n; i < 11; i++) printf(" ");
+
+    printf("%02d:%02d:%02d ", cal_time->tm_hour, cal_time->tm_min,
+           cal_time->tm_sec);
+
+    printf("%s\n", entry->name);
+}
+
 int print_dir(const char *path_name, struct Parameters *parameters)
 {
     if (parameters->print_directory_name)
@@ -209,6 +247,9 @@ int print_dir(const char *path_name, struct Parameters *parameters)
     {
         return S_SERIOUS_ERROR;
     }
+
+    struct entry_node *entry_list_head = NULL;
+    size_t entry_count = 0;
 
     char full_path[PATH_MAX];
     struct dirent *dir_entry = NULL;
@@ -228,7 +269,29 @@ int print_dir(const char *path_name, struct Parameters *parameters)
 
         build_full_path(full_path, path_name, dir_entry->d_name);
 
-        print_file(dir_entry->d_name, full_path, parameters);
+        entry_list_head =
+            entry_node_create(entry_list_head, dir_entry->d_name, full_path);
+        entry_count++;
+    }
+
+    // now print entries:
+    struct entry_node **entry_array =
+        (struct entry_node **)malloc(entry_count * sizeof(struct entry_node *));
+    struct entry_node *current = entry_list_head;
+    for (size_t i = 0; i < entry_count; ++i)
+    {
+        entry_array[i] = current;
+        current = current->next;
+    }
+    if (parameters->sorted)
+    {
+        qsort(entry_array, entry_count, sizeof(struct entry_node *),
+              entry_node_cmp);
+    }
+    for (size_t i = 0; i < entry_count; ++i)
+    {
+        entry_node_print(entry_array[i], parameters);
+        free(entry_array[i]);
     }
 
     closedir(dir);
@@ -253,7 +316,18 @@ int ls(const char *path_name, struct Parameters *parameters)
     }
     else
     {
-        return_code = print_file(fmtname(path_name), path_name, parameters);
+        struct entry_node *entry =
+            entry_node_create(NULL, fmtname(path_name), path_name);
+        if (entry == NULL)
+        {
+            return_code = S_SERIOUS_ERROR;
+        }
+        else
+        {
+            entry_node_print(entry, parameters);
+            free(entry);
+            return_code = S_OK;
+        }
     }
 
     return return_code;
@@ -277,7 +351,7 @@ int main(int argc, char *argv[])
     for (size_t i = 1; i < argc; i++)
     {
         int error = ls(argv[i], &parameters);
-        highest_error = max_error(highest_error, error);
+        highest_error = max(highest_error, error);
     }
 
     return highest_error;

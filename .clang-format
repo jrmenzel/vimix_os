@@ -10,3 +10,5 @@ AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: WithoutElse
 BreakBeforeBraces: Allman
 IncludeBlocks: Preserve
+PointerAlignment: Right
+DerivePointerAlignment: false

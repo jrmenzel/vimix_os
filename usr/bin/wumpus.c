@@ -112,36 +112,6 @@ int icomp(const void *p1, const void *p2)
     return (*ip1 - *ip2);
 }
 
-void sort(int *array, size_t n)
-{
-    for (size_t i = 0; i < n; ++i)
-    {
-        for (size_t j = i + 1; j < n; ++j)
-        {
-            if (array[i] > array[j])
-            {
-                int tmp = array[i];
-                array[i] = array[j];
-                array[j] = tmp;
-            }
-        }
-    }
-}
-
-void is_sorted(int *array, size_t n)
-{
-    int largest = -1;
-    for (size_t i = 0; i < n; ++i)
-    {
-        if (array[i] < largest)
-        {
-            printf("XXX error, unsorted\n");
-            return;
-        }
-        largest = array[i];
-    }
-}
-
 int main(int argc, char *argv[])
 {
     int i, j;
@@ -184,9 +154,7 @@ init:
             for (k = 0; k < j; k++)
                 if (p->tunn[j] == p->tunn[k]) goto init;
         }
-        // qsort(&p->tunn[0], NTUNN, sizeof(int), icomp);
-        sort(&p->tunn[0], NTUNN);
-        is_sorted(&p->tunn[0], NTUNN);
+        qsort(&p->tunn[0], NTUNN, sizeof(int), icomp);
         p++;
     }
 

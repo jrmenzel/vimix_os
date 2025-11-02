@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT  */
 #pragma once
 
+#include <kernel/stdlib.h>
 #include <stdint.h>
 
 /// @brief Allocates memory.

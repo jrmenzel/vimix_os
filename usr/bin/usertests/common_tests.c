@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <grp.h>
 #include <pwd.h>
+#include <stdlib.h>
 #include <vimixutils/minmax.h>
 #include "usertests.h"
 
@@ -30,7 +31,7 @@ char buf[BUFSZ];
 /// @brief Reads from /dev/null should return 0, writes to it should return the
 /// length of the written string.
 /// @param s test name
-void dev_null(char *s)
+void dev_null(char* s)
 {
     const size_t N = 3;
     int fd = open("/dev/null", O_RDWR);
@@ -58,7 +59,7 @@ void dev_null(char *s)
 /// @brief Reads from /dev/zero should fill the buffer with 0, writes to it
 /// should return the length of the written string.
 /// @param s test name
-void dev_zero(char *s)
+void dev_zero(char* s)
 {
     const size_t N = 4;
     int fd = open("/dev/zero", O_RDWR);
@@ -102,9 +103,9 @@ void dev_zero(char *s)
 }
 
 /// @brief Test lseek syscall
-void lseek_test(char *s)
+void lseek_test(char* s)
 {
-    const char *file_name = "seektest";
+    const char* file_name = "seektest";
     int fd = open(file_name, O_CREAT | O_RDWR, 0755);
     assert_open_ok_fd(s, fd, file_name);
 
@@ -112,8 +113,8 @@ void lseek_test(char *s)
     off_t seek_pos = lseek(fd, 0, SEEK_CUR);
     assert_null_s(s, seek_pos);
 
-    const char *test_str_1 = "abcdefghij";
-    const char *test_str_2 = "0123456789";
+    const char* test_str_1 = "abcdefghij";
+    const char* test_str_2 = "0123456789";
     size_t expected_pos = 0;
 
     assert_write_to_file(s, fd, test_str_1);
@@ -368,7 +369,7 @@ unsigned char ctype_results_toupper[256] = {
     240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254,
     255};
 
-void ctype_test(char *s)
+void ctype_test(char* s)
 {
     for (size_t i = 0; i < 256; ++i)
     {
@@ -413,7 +414,7 @@ void ctype_test(char *s)
     }
 }
 
-void printf_test(char *s)
+void printf_test(char* s)
 {
 #define MAX_STRING 128
     char buf[MAX_STRING];
@@ -555,10 +556,10 @@ void printf_test(char *s)
 #undef MAX_STRING
 }
 
-void getc_test(char *s)
+void getc_test(char* s)
 {
     const char str[] = "abcd";
-    const char *file_name = "getc_test";
+    const char* file_name = "getc_test";
     size_t str_len = sizeof(str) - 1;  // excluding 0-terminator
 
     // write file:
@@ -568,7 +569,7 @@ void getc_test(char *s)
     assert_same_value(close(fd), 0);
 
     // open and read via getc():
-    FILE *f = fopen(file_name, "r");
+    FILE* f = fopen(file_name, "r");
     assert_open_ok(s, f, file_name);
 
     for (size_t i = 0; i < str_len; ++i)
@@ -607,10 +608,10 @@ void getc_test(char *s)
     assert_no_error(unlink(file_name));
 }
 
-void realloc_test(char *s)
+void realloc_test(char* s)
 {
     size_t size = 16;
-    int *ptr1 = (int *)realloc(NULL, sizeof(int) * size);
+    int* ptr1 = (int*)realloc(NULL, sizeof(int) * size);
     assert_no_ptr_error(ptr1);
 
     for (size_t i = 0; i < size; ++i)
@@ -618,7 +619,7 @@ void realloc_test(char *s)
         ptr1[i] = i;
     }
 
-    int *ptr2 = (int *)realloc(ptr1, sizeof(int) * size * 2);
+    int* ptr2 = (int*)realloc(ptr1, sizeof(int) * size * 2);
     assert_no_ptr_error(ptr2);
 
     for (size_t i = 0; i < size; ++i)
@@ -627,7 +628,7 @@ void realloc_test(char *s)
     }
 
     size = size / 2;
-    int *ptr3 = (int *)realloc(ptr2, sizeof(int) * size);
+    int* ptr3 = (int*)realloc(ptr2, sizeof(int) * size);
     assert_no_ptr_error(ptr3);
 
     for (size_t i = 0; i < size; ++i)
@@ -638,10 +639,10 @@ void realloc_test(char *s)
     free(ptr3);
 }
 
-void str_test(char *s)
+void str_test(char* s)
 {
-    char *haystack = "Foobar test string test";
-    char *pos = strstr(haystack, "Foo");
+    char* haystack = "Foobar test string test";
+    char* pos = strstr(haystack, "Foo");
     assert_same_value(pos, haystack);
 
     pos = strstr(haystack, "test");
@@ -654,15 +655,15 @@ void str_test(char *s)
     assert_same_value(pos, NULL);
 }
 
-void getline_test(char *s)
+void getline_test(char* s)
 {
-    const char *file_name = "getline_test";
+    const char* file_name = "getline_test";
     unlink(file_name);
 
     {
-        FILE *f = fopen(file_name, "w");
+        FILE* f = fopen(file_name, "w");
         assert_open_ok(s, f, file_name);
-        char *line = NULL;
+        char* line = NULL;
         size_t line_buf_size;
         ssize_t ret = getline(&line, &line_buf_size, f);
         assert_same_value(ret, EOF);
@@ -680,9 +681,9 @@ void getline_test(char *s)
         assert_same_value(write(fd, str, str_len), str_len);
         assert_same_value(close(fd), 0);
 
-        FILE *f = fopen(file_name, "r");
+        FILE* f = fopen(file_name, "r");
         assert_open_ok(s, f, file_name);
-        char *line = NULL;
+        char* line = NULL;
         size_t line_buf_size;
         ssize_t ret = getline(&line, &line_buf_size, f);
         assert_same_value(ret, str_len);
@@ -704,9 +705,9 @@ void getline_test(char *s)
         assert_same_value(write(fd, str, str_len), str_len);
         assert_same_value(close(fd), 0);
 
-        FILE *f = fopen(file_name, "r");
+        FILE* f = fopen(file_name, "r");
         assert_open_ok(s, f, file_name);
-        char *line = malloc(4);  // intentionally too small
+        char* line = malloc(4);  // intentionally too small
         if (line == NULL)
         {
             printf("%s: ERROR, tiny malloc failed (errno: %s)\n", s,
@@ -735,32 +736,32 @@ void getline_test(char *s)
     assert_no_error(unlink(file_name));
 }
 
-void strtoul_test(char *s)
+void strtoul_test(char* s)
 {
-    char *end = NULL;
+    char* end = NULL;
     unsigned long n;
 
-    const char *test_str1 = "   42foo";
+    const char* test_str1 = "   42foo";
     n = strtoul(test_str1, &end, 10);
     assert_same_value(n, 42);
     assert_same_value(*end, 'f');
 
-    const char *test_str2 = "0123";
+    const char* test_str2 = "0123";
     n = strtoul(test_str2, &end, 10);
     assert_same_value(n, 123);
     assert_same_value(*end, 0);
 
-    const char *test_str3 = " -123456a";
+    const char* test_str3 = " -123456a";
     n = strtoul(test_str3, &end, 10);
     assert_same_value(n, -123456);
     assert_same_value(*end, 'a');
 
-    const char *test_str4 = "755";
+    const char* test_str4 = "755";
     n = strtoul(test_str4, &end, 8);
     assert_same_value(n, 493);
     assert_same_value(*end, 0);
 
-    const char *test_str5 = "1001";
+    const char* test_str5 = "1001";
     n = strtoul(test_str5, &end, 2);
     assert_same_value(n, 9);
     assert_same_value(*end, 0);
@@ -768,7 +769,7 @@ void strtoul_test(char *s)
 
 bool truncate_;
 
-void truncate_to(char *s, const char *file_name, off_t new_size)
+void truncate_to(char* s, const char* file_name, off_t new_size)
 {
     struct stat st;
     assert_no_error(truncate(file_name, new_size));
@@ -776,9 +777,9 @@ void truncate_to(char *s, const char *file_name, off_t new_size)
     assert_same_value(st.st_size, new_size);
 }
 
-void truncate_test(char *s)
+void truncate_test(char* s)
 {
-    const char *file_name = "truncate_test";
+    const char* file_name = "truncate_test";
     unlink(file_name);
 
     {
@@ -813,7 +814,7 @@ void truncate_test(char *s)
     assert_no_error(unlink(file_name));
 }
 
-void assert_user_is_root(char *s)
+void assert_user_is_root(char* s)
 {
     uid_t uid = getuid();
     gid_t gid = getgid();
@@ -827,7 +828,7 @@ void assert_user_is_root(char *s)
     assert_same_value(gid, 0);
 }
 
-void user_id(char *s)
+void user_id(char* s)
 {
     uid_t uid = getuid();
     gid_t gid = getgid();
@@ -856,8 +857,8 @@ void user_id(char *s)
     assert_same_value(egid, 0);
     assert_same_value(sgid, 0);
 
-    struct passwd *pw = getpwuid(uid);
-    struct group *gr = getgrgid(gid);
+    struct passwd* pw = getpwuid(uid);
+    struct group* gr = getgrgid(gid);
     assert_no_ptr_error(pw);
     assert_no_ptr_error(gr);
 
@@ -914,7 +915,7 @@ struct test_file test_files[] = {
 };
 // clang-format on
 
-void test_read_access(const char *file_name, bool should_succeed, const char *s)
+void test_read_access(const char* file_name, bool should_succeed, const char* s)
 {
     int expected_errno = should_succeed ? 0 : EACCES;
 
@@ -936,8 +937,8 @@ void test_read_access(const char *file_name, bool should_succeed, const char *s)
     }
 }
 
-void test_write_access(const char *file_name, bool should_succeed,
-                       const char *s)
+void test_write_access(const char* file_name, bool should_succeed,
+                       const char* s)
 {
     int expected_errno = should_succeed ? 0 : EACCES;
 
@@ -962,14 +963,14 @@ void test_write_access(const char *file_name, bool should_succeed,
     }
 }
 
-void file_access(char *s)
+void file_access(char* s)
 {
     assert_user_is_root(s);
     mode_t old = umask(0);
 
     for (size_t i = 0; test_files[i].mode != 0; ++i)
     {
-        const char *file_name = "file_access_test_file";
+        const char* file_name = "file_access_test_file";
         unlink(file_name);
 
         // create test file
@@ -1004,8 +1005,8 @@ void file_access(char *s)
             // printf("done.\n");
 
             // child process: switch to user with uid/gid 1000
-            struct passwd *pw = getpwuid(1000);
-            struct group *gr = getgrgid(1000);
+            struct passwd* pw = getpwuid(1000);
+            struct group* gr = getgrgid(1000);
             assert_no_ptr_error(pw);
             assert_no_ptr_error(gr);
             assert_no_error(initgroups(pw->pw_name, pw->pw_gid));
@@ -1042,6 +1043,107 @@ void file_access(char *s)
     umask(old);
 }
 
+static int cmp_int(const void* a, const void* b)
+{
+    int ia = *(const int*)a;
+    int ib = *(const int*)b;
+    return (ia > ib) - (ia < ib);
+}
+
+static int cmp_str(const void* a, const void* b)
+{
+    const char* sa = *(const char* const*)a;
+    const char* sb = *(const char* const*)b;
+    return strcmp(sa, sb);
+}
+
+struct item
+{
+    int key;
+    const char* name;
+};
+
+static int cmp_item_by_key(const void* a, const void* b)
+{
+    int ka = ((const struct item*)a)->key;
+    int kb = ((const struct item*)b)->key;
+    return (ka > kb) - (ka < kb);
+}
+
+void qsort_test(char* s)
+{
+    // single-element array
+    int one[] = {42};
+    qsort(one, 1, sizeof(one[0]), cmp_int);
+    assert_same_value(one[0], 42);
+
+    // simple int array
+    {
+        int a[] = {5, 2, 9, -1, 3, 3};
+        int expected[] = {-1, 2, 3, 3, 5, 9};
+        size_t n = sizeof(a) / sizeof(a[0]);
+        qsort(a, n, sizeof(a[0]), cmp_int);
+        for (size_t i = 0; i < n; ++i)
+        {
+            assert_same_value(a[i], expected[i]);
+        }
+
+        // sort the now sorted array again
+        qsort(a, n, sizeof(a[0]), cmp_int);
+        for (size_t i = 0; i < n; ++i)
+        {
+            assert_same_value(a[i], expected[i]);
+        }
+    }
+
+    // reverse-sorted
+    {
+        int desc[] = {5, 4, 3, 2, 1};
+        int expected[] = {1, 2, 3, 4, 5};
+        size_t n = sizeof(desc) / sizeof(desc[0]);
+        qsort(desc, n, sizeof(desc[0]), cmp_int);
+        for (size_t i = 0; i < n; ++i)
+        {
+            assert_same_value(desc[i], expected[i]);
+        }
+    }
+
+    // strings (array of char*)
+    {
+        const char* arr[] = {"banana", "apple", "cherry", "apple"};
+        const char* expected[] = {"apple", "apple", "banana", "cherry"};
+        size_t n = sizeof(arr) / sizeof(arr[0]);
+        qsort(arr, n, sizeof(arr[0]), cmp_str);
+        for (size_t i = 0; i < n; ++i)
+        {
+            assert_same_string(arr[i], expected[i]);
+        }
+    }
+
+    // struct sorting: ensure associated data moves with keys
+    {
+        struct item items[] = {
+            {.key = 10, .name = "ten"},
+            {.key = -1, .name = "minus-one"},
+            {.key = 3, .name = "three"},
+            {.key = 3, .name = "three"},
+        };
+        struct item expected[] = {
+            {.key = -1, .name = "minus-one"},
+            {.key = 3, .name = "three"},
+            {.key = 3, .name = "three"},
+            {.key = 10, .name = "ten"},
+        };
+        size_t n = sizeof(items) / sizeof(items[0]);
+        qsort(items, n, sizeof(items[0]), cmp_item_by_key);
+        for (size_t i = 0; i < n; ++i)
+        {
+            assert_same_value(items[i].key, expected[i].key);
+            assert_same_string(items[i].name, expected[i].name);
+        }
+    }
+}
+
 struct test quicktests_common[] = {
     {dev_null, "dev_null"},
     {dev_zero, "dev_zero"},
@@ -1056,6 +1158,7 @@ struct test quicktests_common[] = {
     {truncate_test, "truncate"},
     {user_id, "user_id"},
     {file_access, "file_access"},
+    {qsort_test, "qsort"},
 
     {0, 0},
 };
@@ -1066,7 +1169,7 @@ struct test slowtests_common[] = {
 
 // helper functions
 
-void assert_open_ok(const char *test_name, FILE *f, const char *file_name)
+void assert_open_ok(const char* test_name, FILE* f, const char* file_name)
 {
     if (f == NULL)
     {
@@ -1076,7 +1179,7 @@ void assert_open_ok(const char *test_name, FILE *f, const char *file_name)
     }
 }
 
-void assert_open_ok_fd(const char *test_name, int fd, const char *file_name)
+void assert_open_ok_fd(const char* test_name, int fd, const char* file_name)
 {
     if (fd < 0)
     {
@@ -1086,7 +1189,7 @@ void assert_open_ok_fd(const char *test_name, int fd, const char *file_name)
     }
 }
 
-void assert_null_s(const char *test_name, ssize_t value)
+void assert_null_s(const char* test_name, ssize_t value)
 {
     if (value != 0)
     {
@@ -1095,7 +1198,7 @@ void assert_null_s(const char *test_name, ssize_t value)
     }
 }
 
-void assert_write_to_file(const char *test_name, int fd, const char *string)
+void assert_write_to_file(const char* test_name, int fd, const char* string)
 {
     size_t str_len = strlen(string);
 

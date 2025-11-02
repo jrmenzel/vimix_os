@@ -12,6 +12,8 @@ The initial 32-bit [RISCV](riscv/RISCV.md) support was inspired by a 32-bit xv6 
 
 Toml config file parsing is done via tomlc17, see [README](../usr/lib/tomlc17/README.md).
 
+C stdlib `qsort` is based on the UNIX V7 implementation. See also `licenses/Caldera-license.pdf`.
+
 Ported third party applications:
 - [dhrystone](userspace/local/bin/dhrystone.md)
 - [wumpus](userspace/bin/wumpus.md)

@@ -78,7 +78,8 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	lib/sleeplock.o \
 	lib/spinlock.o \
 	lib/print_impl.o \
-	lib/printk.o
+	lib/printk.o \
+	lib/qsort_impl.o
 
 ifeq ($(BITWIDTH), 32)
 OBJS += lib/div64.o
