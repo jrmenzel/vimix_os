@@ -361,7 +361,7 @@ void do_exit(int32_t status)
     panic("zombie exit");
 }
 
-pid_t wait(int32_t *wstatus)
+syserr_t do_wait(int32_t *wstatus)
 {
     struct process *proc = get_current();
 
@@ -412,7 +412,7 @@ pid_t wait(int32_t *wstatus)
                     spin_unlock(&g_wait_lock);
 
                     rwspin_write_unlock(&g_process_list.lock);
-                    return pid;
+                    return (syserr_t)pid;
                 }
                 spin_unlock(&pp->lock);
             }
@@ -602,7 +602,7 @@ void wakeup(void *chan)
 /// Kill the process with the given pid.
 /// The victim won't exit until it tries to return
 /// to user space (see user_mode_interrupt_handler() in trap.c).
-ssize_t proc_send_signal(pid_t pid, int32_t sig)
+syserr_t proc_send_signal(pid_t pid, int32_t sig)
 {
     if (sig != SIGKILL)
     {

@@ -31,7 +31,7 @@ syserr_t sys_wait()
     // parameter 0: int32_t *wstatus
     size_t wstatus;
     argaddr(0, &wstatus);
-    return wait((int32_t *)wstatus);
+    return do_wait((int32_t *)wstatus);
 }
 
 syserr_t sys_sbrk()

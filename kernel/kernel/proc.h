@@ -69,7 +69,7 @@ void proc_free_pagetable(pagetable_t pagetable);
 /// @brief Sends a signal to a process, basically kill syscall
 /// @param pid The PID of the process
 /// @param sig The signal as defined in signal.h
-ssize_t proc_send_signal(pid_t pid, int32_t sig);
+syserr_t proc_send_signal(pid_t pid, int32_t sig);
 
 /// true if the process has been killed
 bool proc_is_killed(struct process *proc);
@@ -106,7 +106,7 @@ void userspace_init();
 /// exposed via sys/wait.h
 /// @param wstatus address of an int to store wstatus into
 /// @return -1 if this process has no children.
-extern pid_t wait(int32_t *wstatus);
+pid_t do_wait(int32_t *wstatus);
 
 /// @brief Wake up all processes sleeping on channel chan.
 /// Must be called without any proc->lock.
