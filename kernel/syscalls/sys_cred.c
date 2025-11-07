@@ -16,8 +16,8 @@
 /// @param e_id Effective id.
 /// @param s_id Saved id.
 /// @return 0 on success, -EFAULT on error.
-ssize_t getres_id(struct process *proc, int32_t r_id, int32_t e_id,
-                  int32_t s_id)
+syserr_t getres_id(struct process *proc, int32_t r_id, int32_t e_id,
+                   int32_t s_id)
 {
     // parameter 0: uid_t *ruid or gid_t *rgid
     size_t rid;
@@ -59,19 +59,19 @@ ssize_t getres_id(struct process *proc, int32_t r_id, int32_t e_id,
     return 0;
 }
 
-ssize_t sys_getresuid()
+syserr_t sys_getresuid()
 {
     struct process *proc = get_current();
     return getres_id(proc, proc->cred.uid, proc->cred.euid, proc->cred.suid);
 }
 
-ssize_t sys_getresgid()
+syserr_t sys_getresgid()
 {
     struct process *proc = get_current();
     return getres_id(proc, proc->cred.gid, proc->cred.egid, proc->cred.sgid);
 }
 
-ssize_t sys_setuid()
+syserr_t sys_setuid()
 {
     struct process *proc = get_current();
 
@@ -99,7 +99,7 @@ ssize_t sys_setuid()
     return 0;
 }
 
-ssize_t sys_setgid()
+syserr_t sys_setgid()
 {
     struct process *proc = get_current();
 
@@ -127,7 +127,7 @@ ssize_t sys_setgid()
     return 0;
 }
 
-ssize_t sys_setresuid()
+syserr_t sys_setresuid()
 {
     struct process *proc = get_current();
 
@@ -164,7 +164,7 @@ ssize_t sys_setresuid()
     return 0;
 }
 
-ssize_t sys_setresgid()
+syserr_t sys_setresgid()
 {
     struct process *proc = get_current();
 

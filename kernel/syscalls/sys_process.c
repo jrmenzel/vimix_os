@@ -12,7 +12,7 @@
 #include <mm/kalloc.h>
 #include <syscalls/syscall.h>
 
-ssize_t sys_exit()
+syserr_t sys_exit()
 {
     // parameter 0: int32_t status
     int32_t status;
@@ -22,11 +22,11 @@ ssize_t sys_exit()
     return 0;  // not reached
 }
 
-ssize_t sys_getpid() { return get_current()->pid; }
+syserr_t sys_getpid() { return (syserr_t)get_current()->pid; }
 
-ssize_t sys_fork() { return do_fork(); }
+syserr_t sys_fork() { return do_fork(); }
 
-ssize_t sys_wait()
+syserr_t sys_wait()
 {
     // parameter 0: int32_t *wstatus
     size_t wstatus;
@@ -34,7 +34,7 @@ ssize_t sys_wait()
     return wait((int32_t *)wstatus);
 }
 
-ssize_t sys_sbrk()
+syserr_t sys_sbrk()
 {
     // parameter 0: intptr_t increment
     intptr_t increment;
@@ -49,10 +49,10 @@ ssize_t sys_sbrk()
         return -ENOMEM;
     }
 
-    return addr;
+    return (syserr_t)addr;
 }
 
-ssize_t sys_ms_sleep()
+syserr_t sys_ms_sleep()
 {
     // parameter 0: milli_seconds
     int32_t milli_seconds;
@@ -77,7 +77,7 @@ ssize_t sys_ms_sleep()
     return 0;
 }
 
-ssize_t sys_kill()
+syserr_t sys_kill()
 {
     // parameter 0: pid
     pid_t pid;
@@ -90,7 +90,7 @@ ssize_t sys_kill()
     return proc_send_signal(pid, signal);
 }
 
-ssize_t sys_execv()
+syserr_t sys_execv()
 {
     // parameter 0: char *pathname
     char path[PATH_MAX];
@@ -106,7 +106,7 @@ ssize_t sys_execv()
     size_t uargv, uarg;
     argaddr(1, &uargv);
 
-    ssize_t error_code = 0;
+    syserr_t error_code = 0;
     for (size_t i = 0;; i++)
     {
         if (i >= NELEM(argv))
@@ -149,7 +149,7 @@ ssize_t sys_execv()
     return error_code;
 }
 
-ssize_t do_getgroups(int32_t size, size_t list_addr)
+syserr_t do_getgroups(int32_t size, size_t list_addr)
 {
     struct process *proc = get_current();
 
@@ -176,10 +176,10 @@ ssize_t do_getgroups(int32_t size, size_t list_addr)
         return -EFAULT;
     }
 
-    return to_copy;
+    return (syserr_t)to_copy;
 }
 
-ssize_t sys_getgroups()
+syserr_t sys_getgroups()
 {
     // parameter 0: int size
     int32_t size;
@@ -192,7 +192,7 @@ ssize_t sys_getgroups()
     return do_getgroups(size, list_addr);
 }
 
-ssize_t do_setgroups(int32_t size, size_t list_addr)
+syserr_t do_setgroups(int32_t size, size_t list_addr)
 {
     struct process *proc = get_current();
 
@@ -235,7 +235,7 @@ ssize_t do_setgroups(int32_t size, size_t list_addr)
     return 0;
 }
 
-ssize_t sys_setgroups()
+syserr_t sys_setgroups()
 {
     // parameter 0: int size
     int32_t size;

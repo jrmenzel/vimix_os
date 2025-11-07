@@ -10,14 +10,14 @@
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 
-ssize_t sys_pipe()
+syserr_t sys_pipe()
 {
     // parameter 0: int pipe_descriptors[]
     size_t fdarray;
     argaddr(0, &fdarray);
 
     struct file *rf, *wf;
-    ssize_t ret = pipe_alloc(&rf, &wf);
+    syserr_t ret = pipe_alloc(&rf, &wf);
     if (ret < 0)
     {
         return ret;

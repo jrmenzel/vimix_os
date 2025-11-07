@@ -10,7 +10,7 @@
 #include <kernel/process.h>
 #include <syscalls/syscall.h>
 
-ssize_t chmod_internal(struct inode *ip, mode_t mode)
+syserr_t chmod_internal(struct inode *ip, mode_t mode)
 {
     // only superuser or file owner can change mode
     inode_lock(ip);
@@ -18,11 +18,11 @@ ssize_t chmod_internal(struct inode *ip, mode_t mode)
     inode_unlock(ip);
 
     mode = mode & ~S_IFMT;  // remove file type bits from mode parameter
-    ssize_t ret = VFS_INODE_CHMOD(ip, mode);
+    syserr_t ret = VFS_INODE_CHMOD(ip, mode);
     return ret;
 }
 
-ssize_t sys_chmod()
+syserr_t sys_chmod()
 {
     // parameter 0: const char *path
     char path[PATH_MAX];
@@ -35,18 +35,18 @@ ssize_t sys_chmod()
     int32_t mode;
     argint(1, &mode);
 
-    ssize_t error = 0;
+    syserr_t error = 0;
     struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
         return error;
     }
-    ssize_t ret = chmod_internal(ip, mode);
+    syserr_t ret = chmod_internal(ip, mode);
     inode_put(ip);
     return ret;
 }
 
-ssize_t sys_fchmod()
+syserr_t sys_fchmod()
 {
     // parameter 0: int fd
     struct file *f;
@@ -59,13 +59,13 @@ ssize_t sys_fchmod()
     int32_t mode;
     argint(1, &mode);
 
-    ssize_t ret = chmod_internal(f->ip, mode);
+    syserr_t ret = chmod_internal(f->ip, mode);
     f->mode = f->ip->i_mode;  // update cached mode in file struct
 
     return ret;
 }
 
-ssize_t chown_internal(struct inode *ip, uid_t uid, gid_t gid)
+syserr_t chown_internal(struct inode *ip, uid_t uid, gid_t gid)
 {
     struct process *proc = get_current();
 
@@ -78,7 +78,7 @@ ssize_t chown_internal(struct inode *ip, uid_t uid, gid_t gid)
     return VFS_INODE_CHOWN(ip, uid, gid);
 }
 
-ssize_t sys_chown()
+syserr_t sys_chown()
 {
     // parameter 0: const char *path
     char path[PATH_MAX];
@@ -95,18 +95,18 @@ ssize_t sys_chown()
     int32_t gid;
     argint(2, &gid);
 
-    ssize_t error = 0;
+    syserr_t error = 0;
     struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
         return error;
     }
-    ssize_t ret = chown_internal(ip, uid, gid);
+    syserr_t ret = chown_internal(ip, uid, gid);
     inode_put(ip);
     return ret;
 }
 
-ssize_t sys_fchown()
+syserr_t sys_fchown()
 {
     // parameter 0: int fd
     struct file *f;
@@ -126,7 +126,7 @@ ssize_t sys_fchown()
     return chown_internal(f->ip, uid, gid);
 }
 
-ssize_t sys_umask()
+syserr_t sys_umask()
 {
     // parameter 0: mode_t (int32_t) mask
     int32_t mask;
@@ -136,5 +136,5 @@ ssize_t sys_umask()
     mode_t old_mask = proc->umask;
     proc->umask = mask & 0777;  // only permission bits
 
-    return old_mask;
+    return (syserr_t)old_mask;
 }

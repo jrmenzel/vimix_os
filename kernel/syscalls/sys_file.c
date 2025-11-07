@@ -17,7 +17,7 @@
 #include <kernel/string.h>
 #include <syscalls/syscall.h>
 
-ssize_t sys_dup()
+syserr_t sys_dup()
 {
     // parameter 0: int fd
     struct file *f;
@@ -33,10 +33,10 @@ ssize_t sys_dup()
     }
 
     file_dup(f);
-    return fd;
+    return (syserr_t)fd;
 }
 
-ssize_t sys_read()
+syserr_t sys_read()
 {
     // parameter 0: int fd
     struct file *f;
@@ -57,7 +57,7 @@ ssize_t sys_read()
     return file_read(f, buffer, n);
 }
 
-ssize_t sys_write()
+syserr_t sys_write()
 {
     // parameter 0: int fd
     struct file *f;
@@ -77,7 +77,7 @@ ssize_t sys_write()
     return file_write(f, buffer, n);
 }
 
-ssize_t sys_close()
+syserr_t sys_close()
 {
     // parameter 0: int fd
     FILE_DESCRIPTOR fd;
@@ -92,7 +92,7 @@ ssize_t sys_close()
     return 0;
 }
 
-ssize_t sys_stat()
+syserr_t sys_stat()
 {
     // parameter 0: const char *path
     char path[PATH_MAX];
@@ -105,19 +105,19 @@ ssize_t sys_stat()
     size_t stat_buffer;  // user pointer to struct stat
     argaddr(1, &stat_buffer);
 
-    ssize_t error = 0;
+    syserr_t error = 0;
     struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
         return error;
     }
-    ssize_t ret = file_stat_by_inode(ip, stat_buffer);
+    syserr_t ret = file_stat_by_inode(ip, stat_buffer);
     inode_put(ip);
 
     return ret;
 }
 
-ssize_t sys_fstat()
+syserr_t sys_fstat()
 {
     // parameter 0: int fd
     struct file *f;
@@ -134,7 +134,7 @@ ssize_t sys_fstat()
     return file_stat_by_inode(f->ip, stat_buffer);
 }
 
-ssize_t sys_link()
+syserr_t sys_link()
 {
     // parameter 0 / 1: const char *from / *to
     char path_to[PATH_MAX], path_from[PATH_MAX];
@@ -146,7 +146,7 @@ ssize_t sys_link()
     return file_link(path_from, path_to);
 }
 
-ssize_t sys_unlink()
+syserr_t sys_unlink()
 {
     // parameter 0: const char *pathname
     char path[PATH_MAX];
@@ -158,7 +158,7 @@ ssize_t sys_unlink()
     return file_unlink(path, true, false);
 }
 
-ssize_t sys_rmdir()
+syserr_t sys_rmdir()
 {
     // parameter 0: const char *path
     char path[PATH_MAX];
@@ -170,7 +170,7 @@ ssize_t sys_rmdir()
     return file_unlink(path, false, true);
 }
 
-ssize_t sys_open()
+syserr_t sys_open()
 {
     // parameter 0: const char *pathname
     char pathname[PATH_MAX];
@@ -191,7 +191,7 @@ ssize_t sys_open()
     return file_open(pathname, flags, mode);
 }
 
-ssize_t sys_mkdir()
+syserr_t sys_mkdir()
 {
     // parameter 0: const char *path
     char path[PATH_MAX];
@@ -209,10 +209,10 @@ ssize_t sys_mkdir()
         return -ENOTDIR;
     }
 
-    return (size_t)inode_create(path, mode, INVALID_DEVICE);
+    return inode_create(path, mode, INVALID_DEVICE);
 }
 
-ssize_t sys_mknod()
+syserr_t sys_mknod()
 {
     // parameter 0: const char *path
     char path[PATH_MAX];
@@ -239,10 +239,10 @@ ssize_t sys_mknod()
         return -ENODEV;
     }
 
-    return (size_t)inode_create(path, mode, device);
+    return inode_create(path, mode, device);
 }
 
-ssize_t sys_chdir()
+syserr_t sys_chdir()
 {
     // parameter 0: const char *path
     char path[PATH_MAX];
@@ -252,7 +252,7 @@ ssize_t sys_chdir()
         return -EFAULT;
     }
 
-    ssize_t error = 0;
+    syserr_t error = 0;
     struct process *proc = get_current();
     struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
@@ -267,7 +267,7 @@ ssize_t sys_chdir()
         return -ENOTDIR;
     }
 
-    ssize_t perm_check = check_inode_permission(proc, ip, MAY_EXEC);
+    syserr_t perm_check = check_inode_permission(proc, ip, MAY_EXEC);
     if (perm_check < 0)
     {
         inode_unlock_put(ip);
@@ -281,7 +281,7 @@ ssize_t sys_chdir()
     return 0;
 }
 
-ssize_t sys_get_dirent()
+syserr_t sys_get_dirent()
 {
     // size_t get_dirent(int fd, struct dirent *dirp, size_t seek_pos);
     // parameter 0: int fd
@@ -302,7 +302,7 @@ ssize_t sys_get_dirent()
     return VFS_INODE_GET_DIRENT(f->ip, dir_entry_addr, true, seek_pos);
 }
 
-ssize_t sys_lseek()
+syserr_t sys_lseek()
 {
     // parameter 0: int fd
     FILE_DESCRIPTOR fd;
@@ -320,12 +320,12 @@ ssize_t sys_lseek()
     int32_t whence;
     argint(2, &whence);
 
-    ssize_t ret = file_lseek(f, offset, whence);
+    syserr_t ret = file_lseek(f, offset, whence);
 
     return ret;
 }
 
-ssize_t sys_truncate()
+syserr_t sys_truncate()
 {
     // parameter 0: const char *path
     char path[PATH_MAX];
@@ -338,19 +338,19 @@ ssize_t sys_truncate()
     ssize_t length;
     argssize_t(1, &length);
 
-    ssize_t error = 0;
+    syserr_t error = 0;
     struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
         return error;
     }
 
-    ssize_t ret = VFS_INODE_TRUNCATE(ip, length);
+    syserr_t ret = VFS_INODE_TRUNCATE(ip, length);
     inode_put(ip);
     return ret;
 }
 
-ssize_t sys_ftruncate()
+syserr_t sys_ftruncate()
 {
     // parameter 0: int fd
     FILE_DESCRIPTOR fd;

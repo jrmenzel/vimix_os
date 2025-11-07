@@ -48,36 +48,36 @@ void file_init();
 /// @param addr a user virtual address.
 /// @param n Max bytes to read.
 /// @return Number of bytes read or -1 on error.
-ssize_t file_read(struct file *f, size_t addr, size_t n);
+syserr_t file_read(struct file *f, size_t addr, size_t n);
 
 /// @brief Get metadata about file.
 /// @param ip inode to get stats from.
 /// @param addr a user virtual address, pointing to a struct stat.
 /// @return 0 on success, -1 on error
-ssize_t file_stat_by_inode(struct inode *ip, size_t addr);
+syserr_t file_stat_by_inode(struct inode *ip, size_t addr);
 
 /// @brief Write to file.
 /// @param f File to write to.
 /// @param addr a user virtual address.
 /// @param n Max bytes to write.
 /// @return Number of bytes written or -1 on error.
-ssize_t file_write(struct file *f, size_t addr, size_t n);
+syserr_t file_write(struct file *f, size_t addr, size_t n);
 
 /// @brief creates a new hard link for file path_from with
 /// new name path_to.
-/// @return 0 on success, -1 on error
-ssize_t file_link(char *path_from, char *path_to);
+/// @return 0 on success, -errno on error
+syserr_t file_link(char *path_from, char *path_to);
 
 /// @brief Most of the syscall unlink
 /// @param path path name
 /// @param delete_files if false, won't delete files
 /// @param delete_directories if false, won't delete dirs
-/// @return 0 on success, -1 on error
-ssize_t file_unlink(char *path, bool delete_files, bool delete_directories);
+/// @return 0 on success, -errno on error
+syserr_t file_unlink(char *path, bool delete_files, bool delete_directories);
 
 /// @brief Most of syscall lseek
 /// @param f File of which to change read pointer
 /// @param offset offset relative to a position
 /// @param whence position, SEEK_SET etc.
 /// @return 0 on success, -1 on error
-ssize_t file_lseek(struct file *f, ssize_t offset, int whence);
+syserr_t file_lseek(struct file *f, ssize_t offset, int whence);

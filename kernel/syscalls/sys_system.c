@@ -16,7 +16,7 @@
 #include <kernel/time.h>
 #include <syscalls/syscall.h>
 
-ssize_t sys_uptime() { return kticks_get_ticks(); }
+syserr_t sys_uptime() { return (syserr_t)kticks_get_ticks(); }
 
 void system_shutdown()
 {
@@ -38,7 +38,7 @@ void system_shutdown()
     printk("All other CPUs halted.\n");
 }
 
-ssize_t sys_reboot()
+syserr_t sys_reboot()
 {
     // parameter 0: cmd
     int32_t cmd;
@@ -76,7 +76,7 @@ ssize_t sys_reboot()
     return -EOTHER;
 }
 
-ssize_t get_time_to_user(clockid_t clockid, size_t timespec_va)
+syserr_t get_time_to_user(clockid_t clockid, size_t timespec_va)
 {
     if (clockid != CLOCK_REALTIME && clockid != CLOCK_MONOTONIC)
     {
@@ -90,7 +90,7 @@ ssize_t get_time_to_user(clockid_t clockid, size_t timespec_va)
     return (res < 0) ? -ENOMEM : 0;
 }
 
-ssize_t sys_clock_gettime()
+syserr_t sys_clock_gettime()
 {
     // parameter 0: cklockid
     clockid_t clock;
@@ -103,7 +103,7 @@ ssize_t sys_clock_gettime()
     return get_time_to_user(clock, timespec_va);
 }
 
-ssize_t sys_mount()
+syserr_t sys_mount()
 {
     size_t idx = 0;
     // parameter 0: const char *source
@@ -139,7 +139,7 @@ ssize_t sys_mount()
                  addr_data);
 }
 
-ssize_t sys_umount()
+syserr_t sys_umount()
 {
     // parameter 0: const char *target
     char target[PATH_MAX];

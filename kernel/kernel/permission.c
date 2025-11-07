@@ -41,8 +41,8 @@ perm_mask_t perm_mask_from_open_flags(int32_t flags)
     return mask;
 }
 
-ssize_t check_file_permission(struct process *proc, struct file *f,
-                              perm_mask_t mask)
+syserr_t check_file_permission(struct process *proc, struct file *f,
+                               perm_mask_t mask)
 {
     bool needs_write_access = (mask & MAY_WRITE) || (mask & MAY_APPEND);
     bool needs_read_access = (mask & MAY_READ);
@@ -138,8 +138,8 @@ bool permission_check_execute(struct cred *cred, mode_t mode, uid_t uid,
     return (mode & S_IXOTH);
 }
 
-ssize_t check_inode_permission(struct process *proc, struct inode *ip,
-                               perm_mask_t mask)
+syserr_t check_inode_permission(struct process *proc, struct inode *ip,
+                                perm_mask_t mask)
 {
     if (mask & MAY_UNLINK)
     {

@@ -19,7 +19,7 @@ static inline bool pipe_is_full(struct pipe *pipe)
     return pipe->nwrite == pipe->nread + PIPE_SIZE;
 }
 
-ssize_t pipe_alloc(struct file **f0, struct file **f1)
+syserr_t pipe_alloc(struct file **f0, struct file **f1)
 {
     // create two files
     *f0 = file_alloc();

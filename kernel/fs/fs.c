@@ -303,7 +303,7 @@ static const char *skipelem(const char *path, char *name)
 /// path element into name, which must have room for NAME_MAX bytes.
 /// Must be called inside a transaction since it calls inode_put().
 static struct inode *namex(const char *path, bool get_parent, char *name,
-                           ssize_t *error)
+                           syserr_t *error)
 {
     struct inode *ip;
 
@@ -376,14 +376,14 @@ static struct inode *namex(const char *path, bool get_parent, char *name,
     return ip;  // return ip
 }
 
-struct inode *inode_from_path(const char *path, ssize_t *error)
+struct inode *inode_from_path(const char *path, syserr_t *error)
 {
     char name[NAME_MAX];
     return namex(path, false, name, error);
 }
 
 struct inode *inode_of_parent_from_path(const char *path, char *name,
-                                        ssize_t *error)
+                                        syserr_t *error)
 {
     return namex(path, true, name, error);
 }

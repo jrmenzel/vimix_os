@@ -245,7 +245,7 @@ void file_close(struct file *f)
     kfree((void *)f);
 }
 
-ssize_t file_stat_by_inode(struct inode *ip, size_t addr)
+syserr_t file_stat_by_inode(struct inode *ip, size_t addr)
 {
     struct stat st;
     struct process *proc = get_current();
@@ -259,11 +259,11 @@ ssize_t file_stat_by_inode(struct inode *ip, size_t addr)
     return 0;
 }
 
-ssize_t file_read(struct file *f, size_t addr, size_t n)
+syserr_t file_read(struct file *f, size_t addr, size_t n)
 {
     ssize_t read_bytes = 0;
 
-    ssize_t perm_ok = check_file_permission(get_current(), f, MAY_READ);
+    syserr_t perm_ok = check_file_permission(get_current(), f, MAY_READ);
     if (perm_ok < 0)
     {
         return perm_ok;
@@ -318,7 +318,7 @@ ssize_t file_read(struct file *f, size_t addr, size_t n)
         panic("file_read() on unknown file type");
     }
 
-    return read_bytes;
+    return (syserr_t)read_bytes;
 }
 
 void file_update_mtime(struct file *f)
@@ -333,11 +333,11 @@ void file_update_mtime(struct file *f)
     inode_unlock(f->ip);
 }
 
-ssize_t file_write(struct file *f, size_t addr, size_t n)
+syserr_t file_write(struct file *f, size_t addr, size_t n)
 {
-    ssize_t ret = 0;
+    syserr_t ret = 0;
 
-    ssize_t perm_ok = check_file_permission(get_current(), f, MAY_WRITE);
+    syserr_t perm_ok = check_file_permission(get_current(), f, MAY_WRITE);
     if (perm_ok < 0)
     {
         return perm_ok;
@@ -385,9 +385,9 @@ ssize_t file_write(struct file *f, size_t addr, size_t n)
     return ret;
 }
 
-ssize_t file_link(char *path_from, char *path_to)
+syserr_t file_link(char *path_from, char *path_to)
 {
-    ssize_t error = 0;
+    syserr_t error = 0;
     struct inode *ip = inode_from_path(path_from, &error);
     if (ip == NULL)
     {
@@ -433,9 +433,9 @@ ssize_t file_link(char *path_from, char *path_to)
     return VFS_INODE_LINK(dir, ip, name);
 }
 
-ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
+syserr_t file_unlink(char *path, bool delete_files, bool delete_directories)
 {
-    ssize_t error = 0;
+    syserr_t error = 0;
     char name[NAME_MAX];
     struct inode *dir = inode_of_parent_from_path(path, name, &error);
     if (dir == NULL)
@@ -452,7 +452,7 @@ ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
 
     // need write permission in directory where file gets unlinked
     inode_lock(dir);
-    ssize_t perm_ok = check_inode_permission(get_current(), dir, MAY_UNLINK);
+    syserr_t perm_ok = check_inode_permission(get_current(), dir, MAY_UNLINK);
     if (perm_ok < 0)
     {
         inode_unlock_put(dir);
@@ -463,7 +463,7 @@ ssize_t file_unlink(char *path, bool delete_files, bool delete_directories)
     return VFS_INODE_UNLINK(dir, name, delete_files, delete_directories);
 }
 
-ssize_t file_lseek(struct file *f, ssize_t offset, int whence)
+syserr_t file_lseek(struct file *f, ssize_t offset, int whence)
 {
     if (!S_ISREG(f->mode) && !S_ISBLK(f->mode))
     {
@@ -495,5 +495,5 @@ ssize_t file_lseek(struct file *f, ssize_t offset, int whence)
 
     f->off = new_pos;
 
-    return f->off;
+    return (syserr_t)f->off;
 }

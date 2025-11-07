@@ -11,7 +11,7 @@
 #include <kernel/stat.h>
 #include <syscalls/syscall.h>
 
-ssize_t sys_ioctl()
+syserr_t sys_ioctl()
 {
     // parameter 0: int fd
     struct file *f;
@@ -38,7 +38,7 @@ ssize_t sys_ioctl()
     size_t ip;
     argaddr(2, &ip);
 
-    ssize_t perm = check_file_permission(get_current(), f, MAY_READ);
+    syserr_t perm = check_file_permission(get_current(), f, MAY_READ);
     if (perm < 0)
     {
         return perm;

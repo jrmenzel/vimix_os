@@ -53,7 +53,7 @@ void do_exit(int32_t status);
 
 /// @brief Create a new process, copying the parent.
 /// Sets up child kernel stack to return as if from fork() system call.
-ssize_t do_fork();
+syserr_t do_fork();
 
 /// @brief Grow or shrink user memory by n bytes.
 /// @param n bytes to grow/shrink

@@ -18,11 +18,11 @@
 
 typedef int32_t perm_mask_t;
 
-ssize_t check_file_permission(struct process *proc, struct file *f,
-                              perm_mask_t mask);
-
-ssize_t check_inode_permission(struct process *proc, struct inode *ip,
+syserr_t check_file_permission(struct process *proc, struct file *f,
                                perm_mask_t mask);
+
+syserr_t check_inode_permission(struct process *proc, struct inode *ip,
+                                perm_mask_t mask);
 
 perm_mask_t perm_mask_from_open_flags(int32_t flags);
 

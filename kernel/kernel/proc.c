@@ -222,7 +222,7 @@ int32_t proc_copy_memory(struct process *src, struct process *dst)
     return 0;
 }
 
-ssize_t do_fork()
+syserr_t do_fork()
 {
     // Allocate new process.
     struct process *np = process_alloc_init();
@@ -287,7 +287,7 @@ ssize_t do_fork()
     list_add_tail(&np->plist, &g_process_list.plist);
     rwspin_write_unlock(&g_process_list.lock);
 
-    return pid;
+    return (syserr_t)pid;
 }
 
 /// Pass proc's abandoned children to init.

@@ -165,7 +165,7 @@ void inode_stat(struct inode *ip, struct stat *st);
 /// @param error On error, set to negative error code.
 /// @return NULL on failure. Returned inode has an increased ref
 /// count (release with inode_put()). (NOT locked)
-struct inode *inode_from_path(const char *path, ssize_t *error);
+struct inode *inode_from_path(const char *path, syserr_t *error);
 
 /// @brief get inode of the parent directory
 /// Shortly locks every inode on the path, so don't hold any inode locks when

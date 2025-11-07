@@ -76,9 +76,9 @@ bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
     return true;
 }
 
-ssize_t do_execv(char *path, char **argv)
+syserr_t do_execv(char *path, char **argv)
 {
-    ssize_t error = 0;
+    syserr_t error = 0;
     struct inode *ip = inode_from_path(path, &error);
     if (ip == NULL)
     {
@@ -87,7 +87,7 @@ ssize_t do_execv(char *path, char **argv)
     inode_lock(ip);
 
     struct process *proc = get_current();
-    ssize_t perm = check_inode_permission(proc, ip, MAY_EXEC);
+    syserr_t perm = check_inode_permission(proc, ip, MAY_EXEC);
     if (perm < 0)
     {
         inode_unlock_put(ip);

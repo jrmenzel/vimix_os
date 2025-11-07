@@ -32,9 +32,9 @@ struct super_block *ROOT_SUPER_BLOCK = NULL;
 /// at a time, but that limitation is fine.
 struct sleeplock g_mount_lock;
 
-ssize_t mount(const char *source, const char *target,
-              const char *filesystemtype, unsigned long mountflags,
-              size_t addr_data)
+syserr_t mount(const char *source, const char *target,
+               const char *filesystemtype, unsigned long mountflags,
+               size_t addr_data)
 {
     struct file_system_type **file_system =
         find_filesystem(filesystemtype, strlen(filesystemtype));
@@ -48,7 +48,7 @@ ssize_t mount(const char *source, const char *target,
     // but in special cases it is a magic constant
     if ((strcmp(source, "dev") == 0) || (strcmp(source, "sys") == 0))
     {
-        ssize_t error = 0;
+        syserr_t error = 0;
         struct inode *i_target = inode_from_path(target, &error);
         if (i_target == NULL)
         {
@@ -63,8 +63,8 @@ ssize_t mount(const char *source, const char *target,
         inode_unlock(i_target);
 
         sleep_lock(&g_mount_lock);
-        int ret = mount_internal(INVALID_DEVICE, i_target, *file_system,
-                                 mountflags, addr_data);
+        syserr_t ret = mount_internal(INVALID_DEVICE, i_target, *file_system,
+                                      mountflags, addr_data);
 
         inode_put(i_target);
         sleep_unlock(&g_mount_lock);
@@ -73,7 +73,7 @@ ssize_t mount(const char *source, const char *target,
 
     // normal filesystem on a device:
 
-    ssize_t error = 0;
+    syserr_t error = 0;
     struct inode *i_src = inode_from_path(source, &error);
     if (i_src == NULL)
     {
@@ -104,8 +104,8 @@ ssize_t mount(const char *source, const char *target,
     inode_unlock(i_target);
 
     sleep_lock(&g_mount_lock);
-    int ret = mount_internal(i_src->dev, i_target, *file_system, mountflags,
-                             addr_data);
+    syserr_t ret = mount_internal(i_src->dev, i_target, *file_system,
+                                  mountflags, addr_data);
 
     inode_put(i_src);
     inode_put(i_target);
@@ -127,7 +127,7 @@ void mount_root(dev_t dev, const char *filesystemtype)
 
     sleep_lock(&g_mount_lock);
     unsigned long flags = 0;
-    ssize_t ret = mount_internal(dev, NULL, *file_system, flags, 0);
+    syserr_t ret = mount_internal(dev, NULL, *file_system, flags, 0);
     sleep_unlock(&g_mount_lock);
     if (ret != 0)
     {
@@ -188,9 +188,9 @@ ssize_t mount_internal(dev_t source, struct inode *i_target,
     return 0;
 }
 
-ssize_t umount(const char *target)
+syserr_t umount(const char *target)
 {
-    ssize_t error = 0;
+    syserr_t error = 0;
     struct inode *i_target = inode_from_path(target, &error);
     if (i_target == NULL)
     {
@@ -229,15 +229,15 @@ ssize_t umount(const char *target)
 
     inode_lock(i_target_mountpoint);
     sleep_lock(&g_mount_lock);
-    int ret = umount_internal(i_target_mountpoint, sb);
+    syserr_t ret = umount_internal(i_target_mountpoint, sb);
     sleep_unlock(&g_mount_lock);
     inode_unlock_put(i_target_mountpoint);
 
     return ret;
 }
 
-ssize_t umount_internal(struct inode *i_target_mountpoint,
-                        struct super_block *sb)
+syserr_t umount_internal(struct inode *i_target_mountpoint,
+                         struct super_block *sb)
 {
     DEBUG_EXTRA_ASSERT(i_target_mountpoint->is_mounted_on != NULL,
                        "imounted_on not set on mountpoint");
