@@ -50,6 +50,10 @@ typedef int32_t clockid_t;
 /// undefined.
 #define CLOCK_MONOTONIC 1
 
+/// @brief Type of the syscalls return value. >= 0 means success (> 0 has
+/// syscall specific meaning), negative values are errors from errno.h.
+typedef ssize_t syserr_t;
+
 #endif  // __USE_REAL_STDC
 
 #define INVALID_FILE_DESCRIPTOR (-1)
