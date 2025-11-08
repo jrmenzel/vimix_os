@@ -87,7 +87,7 @@ void sysfs_init()
     register_file_system(&sysfs_file_system_type);
 }
 
-ssize_t sysfs_init_fs_super_block(struct super_block *sb_in, const void *data)
+syserr_t sysfs_init_fs_super_block(struct super_block *sb_in, const void *data)
 {
     struct sysfs_sb_private *priv = (struct sysfs_sb_private *)kmalloc(
         sizeof(struct sysfs_sb_private), ALLOC_FLAG_ZERO_MEMORY);
@@ -433,8 +433,8 @@ struct inode *sysfs_iops_dir_lookup(struct inode *dir, const char *name,
     return NULL;  // not found
 }
 
-ssize_t sysfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
-                              bool addr_is_userspace, ssize_t seek_pos)
+syserr_t sysfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
+                               bool addr_is_userspace, ssize_t seek_pos)
 {
     if (!S_ISDIR(dir->i_mode) || seek_pos < 0) return -1;
     struct sysfs_inode *sysfs_dir = sysfs_inode_from_inode(dir);
@@ -504,8 +504,8 @@ ssize_t sysfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
     return seek_pos + 1;
 }
 
-ssize_t sysfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
-                        size_t off, size_t n)
+syserr_t sysfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
+                         size_t off, size_t n)
 {
     // printk("sysfs_fops_read\n");
     if (!S_ISREG(ip->i_mode)) return -1;
@@ -540,7 +540,7 @@ ssize_t sysfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
     return copy_len;
 }
 
-ssize_t sysfs_fops_write(struct file *f, size_t addr, size_t n)
+syserr_t sysfs_fops_write(struct file *f, size_t addr, size_t n)
 {
     if (!S_ISREG(f->ip->i_mode)) return -1;
 

@@ -136,9 +136,9 @@ void mount_root(dev_t dev, const char *filesystemtype)
     }
 }
 
-ssize_t mount_internal(dev_t source, struct inode *i_target,
-                       struct file_system_type *filesystemtype,
-                       unsigned long mountflags, size_t addr_data)
+syserr_t mount_internal(dev_t source, struct inode *i_target,
+                        struct file_system_type *filesystemtype,
+                        unsigned long mountflags, size_t addr_data)
 {
     struct super_block *sb = sb_alloc_init();
     if (sb == NULL) return -ENOMEM;
@@ -157,7 +157,7 @@ ssize_t mount_internal(dev_t source, struct inode *i_target,
             "parameter");
     }
 
-    ssize_t ret = filesystemtype->init_fs_super_block(sb, data_kernel_space);
+    syserr_t ret = filesystemtype->init_fs_super_block(sb, data_kernel_space);
     if (ret != 0)
     {
         return ret;

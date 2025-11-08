@@ -19,7 +19,7 @@ struct file_system_type
     /// Opens the block device and tests if the FS is supported.
     /// @param data optional mount parameters
     /// @return 0 on success. -ERRNO on failure (e.g. wrong FS)
-    ssize_t (*init_fs_super_block)(struct super_block *sb, const void *data);
+    syserr_t (*init_fs_super_block)(struct super_block *sb, const void *data);
 
     struct file_system_type *next;
 };
@@ -43,7 +43,7 @@ struct inode *sops_alloc_inode_default_ro(struct super_block *sb, mode_t mode);
 /// file systems.
 int sops_write_inode_default_ro(struct inode *ip);
 
-ssize_t sops_statvfs_default(struct super_block *sb, struct statvfs *to_fill);
+syserr_t sops_statvfs_default(struct super_block *sb, struct statvfs *to_fill);
 
 /// @brief Can be used for iops_create of read-only file systems.
 /// @return NULL which means no new inodes can get created.
@@ -65,29 +65,29 @@ int iops_dir_link_default_ro(struct inode *dir, char *name, ino_t inum);
 
 /// @brief Default implementation of iops_unlink for read-only file systems.
 /// @return -EOTHER
-ssize_t iops_link_default_ro(struct inode *dir, struct inode *ip,
-                             char name[NAME_MAX]);
+syserr_t iops_link_default_ro(struct inode *dir, struct inode *ip,
+                              char name[NAME_MAX]);
 
 /// @brief Default implementation of iops_unlink for read-only file systems.
 /// @return 0, as no files can get deleted on a read-only file system.
-ssize_t iops_unlink_default_ro(struct inode *dir, char name[NAME_MAX],
-                               bool delete_files, bool delete_directories);
+syserr_t iops_unlink_default_ro(struct inode *dir, char name[NAME_MAX],
+                                bool delete_files, bool delete_directories);
 
 /// @brief Default implementation of iops_truncate for read-only file systems.
 /// @param ip Ignored.
 /// @param length Ignored.
 /// @return -EACCES to indicate read-only file system.
-ssize_t iops_truncate_default_ro(struct inode *ip, off_t length);
+syserr_t iops_truncate_default_ro(struct inode *ip, off_t length);
 
 /// @brief Default implementation of iops_chmod for read-only file systems.
 /// @param ip Ignored.
 /// @param mode Ignored.
 /// @return -EACCES to indicate read-only file system.
-ssize_t iops_chmod_default_ro(struct inode *ip, mode_t mode);
+syserr_t iops_chmod_default_ro(struct inode *ip, mode_t mode);
 
 /// @brief Default implementation of iops_chown for read-only file systems.
 /// @param ip Ignored.
 /// @param uid Ignored.
 /// @param gid Ignored.
 /// @return -EACCES to indicate read-only file system.
-ssize_t iops_chown_default_ro(struct inode *ip, uid_t uid, gid_t gid);
+syserr_t iops_chown_default_ro(struct inode *ip, uid_t uid, gid_t gid);

@@ -110,7 +110,7 @@ void mount_root(dev_t dev, const char *fs_name);
 /// @brief Wrapper for _iops_open() which only returns success codes.
 ///        Used by mkdir() and mknod().
 /// @return -ERRNO on failure, 0 otherwise.
-ssize_t inode_create(const char *path, mode_t mode, dev_t device);
+syserr_t inode_create(const char *path, mode_t mode, dev_t device);
 
 /// @brief Lock the given inode.
 /// Reads the inode from disk if necessary.

@@ -17,7 +17,7 @@ struct super_operations
 
     int (*write_inode)(struct inode *ip);
 
-    ssize_t (*statvfs)(struct super_block *sb, struct statvfs *to_fill);
+    syserr_t (*statvfs)(struct super_block *sb, struct statvfs *to_fill);
 };
 
 /// @brief Get root inode of file system. Not locked.
@@ -45,23 +45,23 @@ struct inode_operations
 
     int (*iops_dir_link)(struct inode *dir, char *name, ino_t inum);
 
-    ssize_t (*iops_get_dirent)(struct inode *dir, size_t dir_entry_addr,
-                               bool addr_is_userspace, ssize_t seek_pos);
+    syserr_t (*iops_get_dirent)(struct inode *dir, size_t dir_entry_addr,
+                                bool addr_is_userspace, ssize_t seek_pos);
 
-    ssize_t (*iops_read)(struct inode *ip, bool addr_is_userspace, size_t dst,
-                         size_t off, size_t n);
+    syserr_t (*iops_read)(struct inode *ip, bool addr_is_userspace, size_t dst,
+                          size_t off, size_t n);
 
-    ssize_t (*iops_link)(struct inode *dir, struct inode *ip,
-                         char name[NAME_MAX]);
+    syserr_t (*iops_link)(struct inode *dir, struct inode *ip,
+                          char name[NAME_MAX]);
 
-    ssize_t (*iops_unlink)(struct inode *dir, char name[NAME_MAX],
-                           bool delete_files, bool delete_directories);
+    syserr_t (*iops_unlink)(struct inode *dir, char name[NAME_MAX],
+                            bool delete_files, bool delete_directories);
 
-    ssize_t (*iops_truncate)(struct inode *ip, off_t length);
+    syserr_t (*iops_truncate)(struct inode *ip, off_t length);
 
-    ssize_t (*iops_chmod)(struct inode *ip, mode_t mode);
+    syserr_t (*iops_chmod)(struct inode *ip, mode_t mode);
 
-    ssize_t (*iops_chown)(struct inode *ip, uid_t uid, gid_t gid);
+    syserr_t (*iops_chown)(struct inode *ip, uid_t uid, gid_t gid);
 };
 
 /// @brief Opens the inode inside of directory iparent with the given name
@@ -158,7 +158,7 @@ struct inode_operations
     (ip)->i_sb->i_op->iops_chown((ip), (uid), (gid))
 struct file_operations
 {
-    ssize_t (*fops_write)(struct file *f, size_t addr, size_t n);
+    syserr_t (*fops_write)(struct file *f, size_t addr, size_t n);
 };
 
 /// @brief Write n bytes from buffer at addr to file f.

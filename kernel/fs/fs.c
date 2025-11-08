@@ -92,9 +92,9 @@ void inode_del(struct inode *ip)
     list_del(&ip->fs_inode_list);
 }
 
-ssize_t inode_create(const char *pathname, mode_t mode, dev_t device)
+syserr_t inode_create(const char *pathname, mode_t mode, dev_t device)
 {
-    ssize_t error = 0;
+    syserr_t error = 0;
     char name[NAME_MAX];
     struct inode *dir = inode_of_parent_from_path(pathname, name, &error);
     if (dir == NULL)
@@ -104,7 +104,7 @@ ssize_t inode_create(const char *pathname, mode_t mode, dev_t device)
 
     // need write permission in directory where link is created
     inode_lock(dir);
-    ssize_t perm_ok = check_inode_permission(get_current(), dir, MAY_WRITE);
+    syserr_t perm_ok = check_inode_permission(get_current(), dir, MAY_WRITE);
     if (perm_ok < 0)
     {
         inode_unlock_put(dir);

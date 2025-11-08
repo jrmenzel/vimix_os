@@ -42,4 +42,4 @@ typedef struct DIR_INTERNAL DIR;
 /// @param seek_pos Position of the dir entry to query. Start at 0, then use
 /// what get_dirent() returned previously.
 /// @return next seek_pos on success, 0 on dir end and -1 on error.
-size_t get_dirent(int fd, struct dirent *dirp, ssize_t seek_pos);
+syserr_t get_dirent(int fd, struct dirent *dirp, ssize_t seek_pos);

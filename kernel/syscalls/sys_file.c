@@ -283,7 +283,6 @@ syserr_t sys_chdir()
 
 syserr_t sys_get_dirent()
 {
-    // size_t get_dirent(int fd, struct dirent *dirp, size_t seek_pos);
     // parameter 0: int fd
     struct file *f;
     if (argfd(0, NULL, &f) < 0)

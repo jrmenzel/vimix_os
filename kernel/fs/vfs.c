@@ -60,7 +60,7 @@ struct inode *sops_alloc_inode_default_ro(struct super_block *sb, mode_t mode)
 
 int sops_write_inode_default_ro(struct inode *ip) { return 0; }
 
-ssize_t sops_statvfs_default(struct super_block *sb, struct statvfs *to_fill)
+syserr_t sops_statvfs_default(struct super_block *sb, struct statvfs *to_fill)
 {
     DEBUG_EXTRA_PANIC(sb != NULL && to_fill != NULL,
                       "sops_statvfs_default: NULL pointers given");
@@ -110,28 +110,31 @@ int iops_dir_link_default_ro(struct inode *dir, char *name, ino_t inum)
     return 0;
 }
 
-ssize_t iops_link_default_ro(struct inode *dir, struct inode *ip,
-                             char name[NAME_MAX])
+syserr_t iops_link_default_ro(struct inode *dir, struct inode *ip,
+                              char name[NAME_MAX])
 {
     inode_put(dir);
     inode_put(ip);
     return -EOTHER;
 }
 
-ssize_t iops_unlink_default_ro(struct inode *dir, char name[NAME_MAX],
-                               bool delete_files, bool delete_directories)
+syserr_t iops_unlink_default_ro(struct inode *dir, char name[NAME_MAX],
+                                bool delete_files, bool delete_directories)
 {
     return 0;
 }
 
-ssize_t iops_truncate_default_ro(struct inode *ip, off_t length)
+syserr_t iops_truncate_default_ro(struct inode *ip, off_t length)
 {
     return -EACCES;
 }
 
-ssize_t iops_chmod_default_ro(struct inode *ip, mode_t mode) { return -EACCES; }
+syserr_t iops_chmod_default_ro(struct inode *ip, mode_t mode)
+{
+    return -EACCES;
+}
 
-ssize_t iops_chown_default_ro(struct inode *ip, uid_t uid, gid_t gid)
+syserr_t iops_chown_default_ro(struct inode *ip, uid_t uid, gid_t gid)
 {
     return -EACCES;
 }

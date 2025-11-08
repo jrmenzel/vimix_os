@@ -31,7 +31,7 @@ static inline ssize_t log_client_from_pid(struct log *log, pid_t pid)
     return -1;
 }
 
-ssize_t log_init(struct log *log, dev_t dev, struct vimixfs_superblock *sb)
+syserr_t log_init(struct log *log, dev_t dev, struct vimixfs_superblock *sb)
 {
     spin_lock_init(&log->lock, "log");
     log->start = sb->logstart;

@@ -46,7 +46,7 @@ int vimixfs_sops_write_inode(struct inode *ip);
 /// @param sb Super block of VIMIX FS file system.
 /// @param to_fill Pointer to an allocated buffer to fill.
 /// @return 0 on success, -ERRNO on failure.
-ssize_t vimix_sops_statvfs(struct super_block *sb, struct statvfs *to_fill);
+syserr_t vimix_sops_statvfs(struct super_block *sb, struct statvfs *to_fill);
 
 /// @brief Opens the inode inside of directory iparent with the given name or
 /// creates one if none existed.
@@ -115,8 +115,8 @@ int vimixfs_iops_dir_link(struct inode *dir, char *name, ino_t inum);
 /// @param addr_is_userspace True if dir_entry_addr is a user virtual address.
 /// @param seek_pos A seek pos previously returned by inode_get_dirent or 0.
 /// @return next seek_pos on success, 0 on dir end and -1 on error.
-ssize_t vimixfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
-                                bool addr_is_userspace, ssize_t seek_pos);
+syserr_t vimixfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
+                                 bool addr_is_userspace, ssize_t seek_pos);
 
 /// @brief Read data from inode.
 /// Caller must hold ip->lock.
@@ -127,8 +127,8 @@ ssize_t vimixfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
 /// @param off Offset in file where to read from.
 /// @param n Maximum number of bytes to read.
 /// @return Number of bytes successfully read.
-ssize_t vimixfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
-                          size_t off, size_t n);
+syserr_t vimixfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
+                           size_t off, size_t n);
 
 /// @brief Write data to inode.
 /// Caller must hold ip->lock.
@@ -141,22 +141,22 @@ ssize_t vimixfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
 /// @param src_addr Source address.
 /// @param off Offset in file.
 /// @param n Number of bytes to write.
-/// @return Number of bytes successfully written.
-ssize_t vimixfs_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
-                      size_t off, size_t n);
+/// @return Number of bytes successfully written or negative error code.
+syserr_t vimixfs_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
+                       size_t off, size_t n);
 
-ssize_t vimixfs_iops_link(struct inode *dir, struct inode *ip,
-                          char name[NAME_MAX]);
+syserr_t vimixfs_iops_link(struct inode *dir, struct inode *ip,
+                           char name[NAME_MAX]);
 
-ssize_t vimixfs_iops_unlink(struct inode *dir, char name[NAME_MAX],
-                            bool delete_files, bool delete_directories);
+syserr_t vimixfs_iops_unlink(struct inode *dir, char name[NAME_MAX],
+                             bool delete_files, bool delete_directories);
 
-ssize_t vimixfs_iops_truncate(struct inode *ip, off_t new_size);
+syserr_t vimixfs_iops_truncate(struct inode *ip, off_t new_size);
 
 struct file;
 
-ssize_t vimixfs_fops_write(struct file *f, size_t addr, size_t n);
+syserr_t vimixfs_fops_write(struct file *f, size_t addr, size_t n);
 
-ssize_t vimixfs_iops_chmod(struct inode *ip, mode_t mode);
+syserr_t vimixfs_iops_chmod(struct inode *ip, mode_t mode);
 
-ssize_t vimixfs_iops_chown(struct inode *ip, uid_t uid, gid_t gid);
+syserr_t vimixfs_iops_chown(struct inode *ip, uid_t uid, gid_t gid);

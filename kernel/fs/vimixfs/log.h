@@ -55,7 +55,7 @@ struct log
 /// @param dev For log->dev
 /// @param sb Super block of the FS using this log
 /// @return 0 on success, negative error code on failure
-ssize_t log_init(struct log *log, dev_t dev, struct vimixfs_superblock *sb);
+syserr_t log_init(struct log *log, dev_t dev, struct vimixfs_superblock *sb);
 
 /// @brief Called at FS unmount
 /// @param log Log to deinitialize

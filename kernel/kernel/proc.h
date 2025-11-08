@@ -106,7 +106,7 @@ void userspace_init();
 /// exposed via sys/wait.h
 /// @param wstatus address of an int to store wstatus into
 /// @return -1 if this process has no children.
-pid_t do_wait(int32_t *wstatus);
+syserr_t do_wait(int32_t *wstatus);
 
 /// @brief Wake up all processes sleeping on channel chan.
 /// Must be called without any proc->lock.

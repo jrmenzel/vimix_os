@@ -25,7 +25,7 @@ struct
 
 #define DEVFS_INVALID_INODE_NUMBER (0xDEADF00D)
 
-ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data);
+syserr_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data);
 void devfs_kill_sb(struct super_block *sb_in);
 struct inode *devfs_iops_dir_lookup(struct inode *dir, const char *name,
                                     uint32_t *poff);
@@ -104,8 +104,8 @@ struct inode *devfs_iops_dir_lookup(struct inode *dir, const char *name,
     return NULL;  // not found
 }
 
-ssize_t devfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
-                              bool addr_is_userspace, ssize_t seek_pos)
+syserr_t devfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
+                               bool addr_is_userspace, ssize_t seek_pos)
 {
     if (!S_ISDIR(dir->i_mode) || seek_pos < 0) return -1;
 
@@ -144,8 +144,8 @@ ssize_t devfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
     return seek_pos + 1;
 }
 
-ssize_t devfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
-                        size_t off, size_t n)
+syserr_t devfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
+                         size_t off, size_t n)
 {
     printk("devfs_iops_read\n");
     return 0;
@@ -178,7 +178,7 @@ struct inode_operations devfs_i_op = {
     iops_chown : iops_chown_default_ro
 };
 
-ssize_t devfs_fops_write(struct file *f, size_t addr, size_t n)
+syserr_t devfs_fops_write(struct file *f, size_t addr, size_t n)
 {
     printk("devfs_fops_write\n");
     return 0;
@@ -214,7 +214,7 @@ void devfs_init()
     register_file_system(&devfs_file_system_type);
 }
 
-ssize_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
+syserr_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
 {
     struct timespec time = rtc_get_time();
     time_t now = time.tv_sec;
