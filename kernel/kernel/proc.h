@@ -149,10 +149,6 @@ void process_free(struct process *proc);
 /// @param proc A not running process.
 void debug_print_call_stack_kernel(struct process *proc);
 
-/// @brief Prints the kernel call stack pointed to by frame_pointer
-/// @param frame_pointer Frame pointer.
-void debug_print_call_stack_kernel_fp(size_t frame_pointer);
-
 /// @brief Prints the processes user call stack. This shows where an exception
 /// happened but also where the app was before calling a syscall.
 /// @param proc A not running process.

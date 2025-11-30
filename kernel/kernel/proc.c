@@ -19,6 +19,7 @@
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
+#include <lib/panic.h>
 #include <mm/kalloc.h>
 #include <mm/memlayout.h>
 #include <mm/vm.h>
@@ -527,6 +528,8 @@ void forkret()
         mount_root(ROOT_DEVICE_NUMBER, VIMIXFS_FS_NAME);
         printk("forkret() mounting /... OK\n");
 
+        panic_load_debug_symbols("/kernel-vimix.xdbg");
+
         // We can involve execv() after file system is initialized.
         char *init_path = "/usr/bin/init";
         load_init_process(init_path);
@@ -728,34 +731,6 @@ void debug_print_call_stack_kernel(struct process *proc)
         frame_pointer = *((size_t *)(frame_pointer - 2 * sizeof(size_t)));
     } while ((frame_pointer <= proc_stack + PAGE_SIZE) &&
              (frame_pointer > proc_stack));
-}
-
-void debug_print_call_stack_kernel_fp(size_t frame_pointer)
-{
-    size_t depth = 32;  // limit just in case of a corrupted stack
-    while (depth-- != 0)
-    {
-        if (frame_pointer == 0) break;
-        size_t ra_address = frame_pointer - 1 * sizeof(size_t);
-        // check if g_kernel_pagetable is set, kernel panics could happen before
-        // that
-        if (g_kernel_pagetable && kvm_get_physical_paddr(ra_address) == 0)
-        {
-            printk("  ra: <invalid address>\n");
-            break;
-        }
-        size_t ra = *((size_t *)(ra_address));
-        size_t next_frame_pointer_address = frame_pointer - 2 * sizeof(size_t);
-        if (g_kernel_pagetable &&
-            kvm_get_physical_paddr(next_frame_pointer_address) == 0)
-        {
-            printk("  invalid frame pointer address: 0x%zx\n",
-                   next_frame_pointer_address);
-            break;
-        }
-        frame_pointer = *((size_t *)(next_frame_pointer_address));
-        printk("  ra: " FORMAT_REG_SIZE "\n", ra);
-    };
 }
 
 static inline bool address_is_in_page(size_t addr, size_t page_address)

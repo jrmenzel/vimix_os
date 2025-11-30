@@ -18,6 +18,10 @@ Ported third party applications:
 - [dhrystone](userspace/local/bin/dhrystone.md)
 - [wumpus](userspace/bin/wumpus.md)
 
+## Tools
+
+`tools/extractdbg` to get the file name / line info from an ELF file was mostly done by AI...
+
 
 ---
 **Up:** [README](../README.md)

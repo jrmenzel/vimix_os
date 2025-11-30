@@ -16,7 +16,7 @@ META_ROOT="--uid 0 --gid 0 --dmode 0750 --fmode 0640"
 META_USER="--uid 1000 --gid 1000 --dmode 0755 --fmode 0644"
 META_ADA="--uid 1001 --gid 1001 --dmode 0755 --fmode 0644"
 
-$MKFS --fs $FS_IMAGE --create 8192
+$MKFS --fs $FS_IMAGE --create 12288
 $MKFS --fs $FS_IMAGE --in ./root/ / $META_DEFAULT
 $MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/usr/bin/ /usr/bin/ $META_BINARIES
 $MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/usr/local/bin/ /usr/local/bin/ $META_BINARIES
@@ -33,6 +33,11 @@ $MKFS --fs $FS_IMAGE --meta /etc/shadow --uid 0 --gid 0 --fmode 600
 if [ -f ${BUILD_DIR}/root/autoexec.sh ] 
 then
     $MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/autoexec.sh /autoexec.sh $META_DEFAULT
+fi
+
+if [ -f ${BUILD_DIR}/boot/kernel-vimix.xdbg ] 
+then
+    $MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/boot/kernel-vimix.xdbg /kernel-vimix.xdbg $META_DEFAULT
 fi
 
 #$FSCK $FS_IMAGE

@@ -331,6 +331,7 @@ void *kmalloc(size_t size, int32_t flags)
                       "kfree called before kalloc_init()");
     if (size > PAGE_SIZE)
     {
+        printk("kmalloc: requested size %zd too big\n", size);
         panic("too much memory to allocate for kmalloc()");
     }
 
@@ -346,27 +347,7 @@ void *kmalloc(size_t size, int32_t flags)
 
     // too big for any cache, but still less than a page
     // -> allocate a full page
-    return alloc_pages(ALLOC_FLAG_NONE, flags);
-    /*
-        size = next_power_of_two(size);
-        size_t order = 0;
-        while (size >>= 1)
-        {
-            order++;
-        }
-        size_t cache_index = 0;
-        if (order > SLAB_ALIGNMENT_ORDER)
-        {
-            cache_index = order - SLAB_ALIGNMENT_ORDER;
-        }
-        if (cache_index >= OBJECT_CACHES_POT)
-        {
-            // no power of 2 cache for this size -> return a full page
-            // printk("alloc full page\n");
-            return alloc_pages(ALLOC_FLAG_NONE, flags);
-        }
-        return kmem_cache_alloc(&(g_kernel_memory.object_cache[cache_index]),
-                                flags);*/
+    return alloc_pages(flags, 0);
 }
 
 size_t kalloc_get_allocation_count()

@@ -77,9 +77,11 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	lib/string.o \
 	lib/sleeplock.o \
 	lib/spinlock.o \
+	lib/panic.o \
 	lib/print_impl.o \
 	lib/printk.o \
-	lib/qsort_impl.o
+	lib/qsort_impl.o \
+	lib/xdbg/xdbg.o
 
 ifeq ($(BITWIDTH), 32)
 OBJS += lib/div64.o
@@ -109,6 +111,7 @@ SUB_DIRS := \
   kernel \
   lib \
   lib/libfdt \
+  lib/xdbg \
   mm \
   syscalls \
   $(ARCH_DIR) \
@@ -232,6 +235,10 @@ ifeq ($(CREATE_ASSEMBLY), yes)
 	@$(OBJDUMP) -S $(KERNEL_PATH) > $(K_BUILD_DIR)/$(KERNEL_NAME).asm
 endif
 	@$(OBJCOPY) -O binary $(KERNEL_PATH) $(KERNEL_PATH).bin
+ifeq ($(CREATE_DEBUG_INFO), yes)
+	@printf "$(TASK_COLOR)Extract debug info: $(KERNEL_PATH).xdbg\n$(NO_COLOR)"
+	@$(EXTRACTDGB_TOOL) $(KERNEL_PATH) $(KERNEL_PATH).xdbg
+endif
 
 clean:
 	-@rm -f $(KERNEL_PATH)

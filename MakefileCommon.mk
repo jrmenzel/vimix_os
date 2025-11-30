@@ -38,7 +38,15 @@ KERNEL_NAME := kernel-vimix
 KERNEL_FILE := $(BUILD_DIR)/boot/$(KERNEL_NAME)
 
 # create assembly files from C, can be compared with the VSCode extension "Disassembly Explorer"
-#CREATE_ASSEMBLY=yes
+#CREATE_ASSEMBLY := yes
+
+# create debug info in custom format (filename.xdbg)
+ifeq ($(BUILD_TYPE), debug)
+CREATE_DEBUG_INFO := yes
+else
+CREATE_DEBUG_INFO := no
+endif
+EXTRACTDGB_TOOL := $(ROOT_DIR_MK_COMMON)/tools/extractdbg/extractdbg
 
 # First page of the user space apps. Needed by user.ld and the kernel source
 # so defined here. Don't place at 0 to make NULL pointer dereferences illegal.

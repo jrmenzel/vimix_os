@@ -17,6 +17,7 @@
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
 #include <kernel/trap.h>
+#include <lib/panic.h>
 #include <mm/memlayout.h>
 #include <mm/vm.h>
 #include <syscalls/syscall.h>
@@ -39,7 +40,7 @@ void dump_pre_int_kthread_state(size_t *stack)
 
     printk("stack: " FORMAT_REG_SIZE " | CPU ID (tp): %zd\n", (size_t)stack,
            stack[IDX_TP]);
-    printk("ra  = " FORMAT_REG_SIZE "\n", stack[IDX_RA]);
+    debug_print_ra(stack[IDX_RA]);
     printk("sp  = " FORMAT_REG_SIZE "\n", (size_t)stack);
     printk("gp  = " FORMAT_REG_SIZE "\n", stack[IDX_GP]);
     printk("a0  = " FORMAT_REG_SIZE "\n", stack[IDX_A0]);
@@ -56,8 +57,10 @@ void dump_exception_cause(struct Interrupt_Context *ctx)
 {
     printk("scause (0x%zx): %s\n", ctx->scause,
            scause_exception_code_to_string(ctx->scause));
-    printk("sepc: " FORMAT_REG_SIZE " stval: 0x%zx\n", rv_read_csr_sepc(),
-           ctx->stval);
+    printk("stval: 0x%zx - sepc: " FORMAT_REG_SIZE " = ", ctx->stval,
+           rv_read_csr_sepc());
+    debug_print_pc(rv_read_csr_sepc());
+    printk("\n");
 
     if (ctx->scause == SCAUSE_INSTRUCTION_PAGE_FAULT ||
         ctx->scause == SCAUSE_LOAD_PAGE_FAULT ||

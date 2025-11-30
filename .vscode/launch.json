@@ -176,6 +176,18 @@
             "request": "launch",
             "MIMode": "gdb",
             "stopAtEntry": false,
+        },
+        {
+            "name": "host: extractdbg",
+            "program": "${workspaceRoot}/tools/extractdbg/extractdbg",
+            "args": [
+                "build/boot/kernel-vimix"
+            ],
+            "cwd": "${workspaceRoot}",
+            "type": "cppdbg",
+            "request": "launch",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
         }
     ]
 }

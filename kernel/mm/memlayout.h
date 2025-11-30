@@ -13,8 +13,13 @@
 /// in both user and kernel space.
 #if defined(__ARCH_32BIT)
 #define TRAMPOLINE (0xFFFFF000)
+#define ADDR_IS_TRAMPOLINE(va) ((va) >= TRAMPOLINE)
+
 #else
 #define TRAMPOLINE (USER_VA_END - PAGE_SIZE)
+#define ADDR_IS_TRAMPOLINE(va) \
+    ((va) >= TRAMPOLINE && (va) < (TRAMPOLINE + PAGE_SIZE))
+
 #endif
 
 /// map kernel stacks beneath the trampoline,

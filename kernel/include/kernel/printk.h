@@ -13,6 +13,9 @@
 // call at boot as soon as possible
 void printk_init();
 
+// called on panic to prevent deadlocks from printing the last messages
+void printk_disable_locking();
+
 // like printf() but instead of printing chars via sys calls the kernel directly
 // handles the output
 void printk(char *format, ...) __attribute__((format(printf, 1, 2)));

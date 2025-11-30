@@ -6,19 +6,22 @@
 #
 include MakefileCommon.mk
 
-.PHONY: all directories kernel userspace_lib userspace host
+.PHONY: all directories extractdbg kernel userspace_lib userspace host
 
-all: directories userspace_lib userspace host $(BUILD_DIR)/filesystem.img kernel boot_dir
+all: directories extractdbg userspace_lib userspace host $(BUILD_DIR)/filesystem.img kernel boot_dir
 
 directories: # make build output directory
 	@mkdir -p $(BUILD_DIR);
 	@mkdir -p $(BUILD_DIR)/boot;
 
+extractdbg: # build the extractdbg tool for extracting debug info from ELF files
+	@$(MAKE) -C tools/extractdbg all;
+
 # the kernel itself depends on userspace for the embedded ram disk only
 ifeq ($(RAMDISK_EMBEDDED), yes)
 KERNEL_REQS := directories userspace $(BUILD_DIR)/filesystem.img
 endif
-kernel: $(KERNEL_REQS)
+kernel: extractdbg $(KERNEL_REQS)
 	@$(MAKE) -C kernel all;
 
 userspace: # user space apps and libs
@@ -146,5 +149,6 @@ spike-dump-tree: spike-requirements
 	$(SPIKE) --dump-dts $(SPIKE_OPTIONS) > tree_$(PLATFORM).dts
 
 clean: # clean up
+	@$(MAKE) -C tools/extractdbg clean;
 	-@rm -rf build/*
 	-@rm -rf build_host/*

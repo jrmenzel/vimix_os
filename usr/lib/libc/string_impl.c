@@ -19,6 +19,7 @@ char *strerror(int errnum)
         CODE_STRING(EPERM, "Operation not permitted");
         CODE_STRING(ENOENT, "No such file or directory");
         CODE_STRING(ESRCH, "No such process");
+        CODE_STRING(EIO, "I/O error");
         CODE_STRING(E2BIG, "Argument list too long");
         CODE_STRING(ENOEXEC, "Exec format error");
         CODE_STRING(EBADF, "Bad file descriptor");

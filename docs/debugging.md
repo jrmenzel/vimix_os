@@ -19,6 +19,11 @@ Sometimes it can be helpful to look at the generated assembly code. `tools/disas
 The console captures some key combinations and prints debug output. Press `CTRL + H` for a list.
 
 
+## Call stack in kernel panics
+
+Kernel panics can print the call stack of the offending code which might include source information. When [building](build_instructions.md) VIMIX for debug a tool extracts the source file and line information from the kernel and generates a simple lookup table (see`lib/xdbg`). The kernel tries to load this file before creating the first process (must run in a process to allow sleep on disk IO). 
+
+
 ---
 **Up:** [README](../README.md)
 

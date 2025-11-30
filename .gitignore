@@ -21,3 +21,6 @@ build_host/*
 .obsidian
 
 spike/*
+
+# tools binaries
+tools/extractdbg/extractdbg
