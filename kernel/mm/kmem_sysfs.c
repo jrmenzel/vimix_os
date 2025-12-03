@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <init/main.h>  // bss_start, bss_end
+#include <kernel/errno.h>
 #include <kernel/kernel.h>
 #include <kernel/kobject.h>
 #include <mm/cache.h>
@@ -27,7 +28,7 @@ enum KM_ATTRIBUTE_INDEX
     KM_DTB_END
 };
 
-struct sysfs_attribute km_attributes[] = {
+struct sysfs_attribute kmem_attributes[] = {
     [KM_MEM_TOTAL] = {.name = "mem_total", .mode = 0444},
     [KM_MEM_FREE] = {.name = "mem_free", .mode = 0444},
     [KM_PAGES_ALLOC] = {.name = "pages_alloc", .mode = 0444},
@@ -48,7 +49,7 @@ ssize_t km_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx, char *buf,
     struct kernel_memory *kmem = kernel_memory_from_kobj(kobj);
     struct Minimal_Memory_Map *map = &kmem->memory_map;
 
-    ssize_t ret = -1;
+    ssize_t ret = 0;
     switch (attribute_idx)
     {
         case KM_MEM_TOTAL:
@@ -88,7 +89,13 @@ ssize_t km_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx, char *buf,
         case KM_DTB_END:
             ret = snprintf(buf, n, "%zu\n", map->dtb_file_end);
             break;
-        default: break;
+        default: ret = -ENOENT; break;
+    }
+
+    if (ret == -1)
+    {
+        // snprintf error
+        ret = -EOTHER;
     }
 
     return ret;
@@ -100,51 +107,69 @@ ssize_t km_sysfs_ops_store(struct kobject *kobj, size_t attribute_idx,
     return -1;
 }
 
-struct sysfs_ops km_sysfs_ops = {
+struct sysfs_ops kmem_sysfs_ops = {
     .show = km_sysfs_ops_show,
     .store = km_sysfs_ops_store,
 };
 
-const struct kobj_type km_kobj_ktype = {
+const struct kobj_type kmem_kobj_ktype = {
     .release = NULL,
-    .sysfs_ops = &km_sysfs_ops,
-    .attribute = km_attributes,
-    .n_attributes = sizeof(km_attributes) / sizeof(km_attributes[0])};
+    .sysfs_ops = &kmem_sysfs_ops,
+    .attribute = kmem_attributes,
+    .n_attributes = sizeof(kmem_attributes) / sizeof(kmem_attributes[0])};
 
 // /sys/kmem/cache_<size>
 
-struct sysfs_attribute kmem_cache_attributes[] = {
-    {.name = "slab_count", .mode = 0444},
-    {.name = "obj_size", .mode = 0444},
-    {.name = "obj_count", .mode = 0444},
-    {.name = "obj_max", .mode = 0444}};
+enum KMEM_CACHE_ATTRIBUTE_INDEX
+{
+    KM_SLAB_COUNT = 0,
+    KM_OBJ_SIZE,
+    KM_OBJ_COUNT,
+    KM_OBJ_MAX
+};
 
-ssize_t kmem_cache_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
-                                  char *buf, size_t n)
+struct sysfs_attribute kmem_cache_attributes[] = {
+    [KM_SLAB_COUNT] = {.name = "slab_count", .mode = 0444},
+    [KM_OBJ_SIZE] = {.name = "obj_size", .mode = 0444},
+    [KM_OBJ_COUNT] = {.name = "obj_count", .mode = 0444},
+    [KM_OBJ_MAX] = {.name = "obj_max", .mode = 0444}};
+
+syserr_t kmem_cache_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
+                                   char *buf, size_t n)
 {
     struct kmem_cache *cache = kmem_cache_from_kobj(kobj);
 
+    syserr_t ret = 0;
     switch (attribute_idx)
     {
-        case 0:
-            return snprintf(buf, n, "%zu\n", kmem_cache_get_slab_count(cache));
-        case 1:
-            return snprintf(buf, n, "%zu\n", kmem_cache_get_object_size(cache));
-        case 2:
-            return snprintf(buf, n, "%zu\n",
-                            kmem_cache_get_object_count(cache));
-        case 3:
-            return snprintf(buf, n, "%zu\n", kmem_cache_get_max_objects(cache));
-        default: break;
+        case KM_SLAB_COUNT:
+            ret = snprintf(buf, n, "%zu\n", kmem_cache_get_slab_count(cache));
+            break;
+        case KM_OBJ_SIZE:
+            ret = snprintf(buf, n, "%zu\n", kmem_cache_get_object_size(cache));
+            break;
+        case KM_OBJ_COUNT:
+            ret = snprintf(buf, n, "%zu\n", kmem_cache_get_object_count(cache));
+            break;
+        case KM_OBJ_MAX:
+            ret = snprintf(buf, n, "%zu\n", kmem_cache_get_max_objects(cache));
+            break;
+        default: ret = -ENOENT; break;
     }
 
-    return -1;
+    if (ret == -1)
+    {
+        // snprintf error
+        ret = -EOTHER;
+    }
+
+    return ret;
 }
 
-ssize_t kmem_cache_sysfs_ops_store(struct kobject *kobj, size_t attribute_idx,
-                                   const char *buf, size_t n)
+syserr_t kmem_cache_sysfs_ops_store(struct kobject *kobj, size_t attribute_idx,
+                                    const char *buf, size_t n)
 {
-    return -1;
+    return -EINVAL;
 }
 
 struct sysfs_ops kmem_cache_sysfs_ops = {

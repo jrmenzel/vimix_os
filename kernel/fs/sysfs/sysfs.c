@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <drivers/device.h>
+#include <fs/sysfs/sys_kernel.h>
 #include <fs/sysfs/sysfs.h>
 #include <fs/sysfs/sysfs_internal.h>
 #include <fs/sysfs/sysfs_node.h>
@@ -87,6 +88,11 @@ void sysfs_init()
     register_file_system(&sysfs_file_system_type);
 }
 
+syserr_t sysfs_init_additional_nodes(struct kobject *root_kobj)
+{
+    return sys_kernel_init(root_kobj);
+}
+
 syserr_t sysfs_init_fs_super_block(struct super_block *sb_in, const void *data)
 {
     struct sysfs_sb_private *priv = (struct sysfs_sb_private *)kmalloc(
@@ -110,7 +116,9 @@ syserr_t sysfs_init_fs_super_block(struct super_block *sb_in, const void *data)
     sysfs_register_kobject_and_children(&g_kobjects_root, NULL);
 
     kobject_init(&sb_in->kobj, NULL);
-    return 0;
+
+    syserr_t ret = sysfs_init_additional_nodes(&g_kobjects_root);
+    return ret;
 }
 
 void sysfs_kill_sb(struct super_block *sb_in)

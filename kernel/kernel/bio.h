@@ -39,9 +39,10 @@ struct bio_cache
 /// @brief Main buffer cache to manage BLOCK_SIZE buffers for all block devices.
 extern struct bio_cache g_buf_cache;
 
-ssize_t bio_cache_set_min_buffers(struct bio_cache *cache, ssize_t min_buffers);
-ssize_t bio_cache_set_max_free_buffers(struct bio_cache *cache,
-                                       ssize_t max_free_buffers);
+syserr_t bio_cache_set_min_buffers(struct bio_cache *cache,
+                                   ssize_t min_buffers);
+syserr_t bio_cache_set_max_free_buffers(struct bio_cache *cache,
+                                        ssize_t max_free_buffers);
 
 /// @brief Called during boot as the first step of the filesystem init.
 void bio_init();

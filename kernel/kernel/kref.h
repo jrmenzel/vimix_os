@@ -38,7 +38,9 @@ static inline void kref_get(struct kref *kref)
 /// freed.
 static inline bool kref_put(struct kref *kref)
 {
-    if (atomic_fetch_sub(&kref->refcount, 1) == 1)
+    atomic_int prev = atomic_fetch_sub(&kref->refcount, 1);
+    DEBUG_EXTRA_PANIC(prev != 0, "kref_put: refcount underflow");
+    if (prev == 1)
     {
         // previous value was 1, now 0 -> free
         return true;

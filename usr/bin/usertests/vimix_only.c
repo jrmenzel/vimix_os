@@ -86,8 +86,15 @@ static inline void let_init_free_children(size_t expected_proc_count)
 void prepare_test_environment()
 {
     // make memory usage more predictable
-    set_sysfs("/sys/kmem/bio/min", 40);
+    set_sysfs("/sys/kmem/bio/min", 256);
     set_sysfs("/sys/kmem/bio/max_free", 0);
+    set_sysfs("/sys/kernel/app_crash_v", 0);
+}
+
+void reset_test_environment()
+{
+    // reset memory usage settings
+    set_sysfs("/sys/kernel/app_crash_v", 2);
 }
 
 //
@@ -1425,6 +1432,8 @@ void forkforkfork(char *s)
     }
     if (pid == 0)
     {
+        // if child, keep forking until file appears
+        // create file if fork fails
         while (true)
         {
             int fd = open(file_name, O_RDONLY);
@@ -1435,12 +1444,14 @@ void forkforkfork(char *s)
             if (fork() < 0)
             {
                 close(open(file_name, O_CREATE | O_RDWR, 0755));
+                exit(EXIT_SUCCESS);
             }
         }
 
         exit(EXIT_SUCCESS);
     }
 
+    // parent: sleep for a few seconds, create file, wait on children
     usleep(FORK_FORK_FORK_DURATION_MS * 1000);
     close(open(file_name, O_CREATE | O_RDWR, 0755));
     wait(NULL);
@@ -1782,7 +1793,7 @@ void unlinkread(char *s)
     int fd = open("unlinkread", O_CREATE | O_RDWR, 0755);
     if (fd < 0)
     {
-        printf("%s: create unlinkread failed\n", s);
+        printf("%s: open + create failed\n", s);
         exit(1);
     }
     write(fd, "hello", SZ);
@@ -1791,12 +1802,12 @@ void unlinkread(char *s)
     fd = open("unlinkread", O_RDWR);
     if (fd < 0)
     {
-        printf("%s: open unlinkread failed\n", s);
+        printf("%s: open failed\n", s);
         exit(1);
     }
     if (unlink("unlinkread") != 0)
     {
-        printf("%s: unlink unlinkread failed\n", s);
+        printf("%s: unlink failed\n", s);
         exit(1);
     }
 
@@ -1806,17 +1817,17 @@ void unlinkread(char *s)
 
     if (read(fd, buf, sizeof(buf)) != SZ)
     {
-        printf("%s: unlinkread read failed", s);
+        printf("%s: read failed", s);
         exit(1);
     }
     if (buf[0] != 'h')
     {
-        printf("%s: unlinkread wrong data\n", s);
+        printf("%s: wrong data\n", s);
         exit(1);
     }
     if (write(fd, buf, 10) != 10)
     {
-        printf("%s: unlinkread write failed\n", s);
+        printf("%s: write failed\n", s);
         exit(1);
     }
     close(fd);
@@ -2399,26 +2410,26 @@ int max_file_name_internal(char *s, char *dir_0, char *dir_1, char *file)
 
     if (mkdir(dir_0, 0755) != 0)
     {
-        printf("%s: mkdir %s failed\n", s, dir_0);
+        printf("%s: mkdir %s failed, errno: %s\n", s, dir_0, strerror(errno));
         return 1;
     }
     if (mkdir(dir_1, 0755) != 0)
     {
-        printf("%s: mkdir %s failed\n", s, dir_1);
+        printf("%s: mkdir %s failed, errno: %s\n", s, dir_1, strerror(errno));
         return 1;
     }
 
     fd = open(file, O_CREATE, 0755);
     if (fd < 0)
     {
-        printf("%s: create %s failed\n", s, file);
+        printf("%s: create %s failed, errno: %s\n", s, file, strerror(errno));
         return 1;
     }
     close(fd);
     fd = open(file, O_RDONLY);
     if (fd < 0)
     {
-        printf("%s: open %s failed\n", s, file);
+        printf("%s: open %s failed, errno: %s\n", s, file, strerror(errno));
         return 1;
     }
     close(fd);
@@ -2494,58 +2505,6 @@ void max_file_name(char *s)
         exit(1);
     }
 }
-/*
-    int fd;
-
-    // intended for NAME_MAX of 14.
-
-    if (mkdir("12345678901234", 0755) != 0)
-    {
-        printf("%s: mkdir 12345678901234 failed\n", s);
-        exit(1);
-    }
-    if (mkdir("12345678901234/12345678901234", 0755) != 0)
-    {
-        printf("%s: mkdir 12345678901234/12345678901234 failed\n", s);
-        exit(1);
-    }
-
-    fd = open("12345678901234/12345678901234/12345678901234", O_CREATE, 0755);
-    if (fd < 0)
-    {
-        printf(
-            "%s: create 12345678901234/12345678901234/12345678901234 "
-            "failed\n",
-            s);
-        exit(1);
-    }
-    close(fd);
-    fd = open("12345678901234/12345678901234/12345678901234", O_RDONLY);
-    if (fd < 0)
-    {
-        printf("%s: open 12345678901234/12345678901234/12345678901234 failed\n",
-               s);
-        exit(1);
-    }
-    close(fd);
-
-    if (mkdir("12345678901234/12345678901234", 0755) == 0)
-    {
-        printf("%s: mkdir 12345678901234/12345678901234 succeeded!\n", s);
-        exit(1);
-    }
-    if (mkdir("12345678901234/12345678901234", 0755) == 0)
-    {
-        printf("%s: mkdir 12345678901234/12345678901234 succeeded!\n", s);
-        exit(1);
-    }
-
-    // clean up
-    rmdir("12345678901234/12345678901234");
-    unlink("12345678901234/12345678901234/12345678901234");
-    rmdir("12345678901234/12345678901234");
-    rmdir("12345678901234");
-}*/
 
 void rmdot(char *s)
 {
@@ -2664,16 +2623,8 @@ void iref(char *s)
 {
     for (size_t i = 0; i < IREF_LOOPS; i++)
     {
-        if (mkdir("irefd", 0755) != 0)
-        {
-            printf("%s: mkdir irefd failed\n", s);
-            exit(1);
-        }
-        if (chdir("irefd") != 0)
-        {
-            printf("%s: chdir irefd failed\n", s);
-            exit(1);
-        }
+        assert_no_error(mkdir("irefd", 0755));
+        assert_no_error(chdir("irefd"));
 
         mkdir("", 0755);
         assert_errno(EINVAL);
@@ -3767,7 +3718,7 @@ void diskfull(char *s)
         close(fd);
     }
 
-    // now that there are no free blocks, test that inode_dir_link()
+    // now that there are no free blocks, test that vimixfs_dir_link()
     // merely fails (doesn't panic) if it can't extend
     // directory content. one of these file creations
     // is expected to fail.

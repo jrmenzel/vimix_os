@@ -31,6 +31,8 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/virtio_disk.o \
 	fs/fs.o \
 	fs/mount.o \
+	fs/sysfs/sys_kernel.o \
+	fs/sysfs/sysfs_helper.o \
 	fs/sysfs/sysfs.o \
 	fs/sysfs/sysfs_node.o \
 	fs/vfs.o \

@@ -4,6 +4,7 @@
 #include <kernel/bio.h>
 #include <kernel/bio_sysfs.h>
 #include <kernel/buf.h>
+#include <kernel/errno.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 #include <kernel/sleeplock.h>
@@ -210,11 +211,11 @@ void bio_cache_free_extra_buffers(struct bio_cache *cache)
     }
 }
 
-ssize_t bio_cache_set_min_buffers(struct bio_cache *cache, ssize_t min_buffers)
+syserr_t bio_cache_set_min_buffers(struct bio_cache *cache, ssize_t min_buffers)
 {
     DEBUG_EXTRA_PANIC(spin_lock_is_held_by_this_cpu(&cache->lock),
                       "bio_cache_set_min_buffers: lock not held");
-    if (min_buffers < 3) return -1;  // one page worth of buffers
+    if (min_buffers < 3) return -EINVAL;  // one page worth of buffers
 
     cache->min_buffers = (size_t)min_buffers;
 
@@ -234,12 +235,12 @@ ssize_t bio_cache_set_min_buffers(struct bio_cache *cache, ssize_t min_buffers)
     return 0;
 }
 
-ssize_t bio_cache_set_max_free_buffers(struct bio_cache *cache,
-                                       ssize_t max_free_buffers)
+syserr_t bio_cache_set_max_free_buffers(struct bio_cache *cache,
+                                        ssize_t max_free_buffers)
 {
     DEBUG_EXTRA_PANIC(spin_lock_is_held_by_this_cpu(&cache->lock),
                       "bio_cache_set_max_free_buffers: lock not held");
-    if (max_free_buffers < 0) return -1;
+    if (max_free_buffers < 0) return -EINVAL;
 
     cache->max_free_buffers = (size_t)max_free_buffers;
     bio_cache_free_extra_buffers(cache);

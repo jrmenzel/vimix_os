@@ -124,7 +124,6 @@ int drivetests(int quick, int continuous, char *justone)
                 "lost\n",
                 pages_free_end, pages_free_start,
                 pages_free_start - pages_free_end);
-            printf("badarg is a candidate for leaked memory\n");
             if (continuous != 2)
             {
                 return 1;

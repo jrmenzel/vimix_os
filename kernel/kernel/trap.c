@@ -4,6 +4,7 @@
 #include <arch/interrupts.h>
 #include <arch/trap.h>
 #include <arch/trapframe.h>
+#include <fs/sysfs/sys_kernel.h>
 #include <kernel/proc.h>
 #include <kernel/trap.h>
 #include <syscalls/syscall.h>
@@ -11,16 +12,24 @@
 void dump_exception_cause_and_kill_proc(struct process *proc,
                                         struct Interrupt_Context *ctx)
 {
-    printk(
-        "\nFatal: unexpected exception\n"
-        "Killing process with pid=%d\n",
-        proc->pid);
-    dump_exception_cause(ctx);
-    printk("Process: %s\n", proc->name);
-    debug_print_process_registers(proc->trapframe);
-    printk("Call stack:\n");
-    debug_print_call_stack_user(proc);
-    printk("\n");
+    uint32_t verbosity = sys_kernel_get_app_crash_verbosity();
+
+    if (verbosity > 0)
+    {
+        printk(
+            "\nFatal: unexpected exception\n"
+            "Killing process %s, pid: %d\n",
+            proc->name, proc->pid);
+        dump_exception_cause(ctx);
+
+        if (verbosity > 1)
+        {
+            debug_print_process_registers(proc->trapframe);
+            printk("Call stack:\n");
+            debug_print_call_stack_user(proc);
+            printk("\n");
+        }
+    }
     proc_set_killed(proc);
 }
 

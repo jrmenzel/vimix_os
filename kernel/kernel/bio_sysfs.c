@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <fs/sysfs/sysfs_helper.h>
 #include <kernel/bio.h>
 #include <kernel/bio_sysfs.h>
+#include <kernel/errno.h>
 #include <kernel/kobject.h>
 #include <mm/kmem_sysfs.h>
 
@@ -21,13 +23,14 @@ struct sysfs_attribute bio_attributes[] = {
     [BIO_MIN] = {.name = "min", .mode = 0644},
     [BIO_MAX_FREE] = {.name = "max_free", .mode = 0644}};
 
-ssize_t bio_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
-                           char *buf, size_t n)
+syserr_t bio_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
+                            char *buf, size_t n)
 {
     struct bio_cache *cache = bio_cache_from_kobj(kobj);
-    spin_lock(&cache->lock);
 
-    ssize_t ret = -1;
+    syserr_t ret = 0;
+
+    spin_lock(&cache->lock);
     switch (attribute_idx)
     {
         case BIO_NUM:
@@ -42,34 +45,53 @@ ssize_t bio_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
         case BIO_MAX_FREE:
             ret = snprintf(buf, n, "%zu\n", cache->max_free_buffers);
             break;
-        default: break;
+        default: ret = -ENOENT; break;
+    }
+    spin_unlock(&cache->lock);
+
+    if (ret == -1)
+    {
+        // snprintf error
+        ret = -EOTHER;
     }
 
-    spin_unlock(&cache->lock);
     return ret;
 }
 
-int32_t atoi(const char *string);
-
-ssize_t bio_sysfs_ops_store(struct kobject *kobj, size_t attribute_idx,
-                            const char *buf, size_t n)
+syserr_t bio_sysfs_ops_store(struct kobject *kobj, size_t attribute_idx,
+                             const char *buf, size_t n)
 {
     struct bio_cache *cache = bio_cache_from_kobj(kobj);
     spin_lock(&cache->lock);
 
-    int32_t value = atoi(buf);
+    bool ok;
+    int32_t value = store_param_to_int(buf, n, &ok);
+    if (!ok)
+    {
+        spin_unlock(&cache->lock);
+        return -EINVAL;
+    }
 
-    ssize_t ret = -1;
+    syserr_t ret = 0;
     switch (attribute_idx)
     {
+        case BIO_NUM: ret = -EINVAL; break;
+        case BIO_FREE: ret = -EINVAL; break;
         case BIO_MIN: ret = bio_cache_set_min_buffers(cache, value); break;
         case BIO_MAX_FREE:
             ret = bio_cache_set_max_free_buffers(cache, value);
             break;
-        default: break;
+
+        default: ret = -ENOENT; break;
+    }
+    spin_unlock(&cache->lock);
+
+    if (ret == 0)
+    {
+        // no error, signal all bytes have been written
+        return n;
     }
 
-    spin_unlock(&cache->lock);
     return ret;
 }
 

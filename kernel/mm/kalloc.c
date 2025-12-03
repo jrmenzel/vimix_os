@@ -241,7 +241,7 @@ void kalloc_init_caches()
 
 void kalloc_init(struct Minimal_Memory_Map *memory_map)
 {
-    kobject_init(&g_kernel_memory.kobj, &km_kobj_ktype);
+    kobject_init(&g_kernel_memory.kobj, &kmem_kobj_ktype);
     kobject_add(&g_kernel_memory.kobj, &g_kobjects_root, "kmem");
 
     spin_lock_init(&g_kernel_memory.lock, "kmem");
@@ -267,11 +267,10 @@ void kalloc_init(struct Minimal_Memory_Map *memory_map)
     for (size_t i = 0; i < OBJECT_CACHES; ++i)
     {
         size_t size = g_kernel_memory.object_cache[i].object_size;
-        if (!kobject_add(&g_kernel_memory.object_cache[i].kobj,
-                         &g_kernel_memory.kobj, "kmalloc_%zd", size))
-        {
-            panic("kmem_cache_init: failed to add kobject");
-        }
+        // no check on success, as kobject_add claims to fail before it can use
+        // kmalloc() -> which is what is prepared here...
+        kobject_add(&g_kernel_memory.object_cache[i].kobj,
+                    &g_kernel_memory.kobj, "kmalloc_%zd", size);
     }
 }
 
