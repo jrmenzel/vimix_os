@@ -15,7 +15,7 @@
 #include <vimixutils/minmax.h>
 #include <vimixutils/path.h>
 
-void fix_dir_size(struct vimixfs* vifs, int32_t inode)
+void fix_dir_size(struct vimixfs *vifs, int32_t inode)
 {
     // fix size of dir inode: round up offset to BLOCK_SIZE
     struct vimixfs_dinode din;
@@ -29,7 +29,7 @@ void fix_dir_size(struct vimixfs* vifs, int32_t inode)
     }
 }
 
-bool is_dot_or_dotdot(const char* file_name)
+bool is_dot_or_dotdot(const char *file_name)
 {
     if (file_name[0] == '.')
     {
@@ -69,7 +69,7 @@ int get_log_size(size_t fs_size_in_blocks)
     return 32;
 }
 
-void make_default_stat(struct stat* st, mode_t mode)
+void make_default_stat(struct stat *st, mode_t mode)
 {
     memset(st, 0, sizeof(*st));
     st->st_mode = mode;
@@ -80,7 +80,7 @@ void make_default_stat(struct stat* st, mode_t mode)
     st->st_mtime = st->st_ctime = time(NULL);
 }
 
-void vimixfs_read_log_header(struct vimixfs* vifs)
+void vimixfs_read_log_header(struct vimixfs *vifs)
 {
     char block_buffer[BLOCK_SIZE];
     bool read_ok =
@@ -112,7 +112,7 @@ int get_inode_blocks(size_t fs_size_in_blocks)
     return ninode_blocks;
 }
 
-void set_bits(uint8_t* bitmap, size_t nbits)
+void set_bits(uint8_t *bitmap, size_t nbits)
 {
     size_t nbytes = (nbits + 7) / 8;
     memset(bitmap, 0xFF, nbytes);
@@ -125,7 +125,7 @@ void set_bits(uint8_t* bitmap, size_t nbits)
     }
 }
 
-bool vimixfs_create(struct vimixfs* vifs, const char* filename,
+bool vimixfs_create(struct vimixfs *vifs, const char *filename,
                     size_t fs_size_in_blocks)
 {
     memset(vifs, 0, sizeof(*vifs));
@@ -214,7 +214,7 @@ bool vimixfs_create(struct vimixfs* vifs, const char* filename,
     return true;
 }
 
-bool vimixfs_open(struct vimixfs* vifs, const char* filename)
+bool vimixfs_open(struct vimixfs *vifs, const char *filename)
 {
     memset(vifs, 0, sizeof(*vifs));
     vifs->fd = open(filename, O_RDWR);
@@ -237,7 +237,7 @@ bool vimixfs_open(struct vimixfs* vifs, const char* filename)
     size_t bitmap_size_in_bytes =
         VIMIXFS_BLOCKS_FOR_BITMAP(vifs->super_block.size) * BLOCK_SIZE;
 
-    vifs->bitmap = (uint8_t*)malloc(bitmap_size_in_bytes);
+    vifs->bitmap = (uint8_t *)malloc(bitmap_size_in_bytes);
     if (vifs->bitmap == NULL)
     {
         vimixfs_close(vifs);
@@ -251,8 +251,8 @@ bool vimixfs_open(struct vimixfs* vifs, const char* filename)
                             vifs->bitmap + (i * BLOCK_SIZE));
     }
 
-    vifs->inodes = (uint8_t*)malloc(vifs->super_block.ninode_blocks *
-                                    VIMIXFS_INODES_PER_BLOCK);
+    vifs->inodes = (uint8_t *)malloc(vifs->super_block.ninode_blocks *
+                                     VIMIXFS_INODES_PER_BLOCK);
     for (size_t i = 0;
          i < vifs->super_block.ninode_blocks * VIMIXFS_INODES_PER_BLOCK; ++i)
     {
@@ -264,7 +264,7 @@ bool vimixfs_open(struct vimixfs* vifs, const char* filename)
     return true;
 }
 
-void vimixfs_close(struct vimixfs* vifs)
+void vimixfs_close(struct vimixfs *vifs)
 {
     vimixfs_write_bitmap(vifs);
 
@@ -293,11 +293,11 @@ void vimixfs_close(struct vimixfs* vifs)
     }
 }
 
-uint32_t vimixfs_get_free_block_count(struct vimixfs* vifs)
+uint32_t vimixfs_get_free_block_count(struct vimixfs *vifs)
 {
     uint32_t free_blocks = 0;
 
-    uint64_t* bitmap = (uint64_t*)vifs->bitmap;
+    uint64_t *bitmap = (uint64_t *)vifs->bitmap;
     size_t total_int64 = vifs->super_block.size / (8 * sizeof(uint64_t));
     size_t remaining_bits =
         vifs->super_block.size - total_int64 * (8 * sizeof(uint64_t));
@@ -333,8 +333,8 @@ uint32_t vimixfs_get_free_block_count(struct vimixfs* vifs)
     return free_blocks;
 }
 
-bool vimixfs_cp_dir_to_host(struct vimixfs* vifs, int32_t dir_inode_on_fs,
-                            const char* sub_path, const char* dir_on_host)
+bool vimixfs_cp_dir_to_host(struct vimixfs *vifs, int32_t dir_inode_on_fs,
+                            const char *sub_path, const char *dir_on_host)
 {
     if (sub_path == NULL || dir_on_host == NULL)
     {
@@ -397,8 +397,8 @@ bool vimixfs_cp_dir_to_host(struct vimixfs* vifs, int32_t dir_inode_on_fs,
     return true;
 }
 
-bool vimixfs_cp_file_to_host(struct vimixfs* vifs, int32_t inode,
-                             const char* filename)
+bool vimixfs_cp_file_to_host(struct vimixfs *vifs, int32_t inode,
+                             const char *filename)
 {
     if (filename == NULL)
     {
@@ -415,7 +415,7 @@ bool vimixfs_cp_file_to_host(struct vimixfs* vifs, int32_t inode,
     }
 
     size_t file_size = din.size;
-    char* buffer = malloc(file_size);
+    char *buffer = malloc(file_size);
 
     size_t read = vimixfs_read_inode(vifs, &din, buffer, 0, file_size);
     if (read != file_size)
@@ -435,9 +435,9 @@ bool vimixfs_cp_file_to_host(struct vimixfs* vifs, int32_t inode,
     return true;
 }
 
-bool vimixfs_cp_from_host(struct vimixfs* vifs, const char* path_on_host,
-                          const char* path_in_fs,
-                          struct vimixfs_copy_params* param)
+bool vimixfs_cp_from_host(struct vimixfs *vifs, const char *path_on_host,
+                          const char *path_in_fs,
+                          struct vimixfs_copy_params *param)
 {
     if (path_on_host == NULL || path_in_fs == NULL || param == NULL)
     {
@@ -460,7 +460,7 @@ bool vimixfs_cp_from_host(struct vimixfs* vifs, const char* path_on_host,
     else
     {
         size_t path_len = strlen(path_in_fs);
-        const char* last_slash = strrchr(path_in_fs, '/');
+        const char *last_slash = strrchr(path_in_fs, '/');
         char name_in_fs[VIMIXFS_NAME_MAX + 1];
         if (last_slash == NULL)
         {
@@ -475,7 +475,7 @@ bool vimixfs_cp_from_host(struct vimixfs* vifs, const char* path_on_host,
         strncpy(name_in_fs, last_slash + 1, name_len);
         name_in_fs[name_len] = '\0';
 
-        char* path = malloc((size_t)(last_slash - path_in_fs) + 1);
+        char *path = malloc((size_t)(last_slash - path_in_fs) + 1);
         strncpy(path, path_in_fs, (size_t)(last_slash - path_in_fs));
         path[(size_t)(last_slash - path_in_fs)] = '\0';
 
@@ -493,9 +493,9 @@ bool vimixfs_cp_from_host(struct vimixfs* vifs, const char* path_on_host,
     return ok;
 }
 
-bool vimixfs_cp_file_from_host(struct vimixfs* vifs, const char* path_on_host,
-                               const char* new_name, int32_t dir_inode_on_fs,
-                               struct vimixfs_copy_params* param)
+bool vimixfs_cp_file_from_host(struct vimixfs *vifs, const char *path_on_host,
+                               const char *new_name, int32_t dir_inode_on_fs,
+                               struct vimixfs_copy_params *param)
 {
     int fd = open(path_on_host, O_RDONLY);
     if (fd < 0) return false;
@@ -545,11 +545,11 @@ bool vimixfs_cp_file_from_host(struct vimixfs* vifs, const char* path_on_host,
     return true;
 }
 
-bool vimixfs_cp_dir_from_host(struct vimixfs* vifs, const char* dir_on_host,
+bool vimixfs_cp_dir_from_host(struct vimixfs *vifs, const char *dir_on_host,
                               int32_t dir_inode_on_fs,
-                              struct vimixfs_copy_params* param)
+                              struct vimixfs_copy_params *param)
 {
-    DIR* dir = opendir(dir_on_host);
+    DIR *dir = opendir(dir_on_host);
     if (dir == NULL)
     {
         return false;
@@ -557,7 +557,7 @@ bool vimixfs_cp_dir_from_host(struct vimixfs* vifs, const char* dir_on_host,
 
     bool all_ok = true;
     char full_path[PATH_MAX];
-    struct dirent* dir_entry = NULL;
+    struct dirent *dir_entry = NULL;
     while ((dir_entry = readdir(dir)))
     {
         if (is_dot_or_dotdot(dir_entry->d_name)) continue;
@@ -588,9 +588,9 @@ bool vimixfs_cp_dir_from_host(struct vimixfs* vifs, const char* dir_on_host,
     return all_ok;
 }
 
-bool vimixfs_change_metadata_of_dinode(struct vimixfs* vifs,
-                                       struct vimixfs_dinode* din,
-                                       struct vimixfs_copy_params* param)
+bool vimixfs_change_metadata_of_dinode(struct vimixfs *vifs,
+                                       struct vimixfs_dinode *din,
+                                       struct vimixfs_copy_params *param)
 {
     din->uid = param->uid;
     din->gid = param->gid;
@@ -606,8 +606,8 @@ bool vimixfs_change_metadata_of_dinode(struct vimixfs* vifs,
     return true;
 }
 
-bool vimixfs_change_metadata_of_inode(struct vimixfs* vifs, ino_t inode,
-                                      struct vimixfs_copy_params* param,
+bool vimixfs_change_metadata_of_inode(struct vimixfs *vifs, ino_t inode,
+                                      struct vimixfs_copy_params *param,
                                       bool recursive)
 {
     struct vimixfs_dinode din;
@@ -635,8 +635,8 @@ bool vimixfs_change_metadata_of_inode(struct vimixfs* vifs, ino_t inode,
     return true;
 }
 
-bool vimixfs_change_metadata(struct vimixfs* vifs, const char* name_in_fs,
-                             struct vimixfs_copy_params* param)
+bool vimixfs_change_metadata(struct vimixfs *vifs, const char *name_in_fs,
+                             struct vimixfs_copy_params *param)
 {
     if (name_in_fs == NULL || param == NULL)
     {
@@ -644,7 +644,7 @@ bool vimixfs_change_metadata(struct vimixfs* vifs, const char* name_in_fs,
     }
 
     size_t path_len = strlen(name_in_fs);
-    char* path_copy = malloc(path_len + 1);
+    char *path_copy = malloc(path_len + 1);
     strncpy(path_copy, name_in_fs, path_len + 1);
     path_copy[path_len] = '\0';
 
@@ -667,7 +667,7 @@ bool vimixfs_change_metadata(struct vimixfs* vifs, const char* name_in_fs,
     return true;
 }
 
-bool vimixfs_read_sector(struct vimixfs* vifs, uint32_t sec, void* buf)
+bool vimixfs_read_sector(struct vimixfs *vifs, uint32_t sec, void *buf)
 {
     if ((sec != VIMIXFS_SUPER_BLOCK_NUMBER) && (sec >= vifs->super_block.size))
     {
@@ -693,7 +693,7 @@ bool vimixfs_read_sector(struct vimixfs* vifs, uint32_t sec, void* buf)
     return true;
 }
 
-bool vimixfs_write_sector(struct vimixfs* vifs, uint32_t sec, void* buf)
+bool vimixfs_write_sector(struct vimixfs *vifs, uint32_t sec, void *buf)
 {
     if (lseek(vifs->fd, sec * BLOCK_SIZE, SEEK_SET) < 0)
     {
@@ -711,34 +711,34 @@ bool vimixfs_write_sector(struct vimixfs* vifs, uint32_t sec, void* buf)
     return true;
 }
 
-void vimixfs_read_dinode(struct vimixfs* vifs, ino_t inum,
-                         struct vimixfs_dinode* ip)
+void vimixfs_read_dinode(struct vimixfs *vifs, ino_t inum,
+                         struct vimixfs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
-    struct vimixfs_dinode* dip;
+    struct vimixfs_dinode *dip;
 
     uint32_t block_index = VIMIXFS_BLOCK_OF_INODE(inum, vifs->super_block);
     vimixfs_read_sector(vifs, block_index, buf);
-    dip = ((struct vimixfs_dinode*)buf) + VIMIXFS_DINODE_OFFSET_IN_BLOCK(inum);
+    dip = ((struct vimixfs_dinode *)buf) + VIMIXFS_DINODE_OFFSET_IN_BLOCK(inum);
     *ip = *dip;  // copy struct into ip
 }
 
-void vimixfs_write_dinode(struct vimixfs* vifs, ino_t inum,
-                          struct vimixfs_dinode* ip)
+void vimixfs_write_dinode(struct vimixfs *vifs, ino_t inum,
+                          struct vimixfs_dinode *ip)
 {
     char buf[BLOCK_SIZE];
-    struct vimixfs_dinode* dip;
+    struct vimixfs_dinode *dip;
 
     uint32_t block_index = VIMIXFS_BLOCK_OF_INODE(inum, vifs->super_block);
     vimixfs_read_sector(vifs, block_index, buf);
-    dip = ((struct vimixfs_dinode*)buf) + VIMIXFS_DINODE_OFFSET_IN_BLOCK(inum);
+    dip = ((struct vimixfs_dinode *)buf) + VIMIXFS_DINODE_OFFSET_IN_BLOCK(inum);
     *dip = *ip;  // copy struct of the inode to dip (== copy into buf)
     vimixfs_write_sector(vifs, block_index, buf);
 }
 
-uint32_t vimixfs_get_next_free_block(struct vimixfs* vifs)
+uint32_t vimixfs_get_next_free_block(struct vimixfs *vifs)
 {
-    uint64_t* bitmap = (uint64_t*)vifs->bitmap;
+    uint64_t *bitmap = (uint64_t *)vifs->bitmap;
     size_t bitmap_blocks = VIMIXFS_BLOCKS_FOR_BITMAP(vifs->super_block.size);
     size_t total_int64 = bitmap_blocks * BLOCK_SIZE / sizeof(uint64_t);
     for (size_t i = 0; i < total_int64; ++i)
@@ -758,16 +758,16 @@ uint32_t vimixfs_get_next_free_block(struct vimixfs* vifs)
     return 0;
 }
 
-ino_t vimixfs_get_free_inode(struct vimixfs* vifs)
+ino_t vimixfs_get_free_inode(struct vimixfs *vifs)
 {
-    struct vimixfs_superblock* sb = &vifs->super_block;
+    struct vimixfs_superblock *sb = &vifs->super_block;
     uint8_t buffer[BLOCK_SIZE];
 
     size_t inode_end = sb->inodestart + sb->ninode_blocks;
     for (size_t block = sb->inodestart; block < inode_end; ++block)
     {
         vimixfs_read_sector(vifs, block, buffer);
-        struct vimixfs_dinode* dinode = (struct vimixfs_dinode*)buffer;
+        struct vimixfs_dinode *dinode = (struct vimixfs_dinode *)buffer;
         for (size_t i = 0; i < VIMIXFS_INODES_PER_BLOCK; ++i)
         {
             if (dinode[i].mode == VIMIXFS_INVALID_MODE)
@@ -786,18 +786,18 @@ ino_t vimixfs_get_free_inode(struct vimixfs* vifs)
     return INVALID_INODE;  // no more free inodes
 }
 
-void vimixfs_write_bitmap(struct vimixfs* vifs)
+void vimixfs_write_bitmap(struct vimixfs *vifs)
 {
     size_t bitmap_blocks = VIMIXFS_BLOCKS_FOR_BITMAP(vifs->super_block.size);
 
     for (size_t b = 0; b < bitmap_blocks; ++b)
     {
-        void* buf = vifs->bitmap + (b * BLOCK_SIZE);
+        void *buf = vifs->bitmap + (b * BLOCK_SIZE);
         vimixfs_write_sector(vifs, vifs->super_block.bmapstart + b, buf);
     }
 }
 
-ino_t vimixfs_get_inode_from_path(struct vimixfs* vifs, const char* path)
+ino_t vimixfs_get_inode_from_path(struct vimixfs *vifs, const char *path)
 {
     if (strcmp(path, "/") == 0)
     {
@@ -808,8 +808,8 @@ ino_t vimixfs_get_inode_from_path(struct vimixfs* vifs, const char* path)
     strncpy(path_copy, path, sizeof(path_copy));
     path_copy[sizeof(path_copy) - 1] = '\0';
 
-    char* token;
-    char* rest = path_copy;
+    char *token;
+    char *rest = path_copy;
     ino_t current_inode = VIMIXFS_ROOT_INODE;
 
     while ((token = strtok_r(rest, "/", &rest)))
@@ -851,8 +851,8 @@ ino_t vimixfs_get_inode_from_path(struct vimixfs* vifs, const char* path)
     return current_inode;
 }
 
-size_t vimixfs_read_inode(struct vimixfs* vifs, struct vimixfs_dinode* din,
-                          void* buffer, size_t off, size_t size)
+size_t vimixfs_read_inode(struct vimixfs *vifs, struct vimixfs_dinode *din,
+                          void *buffer, size_t off, size_t size)
 {
     size_t inode_size = din->size;
     if (off > inode_size || off + size < off)
@@ -869,7 +869,7 @@ size_t vimixfs_read_inode(struct vimixfs* vifs, struct vimixfs_dinode* din,
     size_t sector_of_indirect_blocks = din->addrs[VIMIXFS_INDIRECT_BLOCK_IDX];
     if (sector_of_indirect_blocks != 0)
     {
-        vimixfs_read_sector(vifs, sector_of_indirect_blocks, (void*)indirect);
+        vimixfs_read_sector(vifs, sector_of_indirect_blocks, (void *)indirect);
     }
 
     char buf[BLOCK_SIZE];
@@ -904,13 +904,13 @@ size_t vimixfs_read_inode(struct vimixfs* vifs, struct vimixfs_dinode* din,
             if (sector_of_double_indirect_blocks != 0)
             {
                 vimixfs_read_sector(vifs, sector_of_double_indirect_blocks,
-                                    (void*)double_indirect);
+                                    (void *)double_indirect);
                 size_t idx1 = block / VIMIXFS_N_INDIRECT_BLOCKS;
                 size_t idx2 = block % VIMIXFS_N_INDIRECT_BLOCKS;
                 uint32_t next = double_indirect[idx1];
                 if (next != 0)
                 {
-                    vimixfs_read_sector(vifs, next, (void*)indirect);
+                    vimixfs_read_sector(vifs, next, (void *)indirect);
                     sector = indirect[idx2];
                 }
             }
@@ -928,7 +928,7 @@ size_t vimixfs_read_inode(struct vimixfs* vifs, struct vimixfs_dinode* din,
     return read_total;
 }
 
-void vimixfs_iappend(struct vimixfs* vifs, ino_t inum, void* xp, int n)
+void vimixfs_iappend(struct vimixfs *vifs, ino_t inum, void *xp, int n)
 {
     struct vimixfs_dinode din;
     char buf[BLOCK_SIZE];
@@ -936,7 +936,7 @@ void vimixfs_iappend(struct vimixfs* vifs, ino_t inum, void* xp, int n)
     vimixfs_read_dinode(vifs, inum, &din);
     uint32_t off = din.size;
 
-    char* p = (char*)xp;
+    char *p = (char *)xp;
     if (p == NULL)
     {
         fprintf(stderr, "ERROR in iappend()\n");
@@ -969,8 +969,8 @@ void vimixfs_iappend(struct vimixfs* vifs, ino_t inum, void* xp, int n)
     vimixfs_write_dinode(vifs, inum, &din);
 }
 
-void vimixfs_add_directory_entry(struct vimixfs* vifs, uint32_t inode_new_entry,
-                                 uint32_t inode_dir, const char* filename)
+void vimixfs_add_directory_entry(struct vimixfs *vifs, uint32_t inode_new_entry,
+                                 uint32_t inode_dir, const char *filename)
 {
     struct vimixfs_dirent de;
     memset(&de, 0, sizeof(de));
@@ -980,8 +980,8 @@ void vimixfs_add_directory_entry(struct vimixfs* vifs, uint32_t inode_new_entry,
     vimixfs_iappend(vifs, inode_dir, &de, sizeof(de));
 }
 
-uint32_t vimixfs_create_directory(struct vimixfs* vifs, uint32_t inode_parent,
-                                  const char* dir_name, struct stat* st)
+uint32_t vimixfs_create_directory(struct vimixfs *vifs, uint32_t inode_parent,
+                                  const char *dir_name, struct stat *st)
 {
     uint32_t inode = vimixfs_i_alloc(vifs, st);
 
@@ -992,7 +992,7 @@ uint32_t vimixfs_create_directory(struct vimixfs* vifs, uint32_t inode_parent,
     return inode;
 }
 
-uint32_t vimixfs_i_alloc(struct vimixfs* vifs, struct stat* st)
+uint32_t vimixfs_i_alloc(struct vimixfs *vifs, struct stat *st)
 {
     struct vimixfs_dinode din;
 
@@ -1011,8 +1011,8 @@ uint32_t vimixfs_i_alloc(struct vimixfs* vifs, struct stat* st)
     return inum;
 }
 
-uint32_t vimixfs_get_block_index(struct vimixfs* vifs,
-                                 struct vimixfs_dinode* din,
+uint32_t vimixfs_get_block_index(struct vimixfs *vifs,
+                                 struct vimixfs_dinode *din,
                                  uint32_t block_number)
 {
     uint32_t indirect[VIMIXFS_N_INDIRECT_BLOCKS];
@@ -1036,12 +1036,12 @@ uint32_t vimixfs_get_block_index(struct vimixfs* vifs,
                 vimixfs_get_next_free_block(vifs);
         }
         vimixfs_read_sector(vifs, din->addrs[VIMIXFS_INDIRECT_BLOCK_IDX],
-                            (char*)indirect);
+                            (char *)indirect);
         if (indirect[block_number] == 0)
         {
             indirect[block_number] = vimixfs_get_next_free_block(vifs);
             vimixfs_write_sector(vifs, din->addrs[VIMIXFS_INDIRECT_BLOCK_IDX],
-                                 (char*)indirect);
+                                 (char *)indirect);
         }
         return indirect[block_number];
     }
@@ -1056,7 +1056,7 @@ uint32_t vimixfs_get_block_index(struct vimixfs* vifs,
             vimixfs_get_next_free_block(vifs);
     }
     vimixfs_read_sector(vifs, din->addrs[VIMIXFS_DOUBLE_INDIRECT_BLOCK_IDX],
-                        (char*)indirect);
+                        (char *)indirect);
     uint32_t next_indirect_block =
         indirect[block_number / VIMIXFS_N_INDIRECT_BLOCKS];
     if (next_indirect_block == 0)
@@ -1067,15 +1067,15 @@ uint32_t vimixfs_get_block_index(struct vimixfs* vifs,
             indirect[block_number / VIMIXFS_N_INDIRECT_BLOCKS];
         vimixfs_write_sector(vifs,
                              din->addrs[VIMIXFS_DOUBLE_INDIRECT_BLOCK_IDX],
-                             (char*)indirect);
+                             (char *)indirect);
     }
 
-    vimixfs_read_sector(vifs, next_indirect_block, (char*)indirect);
+    vimixfs_read_sector(vifs, next_indirect_block, (char *)indirect);
     if (indirect[block_number % VIMIXFS_N_INDIRECT_BLOCKS] == 0)
     {
         indirect[block_number % VIMIXFS_N_INDIRECT_BLOCKS] =
             vimixfs_get_next_free_block(vifs);
-        vimixfs_write_sector(vifs, next_indirect_block, (char*)indirect);
+        vimixfs_write_sector(vifs, next_indirect_block, (char *)indirect);
 
         return indirect[block_number % VIMIXFS_N_INDIRECT_BLOCKS];
     }
@@ -1083,8 +1083,8 @@ uint32_t vimixfs_get_block_index(struct vimixfs* vifs,
     return 0;
 }
 
-ssize_t vimixfs_inode_get_dirent(struct vimixfs* vifs, int32_t inode_dir,
-                                 struct vimixfs_dirent* dir_entry,
+ssize_t vimixfs_inode_get_dirent(struct vimixfs *vifs, int32_t inode_dir,
+                                 struct vimixfs_dirent *dir_entry,
                                  ssize_t seek_pos)
 {
     if (seek_pos < 0) return -1;
@@ -1102,7 +1102,7 @@ ssize_t vimixfs_inode_get_dirent(struct vimixfs* vifs, int32_t inode_dir,
     do
     {
         size_t read_bytes;
-        read_bytes = vimixfs_read_inode(vifs, &din, (void*)dir_entry,
+        read_bytes = vimixfs_read_inode(vifs, &din, (void *)dir_entry,
                                         (size_t)new_seek_pos,
                                         sizeof(struct vimixfs_dirent));
         if (read_bytes != sizeof(struct vimixfs_dirent))

@@ -21,10 +21,10 @@
 
 #include "libvimixfs.h"
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
-    const char* fs_filename = NULL;
-    const char* dir_to_copy = NULL;
+    const char *fs_filename = NULL;
+    const char *dir_to_copy = NULL;
     size_t fs_size = 0;
     struct vimixfs_copy_params cp_in_params = {0};
     cp_in_params.fmode = 0644 | S_IFREG;

@@ -14,9 +14,9 @@
 #include <kernel/limits.h>
 #endif
 
-const char* search_path[] = {"/usr/bin", "/usr/local/bin", NULL};
+const char *search_path[] = {"/usr/bin", "/usr/local/bin", NULL};
 
-bool file_exists(const char* path)
+bool file_exists(const char *path)
 {
     if (path == NULL) return false;
     struct stat st;
@@ -27,7 +27,7 @@ bool file_exists(const char* path)
     return true;
 }
 
-int build_full_path(char* dst, const char* path, const char* file)
+int build_full_path(char *dst, const char *path, const char *file)
 {
     strncpy(dst, path, PATH_MAX);
     size_t len = strlen(dst);
@@ -46,7 +46,7 @@ int build_full_path(char* dst, const char* path, const char* file)
     return 0;
 }
 
-char* find_program_in_path(const char* program)
+char *find_program_in_path(const char *program)
 {
     if (program == NULL) return NULL;
 
@@ -56,7 +56,7 @@ char* find_program_in_path(const char* program)
         bool exists = file_exists(program);
         if (exists)
         {
-            char* res = (char*)malloc(strlen(program) + 1);
+            char *res = (char *)malloc(strlen(program) + 1);
             if (res != NULL)
             {
                 strcpy(res, program);
@@ -66,13 +66,13 @@ char* find_program_in_path(const char* program)
         return NULL;
     }
 
-    char* full_path = (char*)malloc(PATH_MAX);
+    char *full_path = (char *)malloc(PATH_MAX);
     if (full_path == NULL) return NULL;
 
     for (size_t search_path_index = 0; search_path[search_path_index] != NULL;
          search_path_index++)
     {
-        const char* current_search_path = search_path[search_path_index];
+        const char *current_search_path = search_path[search_path_index];
         build_full_path(full_path, current_search_path, program);
 
         if (file_exists(full_path))

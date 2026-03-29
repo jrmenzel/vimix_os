@@ -166,7 +166,8 @@ static inline uint64_t rv_get_time()
     uint32_t time_low;
     uint32_t time_high_1;
 
-    do {
+    do
+    {
         // read the high value twice to detect an overflow
         time_high_0 = rv_read_csr_timeh();
         time_low = rv_read_csr_time();
@@ -193,7 +194,8 @@ static inline uint64_t rv_get_cycles()
     uint32_t cycle_low;
     uint32_t cycle_high_1;
 
-    do {
+    do
+    {
         // read the high value twice to detect an overflow
         cycle_high_0 = rv_read_csr_cycleh();
         cycle_low = rv_read_csr_cycle();

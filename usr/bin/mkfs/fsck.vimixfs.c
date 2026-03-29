@@ -17,7 +17,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wanalyzer-use-of-uninitialized-value"
-void mark_block_as_used(struct vimixfs* file, uint32_t addr)
+void mark_block_as_used(struct vimixfs *file, uint32_t addr)
 {
     if (file == NULL) return;
     if (file->shadow_bitmap == NULL)
@@ -25,7 +25,7 @@ void mark_block_as_used(struct vimixfs* file, uint32_t addr)
         size_t bytes_to_allocate =
             VIMIXFS_BLOCKS_FOR_BITMAP(file->super_block.size) * BLOCK_SIZE;
 
-        file->shadow_bitmap = (uint8_t*)malloc(bytes_to_allocate);
+        file->shadow_bitmap = (uint8_t *)malloc(bytes_to_allocate);
         if (file->shadow_bitmap == NULL)
         {
             fprintf(stderr, "ERROR: out of memory\n");
@@ -37,7 +37,7 @@ void mark_block_as_used(struct vimixfs* file, uint32_t addr)
     // the offset is 0 instead of bmapstart as the bitmap is the array g_bitmap
     // and not the in-file bitmap
     size_t block = VIMIXFS_BMAP_BLOCK_OF_BIT(addr, 0);
-    uint8_t* bitmap_block = file->shadow_bitmap + (BLOCK_SIZE * block);
+    uint8_t *bitmap_block = file->shadow_bitmap + (BLOCK_SIZE * block);
     int32_t local_addr = addr % VIMIXFS_BMAP_BITS_PER_BLOCK;
 
     uint8_t bit_to_set = 1 << (local_addr % 8);
@@ -52,9 +52,9 @@ void mark_block_as_used(struct vimixfs* file, uint32_t addr)
 }
 #pragma GCC diagnostic pop
 
-void print_fs_layout(struct vimixfs* file)
+void print_fs_layout(struct vimixfs *file)
 {
-    struct vimixfs_superblock* sb = &file->super_block;
+    struct vimixfs_superblock *sb = &file->super_block;
     size_t blocks_for_bitmap = VIMIXFS_BLOCKS_FOR_BITMAP(sb->size);
     size_t blocks_for_inodes = sb->ninode_blocks;
 
@@ -85,9 +85,9 @@ void print_fs_layout(struct vimixfs* file)
     }
 }
 
-void print_super_block_info(struct vimixfs* file)
+void print_super_block_info(struct vimixfs *file)
 {
-    struct vimixfs_superblock* sb = &file->super_block;
+    struct vimixfs_superblock *sb = &file->super_block;
     printf("Super Block\n");
     if (sb->magic != VIMIXFS_MAGIC)
     {
@@ -107,9 +107,9 @@ void print_super_block_info(struct vimixfs* file)
     printf("Bitmap Start: %d\n", sb->bmapstart);
 }
 
-void print_log_header(struct vimixfs* file)
+void print_log_header(struct vimixfs *file)
 {
-    struct vimixfs_log_header* log = &file->log_header;
+    struct vimixfs_log_header *log = &file->log_header;
     if (log->n == 0)
     {
         printf("Log clean\n");
@@ -123,11 +123,11 @@ void print_log_header(struct vimixfs* file)
     }
 }
 
-void check_dirents(struct vimixfs* file, uint32_t addr)
+void check_dirents(struct vimixfs *file, uint32_t addr)
 {
     uint8_t buf[BLOCK_SIZE];
     vimixfs_read_sector(file, addr, buf);
-    struct vimixfs_dirent* dir = (struct vimixfs_dirent*)buf;
+    struct vimixfs_dirent *dir = (struct vimixfs_dirent *)buf;
 
     size_t dirents_per_block = BLOCK_SIZE % sizeof(struct vimixfs_dirent);
     for (size_t i = 0; i < dirents_per_block; ++i)
@@ -137,7 +137,7 @@ void check_dirents(struct vimixfs* file, uint32_t addr)
     }
 }
 
-void check_block_range(struct vimixfs* file, uint32_t* range, size_t range_len,
+void check_block_range(struct vimixfs *file, uint32_t *range, size_t range_len,
                        bool verbose)
 {
     for (size_t i = 0; i < range_len; ++i)
@@ -152,45 +152,45 @@ void check_block_range(struct vimixfs* file, uint32_t* range, size_t range_len,
 }
 
 // caller must free the returned pointer
-uint32_t* read_indirect_block(struct vimixfs* file, uint32_t addr)
+uint32_t *read_indirect_block(struct vimixfs *file, uint32_t addr)
 {
     if (addr == 0) exit(1);  // should not happen
 
     mark_block_as_used(file, addr);
-    uint8_t* buffer = malloc(BLOCK_SIZE);
+    uint8_t *buffer = malloc(BLOCK_SIZE);
     if (buffer == NULL)
     {
         printf("ERROR: out of memory\n");
         exit(1);
     }
     vimixfs_read_sector(file, addr, buffer);
-    return (uint32_t*)buffer;
+    return (uint32_t *)buffer;
 }
 
-void check_indirect_block(struct vimixfs* file, uint32_t addr, bool verbose)
+void check_indirect_block(struct vimixfs *file, uint32_t addr, bool verbose)
 {
     if (addr == 0) return;
 
-    uint32_t* block_addr = read_indirect_block(file, addr);
+    uint32_t *block_addr = read_indirect_block(file, addr);
     check_block_range(file, block_addr, BLOCK_SIZE / sizeof(uint32_t), verbose);
-    free((void*)block_addr);
+    free((void *)block_addr);
 }
 
-void check_double_indirect_block(struct vimixfs* file, uint32_t addr,
+void check_double_indirect_block(struct vimixfs *file, uint32_t addr,
                                  bool verbose)
 {
     if (addr == 0) return;
 
-    uint32_t* next_block_addr = read_indirect_block(file, addr);
+    uint32_t *next_block_addr = read_indirect_block(file, addr);
     for (size_t i = 0; i < BLOCK_SIZE / sizeof(uint32_t); ++i)
     {
         check_indirect_block(file, next_block_addr[i], verbose);
     }
-    free((void*)next_block_addr);
+    free((void *)next_block_addr);
 }
 
 // returns 1 if the disk inode is in use, 0 otherwise
-int check_dinode(struct vimixfs* file, struct vimixfs_dinode* dinode,
+int check_dinode(struct vimixfs *file, struct vimixfs_dinode *dinode,
                  size_t inum, bool verbose)
 {
     if (file == NULL || file->inodes == NULL || dinode == NULL)
@@ -252,9 +252,9 @@ int check_dinode(struct vimixfs* file, struct vimixfs_dinode* dinode,
     return 1;
 }
 
-void check_inodes(struct vimixfs* file, bool verbose)
+void check_inodes(struct vimixfs *file, bool verbose)
 {
-    struct vimixfs_superblock* sb = &file->super_block;
+    struct vimixfs_superblock *sb = &file->super_block;
     uint8_t buffer[BLOCK_SIZE];
     size_t used = 0;
     ino_t inum = INVALID_INODE;
@@ -262,7 +262,7 @@ void check_inodes(struct vimixfs* file, bool verbose)
     for (size_t block = sb->inodestart; block < inode_end; ++block)
     {
         vimixfs_read_sector(file, block, buffer);
-        struct vimixfs_dinode* dinode = (struct vimixfs_dinode*)buffer;
+        struct vimixfs_dinode *dinode = (struct vimixfs_dinode *)buffer;
         for (size_t i = 0; i < VIMIXFS_INODES_PER_BLOCK; ++i)
         {
             used += check_dinode(file, &dinode[i], inum, verbose);
@@ -302,7 +302,7 @@ size_t check_bitmap_char(uint8_t bm_file, uint8_t bm_calc, size_t offset)
     return errors;
 }
 
-void check_bitmap(struct vimixfs* file)
+void check_bitmap(struct vimixfs *file)
 {
     if (file->shadow_bitmap == NULL)
     {
@@ -329,7 +329,7 @@ void check_bitmap(struct vimixfs* file)
            file->super_block.size);
 }
 
-int check_file_system(const char* filename, bool verbose)
+int check_file_system(const char *filename, bool verbose)
 {
     struct vimixfs file;
     vimixfs_open(&file, filename);
@@ -373,7 +373,7 @@ int check_file_system(const char* filename, bool verbose)
     return errors;
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     if (argc == 2)
     {

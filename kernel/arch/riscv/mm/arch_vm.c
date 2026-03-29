@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
-#include "mm/vm.h"
 #include <kernel/proc.h>
 #include "asm/satp.h"
+#include "mm/vm.h"
 #include "riscv.h"
 
 size_t mmu_get_page_table_reg_value() { return rv_read_csr_satp(); }

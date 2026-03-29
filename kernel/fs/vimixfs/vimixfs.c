@@ -59,7 +59,7 @@ struct inode_operations vimixfs_i_op = {
 struct file_operations vimixfs_f_op = {fops_write : vimixfs_fops_write};
 
 syserr_t vimixfs_init_fs_super_block(struct super_block *sb_in,
-                                    const void *data);
+                                     const void *data);
 void vimixfs_kill_sb(struct super_block *sb_in);
 
 /// Free a disk block.
@@ -76,7 +76,8 @@ void vimixfs_init()
     register_file_system(&vimixfs_file_system_type);
 }
 
-syserr_t vimixfs_init_fs_super_block(struct super_block *sb_in, const void *data)
+syserr_t vimixfs_init_fs_super_block(struct super_block *sb_in,
+                                     const void *data)
 {
     // data is used for file system specific mount parameters
     // ignore those here
@@ -783,7 +784,7 @@ syserr_t vimixfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
         {
             inode_unlock(dir);
             return read_bytes;  // 0 if no more dirents to read or -1
-                                          // on error
+                                // on error
         }
         else if (read_bytes < sizeof(struct vimixfs_dirent))
         {
@@ -809,7 +810,7 @@ syserr_t vimixfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
 }
 
 syserr_t vimixfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
-                          size_t off, size_t n)
+                           size_t off, size_t n)
 {
     if (off > ip->size || off + n < off)
     {
@@ -845,7 +846,7 @@ syserr_t vimixfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
 }
 
 syserr_t vimixfs_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
-                      size_t off, size_t n)
+                       size_t off, size_t n)
 {
     if (off > ip->size || off + n < off)
     {
@@ -896,7 +897,7 @@ syserr_t vimixfs_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
 }
 
 syserr_t vimixfs_iops_link(struct inode *dir, struct inode *ip,
-                          char name[NAME_MAX])
+                           char name[NAME_MAX])
 {
     log_begin_fs_transaction(ip->i_sb);
     inode_lock_two(dir, ip);
@@ -999,7 +1000,7 @@ static int isdirempty(struct inode *dir)
 }
 
 syserr_t vimixfs_iops_unlink(struct inode *dir, char name[NAME_MAX],
-                            bool delete_files, bool delete_directories)
+                             bool delete_files, bool delete_directories)
 {
     // save sb pointer in case dir is freed
     struct super_block *sb = dir->i_sb;

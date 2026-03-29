@@ -51,7 +51,7 @@
 #define VIMIXFS_DINODE_OFFSET_IN_BLOCK(i) ((i) % VIMIXFS_INODES_PER_BLOCK)
 
 #define VIMIXFS_GET_DINODE(buf, i) \
-    ((struct vimixfs_dinode*)((buf)->data) + VIMIXFS_DINODE_OFFSET_IN_BLOCK(i))
+    ((struct vimixfs_dinode *)((buf)->data) + VIMIXFS_DINODE_OFFSET_IN_BLOCK(i))
 
 #define VIMIXFS_INUM_OF_DINODE(block_idx, offset) \
     ((block_idx) * VIMIXFS_INODES_PER_BLOCK + (offset))

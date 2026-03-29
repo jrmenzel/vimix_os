@@ -265,7 +265,8 @@ bool dtb_get_regs(void *dtb, int offset, struct Device_Init_Parameters *params)
 
             // reg_names is a list of len_names 0-terminated strings,
             // find the next one:
-            do {
+            do
+            {
                 reg_names++;
                 len_names--;
             } while (*reg_names != 0);

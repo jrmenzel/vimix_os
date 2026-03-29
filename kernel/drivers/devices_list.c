@@ -315,7 +315,8 @@ void dev_list_sort(struct Devices_List *dev_list, const char *name)
 
     // primitive bubble sort
     bool swapped = false;
-    do {
+    do
+    {
         swapped = false;
         size_t max_addr = 0;
         size_t max_addr_index = 0;

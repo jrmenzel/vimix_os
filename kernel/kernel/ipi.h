@@ -43,4 +43,4 @@ static inline cpu_mask ipi_cpu_mask_all_but_self()
 /// @param mask Bit set for each CPU to send to, must be started.
 /// @param type The IPI type to send.
 /// @param data Depending on the type, may be NULL.
-void ipi_send_interrupt(cpu_mask mask, enum ipi_type type, void* data);
+void ipi_send_interrupt(cpu_mask mask, enum ipi_type type, void *data);

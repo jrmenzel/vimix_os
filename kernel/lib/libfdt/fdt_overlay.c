@@ -377,7 +377,8 @@ static int overlay_fixup_phandle(void *fdt, void *fdto, int symbols_off,
     phandle = fdt_get_phandle(fdt, symbol_off);
     if (!phandle) return -FDT_ERR_NOTFOUND;
 
-    do {
+    do
+    {
         const char *path, *name, *fixup_end;
         const char *fixup_str = value;
         uint32_t path_len, name_len;
