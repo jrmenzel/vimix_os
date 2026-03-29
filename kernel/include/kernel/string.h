@@ -108,36 +108,36 @@ char *strstr(const char *haystack, const char *needle);
 size_t strspn(const char *s, const char *accept);
 
 /// @brief Convert a string to an integer.
-/// @param string The string with optional leading whitespaces.
-/// @param end If not NULL the position of the first non digit char is returned
-/// in end.
+/// @param nptr The string with optional leading whitespaces.
+/// @param endptr If not NULL the position of the first non digit char is
+/// returned in end.
 /// @param base Must be between 2 and 10. (standart implementations support up
 /// to 36).
 /// @return The int or 0 on error.
 long strtol(const char *nptr, char **endptr, int base);
 
 /// @brief Convert a string to an unsigned integer.
-/// @param string The string with optional leading whitespaces.
-/// @param end If not NULL the position of the first non digit char is returned
-/// in end.
+/// @param nptr The string with optional leading whitespaces.
+/// @param endptr If not NULL the position of the first non digit char is
+/// returned in end.
 /// @param base Must be between 2 and 10. (standart implementations support up
 /// to 36).
 /// @return The int or 0 on error.
-unsigned long strtoul(const char *string, char **end, int base);
+unsigned long strtoul(const char *nptr, char **endptr, int base);
 
 /// @brief Convert a string to a 64-bit integer.
-/// @param string The string with optional leading whitespaces.
-/// @param end If not NULL the position of the first non digit char is returned
-/// in end.
+/// @param nptr The string with optional leading whitespaces.
+/// @param endptr If not NULL the position of the first non digit char is
+/// returned in end.
 /// @param base Must be between 2 and 10. (standart implementations support up
 /// to 36).
 /// @return The int or 0 on error.
 long long strtoll(const char *nptr, char **endptr, int base);
 
 /// @brief Convert a string to an unsigned 64-bit integer.
-/// @param string The string with optional leading whitespaces.
-/// @param end If not NULL the position of the first non digit char is returned
-/// in end.
+/// @param nptr The string with optional leading whitespaces.
+/// @param endptr If not NULL the position of the first non digit char is
+/// returned in end.
 /// @param base Must be between 2 and 10. (standart implementations support up
 /// to 36).
 /// @return The int or 0 on error.

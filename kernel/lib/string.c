@@ -242,31 +242,31 @@ size_t strspn(const char *s, const char *accept)
 }
 
 // from stdlib for libfdt:
-long long strtoll(const char *string, char **end, int base)
+long long strtoll(const char *nptr, char **endptr, int base)
 {
     char highest_number = '0' + base - 1;
     if ((base < 2) || (base > 10)) return 0;
 
-    while (_is_whitespace(*string))
+    while (_is_whitespace(*nptr))
     {
-        string++;
+        nptr++;
     }
 
     char sign = '+';
-    if (*string == '-' || *string == '+')
+    if (*nptr == '-' || *nptr == '+')
     {
-        sign = *string++;
+        sign = *nptr++;
     }
 
     long long n = 0;
-    while ('0' <= *string && *string <= highest_number)
+    while ('0' <= *nptr && *nptr <= highest_number)
     {
-        n = n * base + *string++ - '0';
+        n = n * base + *nptr++ - '0';
     }
 
-    if (end)
+    if (endptr)
     {
-        *end = (char *)string;
+        *endptr = (char *)nptr;
     }
 
     if (sign == '-')
@@ -281,9 +281,9 @@ long strtol(const char *nptr, char **endptr, int base)
     return (long)strtoll(nptr, endptr, base);
 }
 
-unsigned long strtoul(const char *string, char **end, int base)
+unsigned long strtoul(const char *nptr, char **endptr, int base)
 {
-    return (unsigned long)strtoll(string, end, base);
+    return (unsigned long)strtoll(nptr, endptr, base);
 }
 
 unsigned long long strtoull(const char *nptr, char **endptr, int base)
