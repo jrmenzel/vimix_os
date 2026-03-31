@@ -1,0 +1,63 @@
+stages:
+  - format_and_build_2504
+  - usertests
+  - build_ubuntu_2404
+
+default:
+  image: ubuntu:24.04
+
+before_script:
+  - apt-get update
+  - apt-get install -y build-essential apt-utils gcc make git clang clang-format gcc-riscv64-linux-gnu qemu-system-riscv64 gdb-multiarch xxd u-boot-tools libelf-dev libdw-dev
+
+# needs clang 20 or newer, so requires Ubuntu 25.04 or newer
+# run fanalyze on GCC 14
+format_and_build_2504:
+  image: ubuntu:25.04
+  stage: format_and_build_2504
+  script:
+    - tools/check_formatting.sh
+    - make ANALYZE=1
+    - ./tools/run_test.sh root/tests/echo.sh
+
+
+usertests:
+  image: ubuntu:24.04
+  stage: usertests
+  script:
+    - make PLATFORM=qemu64 BUILD_TYPE=release
+    - ./tools/run_test.sh root/tests/usertests.sh
+    - make build/filesystem.img
+    - ./tools/run_test.sh root/tests/forktest.sh
+    - make build/filesystem.img
+    - ./tools/run_test.sh root/tests/stack.sh
+    - make build/filesystem.img
+    - ./tools/run_test.sh root/tests/grind_2.sh
+
+# Build all platforms on GCC 13
+# clang-format would fail here, as the heuristics changed (need clang 20)
+build_ubuntu_2404:
+  image: ubuntu:24.04
+  stage: build_ubuntu_2404
+  script:
+    - make # implicit: PLATFORM=qemu64 BUILD_TYPE=debug
+    - ./tools/run_test.sh root/tests/echo.sh
+    - make clean 
+    - make PLATFORM=qemu64 BUILD_TYPE=release
+    - ./tools/run_test.sh root/tests/echo.sh
+    - make clean
+    - make PLATFORM=qemu32 BUILD_TYPE=debug
+    - make clean
+    - make PLATFORM=qemu32 BUILD_TYPE=release
+    - make clean
+    - make PLATFORM=spike32 BUILD_TYPE=debug
+    - make clean
+    - make PLATFORM=spike32 BUILD_TYPE=release
+    - make clean
+    - make PLATFORM=spike64 BUILD_TYPE=debug
+    - make clean
+    - make PLATFORM=spike64 BUILD_TYPE=release
+    - make clean
+    - make PLATFORM=visionfive2 BUILD_TYPE=debug
+    - make clean
+    - make PLATFORM=visionfive2 BUILD_TYPE=release

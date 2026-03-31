@@ -83,7 +83,14 @@ void register_device(struct Device *dev)
         //        dev->irq_number);
     }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-security"
+    // ..., "%s", dev->name) would make the compiler happy,
+    // at this point we might not have dynamic memeory allocation,
+    // so we trust that the device names are well formatted.
     kobject_add(&dev->kobj, &g_kobjects_dev, dev->name);
+#pragma GCC diagnostic pop
+
     // this device had a reference since kobject_init(),
     // kobject_add() added another one for the parent, which
     // from now on will be the only one

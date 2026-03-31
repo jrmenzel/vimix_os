@@ -4,10 +4,11 @@ IndentWidth: 4
 AccessModifierOffset: -4
 AlignAfterOpenBracket: Align
 AlignTrailingComments: true
-AllowShortBlocksOnASingleLine: Empty
+#AllowShortBlocksOnASingleLine: Empty
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
 BreakBeforeBraces: Allman
 IncludeBlocks: Preserve
 PointerAlignment: Right

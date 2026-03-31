@@ -31,7 +31,10 @@ const struct kobj_type default_kobj_ktype = {
 static inline void init_kobjects_in_root(struct kobject *kobj, const char *name)
 {
     kobject_init(kobj, &default_kobj_ktype);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-security"
     kobject_add(kobj, &g_kobjects_root, name);
+#pragma GCC diagnostic pop
     kobject_put(kobj);
 }
 

@@ -17,6 +17,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wanalyzer-use-of-uninitialized-value"
+
 void mark_block_as_used(struct vimixfs *file, uint32_t addr)
 {
     if (file == NULL) return;

@@ -92,13 +92,17 @@ void assert_write_to_file(const char *test_name, int fd, const char *string);
         exit(1);                                                         \
     }
 
-#define assert_no_error(value)                                        \
-    if (value < 0)                                                    \
-    {                                                                 \
-        printf("%s: error: %d returned (errno: %s)\n", s, (int)value, \
-               strerror(errno));                                      \
-        exit(1);                                                      \
+static inline void assert_no_error_func(int value, const char *s)
+{
+    if (value < 0)
+    {
+        printf("%s: error: %d returned (errno: %s)\n", s, (int)value,
+               strerror(errno));
+        exit(1);
     }
+}
+
+#define assert_no_error(value) assert_no_error_func(value, s)
 
 #define assert_no_ptr_error(ptr)                                              \
     if (ptr == NULL)                                                          \
@@ -106,11 +110,3 @@ void assert_write_to_file(const char *test_name, int fd, const char *string);
         printf("%s: error: NULL returned (errno: %s)\n", s, strerror(errno)); \
         exit(1);                                                              \
     }
-
-// clang-format off
-#define infinite_loop \
-    _Pragma("GCC diagnostic push"); \
-    _Pragma("GCC diagnostic ignored \"-Wanalyzer-infinite-loop\""); \
-    while (true) {} \
-    _Pragma("GCC diagnostic pop");
-// clang-format on
