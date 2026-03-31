@@ -195,6 +195,11 @@ struct entry_node *entry_node_create(struct entry_node *head, const char *name,
 
     struct entry_node *new_node =
         (struct entry_node *)malloc(sizeof(struct entry_node));
+    if (new_node == NULL)
+    {
+        fprintf(stderr, "malloc error (errno: %s)\n", strerror(errno));
+        return head;
+    }
 
     strncpy(new_node->name, name, NAME_MAX);
     new_node->name[NAME_MAX] = 0;
@@ -277,8 +282,24 @@ int print_dir(const char *path_name, struct Parameters *parameters)
     // now print entries:
     struct entry_node **entry_array =
         (struct entry_node **)malloc(entry_count * sizeof(struct entry_node *));
+    if (entry_array == NULL)
+    {
+        fprintf(stderr, "malloc error (errno: %s)\n", strerror(errno));
+
+        // free the linked list of entries:
+        struct entry_node *current = entry_list_head;
+        while (current != NULL)
+        {
+            struct entry_node *tmp = current;
+            current = current->next;
+            free(tmp);
+        }
+
+        return S_SERIOUS_ERROR;
+    }
+
     struct entry_node *current = entry_list_head;
-    for (size_t i = 0; i < entry_count; ++i)
+    for (size_t i = 0; (i < entry_count) && (current != NULL); ++i)
     {
         entry_array[i] = current;
         current = current->next;

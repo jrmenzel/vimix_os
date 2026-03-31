@@ -103,14 +103,10 @@ ifeq ($(RV_ENABLE_EXT_C), yes)
 MARCH := $(MARCH)c
 endif
 
-# prior to gcc 12 the extensions zicsr and zifencei were implicit in the base ISA
-TARGET_GCC_VERSION_AT_LEAST_12 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 12)
-TARGET_GCC_VERSION_AT_LEAST_13 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 13)
 TARGET_GCC_VERSION_AT_LEAST_14 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 14)
-ifeq "$(TARGET_GCC_VERSION_AT_LEAST_12)" "1"
+
 # mandatory: CSRs and fence instructions
 MARCH := $(MARCH)_zicsr_zifencei
-endif
 
 ifeq "$(TARGET_GCC_VERSION_AT_LEAST_14)" "1"
 # optional: s-mode timer extension, needs gcc 14

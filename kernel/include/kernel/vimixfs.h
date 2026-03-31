@@ -7,7 +7,6 @@
 // with system headers from the host)
 
 #include <kernel/kernel.h>
-#include <kernel/time.h>
 
 #define VIMIXFS_ROOT_INODE 1  // root i-number
 

@@ -38,10 +38,6 @@ function build_config_release_debug {
 }
 
 function build_compiler_versions {
-    build_config_compiler $1 debug 11
-    build_config_compiler $1 release 11
-    build_config_compiler $1 debug 12
-    build_config_compiler $1 release 12
     build_config_compiler $1 debug 13
     build_config_compiler $1 release 13
     build_config_compiler $1 debug 14

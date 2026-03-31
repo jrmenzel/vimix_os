@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /// @brief Read an integer value from a SysFS path.

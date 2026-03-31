@@ -66,7 +66,14 @@ int fortune(char *filename)
     }
 
     uint32_t random_value;
-    read(fd_random, &random_value, sizeof(uint32_t));
+    ssize_t n = read(fd_random, &random_value, sizeof(uint32_t));
+    if (n < 0)
+    {
+        fprintf(stderr, "fortune: read error (errno: %s)\n", strerror(errno));
+        close(fd_random);
+        close(fd);
+        return 1;
+    }
     close(fd_random);
     random_value = random_value % number_of_fortunes;
 

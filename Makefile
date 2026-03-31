@@ -82,6 +82,11 @@ qemu-log: qemu-requirements
 	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
 	$(QEMU) $(QEMU_OPTS) -d cpu_reset -d int -d in_asm -D log_${PLATFORM}.txt
 
+qemu-run:
+	@printf "\n$(YELLOW)DID NOT REBUILD ANYTHING$(NO_COLOR)\n"
+	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
+	$(QEMU) $(QEMU_OPTS)
+
 # dump device tree
 qemu-dump-tree: qemu-requirements
 	$(QEMU) $(QEMU_OPTS) -machine dumpdtb=tree_$(PLATFORM).dtb

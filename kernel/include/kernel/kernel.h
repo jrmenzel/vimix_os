@@ -19,9 +19,14 @@
 #define BITS_PER_SIZET (8 * sizeof(size_t))
 
 // clang-format off
+// GCC 14 added a new warning for infinite loops
+#if __GNUC__ >= 14
 #define infinite_loop \
     _Pragma("GCC diagnostic push"); \
     _Pragma("GCC diagnostic ignored \"-Wanalyzer-infinite-loop\""); \
     while (true) {} \
     _Pragma("GCC diagnostic pop");
+#else
+#define infinite_loop while (true) {}
+#endif
 // clang-format on

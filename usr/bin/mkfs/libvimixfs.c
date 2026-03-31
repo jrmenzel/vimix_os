@@ -1015,7 +1015,7 @@ uint32_t vimixfs_get_block_index(struct vimixfs *vifs,
                                  struct vimixfs_dinode *din,
                                  uint32_t block_number)
 {
-    uint32_t indirect[VIMIXFS_N_INDIRECT_BLOCKS];
+    uint32_t indirect[VIMIXFS_N_INDIRECT_BLOCKS] = {0};
 
     assert(block_number < VIMIXFS_MAX_FILE_SIZE_BLOCKS);
     if (block_number < VIMIXFS_N_DIRECT_BLOCKS)

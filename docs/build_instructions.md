@@ -1,6 +1,10 @@
 # Build Instructions
 
-Requirements: qemu, 32- or 64-bit [RISC V](riscv/RISCV.md) gcc toolchain
+Requirements:
+
+- qemu
+- 32- or 64-bit [RISC V](riscv/RISCV.md) gcc toolchain (version 13 or later)
+- clang-format version 20 or later
 
 on Arch Linux install:
 ```bash
@@ -10,7 +14,7 @@ sudo pacman -S qemu-system-riscv qemu-system-riscv-firmware riscv64-elf-binutils
 on Ubuntu 24.04 install:
 ```bash
 sudo apt update
-sudo apt install make git gcc gcc-riscv64-unknown-elf build-essential qemu-system-riscv64 gdb-multiarch clang-format xxd
+sudo apt install build-essential make git gcc gcc-riscv64-linux-gnu qemu-system-riscv64 gdb-multiarch xxd u-boot-tools libelf-dev libdw-dev
 ```
 
 Build all:

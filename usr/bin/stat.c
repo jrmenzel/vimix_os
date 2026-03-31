@@ -23,8 +23,8 @@ int main(int argc, char *argv[])
     }
 
     printf("  File: %s\n", argv[1]);
-    printf("  Size: %zd   Blocks: %zd   IO Blocks: %zd   ", st.st_size,
-           st.st_blocks, st.st_blksize);
+    printf("  Size: %zd   Blocks: %zd   IO Blocks: %zd   ", (ssize_t)st.st_size,
+           (ssize_t)st.st_blocks, (ssize_t)st.st_blksize);
 
     if (S_ISDIR(st.st_mode))
     {
