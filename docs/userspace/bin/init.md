@@ -16,8 +16,6 @@ The child will [execv](../../kernel/syscalls/execv.md) into [login](login.md) wh
 
 Init starts [init](init.md) which starts a [shell](sh.md) and restarts this chain in case it closes. The shell uses [fork](../../kernel/syscalls/fork.md) and [execv](../../kernel/syscalls/execv.md) to start user applications. For details see [sh](sh.md) and from the [kernel](../../kernel/kernel.md) perspective: [life_cycle_user_application](../../kernel/overview/life_cycle_user_application.md).
 
-**Note:** If the file `/tests/autoexec.sh` exists, a shell will be started instead of [login](login.md) with this file as a parameter. The user will be root and the current working directory `/`. This script will be executed in a loop so it should call [shutdown](shutdown.md) for automated testing.
-
 
 ---
 **Up:** [user space](../userspace.md)

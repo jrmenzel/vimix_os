@@ -1,6 +1,6 @@
 # Usertests
 
-Main user space test suite. Based on the usertests of xv6. This version has additional tests and [builds on Linux](docs/build_instructions.md) (with a subset of tests). This way tests for Linux compatible features can be written against a known-to-work target.
+Main user space test suite. Based on the usertests of xv6. This version has additional tests and [builds on Linux](../../development/build_instructions.md) (with a subset of tests). This way tests for Linux compatible features can be written against a known-to-work target.
 
 > usertests `options` OR `testname`
 

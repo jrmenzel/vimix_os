@@ -8,13 +8,13 @@ See [contributors](docs/contributors.md) for original xv6 contributors and autho
 ## Quick Links
 
 Compile and try out:
-- [Build requirements and instructions](docs/build_instructions.md).
-- [How to run on qemu](docs/run_on_qemu.md).
-- [Overview of the directories](docs/overview_directories.md).
-- The [kernel](docs/kernel/kernel.md).
-- The [user space](docs/userspace/userspace.md).
+- [getting started with the development](docs/development/getting_started.md)
+	- [Build requirements and instructions](docs/development/build_instructions.md).
+	- [How to run on qemu](docs/development/run_on_qemu.md).
+- Details about the [kernel](docs/kernel/kernel.md).
+- Details about the [user space](docs/userspace/userspace.md).
 
-How it looks like (text mode via UART only) running on [qemu](docs/run_on_qemu.md):
+How it looks like (text mode via UART only) running on [qemu](docs/development/run_on_qemu.md):
 ```
 init device riscv,plic0... OK (8,0)
 init device ns16550a... OK (13,0)
@@ -71,7 +71,7 @@ $
 
 ## Changes from xv6
 
-- Added [documentation](docs/overview_directories.md) in `docs`.
+- Added [documentation](docs/development/overview_directories.md) in `docs`.
 - Cleanups: Reorganized code, separate headers, renamed many functions and variables, using stdint types, general refactoring, reduced number of GOTOs, ...
 - Support 32-bit RISC V (in addition to 64-bit), both booting in [M-mode](docs/riscv/M-mode.md) and [S-mode](docs/riscv/S-mode.md) in a [SBI](docs/riscv/SBI.md) environment. Inspired by a 32-bit xv6 port by Michael Schröder (https://github.com/x653/xv6-riscv-fpga/tree/main/xv6-riscv).
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.

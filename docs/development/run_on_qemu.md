@@ -2,7 +2,7 @@
 
 **Pre-requirement:** 
 1. Install qemu for RISC V 64-bit or 32-bit. 
-2. Build VIMIX (see [build_instructions](build_instructions.md)), make sure `PLATFORM` in `MakefileArch.mk` is set to `qemu`.
+2. Build VIMIX (see [build_instructions](development/build_instructions.md)), make sure `PLATFORM` in `MakefileArch.mk` is set to `qemu`.
 
 
 Run 
@@ -10,6 +10,9 @@ Run
 
 Or run manually:
 > qemu-system-riscv64 -machine virt -bios none -kernel build/kernel-vimix -m 128M -smp 4 -nographic -global virtio-mmio.force-legacy=false -drive file=build/filesystem.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+
+To run via make without recompiling (and re-generating the file system image) call:
+> make qemu-run
 
 
 ## Debugging on qemu with gdb or VSCode
@@ -34,8 +37,7 @@ In `VSCode`, a `launch.json` is provided with various settings:
 Launch gdb from the project directory to apply the settings from `.gdbinit`. If gdb refuses to load these settings, add the full path to the gdbinit to your `~/.config/gdb/gdbinit`.
 
 
-
 ---
-**Up:** [README](../README.md)
+**Up:** [getting started with the development](getting_started.md)
 
-[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) |  [overview_directories](overview_directories.md) | [architectures](architectures.md) | [kernel](kernel/kernel.md) | [user space](userspace/userspace.md)
+[automated_tests](automated_tests.md) | [build_instructions](development/build_instructions.md) | [cicd](cicd.md) | [debugging](development/debugging.md) | [overview_directories](development/overview_directories.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) 

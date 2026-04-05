@@ -5,7 +5,7 @@ The VIMIX kernel started as a xv6 fork and is a very basic Unix like OS for [RIS
 
 ## Source Code
 
-Code organization of the kernel: [overview_directories](../overview_directories.md).
+Code organization of the kernel: [overview_directories](../development/overview_directories.md).
 
 
 ## Boot and Init

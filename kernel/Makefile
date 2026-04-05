@@ -226,6 +226,7 @@ $(K_BUILD_DIR)/dtb_embedded.o: $(K_BUILD_DIR)/dtb_embedded.c
 
 else
 $(K_BUILD_DIR)/dtb_embedded.h:
+	@mkdir -p $(K_BUILD_DIR)
 	@touch $(K_BUILD_DIR)/dtb_embedded.h
 endif
 

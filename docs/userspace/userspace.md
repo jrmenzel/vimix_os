@@ -73,7 +73,7 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 
 ### Linux support
 
-Some user space apps compile also on Linux. See [build_instructions](../build_instructions.md) for details.
+Some user space apps compile also on Linux. See [build_instructions](../development/build_instructions.md) for details.
 
 
 ## File System
@@ -106,4 +106,4 @@ Some user space apps compile also on Linux. See [build_instructions](../build_in
 ---
 **Up:** [README](../../README.md)
 
-[build_instructions](../build_instructions.md) | [overview_directories](../overview_directories.md) | [kernel](../kernel/kernel.md) | [user space](userspace.md)
+[build_instructions](../development/build_instructions.md) | [overview_directories](../development/overview_directories.md) | [kernel](../kernel/kernel.md) | [user space](userspace.md)

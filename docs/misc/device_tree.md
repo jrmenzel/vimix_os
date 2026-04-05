@@ -18,12 +18,12 @@ Note that all values returned from the device tree are 32 bit aligned. When cast
 
 ### qemu
 
-To dump the device tree of [qemu](../run_on_qemu.md) run:
+To dump the device tree of [qemu](../development/run_on_qemu.md) run:
 
 > make PLATFORM=qemu qemu-dump-tree
 
 
-To dump the device tree of [Spike](../run_on_spike.md) run:
+To dump the device tree of [Spike](../development/run_on_spike.md) run:
 
 > make PLATFORM=spike spike-dump-tree
 
@@ -32,7 +32,7 @@ Both will generate `*.dtb` and `*.dts` files named after the current platform. R
 
 ### U-Boot
 
-On a real device like the [VisionFive 2](../run_on_visionfive2.md) enter U-Boot and print the device tree with:
+On a real device like the [VisionFive 2](../development/run_on_visionfive2.md) enter U-Boot and print the device tree with:
 
 ```
 StarFive # fdt print /

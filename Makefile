@@ -10,18 +10,20 @@ include MakefileCommon.mk
 
 all: directories extractdbg userspace_lib userspace host $(BUILD_DIR)/filesystem.img kernel boot_dir
 
-directories: # make build output directory
+# make build output directory
+directories:
 	@mkdir -p $(BUILD_DIR);
 	@mkdir -p $(BUILD_DIR)/boot;
 
-extractdbg: # build the extractdbg tool for extracting debug info from ELF files
+# build the extractdbg tool for extracting debug info from ELF files
+extractdbg:
 	@$(MAKE) -C tools/extractdbg all;
 
 # the kernel itself depends on userspace for the embedded ram disk only
 ifeq ($(RAMDISK_EMBEDDED), yes)
 KERNEL_REQS := directories userspace $(BUILD_DIR)/filesystem.img
 endif
-kernel: extractdbg $(KERNEL_REQS)
+kernel: extractdbg $(KERNEL_REQS) # the kernel itself
 	@$(MAKE) -C kernel all;
 
 userspace: # user space apps and libs
@@ -34,7 +36,8 @@ host: # some user space apps for the host (Linux)
 	@$(MAKE) TARGET=host -C usr/bin all;
 	@$(MAKE) TARGET=host -C usr/local/bin/dhrystone all; 
 
-boot_dir: kernel $(BUILD_DIR)/filesystem.img boot/boot.cmd # boot directory content for deployment
+# boot directory content for deployment
+boot_dir: kernel $(BUILD_DIR)/filesystem.img boot/boot.cmd
 	@cp -r boot/* $(BUILD_DIR)/boot
 	@mkimage -C none -A riscv -T script -d $(BUILD_DIR)/boot/boot.cmd $(BUILD_DIR)/boot/boot.scr
 	@cp $(BUILD_DIR)/filesystem.img $(BUILD_DIR)/boot
@@ -73,16 +76,15 @@ QEMU_DEBUG_OPTS := -S -gdb tcp:localhost:$(GDB_PORT)
 
 qemu-requirements: directories kernel $(BUILD_DIR)/filesystem.img
 
-# run in qemu
-qemu: qemu-requirements
+qemu: qemu-requirements # run in qemu, rebuilds if needed
 	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
 	$(QEMU) $(QEMU_OPTS)
 
-qemu-log: qemu-requirements
+qemu-log: qemu-requirements # run in qemu with logging, rebuilds if needed
 	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
 	$(QEMU) $(QEMU_OPTS) -d cpu_reset -d int -d in_asm -D log_${PLATFORM}.txt
 
-qemu-run:
+qemu-run: # run in qemu without rebuilding, useful for automated tests
 	@printf "\n$(YELLOW)DID NOT REBUILD ANYTHING$(NO_COLOR)\n"
 	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
 	$(QEMU) $(QEMU_OPTS)
@@ -98,9 +100,7 @@ qemu-dump-tree: qemu-requirements
 	@sed -i "s~_KERNEL~$(KERNEL_FILE)~g" .gdbinit
 	@sed -i 's/_ARCHITECTURE/$(GDB_ARCHITECTURE)/g' .gdbinit
 
-
-# run in qemu waiting for a debugger
-qemu-gdb: qemu-requirements .gdbinit
+qemu-gdb: qemu-requirements .gdbinit # run in qemu waiting for a debugger
 	@printf "\n$(YELLOW)CTRL+A X to close qemu\n"
 	@printf " Now run 'gdb' in another window.\n"
 	@printf " OR attach with VSCode for debugging.$(NO_COLOR)\n"
@@ -139,14 +139,19 @@ endif
 
 spike-requirements: kernel $(BUILD_DIR)/filesystem.img
 
-spike: spike-requirements
+spike: spike-requirements # run in spike, rebuilds if needed
 	@printf "\n$(YELLOW)CTRL+C q Enter to close Spike$(NO_COLOR)\n"
 	$(SPIKE) $(SPIKE_OPTIONS)
 
-spike-log: spike-requirements
+spike-log: spike-requirements # run in spike with logging, rebuilds if needed
 	$(SPIKE) -l --log=log_${PLATFORM}.txt $(SPIKE_OPTIONS) 
 
-spike-gdb: spike-requirements .gdbinit
+spike-run: # run in spike, without rebuilding, useful for automated tests
+	@printf "\n$(YELLOW)DID NOT REBUILD ANYTHING$(NO_COLOR)\n"
+	@printf "\n$(YELLOW)CTRL+C q Enter to close Spike$(NO_COLOR)\n"
+	$(SPIKE) $(SPIKE_OPTIONS)
+
+spike-gdb: spike-requirements .gdbinit # run in spike waiting for a debugger, rebuilds if needed
 	$(SPIKE) --rbb-port=9824 --halted $(SPIKE_OPTIONS)
 
 # dump device tree

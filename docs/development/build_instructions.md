@@ -11,24 +11,23 @@ on Arch Linux install:
 sudo pacman -S qemu-system-riscv qemu-system-riscv-firmware riscv64-elf-binutils riscv64-elf-gcc riscv64-elf-gdb riscv64-elf-newlib xxd uboot-tools
 ```
 
-on Ubuntu 24.04 install:
+on Ubuntu install:
 ```bash
 sudo apt update
-sudo apt install build-essential make git gcc gcc-riscv64-linux-gnu qemu-system-riscv64 gdb-multiarch xxd u-boot-tools libelf-dev libdw-dev
+sudo apt install build-essential make git gcc clang clang-format gcc-riscv64-linux-gnu qemu-system-riscv64 gdb-multiarch xxd u-boot-tools libelf-dev libdw-dev
 ```
 
 Build all:
 > make
 
-Build only the kernel:
-> make kernel
-
-Run in qemu:
+Run in [qemu](run_on_qemu.md):
 > make qemu
 
 Run in qemu waiting for a debugger:
 > make qemu-gdb
 
+To list additional make targets, e.g. to only rebuild the [kernel](../kernel/kernel.md):
+> make help
 
 ## Build options
 
@@ -74,6 +73,6 @@ The binaries end up in `build_host/root/usr/bin`. See `.vscode/launch.json` on h
 
 
 ---
-**Up:** [README](../README.md)
+**Up:** [getting started with the development](getting_started.md)
 
-[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) |  [overview_directories](overview_directories.md) | [architectures](architectures.md) | [kernel](kernel/kernel.md) | [user space](userspace/userspace.md)
+[automated_tests](automated_tests.md) | [build_instructions](development/build_instructions.md) | [cicd](cicd.md) | [debugging](development/debugging.md) | [overview_directories](development/overview_directories.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) 

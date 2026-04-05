@@ -1,6 +1,6 @@
 # /dev/temp
 
-Temperature sensor of the jh7110 SoC (e.g. on the [Visionfive2](../../run_on_visionfive2.md)).
+Temperature sensor of the jh7110 SoC (e.g. on the [Visionfive2](../../development/run_on_visionfive2.md)).
 
 Reads return the temperature in milli Celsius. Writes to `/dev/temp` are discarded.
 

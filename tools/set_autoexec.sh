@@ -11,4 +11,3 @@ then
 fi
 
 $MKFS --fs build/filesystem.img --in $TEST /autoexec.sh --uid 0 --gid 0 --dmode 0755 --fmode 0755
-make qemu-run

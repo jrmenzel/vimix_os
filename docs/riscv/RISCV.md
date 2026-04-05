@@ -25,4 +25,4 @@ Various specifications: https://wiki.riscv.org/display/HOME/RISC-V+Technical+Spe
 
 
 ---
-**Overview:** [architectures](../architectures.md)
+**Overview:** [architectures](../misc/architectures.md)

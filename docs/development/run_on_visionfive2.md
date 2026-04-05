@@ -1,7 +1,7 @@
 # How to run on Visionfive 2
 
 **Pre-requirement:** 
-1. Build VIMIX (see [build_instructions](build_instructions.md)), make sure `PLATFORM` in `MakefileArch.mk` is set to `visionfive2`.
+1. Build VIMIX (see [build_instructions](development/build_instructions.md)), make sure `PLATFORM` in `MakefileArch.mk` is set to `visionfive2`.
 2. Connect the Visionfive 2 board to UART.
 3. Start a UART terminal on the host PC (e.g. `picocom`)
 
@@ -82,6 +82,6 @@ U-Boot commands can be concatenated:
 
 
 ---
-**Up:** [README](../README.md)
+**Up:** [getting started with the development](getting_started.md)
 
-[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) |  [overview_directories](overview_directories.md) | [architectures](architectures.md) | [kernel](kernel/kernel.md) | [user space](userspace/userspace.md)
+[automated_tests](automated_tests.md) | [build_instructions](development/build_instructions.md) | [cicd](cicd.md) | [debugging](development/debugging.md) | [overview_directories](development/overview_directories.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) 

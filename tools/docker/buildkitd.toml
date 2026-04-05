@@ -1,0 +1,2 @@
+[registry."pandora:5050"]
+ca = ["~/.config/gitlab_ssl/ca.crt"]

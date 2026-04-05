@@ -3,7 +3,7 @@
 
 ## .vscode
 
-VSCode project files setting up defines and include paths for IntelliSense. Also providing [debug](debugging.md) configs.
+VSCode project files setting up defines and include paths for IntelliSense. Also providing [debug](development/debugging.md) configs.
 
 
 ## boot
@@ -13,7 +13,7 @@ Files required to boot on some systems, e.g. [VisionFive2](run_on_visionfive2.md
 
 ## build
 
-Temp build files. See [build_instructions](build_instructions.md) on how to compile the system.
+Temp build files. See [build_instructions](development/build_instructions.md) on how to compile the system.
 - `build/root` Compiled [user space](userspace/userspace.md) apps for VIMIX. This directory will be copied into a [file_system](kernel/file_system/file_system.md) in a file (`filesystem.img`) as the root file system of VIMIX.
 - `build/kernel-vimix` The compiled kernel
 - `build/filesystem.img` The final image of the file system for qemu
@@ -22,7 +22,7 @@ Temp build files. See [build_instructions](build_instructions.md) on how to comp
 
 ## docs
 
-This documentation, see also: [README](../README.md)
+This documentation, see also: [README](../../README.md)
 
 
 ## kernel
@@ -49,13 +49,13 @@ The sub-directory structure was inspired by Linux:
 
 ## root
 
-This directory will become the root of the [file system](kernel/file_system/file_system.md) image. Meaning everything in here will get copied into the image file VIMIX will [mount](userspace/bin/mount.md) as `/`. During the [build process](build_instructions.md) this gets first copied to `build/root` and compiled [userspace](userspace/userspace.md) applications get added before creating the image file.
+This directory will become the root of the [file system](kernel/file_system/file_system.md) image. Meaning everything in here will get copied into the image file VIMIX will [mount](userspace/bin/mount.md) as `/`. During the [build process](development/build_instructions.md) this gets first copied to `build/root` and compiled [userspace](userspace/userspace.md) applications get added before creating the image file.
 
 
 ## tools
 
 Tools for the development environment.
-- Scripts for [debugging](debugging.md).
+- Scripts for [debugging](development/debugging.md).
 
 
 ## usr
@@ -72,6 +72,6 @@ Tools for the development environment.
 
 
 ---
-**Up:** [README](../README.md)
+**Up:** [getting started with the development](getting_started.md)
 
-[build_instructions](build_instructions.md) | [debugging](debugging.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) |  [overview_directories](overview_directories.md) | [architectures](architectures.md) | [kernel](kernel/kernel.md) | [user space](userspace/userspace.md)
+[automated_tests](automated_tests.md) | [build_instructions](development/build_instructions.md) | [cicd](cicd.md) | [debugging](development/debugging.md) | [overview_directories](development/overview_directories.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) 
