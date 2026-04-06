@@ -47,47 +47,50 @@ syserr_t sops_statvfs_default(struct super_block *sb, struct statvfs *to_fill);
 
 /// @brief Can be used for iops_create of read-only file systems.
 /// @return NULL which means no new inodes can get created.
-struct inode *iops_create_default_ro(struct inode *iparent, char name[NAME_MAX],
-                                     mode_t mode, int32_t flags, dev_t device);
+syserr_t iops_create_default_ro(struct inode *parent, struct dentry *dp,
+                                mode_t mode, int32_t flags);
 
-/// @brief Increases reference count of the inode.
-/// @return ip to enable ip = inode_dup(ip1) idiom.
-struct inode *iops_dup_default(struct inode *ip);
+syserr_t iops_mknod_default_ro(struct inode *parent, struct dentry *dp,
+                               mode_t mode, dev_t dev);
+
+syserr_t iops_mkdir_default_ro(struct inode *parent, struct dentry *dp,
+                               mode_t mode);
 
 /// @brief Decreases ref count. Writeable filesystems should override this
 /// to write back the inode if necessary.
 /// @param ip The inode with held reference.
 void iops_put_default(struct inode *ip);
 
-/// @brief Default implementation of iops_dir_link for read-only file systems.
-/// @return 0, as no new links can get created on a read-only file system.
-int iops_dir_link_default_ro(struct inode *dir, char *name, ino_t inum);
+/// @brief Default implementation of iops_link for read-only file systems.
+/// @return -EACCES
+syserr_t iops_link_default_ro(struct dentry *file_from, struct inode *dir_to,
+                              struct dentry *new_link);
+
+/// @brief Default implementation of iops_rmdir for read-only file systems.
+/// @return -EACCES
+syserr_t iops_rmdir_default_ro(struct inode *parent, struct dentry *dp);
 
 /// @brief Default implementation of iops_unlink for read-only file systems.
-/// @return -EOTHER
-syserr_t iops_link_default_ro(struct inode *dir, struct inode *ip,
-                              char name[NAME_MAX]);
-
-/// @brief Default implementation of iops_unlink for read-only file systems.
-/// @return 0, as no files can get deleted on a read-only file system.
-syserr_t iops_unlink_default_ro(struct inode *dir, char name[NAME_MAX],
-                                bool delete_files, bool delete_directories);
+/// @return -EACCES, as no files can get deleted on a read-only file system.
+syserr_t iops_unlink_default_ro(struct inode *parent, struct dentry *dp);
 
 /// @brief Default implementation of iops_truncate for read-only file systems.
-/// @param ip Ignored.
+/// @param dp Ignored.
 /// @param length Ignored.
 /// @return -EACCES to indicate read-only file system.
-syserr_t iops_truncate_default_ro(struct inode *ip, off_t length);
+syserr_t iops_truncate_default_ro(struct dentry *dp, off_t length);
 
 /// @brief Default implementation of iops_chmod for read-only file systems.
-/// @param ip Ignored.
+/// @param dp Ignored.
 /// @param mode Ignored.
 /// @return -EACCES to indicate read-only file system.
-syserr_t iops_chmod_default_ro(struct inode *ip, mode_t mode);
+syserr_t iops_chmod_default_ro(struct dentry *dp, mode_t mode);
 
 /// @brief Default implementation of iops_chown for read-only file systems.
-/// @param ip Ignored.
+/// @param dp Ignored.
 /// @param uid Ignored.
 /// @param gid Ignored.
 /// @return -EACCES to indicate read-only file system.
-syserr_t iops_chown_default_ro(struct inode *ip, uid_t uid, gid_t gid);
+syserr_t iops_chown_default_ro(struct dentry *dp, uid_t uid, gid_t gid);
+
+syserr_t fops_open_default(struct inode *ip, struct file *f);

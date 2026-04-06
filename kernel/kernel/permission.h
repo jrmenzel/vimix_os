@@ -24,6 +24,9 @@ syserr_t check_file_permission(struct process *proc, struct file *f,
 syserr_t check_inode_permission(struct process *proc, struct inode *ip,
                                 perm_mask_t mask);
 
+syserr_t check_dentry_permission(struct process *proc, struct dentry *dp,
+                                 perm_mask_t mask);
+
 perm_mask_t perm_mask_from_open_flags(int32_t flags);
 
 #define ASSERT_IS_FILE_OWNER(proc, ip)                                         \

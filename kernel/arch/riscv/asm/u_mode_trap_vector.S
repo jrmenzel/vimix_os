@@ -94,7 +94,7 @@ u_mode_trap_vector:
     LOAD_REG_FROM_TRAP_FRAME(tp, 4)
 
     # load the address of user_mode_interrupt_handler(), from p->trapframe->kernel_trap
-    LOAD_REG_FROM_TRAP_FRAME(s0, 2)
+    LOAD_REG_FROM_TRAP_FRAME(s1, 2)
 
     # fetch the kernel page table register value, from p->trapframe->kernel_page_table.
     # mmu_set_page_table_reg_value(p->trapframe->kernel_page_table)
@@ -103,7 +103,7 @@ u_mode_trap_vector:
     jal mmu_set_page_table_reg_value
 
     # jump to user_mode_interrupt_handler(), which does not return
-    jr s0
+    jr s1
 
 # Sets satp register including all required barriers.
 # Implemented in assembly to share code with the other kernel code.

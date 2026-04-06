@@ -28,6 +28,7 @@ char *strerror(int errnum)
         CODE_STRING(EACCES, "Permission denied");
         CODE_STRING(EFAULT, "Address fault");
         CODE_STRING(ENOTBLK, "Block device required");
+        CODE_STRING(EEXIST, "File exists");
         CODE_STRING(ENODEV, "No such device");
         CODE_STRING(ENOTDIR, "Not a directory");
         CODE_STRING(EISDIR, "Is a directory");

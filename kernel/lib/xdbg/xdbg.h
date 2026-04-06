@@ -44,8 +44,8 @@ struct debug_info *debug_info_alloc();
 
 void debug_info_free(struct debug_info *info);
 
-struct inode;
-syserr_t debug_info_read(struct debug_info *info, struct inode *ip);
+struct dentry;
+syserr_t debug_info_read(struct debug_info *info, struct dentry *dp);
 
 const struct instruction *debug_info_lookup_instruction(
     const struct debug_info *dbg_info, size_t address);

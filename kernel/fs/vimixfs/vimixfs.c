@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <drivers/rtc.h>
+#include <fs/dentry.h>
 #include <fs/vfs.h>
 #include <fs/vimixfs/bmap.h>
 #include <fs/vimixfs/log.h>
@@ -41,22 +42,24 @@ struct super_operations vimixfs_s_op = {
 // inode operations
 struct inode_operations vimixfs_i_op = {
     iops_create : vimixfs_iops_create,
-    iops_open : vimixfs_iops_open,
-    iops_read_in : vimixfs_iops_read_in,
-    iops_dup : iops_dup_default,
+    iops_mknod : vimixfs_iops_mknod,
+    iops_mkdir : vimixfs_iops_mkdir,
     iops_put : vimixfs_iops_put,
-    iops_dir_lookup : vimixfs_iops_dir_lookup,
-    iops_dir_link : vimixfs_iops_dir_link,
+    iops_lookup : vimixfs_iops_lookup,
     iops_get_dirent : vimixfs_iops_get_dirent,
     iops_read : vimixfs_iops_read,
     iops_link : vimixfs_iops_link,
     iops_unlink : vimixfs_iops_unlink,
+    iops_rmdir : vimixfs_iops_rmdir,
     iops_truncate : vimixfs_iops_truncate,
     iops_chmod : vimixfs_iops_chmod,
     iops_chown : vimixfs_iops_chown
 };
 
-struct file_operations vimixfs_f_op = {fops_write : vimixfs_fops_write};
+struct file_operations vimixfs_f_op = {
+    fops_open : vimixfs_fops_open,
+    fops_write : vimixfs_fops_write
+};
 
 syserr_t vimixfs_init_fs_super_block(struct super_block *sb_in,
                                      const void *data);
@@ -132,72 +135,16 @@ void vimixfs_kill_sb(struct super_block *sb_in)
     kfree(priv);
 }
 
-struct inode *vimixfs_iops_lookup(struct inode *iparent, char name[NAME_MAX],
-                                  mode_t mode, int32_t flags)
-{
-    struct super_block *sb = iparent->i_sb;
-    log_begin_fs_transaction(sb);
-    inode_lock(iparent);
-    struct inode *ip = vimixfs_iops_dir_lookup(iparent, name, NULL);
-    if (ip == NULL)
-    {
-        log_end_fs_transaction(sb);
-        return NULL;
-    }
-
-    inode_unlock_put(iparent);
-    inode_lock(ip);
-    if (S_ISREG(mode) &&
-        (S_ISREG(ip->i_mode) || S_ISCHR(ip->i_mode) || S_ISBLK(ip->i_mode)))
-    {
-        if (flags & O_TRUNC)
-        {
-            // truncate if needed
-            vimixfs_trunc(ip, 0);
-            vimixfs_sops_write_inode(ip);
-        }
-#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
-        strncpy(ip->path, name, PATH_MAX);
-#endif
-        log_end_fs_transaction(sb);
-        return ip;
-    }
-    inode_unlock_put(ip);
-    log_end_fs_transaction(sb);
-    return NULL;
-}
-
 struct inode *vimixfs_iops_create_internal(struct inode *iparent,
-                                           char name[NAME_MAX], mode_t mode,
-                                           int32_t flags, dev_t device)
+                                           const char name[NAME_MAX],
+                                           mode_t mode, int32_t flags,
+                                           dev_t device)
 {
     // if the inode already exists, return it
     inode_lock(iparent);
-    struct inode *ip = vimixfs_iops_dir_lookup(iparent, name, NULL);
-    if (ip != NULL)
-    {
-        inode_unlock(iparent);
-        inode_lock(ip);
-        if (S_ISREG(mode) &&
-            (S_ISREG(ip->i_mode) || S_ISCHR(ip->i_mode) || S_ISBLK(ip->i_mode)))
-        {
-            if (flags & O_TRUNC)
-            {
-                // truncate if needed
-                vimixfs_trunc(ip, 0);
-                vimixfs_sops_write_inode(ip);
-            }
-#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
-            strncpy(ip->path, name, PATH_MAX);
-#endif
-            return ip;
-        }
-        inode_unlock_put(ip);
-        return NULL;
-    }
 
     // create new inode
-    ip = vimixfs_sops_alloc_inode(iparent->i_sb, mode);
+    struct inode *ip = vimixfs_sops_alloc_inode(iparent->i_sb, mode);
     if (ip == NULL)
     {
         inode_unlock(iparent);
@@ -205,6 +152,12 @@ struct inode *vimixfs_iops_create_internal(struct inode *iparent,
     }
 
     inode_lock(ip);
+
+    if (ip->i_sb->i_op == NULL)
+    {
+        panic("vimixfs_iops_create_internal: filesystem has no iop");
+    }
+
     if (device != INVALID_DEVICE)
     {
         // device node
@@ -221,22 +174,19 @@ struct inode *vimixfs_iops_create_internal(struct inode *iparent,
     ip->gid = proc->cred.egid;
     vimixfs_sops_write_inode(ip);
 
-#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
-    strncpy(ip->path, name, PATH_MAX);
-#endif
-
     if (S_ISDIR(mode))
     {
         // Create . and .. entries.
         // No ip->nlink++ for ".": avoid cyclic ref count.
-        if (inode_dir_link(ip, ".", ip->inum) < 0 ||
-            inode_dir_link(ip, "..", iparent->inum) < 0)
+        if (vimixfs_dir_link_unchecked(ip, ".", ip->inum) < 0 ||
+            vimixfs_dir_link_unchecked(ip, "..", iparent->inum) < 0)
         {
             goto fail;
         }
     }
 
-    if (inode_dir_link(iparent, name, ip->inum) < 0)
+    // caller checked that the file does not exist while holding dir lock.
+    if (vimixfs_dir_link_unchecked(iparent, name, ip->inum) < 0)
     {
         goto fail;
     }
@@ -261,47 +211,89 @@ fail:
     return NULL;
 }
 
-struct inode *vimixfs_iops_open(struct inode *iparent, char name[NAME_MAX],
-                                int32_t flags)
+syserr_t vimixfs_fops_open(struct inode *ip, struct file *f)
 {
-    inode_lock(iparent);
-    struct inode *ip = vimixfs_iops_dir_lookup(iparent, name, NULL);
-    inode_unlock(iparent);
-    if (ip == NULL)
-    {
-        // file not found
-        return NULL;
-    }
-
-    if (S_ISREG(ip->i_mode) && flags & O_TRUNC)
+    if (S_ISREG(ip->i_mode) && (f->flags & O_TRUNC))
     {
         // truncate if needed
-        log_begin_fs_transaction(iparent->i_sb);
+        log_begin_fs_transaction(ip->i_sb);
         // lock after starting FS transaction to avoid deadlock
         // test above only read static data of the inode
         inode_lock(ip);
         vimixfs_trunc(ip, 0);
         vimixfs_sops_write_inode(ip);
-        log_end_fs_transaction(iparent->i_sb);
+        inode_unlock(ip);
+        log_end_fs_transaction(ip->i_sb);
     }
-    else
-    {
-        inode_lock(ip);
-    }
-#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
-    strncpy(ip->path, name, PATH_MAX);
-#endif
-    return ip;  // return locked
+
+    return 0;
 }
 
-struct inode *vimixfs_iops_create(struct inode *iparent, char name[NAME_MAX],
-                                  mode_t mode, int32_t flags, dev_t device)
+syserr_t vimixfs_iops_create(struct inode *parent, struct dentry *dp,
+                             mode_t mode, int32_t flags)
 {
-    log_begin_fs_transaction(iparent->i_sb);
+    log_begin_fs_transaction(parent->i_sb);
+    struct inode *ip = vimixfs_iops_create_internal(parent, dp->name, mode,
+                                                    flags, INVALID_DEVICE);
+
+    log_end_fs_transaction(parent->i_sb);
+
+    if (ip == NULL)
+    {
+        return -EFAULT;
+    }
+
+    dentry_lock(dp);
+    dp->ip = inode_get(ip);
+    dentry_unlock(dp);
+
+    inode_unlock_put(ip);
+
+    return (ip == NULL) ? -EFAULT : 0;
+}
+
+syserr_t vimixfs_iops_mknod(struct inode *parent, struct dentry *dp,
+                            mode_t mode, dev_t dev)
+{
+    log_begin_fs_transaction(parent->i_sb);
     struct inode *ip =
-        vimixfs_iops_create_internal(iparent, name, mode, flags, device);
-    log_end_fs_transaction(iparent->i_sb);
-    return ip;
+        vimixfs_iops_create_internal(parent, dp->name, mode, 0, dev);
+    log_end_fs_transaction(parent->i_sb);
+
+    if (ip == NULL)
+    {
+        return -EFAULT;
+    }
+
+    dentry_lock(dp);
+    dp->ip = inode_get(ip);
+    dentry_unlock(dp);
+
+    inode_unlock_put(ip);
+
+    return (ip == NULL) ? -EFAULT : 0;
+}
+
+syserr_t vimixfs_iops_mkdir(struct inode *parent, struct dentry *dp,
+                            mode_t mode)
+{
+    log_begin_fs_transaction(parent->i_sb);
+    struct inode *ip =
+        vimixfs_iops_create_internal(parent, dp->name, mode, 0, INVALID_DEVICE);
+    log_end_fs_transaction(parent->i_sb);
+
+    if (ip == NULL)
+    {
+        return -EFAULT;
+    }
+
+    dentry_lock(dp);
+    dp->ip = inode_get(ip);
+    dentry_unlock(dp);
+
+    inode_unlock_put(ip);
+
+    return (ip == NULL) ? -EFAULT : 0;
 }
 
 struct inode *vimixfs_sops_alloc_inode(struct super_block *sb, mode_t mode)
@@ -453,7 +445,7 @@ syserr_t vimix_sops_statvfs(struct super_block *sb, struct statvfs *to_fill)
     return 0;
 }
 
-void vimixfs_iops_read_in(struct inode *ip)
+void vimixfs_read_inode_metadata(struct inode *ip)
 {
     struct vimixfs_superblock *vsb =
         &((struct vimixfs_sb_private *)ip->i_sb->s_fs_info)->sb;
@@ -522,7 +514,10 @@ void vimixfs_trunc_block(struct inode *ip, uint32_t block_number,
     vimixfs_trunc_block_range(ip, (uint32_t *)bp->data,
                               VIMIXFS_N_INDIRECT_BLOCKS, first_trunc_block);
     bio_release(bp);
-    block_free(ip->i_sb, block_number);
+    if (first_trunc_block == 0)
+    {
+        block_free(ip->i_sb, block_number);
+    }
 }
 
 static inline size_t sub_clamped(size_t val, size_t sub)
@@ -546,7 +541,10 @@ void vimixfs_trunc(struct inode *ip, size_t first_trunc_block)
     {
         vimixfs_trunc_block(ip, xv_ip->addrs[VIMIXFS_INDIRECT_BLOCK_IDX],
                             first_trunc_block);
-        xv_ip->addrs[VIMIXFS_INDIRECT_BLOCK_IDX] = 0;
+        if (first_trunc_block == 0)
+        {
+            xv_ip->addrs[VIMIXFS_INDIRECT_BLOCK_IDX] = 0;
+        }
         first_trunc_block =
             sub_clamped(first_trunc_block, VIMIXFS_N_INDIRECT_BLOCKS);
 
@@ -556,20 +554,36 @@ void vimixfs_trunc(struct inode *ip, size_t first_trunc_block)
             struct buf *bp = bio_read(
                 ip->dev, xv_ip->addrs[VIMIXFS_DOUBLE_INDIRECT_BLOCK_IDX]);
             uint32_t *indirect_block = (uint32_t *)bp->data;
-            for (size_t i = 0; i < VIMIXFS_N_INDIRECT_BLOCKS; i++)
+
+            // first indirect block to truncate
+            size_t first_db = first_trunc_block / VIMIXFS_N_INDIRECT_BLOCKS;
+            size_t db_index = first_trunc_block % VIMIXFS_N_INDIRECT_BLOCKS;
+
+            bool clear_indirect_block = (first_db == 0);
+
+            if (db_index != 0)
             {
-                if (indirect_block[i])
-                {
-                    vimixfs_trunc_block(ip, indirect_block[i],
-                                        first_trunc_block);
-                    first_trunc_block = sub_clamped(first_trunc_block,
-                                                    VIMIXFS_N_INDIRECT_BLOCKS);
-                }
+                vimixfs_trunc_block(ip, indirect_block[first_db], db_index);
+                first_db++;
             }
+
+            while ((first_db < VIMIXFS_N_INDIRECT_BLOCKS) &&
+                   indirect_block[first_db])
+            {
+                vimixfs_trunc_block(ip, indirect_block[first_db], 0);
+                indirect_block[first_db] = 0;
+
+                first_db++;
+            }
+
             bio_release(bp);
-            block_free(ip->i_sb,
-                       xv_ip->addrs[VIMIXFS_DOUBLE_INDIRECT_BLOCK_IDX]);
-            xv_ip->addrs[VIMIXFS_DOUBLE_INDIRECT_BLOCK_IDX] = 0;
+
+            if (clear_indirect_block)
+            {
+                block_free(ip->i_sb,
+                           xv_ip->addrs[VIMIXFS_DOUBLE_INDIRECT_BLOCK_IDX]);
+                xv_ip->addrs[VIMIXFS_DOUBLE_INDIRECT_BLOCK_IDX] = 0;
+            }
         }
     }
 
@@ -604,27 +618,33 @@ struct inode *vimixfs_iget(struct super_block *sb, ino_t inum)
         return ip;  // found existing inode
     }
 
-    // now we need a write lock
-    rwspin_write_lock(&sb->fs_inode_list_lock);
-    // check again, maybe another thread created it in the meantime
-    ip = vimixfs_iget_locked(sb, inum);
-    if (ip)
-    {
-        rwspin_write_unlock(&sb->fs_inode_list_lock);
-        return ip;  // unlikely, but found inode now
-    }
-
-    // Create a new inode
+    // create new inode
+    // Reading the metadata from disk will sleep, so we cannot hold any locks
+    // here.
     struct vimixfs_inode *xv_ip =
         kmalloc(sizeof(struct vimixfs_inode), ALLOC_FLAG_ZERO_MEMORY);
     if (xv_ip == NULL)
     {
-        rwspin_write_unlock(&sb->fs_inode_list_lock);
-        return NULL;
+        return NULL;  // out of memory
     }
     ip = &xv_ip->ino;
-
     inode_init(ip, sb, inum);
+    // read metadata from disk
+    vimixfs_read_inode_metadata(ip);
+
+    // add to inode list
+    rwspin_write_lock(&sb->fs_inode_list_lock);
+    // worst case someone else created it in the meantime
+    struct inode *ip_check = vimixfs_iget_locked(sb, inum);
+    if (ip_check)
+    {
+        // another thread created it in the meantime
+        rwspin_write_unlock(&sb->fs_inode_list_lock);
+        kfree(xv_ip);  // kfree is enough, inode was not fully initialized
+                       // before adding to the list
+        return ip_check;
+    }
+    list_add_tail(&ip->fs_inode_list, &sb->fs_inode_list);
     rwspin_write_unlock(&sb->fs_inode_list_lock);
 
     return ip;
@@ -655,7 +675,7 @@ void vimixfs_iops_put(struct inode *ip)
 
     // If the inode has no links and no other references: truncate and free
     // on disk.
-    if (ip->valid && ip->nlink == 0)
+    if (ip->nlink == 0)
     {
         struct process *proc = get_current();
         bool external_fs_transaction = (proc->debug_log_depth != 0);
@@ -697,15 +717,16 @@ bool inode_is_mounted_fs_root(struct inode *dir)
     return ((dir == dir->i_sb->s_root) && (dir->i_sb->imounted_on));
 }
 
-struct inode *vimixfs_iops_dir_lookup(struct inode *dir, const char *name,
-                                      uint32_t *poff)
+struct inode *vimixfs_lookup_old(struct inode *dir, const char *name,
+                                 uint32_t *poff)
 {
     struct vimixfs_dirent de;
     for (size_t off = 0; off < dir->size; off += sizeof(de))
     {
-        if (inode_read(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
+        if (vimixfs_iops_read(dir, off, (size_t)&de, sizeof(de), false) !=
+            sizeof(de))
         {
-            panic("vimixfs_iops_dir_lookup read error");
+            panic("vimixfs_lookup read error");
         }
         if (de.inum == INVALID_INODE)
         {
@@ -719,15 +740,15 @@ struct inode *vimixfs_iops_dir_lookup(struct inode *dir, const char *name,
             {
                 *poff = off;
             }
-            if (inode_is_mounted_fs_root(dir) &&
-                (file_name_cmp("..", de.name) == 0))
-            {
-                inode_lock(dir->i_sb->imounted_on);
-                struct inode *ret =
-                    VFS_INODE_DIR_LOOKUP(dir->i_sb->imounted_on, "..", poff);
-                inode_unlock(dir->i_sb->imounted_on);
-                return ret;
-            }
+            // if (inode_is_mounted_fs_root(dir) &&
+            //     (file_name_cmp("..", de.name) == 0))
+            //{
+            //     inode_lock(dir->i_sb->imounted_on);
+            //     struct inode *ret =
+            //         VFS_INODE_LOOKUP(dir->i_sb->imounted_on, "..", poff);
+            //     inode_unlock(dir->i_sb->imounted_on);
+            //     return ret;
+            // }
             return vimixfs_iget(dir->i_sb, (ino_t)de.inum);
         }
     }
@@ -735,17 +756,92 @@ struct inode *vimixfs_iops_dir_lookup(struct inode *dir, const char *name,
     return NULL;
 }
 
-int vimixfs_iops_dir_link(struct inode *dir, char *name, ino_t inum)
+struct inode *vimixfs_lookup(struct inode *dir, const char *name,
+                             uint32_t *poff)
+{
+    size_t block_count = (dir->size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    const size_t DIRS_PER_BLOCK = BLOCK_SIZE / sizeof(struct vimixfs_dirent);
+
+    for (size_t block = 0; block < block_count; block++)
+    {
+        size_t addr = bmap_get_block_address(dir, block);
+        if (addr == 0)
+        {
+            return NULL;
+        }
+        struct buf *bp = bio_read(dir->dev, addr);
+
+        for (size_t dir_idx = 0; dir_idx < DIRS_PER_BLOCK; dir_idx++)
+        {
+            uint32_t dir_off =
+                (uint32_t)(dir_idx * sizeof(struct vimixfs_dirent) +
+                           block * BLOCK_SIZE);
+            if (dir_off >= dir->size)
+            {
+                bio_release(bp);
+                return NULL;
+            }
+
+            struct vimixfs_dirent *de =
+                (struct vimixfs_dirent
+                     *)(&bp->data[dir_idx * sizeof(struct vimixfs_dirent)]);
+
+            if (de->inum == INVALID_INODE)
+            {
+                continue;
+            }
+
+            if (file_name_cmp(name, de->name) == 0)
+            {
+                if (poff)
+                {
+                    *poff = dir_off;
+                }
+                // entry matches path element
+                struct inode *ip = vimixfs_iget(dir->i_sb, (ino_t)de->inum);
+                bio_release(bp);
+                return ip;
+            }
+        }
+
+        bio_release(bp);
+    }
+
+    return NULL;
+}
+
+struct dentry *vimixfs_iops_lookup(struct inode *parent, struct dentry *dp)
+{
+    dp->ip = vimixfs_lookup(parent, dp->name, NULL);
+    return dp;
+}
+
+syserr_t vimixfs_dir_link(struct inode *dir, const char *name, ino_t inum)
+{
+    // Check that name is not present.
+    struct inode *ip = vimixfs_lookup(dir, name, NULL);
+    if (ip != NULL)
+    {
+        inode_put(ip);
+        return -EEXIST;
+    }
+
+    return vimixfs_dir_link_unchecked(dir, name, inum);
+}
+
+syserr_t vimixfs_dir_link_unchecked_old(struct inode *dir, const char *name,
+                                        ino_t inum)
 {
     // Look for an empty vimixfs_dirent.
     struct vimixfs_dirent de;
     size_t off;
     for (off = 0; off < dir->size; off += sizeof(de))
     {
-        ssize_t read = inode_read(dir, false, (size_t)&de, off, sizeof(de));
+        ssize_t read =
+            vimixfs_iops_read(dir, off, (size_t)&de, sizeof(de), false);
         if (read != sizeof(de))
         {
-            panic("inode_dir_link read wrong amount of data");
+            panic("vimixfs_dir_link read wrong amount of data");
         }
         if (de.inum == INVALID_INODE)
         {
@@ -759,17 +855,76 @@ int vimixfs_iops_dir_link(struct inode *dir, char *name, ino_t inum)
     ssize_t written = vimixfs_write(dir, false, (size_t)&de, off, sizeof(de));
     if (written != sizeof(de))
     {
-        return -1;
+        return -EOTHER;
     }
 
     return 0;
 }
 
-syserr_t vimixfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
-                                 bool addr_is_userspace, ssize_t seek_pos)
+syserr_t vimixfs_dir_link_unchecked(struct inode *dir, const char *name,
+                                    ino_t inum)
 {
-    if (!S_ISDIR(dir->i_mode) || seek_pos < 0) return -1;
+    size_t block_count = (dir->size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    const size_t DIRS_PER_BLOCK = BLOCK_SIZE / sizeof(struct vimixfs_dirent);
 
+    // look for a free dirent
+    for (size_t block = 0; block < block_count; block++)
+    {
+        size_t addr = bmap_get_block_address(dir, block);
+        if (addr == 0)
+        {
+            return -EOTHER;
+        }
+        struct buf *bp = bio_read(dir->dev, addr);
+
+        for (size_t dir_idx = 0; dir_idx < DIRS_PER_BLOCK; dir_idx++)
+        {
+            uint32_t dir_off =
+                (uint32_t)(dir_idx * sizeof(struct vimixfs_dirent) +
+                           block * BLOCK_SIZE);
+            if (dir_off >= dir->size)
+            {
+                break;
+            }
+
+            struct vimixfs_dirent *de =
+                (struct vimixfs_dirent
+                     *)(&bp->data[dir_idx * sizeof(struct vimixfs_dirent)]);
+
+            if (de->inum == INVALID_INODE)
+            {
+                // found free entry
+                strncpy(de->name, name, VIMIXFS_NAME_MAX);
+                de->inum = (uint32_t)inum;
+
+                struct vimixfs_sb_private *priv =
+                    (struct vimixfs_sb_private *)dir->i_sb->s_fs_info;
+                log_write(&(priv->log), bp);
+                bio_release(bp);
+                return 0;
+            }
+        }
+        bio_release(bp);
+    }
+
+    // none found, try to increase dir size
+    struct vimixfs_dirent de;
+    strncpy(de.name, name, VIMIXFS_NAME_MAX);
+    de.inum = (uint32_t)inum;
+
+    ssize_t written =
+        vimixfs_write(dir, false, (size_t)&de, dir->size, sizeof(de));
+    if (written != sizeof(de))
+    {
+        return -EOTHER;
+    }
+
+    return 0;
+}
+
+syserr_t vimixfs_iops_get_dirent(struct inode *dir, struct dirent *dir_entry,
+                                 ssize_t seek_pos)
+{
     struct vimixfs_dirent vimixfs_dir_entry;
     inode_lock(dir);
     ssize_t new_seek_pos = seek_pos;
@@ -777,9 +932,9 @@ syserr_t vimixfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
     do
     {
         size_t read_bytes;
-        read_bytes =
-            inode_read(dir, false, (size_t)&vimixfs_dir_entry,
-                       (size_t)new_seek_pos, sizeof(struct vimixfs_dirent));
+        read_bytes = vimixfs_iops_read(dir, (size_t)new_seek_pos,
+                                       (size_t)&vimixfs_dir_entry,
+                                       sizeof(struct vimixfs_dirent), false);
         if (read_bytes <= 0)
         {
             inode_unlock(dir);
@@ -796,21 +951,16 @@ syserr_t vimixfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
 
     inode_unlock(dir);
 
-    struct dirent dir_entry;
-    dir_entry.d_ino = vimixfs_dir_entry.inum;
-    dir_entry.d_reclen = sizeof(struct dirent);
-    strncpy(dir_entry.d_name, vimixfs_dir_entry.name, VIMIXFS_NAME_MAX);
-    dir_entry.d_off = (long)(new_seek_pos);
-
-    int32_t res = either_copyout(addr_is_userspace, dir_entry_addr,
-                                 (void *)&dir_entry, sizeof(struct dirent));
-    if (res < 0) return -EFAULT;
+    dir_entry->d_ino = vimixfs_dir_entry.inum;
+    dir_entry->d_reclen = sizeof(struct dirent);
+    strncpy(dir_entry->d_name, vimixfs_dir_entry.name, VIMIXFS_NAME_MAX);
+    dir_entry->d_off = (long)(new_seek_pos);
 
     return (syserr_t)new_seek_pos;
 }
 
-syserr_t vimixfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
-                           size_t off, size_t n)
+syserr_t vimixfs_iops_read(struct inode *ip, size_t off, size_t dst, size_t n,
+                           bool addr_is_userspace)
 {
     if (off > ip->size || off + n < off)
     {
@@ -896,33 +1046,36 @@ syserr_t vimixfs_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
     return tot;
 }
 
-syserr_t vimixfs_iops_link(struct inode *dir, struct inode *ip,
-                           char name[NAME_MAX])
+syserr_t vimixfs_iops_link(struct dentry *file_from, struct inode *dir_to,
+                           struct dentry *new_link)
 {
-    log_begin_fs_transaction(ip->i_sb);
-    inode_lock_two(dir, ip);
+    struct super_block *sb = dir_to->i_sb;
+    log_begin_fs_transaction(sb);
+    inode_lock_2(dir_to, file_from->ip);
 
-    ip->nlink++;
-    vimixfs_sops_write_inode(ip);
-    inode_unlock(ip);
+    file_from->ip->nlink++;
+    vimixfs_sops_write_inode(file_from->ip);
+    inode_unlock(file_from->ip);
 
-    if (inode_dir_link(dir, name, ip->inum) < 0)
+    if (vimixfs_dir_link(dir_to, new_link->name, file_from->ip->inum) < 0)
     {
-        inode_unlock_put(dir);
+        inode_unlock(dir_to);
 
-        inode_lock(ip);
-        ip->nlink--;
-        vimixfs_sops_write_inode(ip);
-        struct super_block *sb =
-            ip->i_sb;  // save sb pointer before ip is freed
-        inode_unlock_put(ip);
+        inode_lock(file_from->ip);
+        file_from->ip->nlink--;
+        vimixfs_sops_write_inode(file_from->ip);
+        inode_unlock(file_from->ip);
         log_end_fs_transaction(sb);
         return -EOTHER;
     }
-    log_end_fs_transaction(ip->i_sb);
+    else
+    {
+        // success
+        new_link->ip = inode_get(file_from->ip);
+    }
+    log_end_fs_transaction(sb);
 
-    inode_unlock_put(dir);
-    inode_put(ip);
+    inode_unlock(dir_to);
 
     return 0;
 }
@@ -936,6 +1089,8 @@ syserr_t vimixfs_fops_write(struct file *f, size_t addr, size_t n)
     // -1; for additional indirect block if write crosses to new block
     const size_t extra_blocks = 5;
 
+    struct inode *ip = f->dp->ip;
+
     ssize_t written_total = 0;
     while (written_total < n)
     {
@@ -944,9 +1099,8 @@ syserr_t vimixfs_fops_write(struct file *f, size_t addr, size_t n)
             (to_write + BLOCK_SIZE - 1) / BLOCK_SIZE;  // round up
 
         size_t client = log_begin_fs_transaction_explicit(
-            f->ip->i_sb, 1 + extra_blocks, to_write_blocks + extra_blocks);
-        size_t reserved = log_get_client_available_blocks(f->ip->i_sb, client);
-        // printk("reserved blocks for write: %zu\n", reserved);
+            ip->i_sb, 1 + extra_blocks, to_write_blocks + extra_blocks);
+        size_t reserved = log_get_client_available_blocks(ip->i_sb, client);
         size_t max_bytes = (reserved - extra_blocks) * BLOCK_SIZE;
 
         if (to_write > max_bytes)
@@ -954,17 +1108,17 @@ syserr_t vimixfs_fops_write(struct file *f, size_t addr, size_t n)
             to_write = max_bytes;
         }
 
-        inode_lock(f->ip);
+        inode_lock(ip);
 
         syserr_t bytes_written =
-            vimixfs_write(f->ip, true, addr + written_total, f->off, to_write);
+            vimixfs_write(ip, true, addr + written_total, f->off, to_write);
         if (bytes_written > 0)
         {
             f->off += bytes_written;
             written_total += bytes_written;
         }
-        inode_unlock(f->ip);
-        log_end_fs_transaction(f->ip->i_sb);
+        inode_unlock(ip);
+        log_end_fs_transaction(ip->i_sb);
 
         if (bytes_written != to_write)
         {
@@ -986,9 +1140,10 @@ static int isdirempty(struct inode *dir)
 
     for (size_t off = 2 * sizeof(de); off < dir->size; off += sizeof(de))
     {
-        if (inode_read(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
+        if (vimixfs_iops_read(dir, off, (size_t)&de, sizeof(de), false) !=
+            sizeof(de))
         {
-            panic("isdirempty: inode_read");
+            panic("isdirempty: vimixfs_iops_read");
         }
 
         if (de.inum != INVALID_INODE)
@@ -999,18 +1154,17 @@ static int isdirempty(struct inode *dir)
     return 1;
 }
 
-syserr_t vimixfs_iops_unlink(struct inode *dir, char name[NAME_MAX],
-                             bool delete_files, bool delete_directories)
+syserr_t vimixfs_iops_unlink(struct inode *parent, struct dentry *dp)
 {
     // save sb pointer in case dir is freed
-    struct super_block *sb = dir->i_sb;
+    struct super_block *sb = parent->i_sb;
     log_begin_fs_transaction(sb);
-    inode_lock(dir);
+    inode_lock(parent);
     uint32_t off;
-    struct inode *ip = vimixfs_iops_dir_lookup(dir, name, &off);
+    struct inode *ip = vimixfs_lookup(parent, dp->name, &off);
     if (ip == NULL)
     {
-        inode_unlock_put(dir);
+        inode_unlock(parent);
         log_end_fs_transaction(sb);
         return -ENOENT;
     }
@@ -1021,42 +1175,75 @@ syserr_t vimixfs_iops_unlink(struct inode *dir, char name[NAME_MAX],
         panic("unlink: nlink < 1");
     }
 
-    syserr_t error = 0;
-    if (S_ISDIR(ip->i_mode) && (!delete_directories))
-    {
-        error = -EISDIR;
-    }
-    if (!S_ISDIR(ip->i_mode) && (!delete_files))
-    {
-        error = -ENOTDIR;
-    }
-    if (S_ISDIR(ip->i_mode) && !isdirempty(ip))
-    {
-        error = -ENOTEMPTY;
-    }
-
-    if (error != 0)
+    if (S_ISDIR(ip->i_mode))
     {
         inode_unlock_put(ip);
-        inode_unlock_put(dir);
+        inode_unlock(parent);
         log_end_fs_transaction(sb);
-        return error;
+        return -EISDIR;
     }
 
     // delete directory entry by over-writing it with zeros:
     struct vimixfs_dirent de;
     memset(&de, 0, sizeof(de));
-    if (vimixfs_write(dir, false, (size_t)&de, off, sizeof(de)) != sizeof(de))
+    if (vimixfs_write(parent, false, (size_t)&de, off, sizeof(de)) !=
+        sizeof(de))
     {
         panic("vimixfs_iops_unlink: vimixfs_write");
     }
 
-    // if (S_ISDIR(ip->i_mode))
-    //{
-    //     dir->nlink--;
-    //     vimixfs_sops_write_inode(dir);
-    // }
-    inode_unlock_put(dir);
+    inode_unlock(parent);
+
+    ip->nlink--;
+    vimixfs_sops_write_inode(ip);
+    inode_unlock_put(ip);
+
+    log_end_fs_transaction(sb);
+
+    return 0;
+}
+
+syserr_t vimixfs_iops_rmdir(struct inode *parent, struct dentry *dp)
+{
+    // save sb pointer in case dir is freed
+    struct super_block *sb = parent->i_sb;
+    log_begin_fs_transaction(sb);
+    inode_lock(parent);
+    uint32_t off;
+    struct inode *ip = vimixfs_lookup(parent, dp->name, &off);
+    if (ip == NULL)
+    {
+        inode_unlock(parent);
+        log_end_fs_transaction(sb);
+        return -ENOENT;
+    }
+    DEBUG_EXTRA_PANIC(ip == dp->ip,
+                      "vimixfs_iops_rmdir: dentry inode mismatch");
+    inode_lock(ip);
+
+    if (ip->nlink < 1)
+    {
+        panic("unlink: nlink < 1");
+    }
+
+    if (!isdirempty(ip))
+    {
+        inode_unlock_put(ip);
+        inode_unlock(parent);
+        log_end_fs_transaction(sb);
+        return -ENOTEMPTY;
+    }
+
+    // delete directory entry by over-writing it with zeros:
+    struct vimixfs_dirent de;
+    memset(&de, 0, sizeof(de));
+    if (vimixfs_write(parent, false, (size_t)&de, off, sizeof(de)) !=
+        sizeof(de))
+    {
+        panic("vimixfs_iops_unlink: vimixfs_write");
+    }
+
+    inode_unlock(parent);
 
     ip->nlink--;
     vimixfs_sops_write_inode(ip);
@@ -1093,127 +1280,159 @@ void clear_block_from(struct inode *ip, size_t block_number, size_t from_byte)
     bio_release(bp);
 }
 
-syserr_t vimixfs_iops_truncate(struct inode *ip, off_t new_size)
+ssize_t trunc_shrink(struct inode *ip, ssize_t new_size, size_t client,
+                     size_t MIN_BLOCKS)
+{
+    while (new_size < ip->size)
+    {
+        if (ip->size % BLOCK_SIZE != 0)
+        {
+            size_t clear_block = ip->size / BLOCK_SIZE;
+            size_t clear_block_start = clear_block * BLOCK_SIZE;
+
+            if (new_size >= clear_block_start)
+            {
+                // same number of blocks, just clear rest of last block
+                size_t clear_start = new_size % BLOCK_SIZE;
+                clear_block_from(ip, clear_block, clear_start);
+                ip->size = new_size;
+                return 0;
+            }
+
+            // remove full last block
+            vimixfs_trunc(ip, clear_block);
+            ip->size = clear_block_start;
+        }
+        else
+        {
+            // size_t diff = ip->size - new_size;
+            // size_t diff_blocks = diff / BLOCK_SIZE;
+            //
+            // if (diff_blocks > 1)
+            //{
+            //    // remove full blocks
+            //    size_t first_trunc_block = ip->size / BLOCK_SIZE -
+            //    diff_blocks; vimixfs_trunc(ip, first_trunc_block); ip->size =
+            //    first_trunc_block * BLOCK_SIZE;
+            //}
+
+            size_t clear_block = ip->size / BLOCK_SIZE - 1;
+            size_t clear_block_start = clear_block * BLOCK_SIZE;
+            ssize_t clear_start = max(clear_block_start, new_size);
+
+            if (clear_start % BLOCK_SIZE != 0)
+            {
+                clear_block_from(ip, clear_block, clear_start);
+            }
+            else
+            {
+                // remove full last block
+                vimixfs_trunc(ip, clear_block);
+            }
+
+            ip->size = clear_start;
+        }
+
+        size_t available_blocks =
+            log_get_client_available_blocks(ip->i_sb, client);
+        if (available_blocks < MIN_BLOCKS) break;
+    }
+    return 0;
+}
+ssize_t trunc_grow(struct inode *ip, ssize_t new_size, size_t client,
+                   size_t MIN_BLOCKS)
+{
+    while (new_size > ip->size)
+    {
+        if ((ip->size / BLOCK_SIZE) == (new_size / BLOCK_SIZE))
+        {
+            // same number of blocks, just to be sure zero rest of last
+            // block
+            size_t clear_start = ip->size % BLOCK_SIZE;
+            clear_block_from(ip, ip->size / BLOCK_SIZE, clear_start);
+            ip->size = new_size;
+        }
+
+        if (ip->size % BLOCK_SIZE != 0)
+        {
+            // clear remainder of already allocated block
+            size_t clear_start = ip->size % BLOCK_SIZE;
+            clear_block_from(ip, ip->size / BLOCK_SIZE, clear_start);
+            size_t max_size = ((ip->size / BLOCK_SIZE) + 1) * BLOCK_SIZE;
+
+            ip->size = min(max_size, new_size);
+        }
+        else
+        {
+            // need to alloc full blocks, will be zeroes already
+            ssize_t next_block = ip->size / BLOCK_SIZE + 1;
+
+            if (bmap_get_block_address(ip, next_block) == 0)
+            {
+                // block could not get allocated, out of space
+                return -ENOSPC;
+            }
+            ip->size += BLOCK_SIZE;
+        }
+
+        size_t available_blocks =
+            log_get_client_available_blocks(ip->i_sb, client);
+        if (available_blocks < MIN_BLOCKS) break;
+    }
+    return 0;
+}
+
+syserr_t vimixfs_iops_truncate(struct dentry *dp, off_t new_size)
 {
     if (new_size > VIMIXFS_MAX_FILE_SIZE_BLOCKS * BLOCK_SIZE)
     {
         return -EFBIG;
     }
 
+    struct inode *ip = dp->ip;
+
     // worst case requirements for a size change <= 1 BLOCK_SIZE:
     const size_t MIN_BLOCKS_FOR_TRUNCATE = 5;
-    ssize_t file_size = -1;
+
     // loop until we have truncated to the desired size
     // because we might need multiple FS transactions
-    do
+    while (ip->size != new_size)
     {
         size_t client = log_begin_fs_transaction_explicit(
             ip->i_sb, MIN_BLOCKS_FOR_TRUNCATE, 5 * MIN_BLOCKS_FOR_TRUNCATE);
 
         inode_lock(ip);
 
-        file_size = ip->size;
-
-        if (new_size != file_size)
+        syserr_t ret = 0;
+        if (new_size < ip->size)
         {
-            while (new_size < file_size)
-            {
-                if (file_size % BLOCK_SIZE != 0)
-                {
-                    size_t clear_block = file_size / BLOCK_SIZE;
-                    ssize_t clear_start =
-                        max(BLOCK_SIZE * clear_block, new_size);
-                    clear_block_from(ip, clear_block, clear_start);
-                    file_size = clear_start;
-                }
-                else
-                {
-                    size_t clear_block = file_size / BLOCK_SIZE - 1;
-                    ssize_t clear_start =
-                        max(clear_block * BLOCK_SIZE, new_size);
-
-                    if (clear_start % BLOCK_SIZE != 0)
-                    {
-                        clear_block_from(ip, clear_block, clear_start);
-                    }
-                    else
-                    {
-                        vimixfs_trunc(ip, clear_block);
-                    }
-
-                    file_size = clear_start;
-                }
-
-                size_t available_blocks =
-                    log_get_client_available_blocks(ip->i_sb, client);
-                if (available_blocks < MIN_BLOCKS_FOR_TRUNCATE) break;
-            }
-
-            while (new_size > file_size)
-            {
-                if ((file_size / BLOCK_SIZE) == (new_size / BLOCK_SIZE))
-                {
-                    // same number of blocks, just to be sure zero rest of last
-                    // block
-                    size_t clear_start = file_size % BLOCK_SIZE;
-                    clear_block_from(ip, file_size / BLOCK_SIZE, clear_start);
-                    file_size = new_size;
-                }
-                else
-                {
-                    if (file_size % BLOCK_SIZE != 0)
-                    {
-                        // clear remainder of already allocated block
-                        size_t clear_start = file_size % BLOCK_SIZE;
-                        clear_block_from(ip, file_size / BLOCK_SIZE,
-                                         clear_start);
-                        size_t max_size =
-                            ((file_size / BLOCK_SIZE) + 1) * BLOCK_SIZE;
-
-                        file_size = min(max_size, new_size);
-                        break;
-                    }
-                    else
-                    {
-                        // need to alloc some blocks, will be zeroes already
-                        ssize_t next_block = file_size / BLOCK_SIZE + 1;
-
-                        if (bmap_get_block_address(ip, next_block) == 0)
-                        {
-                            // block could not allocated, out of space
-                            // free newly allocated blocks
-                            vimixfs_trunc(ip, file_size);
-                            vimixfs_sops_write_inode(ip);
-                            inode_unlock(ip);
-                            log_end_fs_transaction(ip->i_sb);
-                            return -ENOSPC;
-                        }
-                        file_size += BLOCK_SIZE;
-                    }
-                }
-
-                size_t available_blocks =
-                    log_get_client_available_blocks(ip->i_sb, client);
-                if (available_blocks < MIN_BLOCKS_FOR_TRUNCATE) break;
-            }
-
-            ip->size = file_size;
-            vimixfs_sops_write_inode(ip);
+            ret = trunc_shrink(ip, new_size, client, MIN_BLOCKS_FOR_TRUNCATE);
+        }
+        else
+        {
+            ret = trunc_grow(ip, new_size, client, MIN_BLOCKS_FOR_TRUNCATE);
         }
 
+        // update metadata
+        vimixfs_sops_write_inode(ip);
         inode_unlock(ip);
-
         log_end_fs_transaction(ip->i_sb);
 
-        // printk("truncated to %zd (wanted %zd)\n", file_size, new_size);
+        if (ret < 0)
+        {
+            return ret;
+        }
 
-    } while (file_size != new_size);
+        // printk("truncated to %zd (wanted %zd)\n", file_size, new_size);
+    }
 
     return 0;
 }
 
-syserr_t vimixfs_iops_chmod(struct inode *ip, mode_t mode)
+syserr_t vimixfs_iops_chmod(struct dentry *dp, mode_t mode)
 {
+    struct inode *ip = dp->ip;
+
     // will only change the inode data on disk, one block
     log_begin_fs_transaction_explicit(ip->i_sb, 1, 1);
 
@@ -1228,8 +1447,10 @@ syserr_t vimixfs_iops_chmod(struct inode *ip, mode_t mode)
     return 0;
 }
 
-syserr_t vimixfs_iops_chown(struct inode *ip, uid_t uid, gid_t gid)
+syserr_t vimixfs_iops_chown(struct dentry *dp, uid_t uid, gid_t gid)
 {
+    struct inode *ip = dp->ip;
+
     // will only change the inode data on disk, one block
     log_begin_fs_transaction_explicit(ip->i_sb, 1, 1);
 

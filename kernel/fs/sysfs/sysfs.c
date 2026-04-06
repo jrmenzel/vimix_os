@@ -28,22 +28,24 @@ struct super_operations sysfs_s_op = {
 // inode operations
 struct inode_operations sysfs_i_op = {
     iops_create : iops_create_default_ro,
-    iops_open : sysfs_iops_open,
-    iops_read_in : sysfs_iops_read_in,
-    iops_dup : iops_dup_default,
+    iops_mknod : iops_mknod_default_ro,
+    iops_mkdir : iops_mkdir_default_ro,
     iops_put : sysfs_iops_put,
-    iops_dir_lookup : sysfs_iops_dir_lookup,
-    iops_dir_link : iops_dir_link_default_ro,
+    iops_lookup : sysfs_iops_lookup,
     iops_get_dirent : sysfs_iops_get_dirent,
     iops_read : sysfs_iops_read,
     iops_link : iops_link_default_ro,
     iops_unlink : iops_unlink_default_ro,
+    iops_rmdir : iops_rmdir_default_ro,
     iops_truncate : iops_truncate_default_ro,
     iops_chmod : iops_chmod_default_ro,
     iops_chown : iops_chown_default_ro
 };
 
-struct file_operations sysfs_f_op = {fops_write : sysfs_fops_write};
+struct file_operations sysfs_f_op = {
+    fops_open : fops_open_default,
+    fops_write : sysfs_fops_write
+};
 
 // only one sysfs is allowed
 struct super_block *sysfs_super_block = NULL;
@@ -142,7 +144,11 @@ struct sysfs_inode *sysfs_create_inode_from_node(struct sysfs_node *node)
 
     // init base inode
     inode_init(&sys_ip->ino, sb, node->inode_number);
-    sys_ip->ino.valid = true;  // inode has been "read from disk"
+    // add to inode list
+    DEBUG_EXTRA_PANIC(
+        rwspin_write_lock_is_held_by_this_cpu(&sb->fs_inode_list_lock),
+        "sysfs_create_inode_from_node: lock not held");
+    list_add_tail(&sys_ip->ino.fs_inode_list, &sb->fs_inode_list);
 
     if (node->attribute != NULL)
     {
@@ -169,18 +175,17 @@ struct sysfs_inode *sysfs_create_inode_from_node(struct sysfs_node *node)
     return sys_ip;
 }
 
-void sysfs_register_kobject(struct kobject *kobj)
+struct sysfs_node *sysfs_register_kobject(struct kobject *kobj)
 {
     struct kobject *parent = kobj->parent;
     if ((parent == NULL) || (parent->sysfs_nodes == NULL))
     {
         // root kobject or parent not registered
-        sysfs_register_kobject_parent(kobj, NULL);
-        return;
+        return sysfs_register_kobject_parent(kobj, NULL);
     }
 
     struct sysfs_node *parent_sys_node = parent->sysfs_nodes[0];
-    sysfs_register_kobject_parent(kobj, parent_sys_node);
+    return sysfs_register_kobject_parent(kobj, parent_sys_node);
 }
 
 struct sysfs_node *sysfs_register_kobject_parent(
@@ -207,11 +212,6 @@ struct sysfs_node *sysfs_register_kobject_parent(
     struct sysfs_node *dir_node = sysfs_node_alloc_init(kobj, 0, priv);
     if (dir_node == NULL)
     {
-        printk(
-            "sysfs_register_kobject_parent: failed to create sysfs node for "
-            "kobj "
-            "%s\n",
-            kobj->name);
         return NULL;
     }
 
@@ -220,11 +220,6 @@ struct sysfs_node *sysfs_register_kobject_parent(
         struct sysfs_node *node = sysfs_node_alloc_init(kobj, i + 1, priv);
         if (node == NULL)
         {
-            printk(
-                "sysfs_register_kobject_parent: failed to create inode for "
-                "kobj "
-                "%s\n",
-                kobj->name);
             break;
         }
     }
@@ -234,6 +229,7 @@ struct sysfs_node *sysfs_register_kobject_parent(
 
 void sysfs_unregister_kobject(struct kobject *kobj)
 {
+    DEBUG_EXTRA_PANIC(kobj != NULL, "sysfs_unregister_kobject: kobj is NULL");
     if (sysfs_super_block == NULL)
     {
         // ignore if sysfs not initialized yet
@@ -242,12 +238,25 @@ void sysfs_unregister_kobject(struct kobject *kobj)
 
     struct sysfs_sb_private *priv =
         (struct sysfs_sb_private *)sysfs_super_block->s_fs_info;
-    struct sysfs_node *node_dir = kobj->sysfs_nodes[0];
-    rwspin_write_lock(&priv->lock);
-    sysfs_node_free(node_dir, priv);  // frees all children as well
-    rwspin_write_unlock(&priv->lock);
 
-    kfree(kobj->sysfs_nodes);
+    // note: might be partially initialized
+    if (kobj->sysfs_nodes == NULL)
+    {
+        return;
+    }
+
+    struct sysfs_node *node_dir = kobj->sysfs_nodes[0];
+    if (node_dir != NULL)
+    {
+        rwspin_write_lock(&priv->lock);
+        sysfs_node_free(node_dir, priv);  // frees all children as well
+        rwspin_write_unlock(&priv->lock);
+    }
+
+    if (kobj->sysfs_nodes != NULL)
+    {
+        kfree(kobj->sysfs_nodes);
+    }
 }
 
 /// @brief Find an inode by its inode number, inode must be in memory. Inode
@@ -338,27 +347,6 @@ struct inode *sysfs_sops_iget_root(struct super_block *sb)
     return ip;
 }
 
-struct inode *sysfs_iops_open(struct inode *iparent, char name[NAME_MAX],
-                              int32_t flags)
-{
-    inode_lock(iparent);
-    struct inode *ip = sysfs_iops_dir_lookup(iparent, name, NULL);
-    inode_unlock(iparent);
-    if (ip == NULL)
-    {
-        // file not found
-        return NULL;
-    }
-    inode_lock(ip);
-
-#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
-    strncpy(ip->path, name, PATH_MAX);
-#endif
-    return ip;  // return locked
-}
-
-void sysfs_iops_read_in(struct inode *ip) { printk("sysfs_iops_read_in\n"); }
-
 void sysfs_iops_put(struct inode *ip)
 {
     DEBUG_EXTRA_ASSERT(kref_read(&ip->ref) > 0,
@@ -385,78 +373,42 @@ void sysfs_iops_put(struct inode *ip)
     }
 }
 
-struct inode *sysfs_iops_dir_lookup(struct inode *dir, const char *name,
-                                    uint32_t *poff)
+struct dentry *sysfs_iops_lookup(struct inode *parent, struct dentry *dp)
 {
-    if (!S_ISDIR(dir->i_mode)) return NULL;
-
-    struct sysfs_inode *sysfs_dir = sysfs_inode_from_inode(dir);
-
-    if (strcmp(name, ".") == 0)
-    {
-        if (poff) *poff = 0;
-        return iops_dup_default(dir);
-    }
-    if (strcmp(name, "..") == 0)
-    {
-        if (poff) *poff = 1;
-
-        ino_t parent_inum = sysfs_get_parent_inode_number(sysfs_dir);
-        if (parent_inum == INVALID_INODE)
-        {
-            // parent has no valid inode in sysfs -> root
-            inode_lock(dir->i_sb->imounted_on);
-            struct inode *ret =
-                VFS_INODE_DIR_LOOKUP(dir->i_sb->imounted_on, "..", NULL);
-            inode_unlock(dir->i_sb->imounted_on);
-            return ret;
-        }
-        else
-        {
-            struct inode *parent = sysfs_find_inode(dir->i_sb, parent_inum);
-            DEBUG_EXTRA_PANIC(parent != NULL, "SysFS: Parent inode not found");
-            return iops_dup_default(parent);
-        }
-        return NULL;
-    }
-
     struct sysfs_sb_private *priv =
-        (struct sysfs_sb_private *)dir->i_sb->s_fs_info;
+        (struct sysfs_sb_private *)parent->i_sb->s_fs_info;
     rwspin_read_lock(&priv->lock);
 
+    struct sysfs_inode *sysfs_dir = sysfs_inode_from_inode(parent);
     struct list_head *pos;
     list_for_each(pos, &sysfs_dir->node->child_list)
     {
         struct sysfs_node *node = sysfs_node_from_child_list(pos);
-        if (strcmp(node->name, name) == 0)
+        if (strcmp(node->name, dp->name) == 0)
         {
-            struct inode *ip = sysfs_get_inode_from_node(dir->i_sb, node);
-
-            rwspin_read_unlock(&priv->lock);
-            return ip;
+            dp->ip = sysfs_get_inode_from_node(parent->i_sb, node);
+            break;
         }
     }
     rwspin_read_unlock(&priv->lock);
 
-    return NULL;  // not found
+    return dp;
 }
 
-syserr_t sysfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
-                               bool addr_is_userspace, ssize_t seek_pos)
+syserr_t sysfs_iops_get_dirent(struct inode *dir, struct dirent *dir_entry,
+                               ssize_t seek_pos)
 {
-    if (!S_ISDIR(dir->i_mode) || seek_pos < 0) return -1;
     struct sysfs_inode *sysfs_dir = sysfs_inode_from_inode(dir);
 
-    struct dirent dir_entry;
-    dir_entry.d_off = seek_pos + 1;
-    dir_entry.d_reclen = sizeof(struct dirent);
+    dir_entry->d_off = seek_pos + 1;
+    dir_entry->d_reclen = sizeof(struct dirent);
 
     bool found = false;
     if (seek_pos == 0)
     {
         // "."
-        dir_entry.d_ino = dir->inum;
-        strncpy(dir_entry.d_name, ".", MAX_DIRENT_NAME);
+        dir_entry->d_ino = dir->inum;
+        strncpy(dir_entry->d_name, ".", MAX_DIRENT_NAME);
         found = true;
     }
     else if (seek_pos == 1)
@@ -466,14 +418,14 @@ syserr_t sysfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
         if (parent_inum == INVALID_INODE)
         {
             // root
-            dir_entry.d_ino = dir->i_sb->imounted_on->inum;
+            dir_entry->d_ino = dir->i_sb->imounted_on->inum;
         }
         else
         {
-            dir_entry.d_ino = parent_inum;
+            dir_entry->d_ino = parent_inum;
         }
 
-        strncpy(dir_entry.d_name, "..", MAX_DIRENT_NAME);
+        strncpy(dir_entry->d_name, "..", MAX_DIRENT_NAME);
         found = true;
     }
     else
@@ -489,7 +441,7 @@ syserr_t sysfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
             struct sysfs_node *node = sysfs_node_from_child_list(pos);
             if (pos_idx == seek_pos)
             {
-                strncpy(dir_entry.d_name, node->name, MAX_DIRENT_NAME);
+                strncpy(dir_entry->d_name, node->name, MAX_DIRENT_NAME);
                 found = true;
                 break;
             }
@@ -504,19 +456,15 @@ syserr_t sysfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
         return 0;
     }
 
-    dir_entry.d_name[MAX_DIRENT_NAME - 1] = 0;  // ensure null termination
-    int32_t res = either_copyout(addr_is_userspace, dir_entry_addr,
-                                 (void *)&dir_entry, sizeof(struct dirent));
-    if (res < 0) return -EFAULT;
+    dir_entry->d_name[MAX_DIRENT_NAME - 1] = 0;  // ensure null termination
 
     return seek_pos + 1;
 }
 
-syserr_t sysfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
-                         size_t off, size_t n)
+syserr_t sysfs_iops_read(struct inode *ip, size_t off, size_t dst, size_t n,
+                         bool addr_is_userspace)
 {
-    // printk("sysfs_fops_read\n");
-    if (!S_ISREG(ip->i_mode)) return -1;
+    if (!S_ISREG(ip->i_mode)) return -EISDIR;
     struct sysfs_inode *sysfs_ip = sysfs_inode_from_inode(ip);
 
     const struct sysfs_ops *sysfs_ops = sysfs_ip->node->kobj->ktype->sysfs_ops;
@@ -531,18 +479,28 @@ syserr_t sysfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
 
     // can't underflow as index 0 is a directory and above is a test for that
     size_t attribute_idx = sysfs_ip->node->sysfs_node_index - 1;
-    ssize_t res =
+    syserr_t res =
         sysfs_ops->show(sysfs_ip->node->kobj, attribute_idx, dst_buf, n);
+
+    if (res < 0)
+    {
+        // error
+        kfree(dst_buf);
+        return res;
+    }
 
     size_t copy_start = off;
     ssize_t copy_len = max(res - off, 0);
-    if ((res >= 0) && (copy_len > 0))
+    if (copy_len > 0)
     {
         int32_t copy_res = either_copyout(addr_is_userspace, dst,
                                           dst_buf + copy_start, copy_len);
-        if (copy_res < 0) return -EFAULT;
+        if (copy_res < 0)
+        {
+            kfree(dst_buf);
+            return -EFAULT;
+        }
     }
-
     kfree(dst_buf);
 
     return copy_len;
@@ -550,9 +508,9 @@ syserr_t sysfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
 
 syserr_t sysfs_fops_write(struct file *f, size_t addr, size_t n)
 {
-    if (!S_ISREG(f->ip->i_mode)) return -1;
+    if (!S_ISREG(f->dp->ip->i_mode)) return -EISDIR;
 
-    struct sysfs_inode *sysfs_ip = sysfs_inode_from_inode(f->ip);
+    struct sysfs_inode *sysfs_ip = sysfs_inode_from_inode(f->dp->ip);
 
     const struct sysfs_ops *sysfs_ops = sysfs_ip->node->kobj->ktype->sysfs_ops;
     if (sysfs_ops == NULL || sysfs_ops->store == NULL ||
@@ -573,7 +531,7 @@ syserr_t sysfs_fops_write(struct file *f, size_t addr, size_t n)
 
     // can't underflow as index 0 is a directory and above is a test for that
     size_t attribute_idx = sysfs_ip->node->sysfs_node_index - 1;
-    ssize_t res =
+    syserr_t res =
         sysfs_ops->store(sysfs_ip->node->kobj, attribute_idx, dst_buf, n);
 
     kfree(dst_buf);

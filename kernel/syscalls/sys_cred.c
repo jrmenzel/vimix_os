@@ -9,48 +9,124 @@
 #include <kernel/process.h>
 #include <syscalls/syscall.h>
 
-/// @brief Copy out three IDs (uid_t or gid_t) to user space if the provided
-/// pointer is not NULL.
-/// @param proc Calling process.
-/// @param r_id Real id.
-/// @param e_id Effective id.
-/// @param s_id Saved id.
-/// @return 0 on success, -EFAULT on error.
-syserr_t getres_id(struct process *proc, int32_t r_id, int32_t e_id,
-                   int32_t s_id)
+syserr_t do_getresuid(size_t ruid_addr, size_t euid_addr, size_t suid_addr);
+syserr_t do_getresgid(size_t rgid_addr, size_t egid_addr, size_t sgid_addr);
+syserr_t do_setuid(uid_t uid);
+syserr_t do_setgid(gid_t gid);
+syserr_t do_setresuid(uid_t ruid, uid_t euid, uid_t suid);
+syserr_t do_setresgid(gid_t rgid, gid_t egid, gid_t sgid);
+
+syserr_t sys_getresuid()
 {
-    // parameter 0: uid_t *ruid or gid_t *rgid
-    size_t rid;
-    argaddr(0, &rid);
+    // parameter 0: uid_t *ruid
+    size_t ruid_addr;
+    argaddr(0, &ruid_addr);
 
-    // parameter 1: uid_t *euid or gid_t *egid
-    size_t eid;
-    argaddr(1, &eid);
+    // parameter 1: uid_t *euid
+    size_t euid_addr;
+    argaddr(1, &euid_addr);
 
-    // parameter 2: uid_t *suid or gid_t *sgid
-    size_t sid;
-    argaddr(2, &sid);
+    // parameter 2: uid_t *suid
+    size_t suid_addr;
+    argaddr(2, &suid_addr);
 
-    if (rid != 0)
+    return do_getresuid(ruid_addr, euid_addr, suid_addr);
+}
+
+syserr_t sys_getresgid()
+{
+    // parameter 0: gid_t *rgid
+    size_t rgid_addr;
+    argaddr(0, &rgid_addr);
+
+    // parameter 1: gid_t *egid
+    size_t egid_addr;
+    argaddr(1, &egid_addr);
+
+    // parameter 2: gid_t *sgid
+    size_t sgid_addr;
+    argaddr(2, &sgid_addr);
+
+    return do_getresgid(rgid_addr, egid_addr, sgid_addr);
+}
+
+syserr_t sys_setuid()
+{
+    // parameter 0: uid_t uid
+    int32_t uid;
+    argint(0, &uid);
+
+    return do_setuid((uid_t)uid);
+}
+
+syserr_t sys_setgid()
+{
+    // parameter 0: gid_t gid
+    int32_t gid;
+    argint(0, &gid);
+
+    return do_setgid((gid_t)gid);
+}
+
+syserr_t sys_setresuid()
+{
+    // parameter 0: uid_t ruid
+    int32_t ruid;
+    argint(0, &ruid);
+
+    // parameter 1: uid_t euid
+    int32_t euid;
+    argint(1, &euid);
+
+    // parameter 2: uid_t suid
+    int32_t suid;
+    argint(2, &suid);
+
+    return do_setresuid((uid_t)ruid, (uid_t)euid, (uid_t)suid);
+}
+
+syserr_t sys_setresgid()
+{
+    // parameter 0: gid_t rgid
+    int32_t rgid;
+    argint(0, &rgid);
+
+    // parameter 1: gid_t egid
+    int32_t egid;
+    argint(1, &egid);
+
+    // parameter 2: gid_t sgid
+    int32_t sgid;
+    argint(2, &sgid);
+
+    return do_setresgid((gid_t)rgid, (gid_t)egid, (gid_t)sgid);
+}
+
+/// Helper function to copy out up to three IDs to user space.
+syserr_t copy_out_ids(struct process *proc, size_t addr_0, size_t addr_1,
+                      size_t addr_2, int32_t value_0, int32_t value_1,
+                      int32_t value_2)
+{
+    if (addr_0 != 0)
     {
-        if (uvm_copy_out(proc->pagetable, rid, (char *)&r_id, sizeof(int32_t)) <
-            0)
+        if (uvm_copy_out(proc->pagetable, addr_0, (char *)&value_0,
+                         sizeof(int32_t)) < 0)
         {
             return -EFAULT;
         }
     }
-    if (eid != 0)
+    if (addr_1 != 0)
     {
-        if (uvm_copy_out(proc->pagetable, eid, (char *)&e_id, sizeof(int32_t)) <
-            0)
+        if (uvm_copy_out(proc->pagetable, addr_1, (char *)&value_1,
+                         sizeof(int32_t)) < 0)
         {
             return -EFAULT;
         }
     }
-    if (sid != 0)
+    if (addr_2 != 0)
     {
-        if (uvm_copy_out(proc->pagetable, sid, (char *)&s_id, sizeof(int32_t)) <
-            0)
+        if (uvm_copy_out(proc->pagetable, addr_2, (char *)&value_2,
+                         sizeof(int32_t)) < 0)
         {
             return -EFAULT;
         }
@@ -59,25 +135,31 @@ syserr_t getres_id(struct process *proc, int32_t r_id, int32_t e_id,
     return 0;
 }
 
-syserr_t sys_getresuid()
+syserr_t do_getresuid(size_t ruid_addr, size_t euid_addr, size_t suid_addr)
 {
     struct process *proc = get_current();
-    return getres_id(proc, proc->cred.uid, proc->cred.euid, proc->cred.suid);
+    uid_t ruid = proc->cred.uid;
+    uid_t euid = proc->cred.euid;
+    uid_t suid = proc->cred.suid;
+
+    return copy_out_ids(proc, ruid_addr, euid_addr, suid_addr, ruid, euid,
+                        suid);
 }
 
-syserr_t sys_getresgid()
+syserr_t do_getresgid(size_t rgid_addr, size_t egid_addr, size_t sgid_addr)
 {
     struct process *proc = get_current();
-    return getres_id(proc, proc->cred.gid, proc->cred.egid, proc->cred.sgid);
+    gid_t rgid = proc->cred.gid;
+    gid_t egid = proc->cred.egid;
+    gid_t sgid = proc->cred.sgid;
+
+    return copy_out_ids(proc, rgid_addr, egid_addr, sgid_addr, rgid, egid,
+                        sgid);
 }
 
-syserr_t sys_setuid()
+syserr_t do_setuid(uid_t uid)
 {
     struct process *proc = get_current();
-
-    // parameter 0: uid_t uid
-    int32_t uid;
-    argint(0, &uid);
 
     if (IS_SUPERUSER(&proc->cred))
     {
@@ -99,19 +181,15 @@ syserr_t sys_setuid()
     return 0;
 }
 
-syserr_t sys_setgid()
+syserr_t do_setgid(gid_t gid)
 {
     struct process *proc = get_current();
 
-    // parameter 0: gid_t gid
-    int32_t gid;
-    argint(0, &gid);
-
     if (IS_SUPERUSER(&proc->cred))
     {
-        proc->cred.gid = (gid_t)gid;
-        proc->cred.egid = (gid_t)gid;
-        proc->cred.sgid = (gid_t)gid;
+        proc->cred.gid = gid;
+        proc->cred.egid = gid;
+        proc->cred.sgid = gid;
     }
     else
     {
@@ -121,27 +199,15 @@ syserr_t sys_setgid()
         {
             return -EPERM;
         }
-        proc->cred.egid = (gid_t)gid;
+        proc->cred.egid = gid;
     }
 
     return 0;
 }
 
-syserr_t sys_setresuid()
+syserr_t do_setresuid(uid_t ruid, uid_t euid, uid_t suid)
 {
     struct process *proc = get_current();
-
-    // parameter 0: uid_t ruid
-    int32_t ruid;
-    argint(0, &ruid);
-
-    // parameter 1: uid_t euid
-    int32_t euid;
-    argint(1, &euid);
-
-    // parameter 2: uid_t suid
-    int32_t suid;
-    argint(2, &suid);
 
     if (IS_NOT_SUPERUSER(&proc->cred))
     {
@@ -164,21 +230,9 @@ syserr_t sys_setresuid()
     return 0;
 }
 
-syserr_t sys_setresgid()
+syserr_t do_setresgid(gid_t rgid, gid_t egid, gid_t sgid)
 {
     struct process *proc = get_current();
-
-    // parameter 0: gid_t rgid
-    int32_t rgid;
-    argint(0, &rgid);
-
-    // parameter 1: gid_t egid
-    int32_t egid;
-    argint(1, &egid);
-
-    // parameter 2: gid_t sgid
-    int32_t sgid;
-    argint(2, &sgid);
 
     if (IS_NOT_SUPERUSER(&proc->cred))
     {

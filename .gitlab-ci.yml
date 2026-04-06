@@ -15,15 +15,15 @@ variables:
 
 # needs clang 20 or newer, so requires Ubuntu 25.04 or newer
 format:
-  image: pandora:5050/robert/vimixos/ci-image:25.04
+  image: pandora:5050/robert/vimixos/ci-image:26.04
   allow_failure: true
   stage: initial_checks
   script:
     - tools/tests/check_formatting.sh
 
-# build with GCC analyzer and boot VIMIX on a recent Ubuntu
-build_analyze_2504:
-  image: pandora:5050/robert/vimixos/ci-image:25.04
+# build with GCC analyzer on a recent Ubuntu
+build_analyze_2604:
+  image: pandora:5050/robert/vimixos/ci-image:26.04
   stage: initial_checks
   script:
     - eval "make $BUILD_PARAMS ANALYZE=1"
@@ -37,7 +37,6 @@ build_analyze_2504:
 
 # Build all platforms on GCC 13
 build_qemu32_deb:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: build
   script:
     - eval "make $BUILD_PARAMS PLATFORM=qemu32 BUILD_TYPE=debug"
@@ -50,7 +49,6 @@ build_qemu32_deb:
     expire_in: 1 week
 
 build_qemu32_rel:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: build
   script:
     - eval "make $BUILD_PARAMS PLATFORM=qemu32 BUILD_TYPE=release"
@@ -63,7 +61,6 @@ build_qemu32_rel:
     expire_in: 1 week
 
 build_qemu64_deb:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: build
   script:
     - eval "make $BUILD_PARAMS PLATFORM=qemu64 BUILD_TYPE=debug"
@@ -76,7 +73,6 @@ build_qemu64_deb:
     expire_in: 1 week
 
 build_qemu64_rel:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: build
   script:
     - eval "make $BUILD_PARAMS PLATFORM=qemu64 BUILD_TYPE=release"
@@ -89,7 +85,6 @@ build_qemu64_rel:
     expire_in: 1 week
 
 build_spike32_deb:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: build
   script:
     - eval "make $BUILD_PARAMS PLATFORM=spike32 BUILD_TYPE=debug"
@@ -102,7 +97,6 @@ build_spike32_deb:
     expire_in: 1 week
 
 build_spike32_rel:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: build
   script:
     - eval "make $BUILD_PARAMS PLATFORM=spike32 BUILD_TYPE=release"
@@ -115,7 +109,6 @@ build_spike32_rel:
     expire_in: 1 week
 
 build_spike64_deb:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: build
   script:
     - eval "make $BUILD_PARAMS PLATFORM=spike64 BUILD_TYPE=debug"
@@ -128,7 +121,6 @@ build_spike64_deb:
     expire_in: 1 week
 
 build_spike64_rel:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: build
   script:
     - eval "make $BUILD_PARAMS PLATFORM=spike64 BUILD_TYPE=release"
@@ -141,7 +133,6 @@ build_spike64_rel:
     expire_in: 1 week
 
 build_visionfive2_deb:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: build
   script:
     - eval "make $BUILD_PARAMS PLATFORM=visionfive2 BUILD_TYPE=debug"
@@ -154,7 +145,6 @@ build_visionfive2_deb:
     expire_in: 1 week
 
 build_visionfive2_rel:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: build
   script:
     - eval "make $BUILD_PARAMS PLATFORM=visionfive2 BUILD_TYPE=release"
@@ -169,7 +159,6 @@ build_visionfive2_rel:
 # tests
 
 usertests_release:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: usertests
   needs:
     - job: build_qemu64_rel
@@ -183,7 +172,6 @@ usertests_release:
     expire_in: 1 week
 
 usertests_release_32:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: usertests
   needs:
     - job: build_qemu32_rel
@@ -197,7 +185,6 @@ usertests_release_32:
     expire_in: 1 week
 
 usertests_debug:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: usertests
   needs:
     - job: build_qemu64_deb
@@ -211,7 +198,6 @@ usertests_debug:
     expire_in: 1 week
 
 fork_test:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: usertests
   needs:
     - job: build_qemu64_rel
@@ -225,7 +211,6 @@ fork_test:
     expire_in: 1 week
 
 stack_grows_test:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: usertests
   needs:
     - job: build_qemu64_rel
@@ -239,7 +224,6 @@ stack_grows_test:
     expire_in: 1 week
 
 grind_test:
-  image: pandora:5050/robert/vimixos/ci-image:24.04
   stage: usertests
   needs:
     - job: build_qemu64_rel

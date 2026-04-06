@@ -51,6 +51,12 @@ void kalloc_init(struct Minimal_Memory_Map *memory_map);
 /// Returns the number of 4K allocations currently used.
 size_t kalloc_get_allocation_count();
 
+/// @brief Returns the number of bytes allocated excluding
+/// slab management overhead. This is intended for more comparable
+/// values ignoring slab fragmentation. Used by user space test apps to detecct
+/// kernel memory leaks.
+size_t kalloc_get_memory_allocated();
+
 /// @brief Returns total memory in bytes
 size_t kalloc_get_total_memory();
 

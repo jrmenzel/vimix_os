@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <fs/dentry.h>
+#include <fs/vfs_operations.h>
 #include <kernel/errno.h>
 #include <kernel/fs.h>
 #include <kernel/string.h>
@@ -22,10 +24,11 @@ void debug_info_free(struct debug_info *info)
 
 const uint8_t DEBUG_INFO_MAGIC[8] = XDBG_MAGIC;
 
-syserr_t debug_info_read(struct debug_info *info, struct inode *ip)
+syserr_t debug_info_read(struct debug_info *info, struct dentry *dp)
 {
     struct dbg_file_header hdr;
-    size_t header_read = inode_read(ip, false, (size_t)&hdr, 0, sizeof(hdr));
+    size_t header_read =
+        VFS_INODE_READ_KERNEL(dp->ip, 0, (size_t)&hdr, sizeof(hdr));
     if (header_read != sizeof(hdr))
     {
         printk("Failed to read debug info header\n");
@@ -66,8 +69,9 @@ syserr_t debug_info_read(struct debug_info *info, struct inode *ip)
             return -ENOMEM;
         }
 
-        size_t read_bytes = inode_read(ip, false, (size_t)info->cu_name_list,
-                                       sizeof(hdr), info->cu_name_list_size);
+        size_t read_bytes = VFS_INODE_READ_KERNEL(dp->ip, sizeof(hdr),
+                                                  (size_t)info->cu_name_list,
+                                                  info->cu_name_list_size);
         if (read_bytes != info->cu_name_list_size)
         {
             printk("Failed to read CU names\n");
@@ -93,8 +97,9 @@ syserr_t debug_info_read(struct debug_info *info, struct inode *ip)
         }
         info->instruction_alloc_order = alloc_order;
 
-        size_t read_bytes = inode_read(ip, false, (size_t)info->instructions,
-                                       instructions_offset, bytes_to_read);
+        size_t read_bytes =
+            VFS_INODE_READ_KERNEL(dp->ip, instructions_offset,
+                                  (size_t)info->instructions, bytes_to_read);
         if (read_bytes != bytes_to_read)
         {
             printk("Failed to read instruction table\n");

@@ -4,6 +4,7 @@
 // panic handling.
 //
 
+#include <fs/fs_lookup.h>
 #include <init/main.h>
 #include <kernel/ipi.h>
 #include <kernel/kernel.h>
@@ -107,6 +108,9 @@ void debug_print_ra(size_t ra)
         // try to find calling instruction,
         // can be 2 bytes or 4 bytes before return address
         const struct instruction *instr;
+        // instr = debug_info_lookup_instruction(g_kernel_debug_info, ra);
+        // debug_info_print_instruction(g_kernel_debug_info, instr);
+        printk(" caller: ");
         instr = debug_info_lookup_caller(g_kernel_debug_info, ra);
         debug_info_print_instruction(g_kernel_debug_info, instr);
     }
@@ -151,21 +155,26 @@ void debug_print_call_stack_kernel_fp(size_t frame_pointer)
 syserr_t panic_load_debug_symbols(const char *debug_file_path)
 {
     syserr_t error = 0;
-    struct inode *ip = inode_from_path(debug_file_path, &error);
-    if (ip == NULL)
+    struct dentry *dp = dentry_from_path(debug_file_path, &error);
+    if (dp == NULL)
     {
         return error;
+    }
+    if (dentry_is_invalid(dp))
+    {
+        dentry_put(dp);
+        return -ENOENT;
     }
 
     struct debug_info *xdbg_info = debug_info_alloc();
     if (xdbg_info == NULL)
     {
-        inode_put(ip);
+        dentry_put(dp);
         return -ENOMEM;
     }
 
-    inode_lock(ip);
-    syserr_t ret = debug_info_read(xdbg_info, ip);
+    inode_lock(dp->ip);
+    syserr_t ret = debug_info_read(xdbg_info, dp);
     if (ret < 0)
     {
         printk("Loading kernel debug symbols from %s failed.\n",
@@ -181,7 +190,8 @@ syserr_t panic_load_debug_symbols(const char *debug_file_path)
         g_kernel_debug_info = xdbg_info;
         printk("Loaded kernel debug symbols from %s.\n", debug_file_path);
     }
-    inode_unlock_put(ip);
+    inode_unlock(dp->ip);
+    dentry_put(dp);
 
     return ret;
 }

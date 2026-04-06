@@ -115,7 +115,7 @@ struct process
     struct context context;       ///< context_switch() here to run process
     struct file *files[MAX_FILES_PER_PROCESS];  ///< Open files. Indexed by a
                                                 ///< FILE_DESCRIPTOR value.
-    struct inode *cwd;                          ///< Current Working Directory
+    struct dentry *cwd_dentry;                  ///< Current Working Directory
 
     char name[MAX_PROC_DEBUG_NAME];  ///< Process name (debugging)
 #ifdef CONFIG_DEBUG

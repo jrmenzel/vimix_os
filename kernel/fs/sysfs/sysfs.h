@@ -6,7 +6,7 @@
 
 void sysfs_init();
 
-void sysfs_register_kobject(struct kobject *kobj);
+struct sysfs_node *sysfs_register_kobject(struct kobject *kobj);
 void sysfs_unregister_kobject(struct kobject *kobj);
 
 syserr_t sysfs_init_fs_super_block(struct super_block *sb_in, const void *data);
@@ -19,31 +19,14 @@ struct inode *sysfs_sops_alloc_inode(struct super_block *sb, mode_t mode);
 
 int sysfs_sops_write_inode(struct inode *ip);
 
-struct inode *sysfs_iops_create(struct inode *iparent, char name[NAME_MAX],
-                                mode_t mode, int32_t flags, dev_t device);
-
-struct inode *sysfs_iops_open(struct inode *iparent, char name[NAME_MAX],
-                              int32_t flags);
-
-void sysfs_iops_read_in(struct inode *ip);
-
 void sysfs_iops_put(struct inode *ip);
 
-struct inode *sysfs_iops_dir_lookup(struct inode *dir, const char *name,
-                                    uint32_t *poff);
+struct dentry *sysfs_iops_lookup(struct inode *parent, struct dentry *dp);
 
-int sysfs_iops_dir_link(struct inode *dir, char *name, ino_t inum);
+syserr_t sysfs_iops_get_dirent(struct inode *dir, struct dirent *dir_entry,
+                               ssize_t seek_pos);
 
-syserr_t sysfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
-                               bool addr_is_userspace, ssize_t seek_pos);
-
-syserr_t sysfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
-                         size_t off, size_t n);
-
-syserr_t sysfs_iops_link(struct inode *dir, struct inode *ip,
-                         char name[NAME_MAX]);
-
-syserr_t sysfs_iops_unlink(struct inode *dir, char name[NAME_MAX],
-                           bool delete_files, bool delete_directories);
+syserr_t sysfs_iops_read(struct inode *ip, size_t off, size_t dst, size_t n,
+                         bool addr_is_userspace);
 
 syserr_t sysfs_fops_write(struct file *f, size_t addr, size_t n);

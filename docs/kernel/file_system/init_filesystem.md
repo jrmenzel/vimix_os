@@ -26,8 +26,6 @@ Lastly [init](../../userspace/bin/init.md) will mount [/dev](devfs/devfs.md) and
 
 
 ---
-**Overview:** [kernel](../kernel.md) | [file_system](file_system.md)
+**Overview:** [kernel](kernel.md) | [file_system](file_system.md)
 
-**Boot:** [boot_process](../overview/boot_process.md) | [init_overview](../overview/init_overview.md)
-
-**File System:** [init_filesystem](init_filesystem.md) | [vfs](vfs.md) | [vimixfs](vimixfs/vimixfs.md) | [devfs](devfs.md) | [sysfs](sysfs.md) | [block_io](block_io.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)
+**File System:** [init_filesystem](init_filesystem.md) | [vfs](vfs.md) | [vimixfs](vimixfs/vimixfs.md) | [devfs](devfs.md) | [sysfs](sysfs.md) | [block_io](block_io.md) | [dentry_cache](dentry_cache.md) | [inode](inode.md) | [file](file.md) | [directory](directory.md)

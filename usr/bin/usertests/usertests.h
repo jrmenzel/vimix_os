@@ -44,7 +44,7 @@ void prepare_test_environment();
 void reset_test_environment();
 
 // get free memory to check for leaks
-size_t countfree();
+size_t memory_allocated();
 
 // all helpers below call exit(1) on failure of testing
 

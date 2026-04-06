@@ -36,9 +36,6 @@
 /// some extra API usage tests
 #define CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
 
-/// stores the filename / last element of path in an inode for easier debugging
-#define CONFIG_DEBUG_INODE_PATH_NAME
-
 #else  // CONFIG_DEBUG
 /// allows to query more system info on crashes if NOT set
 #ifndef _SHUTDOWN_ON_PANIC

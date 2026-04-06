@@ -29,7 +29,11 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/rtc.o \
 	drivers/syscon.o \
 	drivers/virtio_disk.o \
+	fs/dentry.o \
+	fs/dentry_cache.o \
+	fs/dentry_cache_sysfs.o \
 	fs/fs.o \
+	fs/fs_lookup.o \
 	fs/mount.o \
 	fs/sysfs/sys_kernel.o \
 	fs/sysfs/sysfs_helper.o \
@@ -71,6 +75,8 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	syscalls/sys_file_meta.o \
 	syscalls/sys_filesystem.o \
 	syscalls/sys_ipc.o \
+	syscalls/sys_mk.o \
+	syscalls/sys_link.o \
 	syscalls/sys_system.o \
 	syscalls/sys_process.o \
 	syscalls/syscall.o \

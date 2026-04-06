@@ -131,6 +131,7 @@ int main(int argc, char *argv[])
     size_t mem_total = get_from_sysfs("/sys/kmem/mem_total");
     size_t mem_free = get_from_sysfs("/sys/kmem/mem_free");
     size_t pages_alloc = get_from_sysfs("/sys/kmem/pages_alloc");
+    size_t mem_alloc = get_from_sysfs("/sys/kmem/mem_alloc");
 
     long page_size = sysconf(_SC_PAGE_SIZE);
 
@@ -144,6 +145,7 @@ int main(int argc, char *argv[])
     print_line("Free memory", mem_free);
     print_line("Used memory", mem_total - mem_free);
     print_line("Allocated", pages_alloc * page_size);
+    print_line("mem_alloc", mem_alloc);
     print_bio_cache();
 
     print_caches();

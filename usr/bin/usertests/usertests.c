@@ -13,7 +13,7 @@
 bool run(void f(char *), char *s)
 {
     uint64_t start_time = get_time_ms();
-    size_t pages_free_start = countfree();
+    size_t alloc_start = memory_allocated();
     printf("test %s: ", s);
 
     // need a flush, because if the print from above is in the processes "todo
@@ -37,27 +37,27 @@ bool run(void f(char *), char *s)
     wait(&xstatus);
     xstatus = WEXITSTATUS(xstatus);
 
-    size_t pages_free_end = countfree();
+    size_t alloc_end = memory_allocated();
     if (xstatus != 0)
     {
         printf("FAILED\n");
-        if (pages_free_start != pages_free_end)
+        if (alloc_start != alloc_end)
         {
             printf(
-                " + leaked memory; free at start: %zu, free at end: "
+                " + leaked memory; used at start: %zu, used at end: "
                 "%zu\n",
-                pages_free_start, pages_free_end);
+                alloc_start, alloc_end);
         }
     }
     else
     {
-        if (pages_free_start != pages_free_end)
+        if (alloc_start != alloc_end)
         {
             printf(
-                "FAILED due to leaked memory; free at start: %zu, free at end: "
+                "FAILED due to leaked memory; used at start: %zu, used at end: "
                 "%zu\n",
-                pages_free_start, pages_free_end);
-            xstatus = 1;  // fail the test
+                alloc_start, alloc_end);
+            xstatus = 0;  // fail the test
         }
         else
         {
@@ -94,7 +94,7 @@ int drivetests(int quick, int continuous, char *justone)
     do
     {
         printf("usertests starting\n");
-        size_t pages_free_start = countfree();
+        size_t pages_free_start = memory_allocated();
         if (runtests(quicktests_common, justone) ||
             runtests(quicktests, justone))
         {
@@ -116,7 +116,7 @@ int drivetests(int quick, int continuous, char *justone)
             }
         }
 
-        size_t pages_free_end = countfree();
+        size_t pages_free_end = memory_allocated();
         if (pages_free_start != pages_free_end)
         {
             printf(

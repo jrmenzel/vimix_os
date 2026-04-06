@@ -9,12 +9,10 @@ Run VIMIX on one of the [supported platforms](../misc/architectures.md):
 - The slower but very accurate [Spike](run_on_spike.md) simulator.
 - The [VisionFive2](run_on_visionfive2.md) single board computer.
 
-Get an [overview of the directory layout](overview_directories.md).
-
-See [automated_tests](automated_tests.md).
-
-See [debugging](debugging.md) for general debug hints.
-
+Useful pointers:
+- [overview of the directory layout](overview_directories.md).
+- how [automated_tests](automated_tests.md) work.
+- Some [debugging](debugging.md) hints.
 
 ---
 **Up:** [README](../../README.md)

@@ -4,6 +4,7 @@
 #include <drivers/rtc.h>
 #include <fs/devfs/devfs.h>
 #include <kernel/errno.h>
+#include <kernel/file.h>
 #include <kernel/param.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
@@ -27,8 +28,6 @@ struct
 
 syserr_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data);
 void devfs_kill_sb(struct super_block *sb_in);
-struct inode *devfs_iops_dir_lookup(struct inode *dir, const char *name,
-                                    uint32_t *poff);
 
 struct inode *devfs_sops_iget_root(struct super_block *sb)
 {
@@ -46,106 +45,54 @@ struct super_operations devfs_s_op = {
     statvfs : sops_statvfs_default
 };
 
-struct inode *devfs_iops_open(struct inode *iparent, char name[NAME_MAX],
-                              int32_t flags)
+struct dentry *devfs_iops_lookup(struct inode *parent, struct dentry *dp)
 {
-    inode_lock(iparent);
-    struct inode *ip = devfs_iops_dir_lookup(iparent, name, NULL);
-    inode_unlock(iparent);
-    if (ip == NULL)
-    {
-        // file not found
-        return NULL;
-    }
-    inode_lock(ip);
-
-#if defined(CONFIG_DEBUG_INODE_PATH_NAME)
-    strncpy(ip->path, name, PATH_MAX);
-#endif
-    // printk("devfs_iops_open %s from %d\n", name, iparent->inum);
-    return ip;  // return locked
-}
-
-void devfs_iops_read_in(struct inode *ip)
-{
-    // all inodes are defined statically at init, nothing to do here
-}
-
-struct inode *devfs_iops_dir_lookup(struct inode *dir, const char *name,
-                                    uint32_t *poff)
-{
-    if (!S_ISDIR(dir->i_mode)) return NULL;
-
-    if (strcmp(name, ".") == 0)
-    {
-        if (poff) *poff = 0;
-        return iops_dup_default(dir);
-    }
-    if (strcmp(name, "..") == 0)
-    {
-        if (poff) *poff = 1;
-
-        inode_lock(dir->i_sb->imounted_on);
-        struct inode *ret =
-            VFS_INODE_DIR_LOOKUP(dir->i_sb->imounted_on, "..", NULL);
-        inode_unlock(dir->i_sb->imounted_on);
-        return ret;
-    }
-
     for (size_t i = 0; i < DEVFS_MAX_ACTIVE_INODES; ++i)
     {
         if ((devfs_itable.name[i] != NULL) &&
-            (strcmp(name, devfs_itable.name[i]) == 0))
+            (strcmp(dp->name, devfs_itable.name[i]) == 0))
         {
-            return iops_dup_default(&devfs_itable.inode[i]);
+            dp->ip = inode_get(&devfs_itable.inode[i]);
         }
     }
 
-    return NULL;  // not found
+    return dp;
 }
 
-syserr_t devfs_iops_get_dirent(struct inode *dir, size_t dir_entry_addr,
-                               bool addr_is_userspace, ssize_t seek_pos)
+syserr_t devfs_iops_get_dirent(struct inode *dir, struct dirent *dir_entry,
+                               ssize_t seek_pos)
 {
-    if (!S_ISDIR(dir->i_mode) || seek_pos < 0) return -1;
-
     if (seek_pos > devfs_itable.used_inodes) return 0;
 
-    struct dirent dir_entry;
-    dir_entry.d_off = seek_pos + 1;
-    dir_entry.d_reclen = sizeof(struct dirent);
+    dir_entry->d_off = seek_pos + 1;
+    dir_entry->d_reclen = sizeof(struct dirent);
 
     if (seek_pos == 0)
     {
         // "."
-        dir_entry.d_ino = dir->inum;
-        strncpy(dir_entry.d_name, ".", MAX_DIRENT_NAME);
+        dir_entry->d_ino = dir->inum;
+        strncpy(dir_entry->d_name, ".", MAX_DIRENT_NAME);
     }
     else if (seek_pos == 1)
     {
         // ".."
-        dir_entry.d_ino = dir->i_sb->imounted_on->inum;
-        strncpy(dir_entry.d_name, "..", MAX_DIRENT_NAME);
+        dir_entry->d_ino = dir->i_sb->imounted_on->inum;
+        strncpy(dir_entry->d_name, "..", MAX_DIRENT_NAME);
     }
     else
     {
         // inode 0 is root, seek_pos 2 is the first device -> inode 1
         size_t device_index = seek_pos - 1;
-        dir_entry.d_ino = device_index;
-        strncpy(dir_entry.d_name, devfs_itable.name[device_index],
+        dir_entry->d_ino = device_index;
+        strncpy(dir_entry->d_name, devfs_itable.name[device_index],
                 MAX_DIRENT_NAME);
     }
 
-    int32_t res = either_copyout(addr_is_userspace, dir_entry_addr,
-                                 (void *)&dir_entry, sizeof(struct dirent));
-    if (res < 0) return -EFAULT;
-
-    // printk("devfs_iops_get_dirent %s\n", dir_entry.d_name);
     return seek_pos + 1;
 }
 
-syserr_t devfs_iops_read(struct inode *ip, bool addr_is_userspace, size_t dst,
-                         size_t off, size_t n)
+syserr_t devfs_iops_read(struct inode *ip, size_t off, size_t dst, size_t n,
+                         bool addr_is_userspace)
 {
     printk("devfs_iops_read\n");
     return 0;
@@ -163,16 +110,15 @@ void devfs_iops_put(struct inode *ip)
 // inode operations
 struct inode_operations devfs_i_op = {
     iops_create : iops_create_default_ro,
-    iops_open : devfs_iops_open,
-    iops_read_in : devfs_iops_read_in,
-    iops_dup : iops_dup_default,
+    iops_mknod : iops_mknod_default_ro,
+    iops_mkdir : iops_mkdir_default_ro,
     iops_put : devfs_iops_put,
-    iops_dir_lookup : devfs_iops_dir_lookup,
-    iops_dir_link : iops_dir_link_default_ro,
+    iops_lookup : devfs_iops_lookup,
     iops_get_dirent : devfs_iops_get_dirent,
     iops_read : devfs_iops_read,
     iops_link : iops_link_default_ro,
     iops_unlink : iops_unlink_default_ro,
+    iops_rmdir : iops_rmdir_default_ro,
     iops_truncate : iops_truncate_default_ro,
     iops_chmod : iops_chmod_default_ro,
     iops_chown : iops_chown_default_ro
@@ -184,7 +130,10 @@ syserr_t devfs_fops_write(struct file *f, size_t addr, size_t n)
     return 0;
 }
 
-struct file_operations devfs_f_op = {fops_write : devfs_fops_write};
+struct file_operations devfs_f_op = {
+    fops_open : fops_open_default,
+    fops_write : devfs_fops_write
+};
 
 void devfs_init()
 {
@@ -203,7 +152,6 @@ void devfs_init()
         devfs_itable.inode[i].ref.refcount = 0;
         devfs_itable.inode[i].i_sb = NULL;
         sleep_lock_init(&devfs_itable.inode[i].lock, "devfs inode");
-        devfs_itable.inode[i].valid = true;
         devfs_itable.inode[i].i_mode = 0644;
         devfs_itable.inode[i].nlink = 1;
         devfs_itable.inode[i].size = 0;

@@ -13,7 +13,7 @@
 
 #if defined(BUILD_ON_HOST)
 // we are not the only process on the host, so comparing memory isn't useful
-size_t countfree() { return 0; }
+size_t memory_allocated() { return 0; }
 
 void prepare_test_environment() {}
 
@@ -789,8 +789,10 @@ void truncate_test(char *s)
         assert_open_ok_fd(s, fd, file_name);
         assert_no_error(close(fd));
     }
+
     truncate_to(s, file_name, 0);
     truncate_to(s, file_name, BLOCK_SIZE);
+
     truncate_to(s, file_name, 0);
     truncate_to(s, file_name, BLOCK_SIZE * VIMIXFS_N_DIRECT_BLOCKS);
 
@@ -799,7 +801,7 @@ void truncate_test(char *s)
     truncate_to(s, file_name, BLOCK_SIZE * VIMIXFS_N_DIRECT_BLOCKS + 1);
 
     truncate_to(s, file_name, 0);
-    // trigger first double indirect block allocation:
+    //  trigger first double indirect block allocation:
     truncate_to(
         s, file_name,
         BLOCK_SIZE * (VIMIXFS_N_DIRECT_BLOCKS + VIMIXFS_N_INDIRECT_BLOCKS) + 1);
@@ -1188,7 +1190,6 @@ struct test quicktests_common[] = {
     {str_test, "str"},
     {getline_test, "getline"},
     {strtoul_test, "strtoul"},
-    {truncate_test, "truncate"},
     {user_id, "user_id"},
     {file_access, "file_access"},
     {qsort_test, "qsort"},
@@ -1197,6 +1198,7 @@ struct test quicktests_common[] = {
 };
 
 struct test slowtests_common[] = {
+    {truncate_test, "truncate"},
     {0, 0},
 };
 

@@ -81,16 +81,22 @@ syserr_t sops_statvfs_default(struct super_block *sb, struct statvfs *to_fill)
     return 0;
 }
 
-struct inode *iops_create_default_ro(struct inode *iparent, char name[NAME_MAX],
-                                     mode_t mode, int32_t flags, dev_t device)
+syserr_t iops_create_default_ro(struct inode *parent, struct dentry *dp,
+                                mode_t mode, int32_t flags)
 {
-    return NULL;
+    return -EACCES;
 }
 
-struct inode *iops_dup_default(struct inode *ip)
+syserr_t iops_mknod_default_ro(struct inode *parent, struct dentry *dp,
+                               mode_t mode, dev_t dev)
 {
-    inode_get(ip);
-    return ip;
+    return -EACCES;
+}
+
+syserr_t iops_mkdir_default_ro(struct inode *parent, struct dentry *dp,
+                               mode_t mode)
+{
+    return -EACCES;
 }
 
 void iops_put_default(struct inode *ip)
@@ -105,36 +111,35 @@ void iops_put_default(struct inode *ip)
     }
 }
 
-int iops_dir_link_default_ro(struct inode *dir, char *name, ino_t inum)
-{
-    return 0;
-}
-
-syserr_t iops_link_default_ro(struct inode *dir, struct inode *ip,
-                              char name[NAME_MAX])
-{
-    inode_put(dir);
-    inode_put(ip);
-    return -EOTHER;
-}
-
-syserr_t iops_unlink_default_ro(struct inode *dir, char name[NAME_MAX],
-                                bool delete_files, bool delete_directories)
-{
-    return 0;
-}
-
-syserr_t iops_truncate_default_ro(struct inode *ip, off_t length)
+syserr_t iops_link_default_ro(struct dentry *file_from, struct inode *dir_to,
+                              struct dentry *new_link)
 {
     return -EACCES;
 }
 
-syserr_t iops_chmod_default_ro(struct inode *ip, mode_t mode)
+syserr_t iops_unlink_default_ro(struct inode *parent, struct dentry *dp)
 {
     return -EACCES;
 }
 
-syserr_t iops_chown_default_ro(struct inode *ip, uid_t uid, gid_t gid)
+syserr_t iops_rmdir_default_ro(struct inode *parent, struct dentry *dp)
 {
     return -EACCES;
 }
+
+syserr_t iops_truncate_default_ro(struct dentry *dp, off_t length)
+{
+    return -EACCES;
+}
+
+syserr_t iops_chmod_default_ro(struct dentry *dp, mode_t mode)
+{
+    return -EACCES;
+}
+
+syserr_t iops_chown_default_ro(struct dentry *dp, uid_t uid, gid_t gid)
+{
+    return -EACCES;
+}
+
+syserr_t fops_open_default(struct inode *ip, struct file *f) { return 0; }

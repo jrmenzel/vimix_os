@@ -36,7 +36,6 @@ struct kmem_slab *kmem_slab_create(size_t size)
         next_object += size;
     }
 
-    // printk("slab 0x%zx | %zd created\n", (size_t)slab, size);
     return slab;
 }
 

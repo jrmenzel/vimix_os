@@ -84,16 +84,6 @@ pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
                 // memory size of 0 means end of the list
                 if (dev->init_parameters.mem[i].size == 0) break;
 
-                // printk("mapping found device %s at 0x%zx size: 0x%zx",
-                //        dev->driver->dtb_name,
-                //        dev->init_parameters.mem[i].start,
-                //        dev->init_parameters.mem[i].size);
-                // if (dev->init_parameters.mem[i].name)
-                //{
-                //     printk(" (%s)", dev->init_parameters.mem[i].name);
-                // }
-                // printk("\n");
-
                 size_t map_start =
                     PAGE_ROUND_DOWN(dev->init_parameters.mem[i].start);
                 size_t map_end =
@@ -256,7 +246,7 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
 {
     if (vm_map(k_pagetable, va, pa, size, perm, true) != 0)
     {
-        panic("kvm_map_or_panic failed");
+        panic("vm_map: out of memory");
     }
     return 0;
 }
@@ -321,6 +311,18 @@ int32_t vm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
         {
             if (PTE_IS_VALID_NODE(*pte))
             {
+                printk("remapping a node PTE\n");
+                printk(
+                    "mapping (physical 0x%zx) to 0x%zx - 0x%zx (size: %d "
+                    "pages) (",
+                    pa, va, va + size - 1, (int)(size / PAGE_SIZE));
+                debug_vm_print_pte_flags(perm);
+
+                printk(")\nmapped:\n");
+                printk(" pa: 0x%zx ", PTE_GET_PA(*pte));
+                debug_vm_print_pte_flags(*pte);
+                printk("\n");
+
                 panic("vm_map: remap");
             }
 

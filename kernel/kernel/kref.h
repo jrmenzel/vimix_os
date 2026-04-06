@@ -32,6 +32,14 @@ static inline void kref_get(struct kref *kref)
     atomic_fetch_add_explicit(&kref->refcount, 1, memory_order_relaxed);
 }
 
+/// @brief Get a reference -> increase ref count by one.
+/// @param kref The reference count object.
+/// @return Previous reference count.
+static inline int kref_get_and_return_previous(struct kref *kref)
+{
+    return atomic_fetch_add_explicit(&kref->refcount, 1, memory_order_relaxed);
+}
+
 /// @brief Drop a reference, decrease ref count by one.
 /// @param kref The reference count object.
 /// @return True if the last reference was dropped and the object should be

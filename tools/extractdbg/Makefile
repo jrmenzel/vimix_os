@@ -18,7 +18,8 @@ debug: CFLAGS = $(CFLAGS_DEBUG)
 debug: $(BIN)
 
 $(BIN): $(SRC)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	@printf "Compile: $(@)\n"
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -f $(BIN)

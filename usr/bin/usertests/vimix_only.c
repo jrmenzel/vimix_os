@@ -6,6 +6,7 @@
 #include <mm/mm.h>  // for USER_VA_END
 #include <sys/statvfs.h>
 #include <vimixutils/sysfs.h>
+#include <vimixutils/time.h>
 
 //
 // Tests VIMIX system calls.  usertests without arguments runs them all
@@ -72,7 +73,13 @@ size_t get_process_count()
 // scheduled before this process exits without sleep (which calls yield).
 static inline void let_init_free_children(size_t expected_proc_count)
 {
+    uint64_t start_time = get_time_ms();
     size_t procs = get_process_count();
+    uint64_t end_time = get_time_ms();
+
+    printf("procs: %zu (expecting %zu), waited %lums\n", procs,
+           expected_proc_count, (long)(end_time - start_time));
+
     while (procs != expected_proc_count)
     {
         printf(
@@ -97,91 +104,10 @@ void reset_test_environment()
     set_sysfs("/sys/kernel/app_crash_v", 2);
 }
 
-//
-// use sbrk() to count how many free physical memory pages there are.
-// touches the pages to force allocation.
-// because out of memory with lazy allocation results in the process
-// taking a fault and being killed, fork and report back.
-//
-int countfree_sbrk()
+size_t memory_allocated()
 {
-    int fds[2];
-    time_t start_time = time(NULL);
-
-    if (pipe(fds) < 0)
-    {
-        printf("pipe() failed in countfree()\n");
-        exit(1);
-    }
-
-    pid_t pid = fork();
-
-    if (pid < 0)
-    {
-        printf("fork failed in countfree()\n");
-        exit(1);
-    }
-
-    if (pid == 0)
-    {
-        close(fds[0]);
-        long page_size = sysconf(_SC_PAGE_SIZE);
-
-        while (true)
-        {
-            void *a = sbrk(page_size);
-            if (a == ((void *)-1))
-            {
-                break;
-            }
-
-            // modify the memory to make sure it's really allocated.
-            *(char *)(a + page_size - 1) = 1;
-
-            // report back one more page.
-            if (write(fds[1], "x", 1) != 1)
-            {
-                printf("write() failed in countfree()\n");
-                exit(1);
-            }
-        }
-
-        exit(EXIT_SUCCESS);
-    }
-
-    close(fds[1]);
-
-    int32_t n = 0;
-    while (true)
-    {
-        char c;
-        ssize_t cc = read(fds[0], &c, 1);
-        if (cc < 0)
-        {
-            printf("read() failed in countfree()\n");
-            exit(1);
-        }
-        if (cc == 0)
-        {
-            break;
-        }
-        n += 1;
-    }
-
-    close(fds[0]);
-    wait(NULL);
-
-    time_t end_time = time(NULL);
-    time_t seconds = end_time - start_time;
-    printf("count free: %zus\n", (size_t)seconds);
-
-    return n;
-}
-
-size_t countfree()
-{
-    return get_from_sysfs("/sys/kmem/mem_free") /
-           (size_t)sysconf(_SC_PAGE_SIZE);
+    set_sysfs("/sys/kmem/dcache/clear_lru", 1);
+    return get_from_sysfs("/sys/kmem/mem_alloc");
 }
 
 //
@@ -676,7 +602,7 @@ void trunc_file3(char *s)
     exit(xstatus);
 }
 
-// does chdir() call inode_put(p->cwd) in a transaction?
+// does chdir() call dentry_put(p->cwd) in a transaction?
 void iputtest(char *s)
 {
     if (mkdir("iputdir", 0755) < 0)
@@ -701,7 +627,7 @@ void iputtest(char *s)
     }
 }
 
-// does exit() call inode_put(p->cwd) in a transaction?
+// does exit() call dentry_put(p->cwd) in a transaction?
 void exitiputtest(char *s)
 {
     pid_t pid = fork();
@@ -1443,6 +1369,7 @@ void forkforkfork(char *s)
             }
             if (fork() < 0)
             {
+                // printf("child: creating file to stop forking...\n");
                 close(open(file_name, O_CREATE | O_RDWR, 0755));
                 exit(EXIT_SUCCESS);
             }

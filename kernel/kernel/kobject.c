@@ -102,9 +102,9 @@ bool kobject_add_varg(struct kobject *kobj, struct kobject *parent,
     // init stuff for sysfs
     spin_lock_init(&kobj->sysfs_lock, "kobj_sysfs");
 
-    sysfs_register_kobject(kobj);
+    struct sysfs_node *node = sysfs_register_kobject(kobj);
 
-    return true;
+    return (node != NULL);
 }
 
 bool kobject_add(struct kobject *kobj, struct kobject *parent, const char *fmt,

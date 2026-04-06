@@ -47,6 +47,8 @@ uint32_t block_alloc_init(struct super_block *sb)
 /// Free a disk block.
 void block_free(struct super_block *sb, uint32_t block_id)
 {
+    // printk("block_free: block %u\n", block_id);
+
     struct vimixfs_sb_private *priv =
         (struct vimixfs_sb_private *)sb->s_fs_info;
     struct vimixfs_superblock *xsb = &(priv->sb);

@@ -3,7 +3,7 @@
 Requirements:
 
 - qemu
-- 32- or 64-bit [RISC V](riscv/RISCV.md) gcc toolchain (version 13 or later)
+- [RISC V](riscv/RISCV.md) gcc toolchain (version 13 or later)
 - clang-format version 20 or later
 
 on Arch Linux install:
@@ -16,6 +16,8 @@ on Ubuntu install:
 sudo apt update
 sudo apt install build-essential make git gcc clang clang-format gcc-riscv64-linux-gnu qemu-system-riscv64 gdb-multiarch xxd u-boot-tools libelf-dev libdw-dev
 ```
+
+on Ubuntu 26.04 and later: install `qemu-system-riscv` instead of `qemu-system-riscv64`.
 
 Build all:
 > make

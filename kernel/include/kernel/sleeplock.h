@@ -27,12 +27,20 @@ static inline void sleep_lock_init_locked(struct sleeplock *lk,
 
 void sleep_lock(struct sleeplock *lk);
 
+void sleep_lock_2(struct sleeplock *lk0, struct sleeplock *lk1);
+
 /// @brief Returns true if the lock was aquired, does not block, does not sleep.
 /// @param lk The lock.
 /// @return True if the lock was aquired.
 bool sleep_trylock(struct sleeplock *lk);
 
 void sleep_unlock(struct sleeplock *lk);
+
+static inline void sleep_unlock_2(struct sleeplock *lk0, struct sleeplock *lk1)
+{
+    sleep_unlock(lk0);
+    sleep_unlock(lk1);
+}
 
 #ifdef CONFIG_DEBUG_SLEEPLOCK
 bool sleep_lock_is_held_by_this_cpu(struct sleeplock *lk);

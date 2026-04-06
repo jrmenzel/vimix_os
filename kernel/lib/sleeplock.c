@@ -32,6 +32,26 @@ void sleep_lock(struct sleeplock *lk)
     spin_unlock(&lk->lk);
 }
 
+void sleep_lock_2(struct sleeplock *lk0, struct sleeplock *lk1)
+{
+    DEBUG_EXTRA_PANIC(lk0 != lk1, "sleep_lock_2: both locks are the same");
+
+    while (true)
+    {
+        if (sleep_trylock(lk0))
+        {
+            if (sleep_trylock(lk1))
+            {
+                // got both locks
+                return;
+            }
+            // could not get second lock, unlock first and try again
+            sleep_unlock(lk0);
+        }
+        yield();  // let other threads run
+    }
+}
+
 bool sleep_trylock(struct sleeplock *lk)
 {
     bool locked = spin_trylock(&lk->lk);

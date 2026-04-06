@@ -11,9 +11,9 @@
 /// @param mountflags Mount flags, not used.
 /// @param data File system specific data, normally NULL.
 /// @return Zero on success, -ERRNO otherwise.
-syserr_t mount(const char *source, const char *target,
-               const char *filesystemtype, unsigned long mountflags,
-               size_t addr_data);
+syserr_t do_mount(const char *source, const char *target,
+                  const char *filesystemtype, unsigned long mountflags,
+                  size_t addr_data);
 
 /// @brief Mounts the root file system. Differs from regular mount as this has
 /// no inode to be mounted on. Also the source is a raw device number, no device
@@ -25,24 +25,26 @@ void mount_root(dev_t dev, const char *filesystemtype);
 /// @brief Helper for mount() and mount_root().
 ///        g_mount_lock must be hold when calling this!
 /// @param source Device number of block device to mount.
-/// @param i_target Target directory inode or NULL to mount the root FS.
+/// @param d_target Target directory dentry or NULL to mount the root FS.
 /// @param filesystemtype File system type.
 /// @param mountflags ignored
 /// @param addr_data ignored
 /// @return Zero on success, -ERRNO otherwise.
-syserr_t mount_internal(dev_t source, struct inode *i_target,
+syserr_t mount_internal(dev_t source, struct dentry *d_target,
                         struct file_system_type *filesystemtype,
                         unsigned long mountflags, size_t addr_data);
 
 /// @brief Unmounts a file system.
 /// @param target Path to the target directory where the file system is mounted.
 /// @return Zero on success, -ERRNO otherwise.
-ssize_t umount(const char *target);
+ssize_t do_umount(const char *target);
 
 /// @brief Helper for unmount()
 ///        g_mount_lock must be hold when calling this!
-/// @param i_target LOCKED(!) directory inode with mounted file system
+/// @param d_target Directory dentry of mounted file system.
+/// @param d_target_mountpoint Directory dentry with mounted file system.
 /// @param sb Super block of the file system to unmount.
 /// @return Zero on success, -ERRNO otherwise.
-syserr_t umount_internal(struct inode *i_target_mountpoint,
+syserr_t umount_internal(struct dentry *d_target,
+                         struct dentry *d_target_mountpoint,
                          struct super_block *sb);

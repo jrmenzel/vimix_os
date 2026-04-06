@@ -7,6 +7,7 @@
 #include <drivers/block_device.h>
 #include <drivers/character_device.h>
 #include <drivers/rtc.h>
+#include <fs/fs_lookup.h>
 #include <ipc/pipe.h>
 #include <kernel/errno.h>
 #include <kernel/fcntl.h>
@@ -71,141 +72,142 @@ struct file *file_alloc()
     return f;
 }
 
-struct file *file_dup(struct file *f)
+struct file *file_alloc_init(mode_t mode, int32_t flags, struct dentry *dp)
+{
+    struct file *f = file_alloc();
+    if (f == NULL)
+    {
+        return NULL;
+    }
+
+    f->off = 0;
+    f->mode = mode;
+    f->dp = dentry_get(dp);
+    f->flags = flags;
+
+    return f;
+}
+
+struct file *file_get(struct file *f)
 {
     DEBUG_EXTRA_ASSERT(kref_read(&f->ref) >= 1,
-                       "file_dup() called for a file with ref count 0");
+                       "file_get() called for a file with ref count 0");
     kref_get(&f->ref);
     return f;
 }
 
-FILE_DESCRIPTOR file_open(char *pathname, int32_t flags, mode_t mode)
+syserr_t do_open(char *pathname, int32_t flags, mode_t mode)
 {
-    char name[NAME_MAX];
-    struct inode *ip = NULL;
+    mode = mode & 0777;  // only permission bits
 
-    if (strncmp(pathname, "/", 2) == 0)
+    syserr_t error = 0;
+    struct dentry *dp = dentry_from_path(pathname, &error);
+    if (dp == NULL)
     {
-        // special case: root directory (has no parent)
-        ip = VFS_SUPER_IGET_ROOT(ROOT_SUPER_BLOCK);
-        inode_lock(ip);
-    }
-    else
-    {
-        ssize_t error = 0;
-        struct inode *iparent =
-            inode_of_parent_from_path(pathname, name, &error);
-        if (iparent == NULL)
-        {
-            return error;
-        }
-
-        ip = VFS_INODE_OPEN(iparent, name, flags);
-
-        if (ip == NULL)
-        {
-            if (flags & O_CREAT)
-            {
-                // apply process umask
-                mode_t create_mode = mode & 0777;
-                struct process *proc = get_current();
-                create_mode &= ~(proc->umask);
-                create_mode |= (mode & S_IFMT);
-
-                // only create regular files this way:
-                if (!check_and_adjust_mode(&create_mode, S_IFREG) ||
-                    !S_ISREG(create_mode))
-                {
-                    inode_put(iparent);
-                    return -EPERM;
-                }
-
-                if (check_inode_permission(proc, iparent, MAY_WRITE) < 0)
-                {
-                    inode_put(iparent);
-                    return -EACCES;
-                }
-
-                ip = VFS_INODE_CREATE(iparent, name, create_mode, flags,
-                                      iparent->dev);
-                inode_put(iparent);
-                // inode is locked if not NULL
-
-                if (ip == NULL)
-                {
-                    return -ENOENT;
-                }
-            }
-            else
-            {
-                // file not found
-                inode_put(iparent);
-                return -ENOENT;
-            }
-        }
-        else
-        {
-            // file exists already, put parent inode
-            inode_put(iparent);
-
-            // check permissions
-            perm_mask_t mask = perm_mask_from_open_flags(flags);
-            ssize_t perm_ok = check_inode_permission(get_current(), ip, mask);
-            if (perm_ok < 0)
-            {
-                inode_unlock_put(ip);
-                return perm_ok;
-            }
-
-            // if it's a mount point, we need to open the root of the mounted
-            // filesystem instead
-            if (ip->is_mounted_on != NULL)
-            {
-                struct inode *tmp_ip = VFS_INODE_DUP(ip->is_mounted_on->s_root);
-                inode_unlock_put(ip);
-                inode_lock(tmp_ip);
-                ip = tmp_ip;
-            }
-        }
+        return error;
     }
 
-    if (S_ISDIR(ip->i_mode) && flags != O_RDONLY)
+    struct file *f = file_alloc_init(mode, flags, dp);
+    if (f == NULL)
     {
-        inode_unlock_put(ip);
-        return -EACCES;
-    }
-
-    if ((S_ISCHR(ip->i_mode) || S_ISBLK(ip->i_mode)) &&
-        (dev_exists(ip->dev) == false))
-    {
-        printk(
-            "Kernel error: can't open device with invalid device number %d "
-            "%d\n",
-            MAJOR(ip->dev), MINOR(ip->dev));
-        inode_unlock_put(ip);
-        return -ENODEV;
-    }
-
-    struct file *f;
-    FILE_DESCRIPTOR fd;
-    if ((f = file_alloc()) == NULL || (fd = fd_alloc(f)) < 0)
-    {
-        if (f)
-        {
-            file_close(f);
-        }
-        inode_unlock_put(ip);
+        dentry_put(dp);
         return -ENOMEM;
     }
 
-    f->off = 0;
-    f->mode = ip->i_mode;
-    f->ip = ip;
-    f->flags = flags;
+    struct process *proc = get_current();
 
-    inode_unlock(ip);
+    if (dentry_is_valid(dp))
+    {
+        if (S_ISDIR(dp->ip->i_mode) && flags != O_RDONLY)
+        {
+            dentry_put(dp);
+            file_close(f);
+            return -EACCES;
+        }
 
-    return fd;
+        syserr_t perm_ok =
+            check_dentry_permission(proc, dp, perm_mask_from_open_flags(flags));
+        if (perm_ok < 0)
+        {
+            dentry_put(dp);
+            file_close(f);
+            return perm_ok;
+        }
+
+        error = VFS_FILE_OPEN(dp->ip, f);
+    }
+    else if (flags & O_CREAT)
+    {
+        //  file does not exist -> create it
+        dentry_lock(dp);
+        struct dentry *parent = dentry_get(dp->parent);
+        dentry_unlock(dp);
+
+        if (check_dentry_permission(proc, parent, MAY_WRITE) < 0)
+        {
+            dentry_put(parent);
+            dentry_put(dp);
+            file_close(f);
+            return -EACCES;
+        }
+
+        // apply process umask
+        mode &= ~(proc->umask);
+        mode |= (mode & S_IFMT);
+
+        struct inode *parent_ip = parent->ip;
+
+        inode_lock_exclusive(parent_ip);
+        if (dp->ip != NULL)
+        {
+            // created concurrently
+            inode_unlock_exclusive(parent_ip);
+
+            syserr_t perm_ok = check_dentry_permission(
+                get_current(), dp, perm_mask_from_open_flags(flags));
+            if (perm_ok < 0)
+            {
+                dentry_put(dp);
+                dentry_put(parent);
+                file_close(f);
+                return perm_ok;
+            }
+
+            error = VFS_FILE_OPEN(dp->ip, f);
+        }
+        else
+        {
+            error = VFS_INODE_CREATE(parent_ip, dp, mode | S_IFREG, flags);
+            inode_unlock_exclusive(parent_ip);
+        }
+
+        dentry_put(parent);
+    }
+    else
+    {
+        dentry_put(dp);
+        file_close(f);
+        return -ENOENT;
+    }
+    if (dp->ip != NULL)
+    {
+        f->mode = dp->ip->i_mode;
+    }
+    dentry_put(dp);
+
+    if (error < 0)
+    {
+        file_close(f);
+        return error;
+    }
+    FILE_DESCRIPTOR fd = fd_alloc(f);
+    if (fd < 0)
+    {
+        file_close(f);
+        return -EMFILE;
+    }
+
+    return (syserr_t)fd;
 }
 
 void file_close(struct file *f)
@@ -235,31 +237,16 @@ void file_close(struct file *f)
         bool close_writing_end = (f->flags == O_WRONLY) || (f->flags == O_RDWR);
         pipe_close(f->pipe, close_writing_end);
     }
-    else if (S_ISCHR(f->mode) || S_ISBLK(f->mode) || S_ISDIR(f->mode) ||
-             S_ISREG(f->mode))
+    else
     {
-        inode_put(f->ip);
+        dentry_put(f->dp);
     }
 
     // free memory of file struct
     kfree((void *)f);
 }
 
-syserr_t file_stat_by_inode(struct inode *ip, size_t addr)
-{
-    struct stat st;
-    struct process *proc = get_current();
-    inode_lock(ip);
-    inode_stat(ip, &st);
-    inode_unlock(ip);
-    if (uvm_copy_out(proc->pagetable, addr, (char *)&st, sizeof(st)) < 0)
-    {
-        return -EFAULT;
-    }
-    return 0;
-}
-
-syserr_t file_read(struct file *f, size_t addr, size_t n)
+syserr_t do_read(struct file *f, size_t addr, size_t n)
 {
     ssize_t read_bytes = 0;
 
@@ -269,53 +256,57 @@ syserr_t file_read(struct file *f, size_t addr, size_t n)
         return perm_ok;
     }
 
-    if (S_ISFIFO(f->mode))
-    {
-        read_bytes = pipe_read(f->pipe, addr, n);
-    }
-    else if (S_ISCHR(f->mode))
-    {
-        struct Character_Device *cdev = get_character_device(f->ip->dev);
-        if (cdev == NULL)
-        {
-            return -ENODEV;
-        }
-        read_bytes = cdev->ops.read(&cdev->dev, true, addr, n, f->off);
-        f->off += read_bytes;
-    }
-    else if (S_ISBLK(f->mode))
-    {
-        struct Block_Device *bdev = get_block_device(f->ip->dev);
-        if (bdev == NULL)
-        {
-            return -ENODEV;
-        }
-
-        read_bytes = block_device_read(bdev, addr, f->off, n);
-        if (read_bytes > 0)
-        {
-            // check > 0 is needed, read_bytes can be negative on error
-            f->off += read_bytes;
-        }
-    }
-    else if (S_ISREG(f->mode))
-    {
-        inode_lock(f->ip);
-        read_bytes = inode_read(f->ip, true, addr, f->off, n);
-        if (read_bytes > 0)
-        {
-            // check > 0 is needed, read_bytes can be negative on error
-            f->off += read_bytes;
-        }
-        inode_unlock(f->ip);
-    }
-    else if (S_ISDIR(f->mode))
+    if (S_ISDIR(f->mode))
     {
         return -EISDIR;
     }
+    else if (S_ISFIFO(f->mode))
+    {
+        read_bytes = pipe_read(f->pipe, addr, n);
+    }
     else
     {
-        panic("file_read() on unknown file type");
+        // note: pipes don't have inodes or dentries
+
+        struct inode *ip = f->dp->ip;
+        if (S_ISCHR(f->mode))
+        {
+            struct Character_Device *cdev = get_character_device(ip->dev);
+            if (cdev == NULL)
+            {
+                return -ENODEV;
+            }
+            read_bytes = cdev->ops.read(&cdev->dev, true, addr, n, f->off);
+            f->off += read_bytes;
+        }
+        else if (S_ISBLK(f->mode))
+        {
+            struct Block_Device *bdev = get_block_device(ip->dev);
+            if (bdev == NULL)
+            {
+                return -ENODEV;
+            }
+
+            read_bytes = block_device_read(bdev, addr, f->off, n);
+            if (read_bytes > 0)
+            {
+                // check > 0 is needed, read_bytes can be negative on error
+                f->off += read_bytes;
+            }
+        }
+        else if (S_ISREG(f->mode))
+        {
+            read_bytes = VFS_FILE_READ(f, addr, n);
+            if (read_bytes > 0)
+            {
+                // check > 0 is needed, read_bytes can be negative on error
+                f->off += read_bytes;
+            }
+        }
+        else
+        {
+            panic("do_read() on unknown file type");
+        }
     }
 
     return (syserr_t)read_bytes;
@@ -328,12 +319,12 @@ void file_update_mtime(struct file *f)
 
     struct timespec time = rtc_get_time();
     time_t now = time.tv_sec;
-    inode_lock(f->ip);
-    f->ip->mtime = now;
-    inode_unlock(f->ip);
+    inode_lock(f->dp->ip);
+    f->dp->ip->mtime = now;
+    inode_unlock(f->dp->ip);
 }
 
-syserr_t file_write(struct file *f, size_t addr, size_t n)
+syserr_t do_write(struct file *f, size_t addr, size_t n)
 {
     syserr_t ret = 0;
 
@@ -343,140 +334,71 @@ syserr_t file_write(struct file *f, size_t addr, size_t n)
         return perm_ok;
     }
 
-    if (S_ISFIFO(f->mode))
-    {
-        ret = pipe_write(f->pipe, addr, n);
-    }
-    else if (S_ISCHR(f->mode))
-    {
-        struct Character_Device *cdev = get_character_device(f->ip->dev);
-        if (cdev == NULL)
-        {
-            return -ENODEV;
-        }
-        ret = cdev->ops.write(&cdev->dev, true, addr, n);
-        if (ret > 0) f->off += ret;
-    }
-    else if (S_ISBLK(f->mode))
-    {
-        struct Block_Device *bdev = get_block_device(f->ip->dev);
-        if (bdev == NULL)
-        {
-            return -ENODEV;
-        }
-        ret = block_device_write(bdev, addr, f->off, n);
-        if (ret > 0) f->off += ret;
-    }
-    else if (S_ISREG(f->mode))
-    {
-        ret = VFS_FILE_WRITE(f, addr, n);
-        if (ret > 0) file_update_mtime(f);
-    }
-    else if (S_ISDIR(f->mode))
+    if (S_ISDIR(f->mode))
     {
         return -EISDIR;
     }
+    else if (S_ISFIFO(f->mode))
+    {
+        ret = pipe_write(f->pipe, addr, n);
+    }
     else
     {
-        printk("file_write(): unknown file type %x\n", f->mode);
-        panic("file_write() on unknown file type");
+        struct inode *ip = f->dp->ip;
+        inode_lock_exclusive(ip);
+
+        if (S_ISCHR(f->mode))
+        {
+            struct Character_Device *cdev = get_character_device(ip->dev);
+            if (cdev == NULL)
+            {
+                inode_unlock_exclusive(ip);
+                return -ENODEV;
+            }
+            ret = cdev->ops.write(&cdev->dev, true, addr, n);
+            if (ret > 0) f->off += ret;
+        }
+        else if (S_ISBLK(f->mode))
+        {
+            struct Block_Device *bdev = get_block_device(ip->dev);
+            if (bdev == NULL)
+            {
+                inode_unlock_exclusive(ip);
+                return -ENODEV;
+            }
+            ret = block_device_write(bdev, addr, f->off, n);
+            if (ret > 0) f->off += ret;
+        }
+        else if (S_ISREG(f->mode))
+        {
+            ret = VFS_FILE_WRITE(f, addr, n);
+            if (ret > 0) file_update_mtime(f);
+        }
+        else
+        {
+            printk("do_write(): unknown file type %x\n", f->mode);
+            panic("do_write() on unknown file type");
+        }
+        inode_unlock_exclusive(ip);
     }
 
     return ret;
 }
 
-syserr_t file_link(char *path_from, char *path_to)
-{
-    syserr_t error = 0;
-    struct inode *ip = inode_from_path(path_from, &error);
-    if (ip == NULL)
-    {
-        return error;
-    }
-
-    inode_lock(ip);
-    if (S_ISDIR(ip->i_mode))
-    {
-        inode_unlock_put(ip);
-        return -EISDIR;
-    }
-    inode_unlock(ip);
-
-    char name[NAME_MAX];
-    struct inode *dir = inode_of_parent_from_path(path_to, name, &error);
-    if (dir == NULL)
-    {
-        inode_put(ip);
-        return error;
-    }
-
-    inode_lock_two(dir, ip);
-
-    // need write permission in directory where link is created
-    ssize_t perm_ok = check_inode_permission(get_current(), dir, MAY_WRITE);
-    if (perm_ok < 0)
-    {
-        inode_unlock_put(ip);
-        inode_unlock_put(dir);
-        return perm_ok;
-    }
-
-    if (dir->dev != ip->dev)
-    {
-        inode_unlock_put(ip);
-        inode_unlock_put(dir);
-        return -EOTHER;
-    }
-    inode_unlock(dir);
-    inode_unlock(ip);
-
-    return VFS_INODE_LINK(dir, ip, name);
-}
-
-syserr_t file_unlink(char *path, bool delete_files, bool delete_directories)
-{
-    syserr_t error = 0;
-    char name[NAME_MAX];
-    struct inode *dir = inode_of_parent_from_path(path, name, &error);
-    if (dir == NULL)
-    {
-        return error;
-    }
-
-    // Cannot unlink "." or "..".
-    if (file_name_cmp(name, ".") == 0 || file_name_cmp(name, "..") == 0)
-    {
-        inode_put(dir);
-        return -EPERM;
-    }
-
-    // need write permission in directory where file gets unlinked
-    inode_lock(dir);
-    syserr_t perm_ok = check_inode_permission(get_current(), dir, MAY_UNLINK);
-    if (perm_ok < 0)
-    {
-        inode_unlock_put(dir);
-        return perm_ok;
-    }
-    inode_unlock(dir);
-
-    return VFS_INODE_UNLINK(dir, name, delete_files, delete_directories);
-}
-
-syserr_t file_lseek(struct file *f, ssize_t offset, int whence)
+syserr_t do_lseek(struct file *f, ssize_t offset, int whence)
 {
     if (!S_ISREG(f->mode) && !S_ISBLK(f->mode))
     {
         return -ESPIPE;  // only correct error for pipes...
     }
 
-    size_t file_size = f->ip->size;
+    size_t file_size = f->dp->ip->size;
     if (S_ISBLK(f->mode))
     {
-        struct Block_Device *bdevice = get_block_device(f->ip->dev);
+        struct Block_Device *bdevice = get_block_device(f->dp->ip->dev);
         if (!bdevice)
         {
-            panic("file_lseek: bad device");
+            return -ENODEV;
         }
         file_size = bdevice->size;
     }

@@ -2,6 +2,7 @@
 
 #include <arch/context.h>
 #include <arch/trapframe.h>
+#include <fs/fs_lookup.h>
 #include <kernel/elf.h>
 #include <kernel/errno.h>
 #include <kernel/exec.h>
@@ -41,7 +42,8 @@ bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
         // read program header i
         struct proghdr ph;
         int32_t off = elf->phoff + i * sizeof(struct proghdr);
-        if (inode_read(ip, false, (size_t)&ph, off, sizeof(ph)) != sizeof(ph))
+        if (VFS_INODE_READ_KERNEL(ip, off, (size_t)&ph, sizeof(ph)) !=
+            sizeof(ph))
         {
             return false;
         }
@@ -79,20 +81,28 @@ bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
 syserr_t do_execv(char *path, char **argv)
 {
     syserr_t error = 0;
-    struct inode *ip = inode_from_path(path, &error);
-    if (ip == NULL)
+    struct dentry *dp = dentry_from_path(path, &error);
+    if (dp == NULL)
     {
         return error;
     }
-    inode_lock(ip);
+    if (dentry_is_invalid(dp))
+    {
+        dentry_put(dp);
+        return -ENOENT;
+    }
 
     struct process *proc = get_current();
-    syserr_t perm = check_inode_permission(proc, ip, MAY_EXEC);
+    syserr_t perm = check_dentry_permission(proc, dp, MAY_EXEC);
     if (perm < 0)
     {
-        inode_unlock_put(ip);
+        dentry_put(dp);
         return perm;
     }
+
+    struct inode *ip = inode_get(dp->ip);
+    dentry_put(dp);
+    inode_lock(ip);
 
     // grab setuid/setgid bits while ip is locked
     bool set_uid = S_ISUID & ip->i_mode;
@@ -102,7 +112,8 @@ syserr_t do_execv(char *path, char **argv)
 
     // Check ELF header
     struct elfhdr elf;
-    size_t header_read = inode_read(ip, false, (size_t)&elf, 0, sizeof(elf));
+    size_t header_read =
+        VFS_INODE_READ_KERNEL(ip, 0, (size_t)&elf, sizeof(elf));
     if (header_read != sizeof(elf) || elf.magic != ELF_MAGIC)
     {
         inode_unlock_put(ip);
@@ -217,7 +228,7 @@ static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,
             n = PAGE_SIZE;
         }
 
-        if (inode_read(ip, false, pa, offset + i, n) != n)
+        if (VFS_INODE_READ_KERNEL(ip, offset + i, pa, n) != n)
         {
             return -1;
         }

@@ -11,6 +11,7 @@
 #include <drivers/console.h>
 #include <drivers/htif.h>
 #include <drivers/uart16550.h>
+#include <fs/dentry_cache.h>
 #include <kernel/errno.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
@@ -261,6 +262,7 @@ void console_debug_print_help()
     printk("\n");
     printk("CTRL+H: Print this help\n");
     printk("CTRL+N: Print inodes\n");
+    printk("CTRL+D: Print dentry cache\n");
     printk("CTRL+P: Print process list\n");
     printk("CTRL+L: Print process list\n");
     printk("CTRL+T: Print process list with page tables\n");
@@ -304,6 +306,7 @@ bool console_handle_control_keys(int32_t c)
             debug_vm_print_page_table(g_kernel_pagetable);
             break;
         case CONTROL_KEY('Y'): debug_print_kobject_tree(); break;
+        case CONTROL_KEY('D'): debug_print_dentry_cache(); break;
         case DELETE_KEY:  // Delete key
             if (g_console.e != g_console.w)
             {

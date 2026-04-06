@@ -87,6 +87,7 @@ qemu-log: qemu-requirements # run in qemu with logging, rebuilds if needed
 qemu-run: # run in qemu without rebuilding, useful for automated tests
 	@printf "\n$(YELLOW)DID NOT REBUILD ANYTHING$(NO_COLOR)\n"
 	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
+	$(QEMU) --version
 	$(QEMU) $(QEMU_OPTS)
 
 # dump device tree

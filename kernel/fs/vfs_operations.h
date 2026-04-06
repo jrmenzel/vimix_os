@@ -8,6 +8,8 @@ struct super_block;
 struct inode;
 struct file;
 struct statvfs;
+struct dentry;
+struct dirent;
 
 struct super_operations
 {
@@ -28,72 +30,55 @@ struct super_operations
 
 struct inode_operations
 {
-    struct inode *(*iops_create)(struct inode *iparent, char name[NAME_MAX],
-                                 mode_t mode, int32_t flags, dev_t device);
+    syserr_t (*iops_create)(struct inode *parent, struct dentry *dp,
+                            mode_t mode, int32_t flags);
 
-    struct inode *(*iops_open)(struct inode *iparent, char name[NAME_MAX],
-                               int32_t flags);
+    syserr_t (*iops_mknod)(struct inode *parent, struct dentry *dp, mode_t mode,
+                           dev_t dev);
 
-    void (*iops_read_in)(struct inode *ip);
-
-    struct inode *(*iops_dup)(struct inode *ip);
+    syserr_t (*iops_mkdir)(struct inode *parent, struct dentry *dp,
+                           mode_t mode);
 
     void (*iops_put)(struct inode *ip);
 
-    struct inode *(*iops_dir_lookup)(struct inode *dir, const char *name,
-                                     uint32_t *poff);
+    struct dentry *(*iops_lookup)(struct inode *parent, struct dentry *dp);
 
-    int (*iops_dir_link)(struct inode *dir, char *name, ino_t inum);
+    syserr_t (*iops_get_dirent)(struct inode *dir, struct dirent *dir_entry,
+                                ssize_t seek_pos);
 
-    syserr_t (*iops_get_dirent)(struct inode *dir, size_t dir_entry_addr,
-                                bool addr_is_userspace, ssize_t seek_pos);
+    // to file ops?
+    syserr_t (*iops_read)(struct inode *ip, size_t off, size_t dst, size_t n,
+                          bool addr_is_userspace);
 
-    syserr_t (*iops_read)(struct inode *ip, bool addr_is_userspace, size_t dst,
-                          size_t off, size_t n);
+    syserr_t (*iops_link)(struct dentry *file_from, struct inode *dir_to,
+                          struct dentry *new_link);
 
-    syserr_t (*iops_link)(struct inode *dir, struct inode *ip,
-                          char name[NAME_MAX]);
+    syserr_t (*iops_unlink)(struct inode *parent, struct dentry *dp);
 
-    syserr_t (*iops_unlink)(struct inode *dir, char name[NAME_MAX],
-                            bool delete_files, bool delete_directories);
+    syserr_t (*iops_rmdir)(struct inode *parent, struct dentry *dp);
 
-    syserr_t (*iops_truncate)(struct inode *ip, off_t length);
+    syserr_t (*iops_truncate)(struct dentry *dp, off_t length);
 
-    syserr_t (*iops_chmod)(struct inode *ip, mode_t mode);
+    syserr_t (*iops_chmod)(struct dentry *dp, mode_t mode);
 
-    syserr_t (*iops_chown)(struct inode *ip, uid_t uid, gid_t gid);
+    syserr_t (*iops_chown)(struct dentry *dp, uid_t uid, gid_t gid);
 };
 
 /// @brief Opens the inode inside of directory iparent with the given name
 /// or creates one if none existed.
-/// @param iparent Parent directory inode, unlocked
-/// @param name File name
+/// @param parent Parent directory inode, unlocked
+/// @param dp File dentry to create
 /// @param mode File mode
 /// @param flags Create flags
-/// @param device Device of the inode in case it's a device file
-/// @return NULL on failure, requested inode otherwise.
-#define VFS_INODE_CREATE(iparent, name, mode, flags, device)               \
-    (iparent)->i_sb->i_op->iops_create((iparent), (name), (mode), (flags), \
-                                       (device))
+/// @return errno
+#define VFS_INODE_CREATE(iparent, dp, mode, flags) \
+    (iparent)->i_sb->i_op->iops_create((iparent), (dp), (mode), (flags))
 
-/// @brief Opens the inode inside of directory iparent with the given name.
-/// @param iparent Parent directory inode, unlocked
-/// @param name File name
-/// @param flags Truncate inode content if O_TRUNC is set (regular files
-/// only)
-/// @return NULL on failure, requested inode otherwise.
-#define VFS_INODE_OPEN(iparent, name, flags) \
-    (iparent)->i_sb->i_op->iops_open((iparent), (name), (flags))
+#define VFS_INODE_MKNOD(parent, dp, mode, device) \
+    (parent)->i_sb->i_op->iops_mknod((parent), (dp), (mode), (device))
 
-/// @brief Reads the inode metadata from disk, called during the first
-/// inode_lock().
-/// @param ip Inode with attribute valid == false.
-/// @return Number of bytes written to ip or a negative value on error.
-#define VFS_INODE_READ_IN(ip) (ip)->i_sb->i_op->iops_read_in((ip))
-
-/// @brief Increment reference count for ip.
-/// @return ip to enable ip = inode_dup(ip1) idiom.
-#define VFS_INODE_DUP(ip) (ip)->i_sb->i_op->iops_dup((ip))
+#define VFS_INODE_MKDIR(parent, dp, mode) \
+    (parent)->i_sb->i_op->iops_mkdir((parent), (dp), (mode))
 
 /// @brief Decreases ref count. If the inode was "deleted" (zero links) and this
 /// was the last reference, delete on disk. Note that this can require a new log
@@ -102,32 +87,20 @@ struct inode_operations
 #define VFS_INODE_PUT(ip) (ip)->i_sb->i_op->iops_put((ip))
 
 /// @brief Look for a directory entry in a directory.
-/// Increases ref count (release with inode_put()).
-/// @param dir Directory to look in, should be locked.
-/// @param name Name of entry (e.g. file name)
-/// @param poff Pointer to a returned offset inside of the dir. Can be NULL.
-/// @return Inode of entry on success or NULL. Returned inode is NOT locked, and
-/// has an increases ref count (release with inode_put()).
-#define VFS_INODE_DIR_LOOKUP(dir, name, inum) \
-    (dir)->i_sb->i_op->iops_dir_lookup((dir), (name), (inum))
-
-/// @brief Write a new directory entry (name, inum) into the directory `dir`.
-/// @param dir directory to edit
-/// @param name file name of new entry
-/// @param inum inode of new entry
-/// @return 0 on success, -1 on failure (e.g. out of disk blocks).
-#define VFS_INODE_DIR_LINK(dir, name, inum) \
-    (dir)->i_sb->i_op->iops_dir_link((dir), (name), (inum))
+/// Increases ref count.
+/// @param parent Directory dentry.
+/// @param dp Dentry with name to look for.
+/// @return dentry with ip set to found inode or NULL if not found.
+#define VFS_INODE_LOOKUP(parent, dp) \
+    (parent)->i_sb->i_op->iops_lookup((parent), (dp))
 
 /// @brief For the syscall to get directory entries get_dirent() from dirent.h.
 /// @param dir Directory inode
-/// @param dir_entry_addr address of buffer to fill with one struct dirent
-/// @param addr_is_userspace True if dir_entry_addr is a user virtual address.
+/// @param dir_entry address of buffer to fill with one struct dirent
 /// @param seek_pos A seek pos previously returned by inode_get_dirent or 0.
 /// @return next seek_pos on success, 0 on dir end and -1 on error.
-#define VFS_INODE_GET_DIRENT(dir, dir_entry_addr, addr_is_userspace, seek_pos) \
-    (dir)->i_sb->i_op->iops_get_dirent((dir), (dir_entry_addr),                \
-                                       (addr_is_userspace), (seek_pos))
+#define VFS_INODE_GET_DIRENT(dir, dir_entry, seek_pos) \
+    (dir)->i_sb->i_op->iops_get_dirent((dir), (dir_entry), (seek_pos))
 
 /// @brief Read data from inode.
 /// Caller must hold ip->lock.
@@ -138,28 +111,38 @@ struct inode_operations
 /// @param off Offset in file where to read from.
 /// @param n Maximum number of bytes to read.
 /// @return Number of bytes successfully read.
-#define VFS_INODE_READ(ip, addr_is_userspace, dst, off, n) \
-    (ip)->i_sb->i_op->iops_read((ip), (addr_is_userspace), (dst), (off), (n))
-#define VFS_INODE_LINK(dir, ip, name) \
-    (dir)->i_sb->i_op->iops_link((dir), (ip), (name))
-#define VFS_INODE_UNLINK(dir, name, delete_files, delete_directories) \
-    (dir)->i_sb->i_op->iops_unlink((dir), (name), (delete_files),     \
-                                   (delete_directories))
+// #define VFS_INODE_READ(ip, addr_is_userspace, dst, off, n)
+//     (ip)->i_sb->i_op->iops_read((ip), (addr_is_userspace), (dst), (off), (n))
+
+#define VFS_INODE_READ_KERNEL(ip, off, dst, n) \
+    (ip)->i_sb->i_op->iops_read((ip), (off), (dst), (n), (false))
+
+#define VFS_INODE_LINK(file_from, dir_to, new_link) \
+    (dir_to)->i_sb->i_op->iops_link((file_from), (dir_to), (new_link))
+
+#define VFS_INODE_UNLINK(parent, dp) \
+    (parent)->i_sb->i_op->iops_unlink((parent), (dp))
+
+#define VFS_INODE_RMDIR(parent, dp) \
+    (parent)->i_sb->i_op->iops_rmdir((parent), (dp))
 
 /// @brief Resize inode (discard extra contents or create empty data).
-#define VFS_INODE_TRUNCATE(ip, length) \
-    (ip)->i_sb->i_op->iops_truncate((ip), (length))
+#define VFS_INODE_TRUNCATE(dp, length) \
+    (dp)->ip->i_sb->i_op->iops_truncate((dp), (length))
 
 /// @brief Change mode of a file.
-#define VFS_INODE_CHMOD(ip, mode) (ip)->i_sb->i_op->iops_chmod((ip), (mode))
+#define VFS_INODE_CHMOD(dp, mode) (dp)->ip->i_sb->i_op->iops_chmod((dp), (mode))
 
 /// @brief Change owner and group of a file.
-#define VFS_INODE_CHOWN(ip, uid, gid) \
-    (ip)->i_sb->i_op->iops_chown((ip), (uid), (gid))
+#define VFS_INODE_CHOWN(dp, uid, gid) \
+    (dp)->ip->i_sb->i_op->iops_chown((dp), (uid), (gid))
 struct file_operations
 {
+    syserr_t (*fops_open)(struct inode *ip, struct file *f);
     syserr_t (*fops_write)(struct file *f, size_t addr, size_t n);
 };
+
+#define VFS_FILE_OPEN(ip, f) (ip)->i_sb->f_op->fops_open((ip), (f))
 
 /// @brief Write n bytes from buffer at addr to file f.
 /// @param f File to write to.
@@ -167,4 +150,8 @@ struct file_operations
 /// @param n Number of bytes to write
 /// @return Number of bytes successfully written.
 #define VFS_FILE_WRITE(f, addr, n) \
-    (f)->ip->i_sb->f_op->fops_write((f), (addr), (n))
+    (f)->dp->ip->i_sb->f_op->fops_write((f), (addr), (n))
+
+#define VFS_FILE_READ(file, dst, n)                                          \
+    (file)->dp->ip->i_sb->i_op->iops_read((f->dp->ip), (f->off), (dst), (n), \
+                                          (true))

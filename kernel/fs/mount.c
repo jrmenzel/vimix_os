@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <fs/dentry_cache.h>
 #include <fs/devfs/devfs.h>
+#include <fs/fs_lookup.h>
 #include <fs/vfs.h>
 #include <fs/vimixfs/vimixfs.h>
 #include <kernel/bio.h>
@@ -32,9 +34,9 @@ struct super_block *ROOT_SUPER_BLOCK = NULL;
 /// at a time, but that limitation is fine.
 struct sleeplock g_mount_lock;
 
-syserr_t mount(const char *source, const char *target,
-               const char *filesystemtype, unsigned long mountflags,
-               size_t addr_data)
+syserr_t do_mount(const char *source, const char *target,
+                  const char *filesystemtype, unsigned long mountflags,
+                  size_t addr_data)
 {
     struct file_system_type **file_system =
         find_filesystem(filesystemtype, strlen(filesystemtype));
@@ -49,24 +51,28 @@ syserr_t mount(const char *source, const char *target,
     if ((strcmp(source, "dev") == 0) || (strcmp(source, "sys") == 0))
     {
         syserr_t error = 0;
-        struct inode *i_target = inode_from_path(target, &error);
-        if (i_target == NULL)
+        struct dentry *d_target = dentry_from_path(target, &error);
+        if (d_target == NULL)
         {
             return error;
         }
-        inode_lock(i_target);
-        if (!S_ISDIR(i_target->i_mode))
+        if (dentry_is_invalid(d_target))
         {
-            inode_unlock_put(i_target);
+            dentry_put(d_target);
+            return -ENOENT;
+        }
+
+        if (!S_ISDIR(d_target->ip->i_mode))
+        {
+            dentry_put(d_target);
             return -ENOTDIR;
         }
-        inode_unlock(i_target);
 
         sleep_lock(&g_mount_lock);
-        syserr_t ret = mount_internal(INVALID_DEVICE, i_target, *file_system,
+        syserr_t ret = mount_internal(INVALID_DEVICE, d_target, *file_system,
                                       mountflags, addr_data);
 
-        inode_put(i_target);
+        dentry_put(d_target);
         sleep_unlock(&g_mount_lock);
         return ret;
     }
@@ -74,42 +80,52 @@ syserr_t mount(const char *source, const char *target,
     // normal filesystem on a device:
 
     syserr_t error = 0;
-    struct inode *i_src = inode_from_path(source, &error);
-    if (i_src == NULL)
+    struct dentry *d_src = dentry_from_path(source, &error);
+    if (d_src == NULL)
     {
         return error;
     }
-
-    inode_lock(i_src);
-    if (!S_ISBLK(i_src->i_mode))
+    if (dentry_is_invalid(d_src))
     {
-        inode_unlock_put(i_src);
+        dentry_put(d_src);
+        return -ENOENT;
+    }
+
+    if (!S_ISBLK(d_src->ip->i_mode))
+    {
+        dentry_put(d_src);
         return -ENOTBLK;
     }
-    inode_unlock(i_src);
 
-    struct inode *i_target = inode_from_path(target, &error);
-    if (i_target == NULL)
+    struct dentry *d_target = dentry_from_path(target, &error);
+    if (d_target == NULL)
     {
-        inode_put(i_src);
+        dentry_put(d_src);
         return error;
     }
-    inode_lock(i_target);
-    if (!S_ISDIR(i_target->i_mode))
+    if (dentry_is_invalid(d_target))
     {
-        inode_put(i_src);
-        inode_unlock_put(i_target);
+        dentry_put(d_target);
+        return -ENOENT;
+    }
+
+    if (!S_ISDIR(d_target->ip->i_mode))
+    {
+        dentry_put(d_src);
+        dentry_put(d_target);
         return -ENOTDIR;
     }
-    inode_unlock(i_target);
 
+    inode_lock_exclusive(d_target->ip);
     sleep_lock(&g_mount_lock);
-    syserr_t ret = mount_internal(i_src->dev, i_target, *file_system,
+    syserr_t ret = mount_internal(d_src->ip->dev, d_target, *file_system,
                                   mountflags, addr_data);
 
-    inode_put(i_src);
-    inode_put(i_target);
     sleep_unlock(&g_mount_lock);
+    inode_unlock_exclusive(d_target->ip);
+
+    dentry_put(d_src);
+    dentry_put(d_target);
 
     return ret;
 }
@@ -136,7 +152,7 @@ void mount_root(dev_t dev, const char *filesystemtype)
     }
 }
 
-syserr_t mount_internal(dev_t source, struct inode *i_target,
+syserr_t mount_internal(dev_t source, struct dentry *d_target,
                         struct file_system_type *filesystemtype,
                         unsigned long mountflags, size_t addr_data)
 {
@@ -164,20 +180,31 @@ syserr_t mount_internal(dev_t source, struct inode *i_target,
     }
 
     sb->s_mountflags = mountflags;
-    sb->s_root = VFS_SUPER_IGET_ROOT(sb);
-    if (i_target == NULL)
+    struct inode *root_ip = VFS_SUPER_IGET_ROOT(sb);
+    sb->s_root = root_ip;
+    struct dentry *root_dp = NULL;
+    if (d_target == NULL)
     {
         // target == NULL means this is the root file system, so it's legal
         ROOT_SUPER_BLOCK = sb;
         sb->imounted_on = NULL;
+        sb->dmounted_on = NULL;
+        root_dp = dentry_cache_init(root_ip);
     }
     else
     {
-        inode_lock(i_target);
-        i_target->is_mounted_on = sb;
-        sb->imounted_on = VFS_INODE_DUP(i_target);
-        inode_unlock(i_target);
+        inode_lock(d_target->ip);
+        d_target->ip->is_mounted_on = sb;
+        sb->imounted_on = inode_get(d_target->ip);
+        sb->dmounted_on = dentry_get(d_target);
+        inode_unlock(d_target->ip);
+
+        struct dentry *new_target =
+            dentry_alloc_init_orphan(d_target->name, root_ip);
+        dentry_switch_children(d_target, new_target);
+        root_dp = new_target;
     }
+    sb->d_root = root_dp;
 
     // add to kobject tree
     kobject_add(&sb->kobj, &g_kobjects_fs, "%s_(%d,%d)", sb->s_type->name,
@@ -188,64 +215,79 @@ syserr_t mount_internal(dev_t source, struct inode *i_target,
     return 0;
 }
 
-syserr_t umount(const char *target)
+syserr_t do_umount(const char *target)
 {
     syserr_t error = 0;
-    struct inode *i_target = inode_from_path(target, &error);
-    if (i_target == NULL)
+    struct dentry *d_target = dentry_from_path(target, &error);
+    if (d_target == NULL)
     {
         return error;
     }
-
-    inode_lock(i_target);
-    if (!S_ISDIR(i_target->i_mode))
+    if (dentry_is_invalid(d_target))
     {
-        inode_unlock_put(i_target);
+        dentry_put(d_target);
+        return -ENOENT;
+    }
+
+    if (!S_ISDIR(d_target->ip->i_mode))
+    {
+        dentry_put(d_target);
         return -ENOTDIR;
     }
 
-    if (i_target->i_sb->s_root != i_target)
+    inode_lock(d_target->ip);
+    struct super_block *sb = d_target->ip->i_sb;
+
+    if (sb->d_root != d_target)
     {
         // not the root of a mounted file system
-        inode_unlock_put(i_target);
+        inode_unlock(d_target->ip);
+        dentry_put(d_target);
         return -EINVAL;
     }
 
-    if (i_target->i_sb->imounted_on == NULL)
+    if (sb->dmounted_on == NULL)
     {
         // this is the root file system -> don't unmount
-        inode_unlock_put(i_target);
+        inode_unlock(d_target->ip);
+        dentry_put(d_target);
         return -EACCES;
     }
-    struct inode *i_target_mountpoint =
-        VFS_INODE_DUP(i_target->i_sb->imounted_on);
-    struct super_block *sb = i_target->i_sb;
-    inode_unlock_put(i_target);
 
-    DEBUG_EXTRA_ASSERT(i_target_mountpoint != NULL,
-                       "imounted_on not set on mountpoint");
+    struct dentry *d_target_mountpoint = dentry_get(sb->dmounted_on);
+    inode_unlock(d_target->ip);
+
+    DEBUG_EXTRA_ASSERT(d_target_mountpoint != NULL,
+                       "dmounted_on not set on mountpoint");
 
     // TODO: Check if FS is still in use
 
-    inode_lock(i_target_mountpoint);
+    inode_lock_exclusive(d_target_mountpoint->ip);
     sleep_lock(&g_mount_lock);
-    syserr_t ret = umount_internal(i_target_mountpoint, sb);
+    syserr_t ret = umount_internal(d_target, d_target_mountpoint, sb);
     sleep_unlock(&g_mount_lock);
-    inode_unlock_put(i_target_mountpoint);
+    inode_unlock_exclusive(d_target_mountpoint->ip);
+    inode_put(d_target_mountpoint->ip);
+
+    dentry_put(d_target);
 
     return ret;
 }
 
-syserr_t umount_internal(struct inode *i_target_mountpoint,
+syserr_t umount_internal(struct dentry *d_target,
+                         struct dentry *d_target_mountpoint,
                          struct super_block *sb)
 {
-    DEBUG_EXTRA_ASSERT(i_target_mountpoint->is_mounted_on != NULL,
+    DEBUG_EXTRA_ASSERT(d_target_mountpoint->ip->is_mounted_on != NULL,
                        "imounted_on not set on mountpoint");
 
-    // assume target to be locked
+    inode_lock(d_target_mountpoint->ip);
     sb->s_type->kill_sb(sb);  // free file system specific data
     sb_free(sb);              // free generic super block itself
-    i_target_mountpoint->is_mounted_on = NULL;
+    d_target_mountpoint->ip->is_mounted_on = NULL;
+
+    dentry_switch_children(d_target, d_target_mountpoint);
+    inode_unlock(d_target_mountpoint->ip);
 
     return 0;
 }

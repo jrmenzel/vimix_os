@@ -4,6 +4,7 @@
 // Permission control functions.
 //
 
+#include <fs/dentry.h>
 #include <kernel/errno.h>
 #include <kernel/fcntl.h>
 #include <kernel/kernel.h>
@@ -141,9 +142,13 @@ bool permission_check_execute(struct cred *cred, mode_t mode, uid_t uid,
 syserr_t check_inode_permission(struct process *proc, struct inode *ip,
                                 perm_mask_t mask)
 {
+    mode_t mode = ip->i_mode;
+    uid_t uid = ip->uid;
+    gid_t gid = ip->gid;
+
     if (mask & MAY_UNLINK)
     {
-        if (ip->i_mode & S_ISVTX)
+        if (mode & S_ISVTX)
         {
             // only owner or superuser can delete
             ASSERT_IS_FILE_OWNER(proc, ip);
@@ -159,22 +164,76 @@ syserr_t check_inode_permission(struct process *proc, struct inode *ip,
 
     if (mask & MAY_READ)
     {
-        if (!permission_check_read(&proc->cred, ip->i_mode, ip->uid, ip->gid))
+        if (!permission_check_read(&proc->cred, mode, uid, gid))
         {
             return -EACCES;
         }
     }
     if ((mask & MAY_WRITE) || (mask & MAY_APPEND))
     {
-        if (!permission_check_write(&proc->cred, ip->i_mode, ip->uid, ip->gid))
+        if (!permission_check_write(&proc->cred, mode, uid, gid))
         {
             return -EACCES;
         }
     }
     if (mask & MAY_EXEC)
     {
-        if (!permission_check_execute(&proc->cred, ip->i_mode, ip->uid,
-                                      ip->gid))
+        if (!permission_check_execute(&proc->cred, mode, uid, gid))
+        {
+            return -EACCES;
+        }
+    }
+
+    return 0;
+}
+
+syserr_t check_dentry_permission(struct process *proc, struct dentry *dp,
+                                 perm_mask_t mask)
+{
+    DEBUG_EXTRA_PANIC(dp != NULL, "check_dentry_permission: dp is NULL");
+    if (dentry_is_invalid(dp))
+    {
+        // can happen if a file got deleted between path lookup and permission
+        // check
+        return -ENOENT;
+    }
+    mode_t mode = dp->ip->i_mode;
+    uid_t uid = dp->ip->uid;
+    gid_t gid = dp->ip->gid;
+
+    if (mask & MAY_UNLINK)
+    {
+        if (mode & S_ISVTX)
+        {
+            // only owner or superuser can delete
+            ASSERT_IS_FILE_OWNER(proc, dp->ip);
+            return 0;
+        }
+        else
+        {
+            // without sticky bit handle unlink as write permission to the
+            // directory
+            mask = mask | MAY_WRITE;
+        }
+    }
+
+    if (mask & MAY_READ)
+    {
+        if (!permission_check_read(&proc->cred, mode, uid, gid))
+        {
+            return -EACCES;
+        }
+    }
+    if ((mask & MAY_WRITE) || (mask & MAY_APPEND))
+    {
+        if (!permission_check_write(&proc->cred, mode, uid, gid))
+        {
+            return -EACCES;
+        }
+    }
+    if (mask & MAY_EXEC)
+    {
+        if (!permission_check_execute(&proc->cred, mode, uid, gid))
         {
             return -EACCES;
         }

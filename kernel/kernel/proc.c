@@ -3,6 +3,8 @@
 #include <arch/cpu.h>
 #include <arch/trap.h>
 #include <arch/trapframe.h>
+#include <fs/dentry_cache.h>
+#include <fs/fs_lookup.h>
 #include <fs/vimixfs/vimixfs.h>
 #include <kernel/cpu.h>
 #include <kernel/errno.h>
@@ -237,6 +239,7 @@ syserr_t do_fork()
     // Copy memory
     if (proc_copy_memory(parent, np) == -1)
     {
+        spin_unlock(&np->lock);
         proc_put(np);
         return -ENOMEM;
     }
@@ -245,18 +248,6 @@ syserr_t do_fork()
     *(np->trapframe) = *(parent->trapframe);
     // Cause fork to return 0 in the child.
     trapframe_set_return_register(np->trapframe, 0);
-
-    // Copy open files:
-    // Increment reference counts on open file descriptors including the curent
-    // working directory
-    for (size_t i = 0; i < MAX_FILES_PER_PROCESS; i++)
-    {
-        if (parent->files[i])
-        {
-            np->files[i] = file_dup(parent->files[i]);
-        }
-    }
-    np->cwd = VFS_INODE_DUP(parent->cwd);
 
     // Copy name
     safestrcpy(np->name, parent->name, sizeof(parent->name));
@@ -268,20 +259,41 @@ syserr_t do_fork()
     np->umask = parent->umask;
 
     np->debug_log_depth = 0;
-
-    spin_unlock(&np->lock);
-
-    spin_lock(&g_wait_lock);
     np->parent = parent;
-    spin_unlock(&g_wait_lock);
 
-    spin_lock(&np->lock);
-    np->state = RUNNABLE;
     spin_unlock(&np->lock);
+
+    // spin_lock(&g_wait_lock);
+    // np->parent = parent;
+    // spin_unlock(&g_wait_lock);
 
     // add to kobject tree
-    kobject_add(&np->kobj, &g_kobjects_proc, "%d", np->pid);
+    bool added_to_tree =
+        kobject_add(&np->kobj, &g_kobjects_proc, "%d", np->pid);
+    if (!added_to_tree)
+    {
+        proc_put(np);
+        kobject_del(&np->kobj);  // cleanup partial addition
+        return -ENOMEM;
+    }
     proc_put(np);  // drop reference now that the kobject tree holds one
+
+    spin_lock(&np->lock);
+
+    // Copy open files:
+    // Increment reference counts on open file descriptors including the curent
+    // working directory
+    for (size_t i = 0; i < MAX_FILES_PER_PROCESS; i++)
+    {
+        if (parent->files[i])
+        {
+            np->files[i] = file_get(parent->files[i]);
+        }
+    }
+    np->cwd_dentry = dentry_get(parent->cwd_dentry);
+
+    np->state = RUNNABLE;
+    spin_unlock(&np->lock);
 
     // add to process list
     rwspin_write_lock(&g_process_list.lock);
@@ -336,8 +348,8 @@ void do_exit(int32_t status)
         }
     }
 
-    inode_put(proc->cwd);
-    proc->cwd = NULL;
+    dentry_put(proc->cwd_dentry);
+    proc->cwd_dentry = NULL;
 
     spin_lock(&g_wait_lock);
 
@@ -483,11 +495,12 @@ void yield()
 /// @param init_path Absolute path to the init binary.
 void load_init_process(char *init_path)
 {
-    get_current()->cwd = inode_from_path("/", NULL);
-    int ret = do_execv(init_path, (char *[]){init_path, 0});
-    if (ret < 0)
+    get_current()->cwd_dentry = dentry_cache_get_root();
+
+    syserr_t error = do_execv(init_path, (char *[]){init_path, 0});
+    if (error < 0)
     {
-        switch (ret)
+        switch (error)
         {
             case -ENOENT:
                 printk("ERROR starting init process, binary not found at %s\n",
@@ -580,6 +593,10 @@ void wakeup_holding_plist_lock(void *chan)
     list_for_each(pos, &g_process_list.plist)
     {
         struct process *proc = process_from_list(pos);
+        if ((pos->next == pos->prev) && (pos->next != &g_process_list.plist))
+        {
+            printk("wakeup_holding_plist_lock: process list corrupted\n");
+        }
 
         if (proc != current_process)
         {
@@ -724,7 +741,7 @@ void debug_print_call_stack_kernel(struct process *proc)
 
     do
     {
-        printk("  ra (kernel): " FORMAT_REG_SIZE "\n", return_address);
+        debug_print_ra(return_address);
 
         return_address = *((size_t *)(frame_pointer - 1 * sizeof(size_t)));
         // stack_pointer = frame_pointer;
@@ -771,9 +788,9 @@ void debug_print_open_files(struct process *proc)
     for (size_t i = 0; i < MAX_FILES_PER_PROCESS; ++i)
     {
         struct file *f = proc->files[i];
-        if (f != NULL && f->ip != NULL)
+        if (f != NULL && f->dp != NULL && f->dp->ip != NULL)
         {
-            struct inode *ip = proc->files[i]->ip;
+            struct inode *ip = proc->files[i]->dp->ip;
             printk("  fd %zd (ref# %d, off: %d): ", i, kref_read(&f->ref),
                    f->off);
             debug_print_inode(ip);
@@ -798,15 +815,16 @@ void debug_print_process(bool print_call_stack_user,
         state = states[proc->state];
     }
 
-    printk(" PID: %d", proc->pid);
+    printk(" PID: %4d", proc->pid);
 
     if (proc->parent)
     {
-        printk(" (PPID: %d)", proc->parent->pid);
+        printk(" (PPID: %4d)", proc->parent->pid);
     }
     printk(" | %s", proc->name);
     printk(" | cwd: ");
-    debug_print_inode(proc->cwd);
+    // debug_print_inode(proc->cwd_dentry->ip);
+    debug_print_path(proc->cwd_dentry);
     printk(" | state: %s", state);
 
     if (proc->state == ZOMBIE)

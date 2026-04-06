@@ -16,6 +16,7 @@ enum KM_ATTRIBUTE_INDEX
     KM_MEM_TOTAL = 0,
     KM_MEM_FREE,
     KM_PAGES_ALLOC,
+    KM_MEM_ALLOC,
     KM_KERNEL_START,
     KM_KERNEL_END,
     KM_BSS_START,
@@ -32,6 +33,7 @@ struct sysfs_attribute kmem_attributes[] = {
     [KM_MEM_TOTAL] = {.name = "mem_total", .mode = 0444},
     [KM_MEM_FREE] = {.name = "mem_free", .mode = 0444},
     [KM_PAGES_ALLOC] = {.name = "pages_alloc", .mode = 0444},
+    [KM_MEM_ALLOC] = {.name = "mem_alloc", .mode = 0444},
     [KM_KERNEL_START] = {.name = "kernel_start", .mode = 0444},
     [KM_KERNEL_END] = {.name = "kernel_end", .mode = 0444},
     [KM_BSS_START] = {.name = "bss_start", .mode = 0444},
@@ -60,6 +62,9 @@ ssize_t km_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx, char *buf,
             break;
         case KM_PAGES_ALLOC:
             ret = snprintf(buf, n, "%zu\n", kalloc_get_allocation_count());
+            break;
+        case KM_MEM_ALLOC:
+            ret = snprintf(buf, n, "%zu\n", kalloc_get_memory_allocated());
             break;
         case KM_KERNEL_START:
             ret = snprintf(buf, n, "%zu\n", map->kernel_start);

@@ -354,6 +354,33 @@ size_t kalloc_get_allocation_count()
     return atomic_load(&g_kernel_memory.pages_allocated);
 }
 
+size_t kalloc_get_memory_allocated()
+{
+    // total memory allocated - slab management + slab content
+    spin_lock(&g_kernel_memory.lock);
+    size_t allocated =
+        atomic_load(&g_kernel_memory.pages_allocated) * PAGE_SIZE;
+
+    for (size_t i = 0; i < OBJECT_CACHES; ++i)
+    {
+        size_t object_size = g_kernel_memory.object_cache[i].object_size;
+        size_t object_count = 0;
+        size_t slab_count = 0;
+        struct list_head *slab_head;
+        list_for_each(slab_head, &g_kernel_memory.object_cache[i].slab_list)
+        {
+            struct kmem_slab *slab = kmem_slab_from_list(slab_head);
+            object_count += slab->objects_allocated;
+            slab_count++;
+        }
+        allocated -= slab_count * PAGE_SIZE;      // memory used for slabs
+        allocated += object_count * object_size;  // net memory used in slabs
+    }
+
+    spin_unlock(&g_kernel_memory.lock);
+    return allocated;
+}
+
 size_t kalloc_get_total_memory()
 {
     return (g_kernel_memory.memory_map.ram_end -

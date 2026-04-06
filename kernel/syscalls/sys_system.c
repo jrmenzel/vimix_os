@@ -8,7 +8,6 @@
 #include <drivers/rtc.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
-#include <kernel/mount.h>
 #include <kernel/proc.h>
 #include <kernel/reboot.h>
 #include <kernel/reset.h>
@@ -101,52 +100,4 @@ syserr_t sys_clock_gettime()
     argaddr(1, &timespec_va);
 
     return get_time_to_user(clock, timespec_va);
-}
-
-syserr_t sys_mount()
-{
-    size_t idx = 0;
-    // parameter 0: const char *source
-    char source[PATH_MAX];
-    if (argstr(idx++, source, PATH_MAX) < 0)
-    {
-        return -EFAULT;
-    }
-
-    // parameter 1: const char *target
-    char target[PATH_MAX];
-    if (argstr(idx++, target, PATH_MAX) < 0)
-    {
-        return -EFAULT;
-    }
-
-    // parameter 2: const char *filesystemtype
-    char filesystemtype[64];
-    if (argstr(idx++, filesystemtype, 64) < 0)
-    {
-        return -EFAULT;
-    }
-
-    // parameter 3: unsigned long mountflags
-    size_t mountflags;
-    argaddr(idx++, &mountflags);
-
-    // parameter 4: const void *data
-    size_t addr_data;
-    argaddr(idx++, &addr_data);
-
-    return mount(source, target, filesystemtype, (unsigned long)mountflags,
-                 addr_data);
-}
-
-syserr_t sys_umount()
-{
-    // parameter 0: const char *target
-    char target[PATH_MAX];
-    if (argstr(0, target, PATH_MAX) < 0)
-    {
-        return -EFAULT;
-    }
-
-    return umount(target);
 }
