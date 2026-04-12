@@ -55,6 +55,7 @@
 
 #define INT_CAUSE_NONE 0
 #define INT_CAUSE_START 1
+#define INT_CAUSE_TIMER 2
 
 #ifndef __ASSEMBLY__
 
@@ -139,6 +140,10 @@ rv_write_csr_(menvcfgh);
 rv_set_csr_(menvcfgh);
 rv_clear_csr_(menvcfgh);
 #endif
+
+/// @brief Returns true once for each pending timer event forwarded from M-mode
+/// via supervisor software interrupt.
+bool m_mode_consume_timer_event();
 
 #endif  // __ASSEMBLY__
 

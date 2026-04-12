@@ -25,18 +25,31 @@
 #define BUFSZ (32 * BLOCK_SIZE)
 extern char buf[BUFSZ];
 
+typedef uint32_t test_mask_t;
+
+enum test_mask
+{
+    TEST_MASK_NONE = 1 << 0,
+    TEST_MASK_MEMORY_SIZE = 1 << 1,
+    TEST_MASK_CORE_COUNT = 1 << 2,
+    TEST_MASK_FS_SIZE = 1 << 3,
+    TEST_MASK_FILESYSTEM = 1 << 4,
+    TEST_MASK_BITWIDTH = 1 << 5,
+};
+
+#define ALL_TESTS_MASK (-1)
+
 struct test
 {
     void (*f)(char *);
     char *s;
+    test_mask_t mask;
 };
 
-extern struct test quicktests[];
-extern struct test slowtests[];
+extern struct test tests_vimix[];
 
 // host tests run on the host and VIMIX
-extern struct test quicktests_common[];
-extern struct test slowtests_common[];
+extern struct test tests_common[];
 
 // used on VIMIX to make memory usage predictable
 void prepare_test_environment();

@@ -259,13 +259,8 @@ syserr_t do_fork()
     np->umask = parent->umask;
 
     np->debug_log_depth = 0;
-    np->parent = parent;
 
     spin_unlock(&np->lock);
-
-    // spin_lock(&g_wait_lock);
-    // np->parent = parent;
-    // spin_unlock(&g_wait_lock);
 
     // add to kobject tree
     bool added_to_tree =
@@ -295,10 +290,15 @@ syserr_t do_fork()
     np->state = RUNNABLE;
     spin_unlock(&np->lock);
 
-    // add to process list
+    // Publish parent relation and list membership atomically with respect to
+    // exit()/wait() paths. Otherwise a parent exiting concurrently can miss
+    // this child in reparent() and leave a stale parent pointer.
+    spin_lock(&g_wait_lock);
+    np->parent = parent;
     rwspin_write_lock(&g_process_list.lock);
     list_add_tail(&np->plist, &g_process_list.plist);
     rwspin_write_unlock(&g_process_list.lock);
+    spin_unlock(&g_wait_lock);
 
     return (syserr_t)pid;
 }
@@ -555,7 +555,7 @@ void forkret()
     return_to_user_mode();
 }
 
-void sleep(void *chan, struct spinlock *lk)
+void sleep(void *channel, struct spinlock *lk)
 {
     struct process *proc = get_current();
 
@@ -567,10 +567,13 @@ void sleep(void *chan, struct spinlock *lk)
     // so it's okay to release lk.
 
     spin_lock(&proc->lock);
-    spin_unlock(lk);
+    if (lk != NULL)
+    {
+        spin_unlock(lk);
+    }
 
     // Go to sleep.
-    proc->chan = chan;
+    proc->chan = channel;
     proc->state = SLEEPING;
 
     sched();
@@ -578,9 +581,13 @@ void sleep(void *chan, struct spinlock *lk)
     // Tidy up.
     proc->chan = NULL;
 
-    // Reacquire original lock.
     spin_unlock(&proc->lock);
-    spin_lock(lk);
+
+    // Reacquire original lock.
+    if (lk != NULL)
+    {
+        spin_lock(lk);
+    }
 }
 
 void wakeup_holding_plist_lock(void *chan)
@@ -630,15 +637,29 @@ syserr_t proc_send_signal(pid_t pid, int32_t sig)
         return -EINVAL;
     }
 
-    struct list_head *pos;
-    rwspin_read_lock(&g_process_list.lock);
-    list_for_each(pos, &g_process_list.plist)
+    // Never block on proc->lock while holding g_process_list.lock.
+    // Under rare contention this can stall progress.
+    for (size_t attempt = 0; attempt < 256; ++attempt)
     {
-        struct process *proc = process_from_list(pos);
+        bool pid_found = false;
 
-        spin_lock(&proc->lock);
-        if (proc->pid == pid)
+        struct list_head *pos;
+        rwspin_read_lock(&g_process_list.lock);
+        list_for_each(pos, &g_process_list.plist)
         {
+            struct process *proc = process_from_list(pos);
+            if (proc->pid != pid)
+            {
+                continue;
+            }
+
+            pid_found = true;
+            if (spin_trylock(&proc->lock) == false)
+            {
+                // lock is transiently busy, retry without holding list lock
+                break;
+            }
+
             proc->killed = true;
             if (proc->state == SLEEPING)
             {
@@ -650,10 +671,17 @@ syserr_t proc_send_signal(pid_t pid, int32_t sig)
             rwspin_read_unlock(&g_process_list.lock);
             return 0;
         }
-        spin_unlock(&proc->lock);
+        rwspin_read_unlock(&g_process_list.lock);
+
+        if (!pid_found)
+        {
+            return -ESRCH;
+        }
+
+        // Yield to let lock holder make progress, then retry.
+        yield();
     }
 
-    rwspin_read_unlock(&g_process_list.lock);
     return -ESRCH;
 }
 

@@ -33,6 +33,18 @@ void dump_exception_cause_and_kill_proc(struct process *proc,
     proc_set_killed(proc);
 }
 
+bool source_is_software_timer(struct Interrupt_Context *ctx)
+{
+#if defined(CONFIG_RISCV_BOOT_M_MODE)
+    if (ctx->scause == SCAUSE_SUPERVISOR_SOFTWARE_INTERRUPT)
+    {
+        return m_mode_consume_timer_event();
+    }
+#endif
+
+    return false;
+}
+
 /// Handle an interrupt, exception, or system call from user space.
 /// called from u_mode_trap_vector.S, first C function after storing the
 /// CPU state / registers in assembly.
@@ -79,7 +91,7 @@ void user_mode_interrupt_handler(size_t *stack)
         handle_timer_interrupt();
         yield_process = true;
     }
-    else if (int_ctx_source_is_software_timer(&ctx))
+    else if (source_is_software_timer(&ctx))
     {
         int_acknowledge_software();
         handle_timer_interrupt();
@@ -160,7 +172,7 @@ void kernel_mode_interrupt_handler(size_t *stack)
         handle_timer_interrupt();
         yield_process = true;
     }
-    else if (int_ctx_source_is_software_timer(&ctx))
+    else if (source_is_software_timer(&ctx))
     {
         int_acknowledge_software();
         handle_timer_interrupt();

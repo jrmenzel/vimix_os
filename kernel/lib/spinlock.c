@@ -98,6 +98,7 @@ void spin_unlock(struct spinlock *lk)
 /// Interrupts must be off.
 bool spin_lock_is_held_by_this_cpu(struct spinlock *lk)
 {
+    DEBUG_EXTRA_PANIC(lk != NULL, "spin_lock_is_held_by_this_cpu: lk is NULL");
     return (atomic_load(&lk->locked) && lk->cpu == get_cpu());
 }
 #endif  // CONFIG_DEBUG_SPINLOCK

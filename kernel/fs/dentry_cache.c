@@ -18,6 +18,7 @@ struct dentry_cache g_dentry_cache = {0};
 struct dentry *dentry_cache_init(struct inode *root_ip)
 {
     g_dentry_cache.root = NULL;
+    rwspin_lock_init(&g_dentry_cache.tree_lock, "dcache_tree");
     list_init(&g_dentry_cache.lru_list);
     list_init(&g_dentry_cache.unlinked_list);
     spin_lock_init(&g_dentry_cache.list_lock, "dentry lists");
@@ -55,62 +56,82 @@ struct dentry *dentry_cache_get_root()
 
 void dentry_cache_drain_lru(struct dentry_cache *cache, size_t target)
 {
+    enum
+    {
+        DRAIN_BATCH_SIZE = 32
+    };
+    struct dentry *to_free[DRAIN_BATCH_SIZE];
+    struct dentry *parents_to_put[DRAIN_BATCH_SIZE];
+
     while (cache->lru_size > target)
     {
-        // remove least recently used entry
-        spin_lock(&cache->list_lock);
-        if (cache->lru_size <= target)
-        {
-            // someone else already drained it
-            spin_unlock(&cache->list_lock);
-            break;
-        }
-        struct list_head *lru_pos = cache->lru_list.prev;
-        struct dentry *lru_dp = dentry_from_lru_list(lru_pos);
+        size_t drained = 0;
 
-        // lru_dp is not accessible anymore, save not to lock
-        struct dentry *parent = dentry_get(lru_dp->parent);
-        dentry_lock(parent);
-        if (kref_read(&lru_dp->ref) == 0)
+        // detach a bounded batch under locks
+        dcache_write_lock();
+        spin_lock(&cache->list_lock);
+        while (drained < DRAIN_BATCH_SIZE && cache->lru_size > target)
         {
-            // no one got a reference in the meantime, safe to remove
+            struct list_head *lru_pos = cache->lru_list.prev;
+            struct dentry *lru_dp = dentry_from_lru_list(lru_pos);
+
+            if (kref_read(&lru_dp->ref) != 0)
+            {
+                // can't evict least-recently-used candidate right now
+                break;
+            }
+
             list_del(&lru_dp->lru_list);
             cache->lru_size--;
-            spin_unlock(&cache->list_lock);
 
-            dentry_unregister_from_parent(lru_dp);
-            dentry_unlock(parent);
+            struct dentry *parent = lru_dp->parent;
+            if (parent != NULL)
+            {
+                list_del(&lru_dp->sibling_list);
+                lru_dp->parent = NULL;
+            }
 
-            dentry_free(lru_dp);
+            to_free[drained] = lru_dp;
+            parents_to_put[drained] = parent;
+            drained++;
         }
-        else
+        spin_unlock(&cache->list_lock);
+        dcache_write_unlock();
+
+        if (drained == 0)
         {
-            // someone got a reference in the meantime, keep it
-            spin_unlock(&cache->list_lock);
-            dentry_unlock(parent);
+            // no progress possible right now
+            break;
         }
 
-        // put parent outside of the spinlock as it might want to add itsel to
-        // the LRU list
-        dentry_put(parent);
+        // drop parent refs and free dentries outside locks
+        for (size_t i = 0; i < drained; ++i)
+        {
+            if (parents_to_put[i] != NULL)
+            {
+                dentry_put(parents_to_put[i]);
+            }
+            dentry_free(to_free[i]);
+        }
     }
 }
 
 void dentry_cache_move_to_lru(struct dentry *dp)
 {
     spin_lock(&g_dentry_cache.list_lock);
-    list_add(&dp->lru_list, &g_dentry_cache.lru_list);
-    g_dentry_cache.lru_size++;
+    if (list_empty(&dp->lru_list))
+    {
+        list_add(&dp->lru_list, &g_dentry_cache.lru_list);
+        g_dentry_cache.lru_size++;
+    }
     spin_unlock(&g_dentry_cache.list_lock);
 
     dentry_cache_drain_lru(&g_dentry_cache, g_dentry_cache.max_lru_size);
 }
 
-struct dentry *dentry_cache_lookup_locked(struct dentry *parent,
-                                          const char *name)
+struct dentry *dentry_cache_lookup_tree_locked(struct dentry *parent,
+                                               const char *name)
 {
-    DEBUG_ASSERT_CPU_HOLDS_LOCK(&parent->lock);
-
     struct dentry *result = NULL;
 
     struct list_head *pos;
@@ -131,9 +152,9 @@ struct dentry *dentry_cache_lookup(struct dentry *parent, const char *name)
 {
     struct dentry *result = NULL;
 
-    dentry_lock(parent);
-    result = dentry_cache_lookup_locked(parent, name);
-    dentry_unlock(parent);
+    dcache_read_lock();
+    result = dentry_cache_lookup_tree_locked(parent, name);
+    dcache_read_unlock();
 
     return result;
 }
@@ -149,8 +170,8 @@ struct dentry *dentry_cache_add(struct dentry *parent, const char *name,
         return NULL;
     }
 
-    dentry_lock(parent);
-    struct dentry *tmp = dentry_cache_lookup_locked(parent, name);
+    dcache_write_lock();
+    struct dentry *tmp = dentry_cache_lookup_tree_locked(parent, name);
     if (tmp != NULL)
     {
         // dentry already exists.
@@ -163,30 +184,42 @@ struct dentry *dentry_cache_add(struct dentry *parent, const char *name,
         // get freed instantly.
         kref_put(&new_dentry->ref);
         dentry_free(new_dentry);
-        dentry_unlock(parent);
+        dcache_write_unlock();
         return tmp;
     }
     else
     {
         dentry_register_with_parent(parent, new_dentry);
     }
-    dentry_unlock(parent);
+    dcache_write_unlock();
 
     return new_dentry;
 }
 
 void dentry_cache_add_to_unlinked(struct dentry *dp)
 {
-    dentry_lock(g_dentry_cache.unlinked_root);
+    dcache_write_lock();
     dentry_register_with_parent(g_dentry_cache.unlinked_root, dp);
-    dentry_unlock(g_dentry_cache.unlinked_root);
+    dcache_write_unlock();
 }
 
 void dentry_cache_remove_from_unlinked(struct dentry *dp)
 {
-    dentry_lock(g_dentry_cache.unlinked_root);
-    dentry_unregister_from_parent(dp);
-    dentry_unlock(g_dentry_cache.unlinked_root);
+    struct dentry *parent_to_put = NULL;
+
+    dcache_write_lock();
+    if (dp->parent != NULL)
+    {
+        list_del(&dp->sibling_list);
+        parent_to_put = dp->parent;
+        dp->parent = NULL;
+    }
+    dcache_write_unlock();
+
+    if (parent_to_put != NULL)
+    {
+        dentry_put(parent_to_put);
+    }
 }
 
 syserr_t dentry_cache_set_max_lru(struct dentry_cache *dcache,
@@ -231,6 +264,11 @@ void debug_print_dentry_cache_node(struct dentry *dp, size_t level)
     ssize_t printed = level * 4 + name_len;
     print_spaces(max(32 - printed, 1));
     printk("(ref %d) ", kref_read(&dp->ref));
+    printk("(ref %d 0x%zx ", kref_read(&dp->ref), (size_t)dp);
+    if (atomic_load_explicit(&dp->lock.locked, memory_order_relaxed))
+    {
+        printk("(locked) ");
+    }
 
     if (dp->ip == NULL)
     {

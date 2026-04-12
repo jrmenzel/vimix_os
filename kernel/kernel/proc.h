@@ -94,11 +94,11 @@ void proc_init();
 
 void sched();
 
-/// @brief Atomically release lock and sleep on chan.
-/// Reacquires lock when awakened.
+/// @brief Atomically release lock (if not NULL) and sleep on chan.
+/// Reacquires lock (if not NULL) when awakened.
 /// @param chan The channel to sleep on.
-/// @param lk Lock to release before sleeping and reacquire after.
-void sleep(void *chan, struct spinlock *lk);
+/// @param lk Lock to release before sleeping and reacquire after. Can be NULL.
+void sleep(void *channel, struct spinlock *lk);
 
 void userspace_init();
 

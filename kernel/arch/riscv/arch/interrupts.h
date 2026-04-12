@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <arch/riscv/asm/m_mode.h>
 #include <kernel/proc.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
@@ -58,28 +59,6 @@ static inline bool int_ctx_source_is_timer(struct Interrupt_Context *ctx)
     return (ctx->scause == SCAUSE_SUPERVISOR_TIMER_INTERRUPT);
 }
 
-static inline bool int_ctx_source_is_software_timer(
-    struct Interrupt_Context *ctx)
-{
-    bool is_timer = false;
-
-    if ((g_cpus[smp_processor_id()].features & RV_EXT_SSTC) == false)
-    {
-        // without sstc we can't distinguish IPI and timer interrupt from
-        // SBI, trigger a timer interrupt if no IPI is pending
-        if (ctx->scause == SCAUSE_SUPERVISOR_SOFTWARE_INTERRUPT)
-        {
-            spin_lock(&g_cpus_ipi_lock);
-            if (g_cpus[smp_processor_id()].ipi->pending == IPI_NONE)
-            {
-                is_timer = true;
-            }
-            spin_unlock(&g_cpus_ipi_lock);
-        }
-    }
-    return is_timer;
-}
-
 static inline bool int_ctx_source_is_device(struct Interrupt_Context *ctx)
 {
     return (ctx->scause == SCAUSE_SUPERVISOR_EXTERNAL_INTERRUPT);
@@ -106,10 +85,10 @@ static inline size_t int_ctx_get_exception_pc(struct Interrupt_Context *ctx)
     return ctx->sepc;
 }
 
-/// @brief acknowledge the software interrupt by clearing
-/// the S-Mode Timer Interrupt bit in sip
+/// @brief acknowledge the timer interrupt by clearing
+/// the S-Mode Timer Interrupt pending bit in sip
 static inline void int_acknowledge_timer() { rv_clear_csr_sip(SIP_STIP); }
 
 /// @brief acknowledge the software interrupt by clearing
-/// the S-Mode Software Interrupt bit in sip
+/// the S-Mode Software Interrupt pending bit in sip
 static inline void int_acknowledge_software() { rv_clear_csr_sip(SIP_SSIP); }

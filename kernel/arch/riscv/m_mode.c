@@ -7,6 +7,7 @@
 #include <kernel/cpu.h>
 #include <kernel/page.h>
 #include <kernel/param.h>
+#include <kernel/smp.h>
 
 __attribute__((aligned(M_MODE_STACK))) __attribute__((
     section("STACK"))) char g_m_mode_cpu_stack[MAX_CPUS * M_MODE_STACK];
@@ -341,8 +342,11 @@ void m_mode_interrupt_handler(xlen_t *stack)
     {
         clint_set_timer((-1));  // infinitely far into the future
 
-        // arrange for a supervisor software interrupt
-        // after this handler returns so S Mode gets a timer interrupt
+        size_t hart_id = rv_read_csr_mhartid();
+        g_m_mode_cpu_data[hart_id].int_cause = INT_CAUSE_TIMER;
+
+        // Forward timer event to S mode via supervisor software interrupt.
+        // S-mode will consume INT_CAUSE_TIMER to disambiguate timer-vs-IPI.
         rv_set_csr_sip(SIP_SSIP);
     }
     else if (mcause == MCAUSE_MACHINE_SOFTWARE)
@@ -366,4 +370,18 @@ void m_mode_interrupt_handler(xlen_t *stack)
     {
         m_mode_handle_illegal_instruction(stack);
     }
+}
+
+bool m_mode_consume_timer_event()
+{
+    size_t hart_id = smp_processor_id();
+
+    if (g_m_mode_cpu_data[hart_id].int_cause != INT_CAUSE_TIMER)
+    {
+        return false;
+    }
+
+    g_m_mode_cpu_data[hart_id].int_cause = INT_CAUSE_NONE;
+    atomic_thread_fence(memory_order_seq_cst);
+    return true;
 }

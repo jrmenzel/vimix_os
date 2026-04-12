@@ -2,10 +2,12 @@
 
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
+#include <kernel/kticks.h>
 #include <kernel/proc.h>
 #include <kernel/process.h>
 #include <kernel/scheduler.h>
 #include <kernel/spinlock.h>
+#include <kernel/stdatomic.h>
 
 /// @brief Gets the next runnable process, locked.
 /// @return Locked process or NULL.
@@ -35,6 +37,27 @@ struct process *get_next_runnable_process()
     return NULL;
 }
 
+atomic_size_t g_last_wakeup_tick = 0;
+
+void wakeup_procs_waiting_on_timer()
+{
+    size_t now = kticks_get_ticks();
+    size_t last_wakeup = atomic_load(&g_last_wakeup_tick);
+
+    if (now == last_wakeup)
+    {
+        // already woke up procs for this tick, no need to do it again
+        return;
+    }
+
+    // test atomically: if g_last_wakeup_tick is still last_wakeup, set it to
+    // now and retrun true otherwise, another cpu already updated it.
+    if (atomic_compare_exchange_weak(&g_last_wakeup_tick, &last_wakeup, now))
+    {
+        wakeup(&g_ticks);
+    }
+}
+
 void scheduler()
 {
     struct cpu *cpu = get_cpu();
@@ -48,6 +71,8 @@ void scheduler()
 
         if (cpu->state == CPU_STARTED)
         {
+            wakeup_procs_waiting_on_timer();
+
             struct process *proc = get_next_runnable_process();
             if (proc != NULL)
             {

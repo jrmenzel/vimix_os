@@ -90,18 +90,19 @@ struct dentry *dentry_from_path(const char *path, syserr_t *error)
     else
     {
         dp = dentry_get(proc->cwd_dentry);
-        dentry_lock(dp);
+        dcache_read_lock();
         if (dentry_is_unlinked(dp))
         {
-            dentry_unlock_put(dp);
+            dcache_read_unlock();
+            dentry_put(dp);
             *error = -ENOENT;
             return NULL;
         }
-        dentry_unlock(dp);
+        dcache_read_unlock();
     }
 
     *error = 0;
-    char name[NAME_MAX];
+    char name[NAME_MAX + 1];
     while ((path = skipelem(path, name, error)) != NULL)
     {
         if (*error != 0)
@@ -110,11 +111,14 @@ struct dentry *dentry_from_path(const char *path, syserr_t *error)
             return NULL;
         }
 
+        dcache_read_lock();
+
         // Invalid dentries are allowed (and might get returned) to indicate
         // non-existing files, but if assumed to be a directory (aka not the
         // last path component) it's an error.
         if (dentry_is_invalid(dp))
         {
+            dcache_read_unlock();
             dentry_put(dp);
             *error = -ENOENT;
             return NULL;
@@ -122,10 +126,12 @@ struct dentry *dentry_from_path(const char *path, syserr_t *error)
 
         if (!S_ISDIR(dp->ip->i_mode))
         {
+            dcache_read_unlock();
             dentry_put(dp);
             *error = -ENOTDIR;
             return NULL;
         }
+        dcache_read_unlock();
 
         if (check_dentry_permission(get_current(), dp, MAY_EXEC) < 0)
         {
@@ -145,6 +151,7 @@ struct dentry *dentry_from_path(const char *path, syserr_t *error)
         else if (name[0] == '.' && name[1] == '.' && name[2] == '\0')
         {
             // parent dir
+            dcache_read_lock();
             if (dp->parent == NULL)
             {
                 // already at root
@@ -154,36 +161,48 @@ struct dentry *dentry_from_path(const char *path, syserr_t *error)
             {
                 next = dentry_get(dp->parent);
             }
+            dcache_read_unlock();
         }
         else
         {
-            next = dentry_cache_lookup(dp, name);
+            dcache_read_lock();
+            next = dentry_cache_lookup_tree_locked(dp, name);
+            dcache_read_unlock();
             if (next == NULL)
             {
-                next = dentry_alloc_init_orphan(name, NULL);
-                if (next == NULL)
+                struct dentry *lookup_result =
+                    dentry_alloc_init_orphan(name, NULL);
+                if (lookup_result == NULL)
                 {
                     panic("dentry_from_path: out of memory");
                 }
+
                 inode_lock_exclusive(dp->ip);
-                next = VFS_INODE_LOOKUP(dp->ip, next);
-                dentry_lock(dp);
+                lookup_result = VFS_INODE_LOOKUP(dp->ip, lookup_result);
+                inode_unlock_exclusive(dp->ip);
+
+                dcache_write_lock();
                 struct dentry *created_concurrently =
-                    dentry_cache_lookup_locked(dp, name);
+                    dentry_cache_lookup_tree_locked(dp, name);
                 if (created_concurrently != NULL)
                 {
                     // another thread created the dentry concurrently, use it
-                    dentry_unlock(dp);
-                    dentry_put(next);
+                    dcache_write_unlock();
+
+                    if (lookup_result != NULL)
+                    {
+                        dentry_put(lookup_result);
+                    }
                     next = created_concurrently;
                 }
                 else
                 {
                     // register the newly created dentry
-                    dentry_register_with_parent(dp, next);
-                    dentry_unlock(dp);
+                    dentry_register_with_parent(dp, lookup_result);
+                    dcache_write_unlock();
+
+                    next = lookup_result;
                 }
-                inode_unlock_exclusive(dp->ip);
             }
         }
 

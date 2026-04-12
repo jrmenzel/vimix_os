@@ -17,12 +17,8 @@ size_t memory_allocated() { return 0; }
 
 void prepare_test_environment() {}
 
-struct test quicktests[] = {
-    {0, 0},
-};
-
-struct test slowtests[] = {
-    {0, 0},
+struct test tests_vimix[] = {
+    {0, 0, 0},
 };
 #endif
 
@@ -1179,27 +1175,23 @@ void qsort_test(char *s)
     }
 }
 
-struct test quicktests_common[] = {
-    {dev_null, "dev_null"},
-    {dev_zero, "dev_zero"},
-    {lseek_test, "lseek"},
-    {ctype_test, "ctype"},
-    {printf_test, "printf"},
-    {getc_test, "getc"},
-    {realloc_test, "realloc"},
-    {str_test, "str"},
-    {getline_test, "getline"},
-    {strtoul_test, "strtoul"},
-    {user_id, "user_id"},
-    {file_access, "file_access"},
-    {qsort_test, "qsort"},
+struct test tests_common[] = {
+    {dev_null, "dev_null", TEST_MASK_NONE},
+    {dev_zero, "dev_zero", TEST_MASK_NONE},
+    {lseek_test, "lseek", TEST_MASK_FILESYSTEM},
+    {ctype_test, "ctype", TEST_MASK_NONE},
+    {printf_test, "printf", TEST_MASK_BITWIDTH},
+    {getc_test, "getc", TEST_MASK_FILESYSTEM},
+    {realloc_test, "realloc", TEST_MASK_NONE},
+    {str_test, "str", TEST_MASK_NONE},
+    {getline_test, "getline", TEST_MASK_FILESYSTEM},
+    {strtoul_test, "strtoul", TEST_MASK_NONE},
+    {user_id, "user_id", TEST_MASK_NONE},
+    {file_access, "file_access", TEST_MASK_NONE},
+    {qsort_test, "qsort", TEST_MASK_NONE},
+    {truncate_test, "truncate", TEST_MASK_FILESYSTEM},
 
-    {0, 0},
-};
-
-struct test slowtests_common[] = {
-    {truncate_test, "truncate"},
-    {0, 0},
+    {0, 0, 0},
 };
 
 // helper functions

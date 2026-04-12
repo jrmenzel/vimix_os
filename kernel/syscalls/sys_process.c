@@ -62,18 +62,15 @@ syserr_t sys_ms_sleep()
 
     size_t kernel_ticks = milli_seconds * TIMER_INTERRUPTS_PER_SECOND / 1000;
 
-    spin_lock(&g_tickslock);
-    size_t ticks0 = g_ticks;
-    while (g_ticks - ticks0 < kernel_ticks)
+    size_t ticks0 = atomic_load(&g_ticks);
+    while (atomic_load(&g_ticks) - ticks0 < kernel_ticks)
     {
         if (proc_is_killed(get_current()))
         {
-            spin_unlock(&g_tickslock);
             return -ESRCH;
         }
-        sleep(&g_ticks, &g_tickslock);
+        sleep(&g_ticks, NULL);
     }
-    spin_unlock(&g_tickslock);
     return 0;
 }
 

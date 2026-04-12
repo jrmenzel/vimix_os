@@ -15,12 +15,10 @@
 #include "libvimixfs.h"
 #include "libvimixfs_internal.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wanalyzer-use-of-uninitialized-value"
-
 void mark_block_as_used(struct vimixfs *file, uint32_t addr)
 {
     if (file == NULL) return;
+
     if (file->shadow_bitmap == NULL)
     {
         size_t bytes_to_allocate =
@@ -51,7 +49,6 @@ void mark_block_as_used(struct vimixfs *file, uint32_t addr)
 
     bitmap_block[local_addr] = bitmap_block[local_addr] | bit_to_set;
 }
-#pragma GCC diagnostic pop
 
 void print_fs_layout(struct vimixfs *file)
 {

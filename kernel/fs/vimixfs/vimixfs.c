@@ -2,6 +2,7 @@
 
 #include <drivers/rtc.h>
 #include <fs/dentry.h>
+#include <fs/dentry_cache.h>
 #include <fs/vfs.h>
 #include <fs/vimixfs/bmap.h>
 #include <fs/vimixfs/log.h>
@@ -243,9 +244,9 @@ syserr_t vimixfs_iops_create(struct inode *parent, struct dentry *dp,
         return -EFAULT;
     }
 
-    dentry_lock(dp);
+    dcache_write_lock();
     dp->ip = inode_get(ip);
-    dentry_unlock(dp);
+    dcache_write_unlock();
 
     inode_unlock_put(ip);
 
@@ -265,9 +266,9 @@ syserr_t vimixfs_iops_mknod(struct inode *parent, struct dentry *dp,
         return -EFAULT;
     }
 
-    dentry_lock(dp);
+    dcache_write_lock();
     dp->ip = inode_get(ip);
-    dentry_unlock(dp);
+    dcache_write_unlock();
 
     inode_unlock_put(ip);
 
@@ -287,9 +288,9 @@ syserr_t vimixfs_iops_mkdir(struct inode *parent, struct dentry *dp,
         return -EFAULT;
     }
 
-    dentry_lock(dp);
+    dcache_write_lock();
     dp->ip = inode_get(ip);
-    dentry_unlock(dp);
+    dcache_write_unlock();
 
     inode_unlock_put(ip);
 

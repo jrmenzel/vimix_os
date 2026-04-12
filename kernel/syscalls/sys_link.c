@@ -105,9 +105,9 @@ syserr_t do_link(char *path_from, char *path_to)
         return -EEXIST;
     }
 
-    dentry_lock(dentry_to);
+    dcache_read_lock();
     struct dentry *dir_to = dentry_get(dentry_to->parent);
-    dentry_unlock(dentry_to);
+    dcache_read_unlock();
     syserr_t perm_ok =
         check_dentry_permission(get_current(), dir_to, MAY_WRITE);
     if (perm_ok < 0)
@@ -163,9 +163,9 @@ syserr_t do_rm(char *path, bool is_rmdir)
         return -EISDIR;
     }
 
-    dentry_lock(file);
+    dcache_read_lock();
     struct dentry *parent = dentry_get(file->parent);
-    dentry_unlock(file);
+    dcache_read_unlock();
 
     size_t name_len = strlen(path);
     bool cant_unlink = false;
@@ -221,17 +221,17 @@ syserr_t do_rm(char *path, bool is_rmdir)
     }
 
     inode_lock_exclusive_2(parent->ip, file->ip);
-    dentry_lock(file);
+    dcache_read_lock();
     if (file->parent != parent)
     {
         // file got moved in the meantime -> abort
-        dentry_unlock(file);
+        dcache_read_unlock();
         inode_unlock_exclusive_2(parent->ip, file->ip);
         dentry_put(file);
         dentry_put(parent);
         return -EACCES;
     }
-    dentry_unlock(file);
+    dcache_read_unlock();
 
     struct dentry *new_dentry = dentry_alloc_init_orphan(file->name, NULL);
     if (new_dentry == NULL)
@@ -243,13 +243,11 @@ syserr_t do_rm(char *path, bool is_rmdir)
     }
 
     // switch the lookup to the new dentry to prevent further access
-    dentry_lock(parent);
-    dentry_lock(file);
+    dcache_write_lock();
     dentry_unregister_from_parent(file);
-    dentry_cache_add_to_unlinked(file);
-    dentry_unlock(file);
+    dentry_register_with_parent(g_dentry_cache.unlinked_root, file);
     dentry_register_with_parent(parent, new_dentry);
-    dentry_unlock(parent);
+    dcache_write_unlock();
 
     syserr_t ret = 0;
     if (is_rmdir)
@@ -263,13 +261,11 @@ syserr_t do_rm(char *path, bool is_rmdir)
     if (ret < 0)
     {
         // something went wrong, re-add to parent's list
-        dentry_lock(parent);
+        dcache_write_lock();
         dentry_unregister_from_parent(new_dentry);
-        dentry_lock(file);
-        dentry_cache_remove_from_unlinked(file);
+        dentry_unregister_from_parent(file);
         dentry_register_with_parent(parent, file);
-        dentry_unlock(file);
-        dentry_unlock(parent);
+        dcache_write_unlock();
     }
     else
     {
@@ -277,9 +273,7 @@ syserr_t do_rm(char *path, bool is_rmdir)
         if (kref_read(&file->ref) == 1)
         {
             // no other references, free immediately
-            dentry_lock(file);
             dentry_cache_remove_from_unlinked(file);
-            dentry_unlock(file);
         }
     }
     inode_unlock_exclusive_2(parent->ip, file->ip);

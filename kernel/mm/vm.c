@@ -9,6 +9,7 @@
 #include <kernel/string.h>
 #include <mm/arch_vm.h>
 #include <mm/kalloc.h>
+#include <mm/kernel_memory.h>
 #include <mm/memlayout.h>
 #include <mm/mm.h>
 #include <mm/vm.h>
@@ -112,6 +113,16 @@ const size_t MAX_PTES_PER_PAGE_TABLE = 1024;
 #else
 const size_t MAX_PTES_PER_PAGE_TABLE = 512;
 #endif
+
+static inline bool vm_is_valid_page_pointer(size_t pa)
+{
+    if (pa == 0) return false;
+    if ((pa % PAGE_SIZE) != 0) return false;
+
+    size_t ram_start = g_kernel_memory.memory_map.ram_start;
+    size_t ram_end = g_kernel_memory.memory_map.ram_end;
+    return (pa >= ram_start && pa < ram_end);
+}
 
 /// Return the address of the PTE in page table pagetable
 /// that corresponds to virtual address va.  If alloc!=0,
@@ -499,6 +510,13 @@ size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low)
 
 void uvm_free_pagetable(pagetable_t pagetable)
 {
+    if (!vm_is_valid_page_pointer((size_t)pagetable))
+    {
+        printk("uvm_free_pagetable: invalid pagetable pointer 0x%zx\n",
+               (size_t)pagetable);
+        return;
+    }
+
     // there are 2^9 => 512 PTEs in a page table on 64 bit RISC V
     // there are 2^10 => 1024 PTEs in a page table on 32 bit RISC V
     for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
@@ -508,6 +526,16 @@ void uvm_free_pagetable(pagetable_t pagetable)
 
         if (PTE_IS_VALID_NODE(pte))
         {
+            if (!vm_is_valid_page_pointer(child))
+            {
+                printk(
+                    "uvm_free_pagetable: skipping invalid child pointer "
+                    "0x%zx (pte=0x%zx, idx=%zu)\n",
+                    child, (size_t)pte, i);
+                pagetable[i] = 0;
+                continue;
+            }
+
             if (PTE_IS_LEAF(pte))
             {
                 // a leaf pointing to a mapped page

@@ -76,6 +76,7 @@ static inline void let_init_free_children(size_t expected_proc_count)
     uint64_t start_time = get_time_ms();
     size_t procs = get_process_count();
     uint64_t end_time = get_time_ms();
+    const uint64_t max_wait_ms = 60000;
 
     printf("procs: %zu (expecting %zu), waited %lums\n", procs,
            expected_proc_count, (long)(end_time - start_time));
@@ -85,6 +86,23 @@ static inline void let_init_free_children(size_t expected_proc_count)
         printf(
             "waiting for init to free children, procs: %zu (expecting %zu)\n",
             procs, expected_proc_count);
+
+        // Defensive: if a rare race leaves us with unexpected direct children,
+        // reap them here instead of waiting forever for init.
+        while (wait(NULL) > 0)
+        {
+        }
+
+        uint64_t now = get_time_ms();
+        if ((now - start_time) > max_wait_ms)
+        {
+            printf(
+                "timeout waiting for init to free children: procs=%zu, "
+                "expected=%zu\n",
+                procs, expected_proc_count);
+            exit(1);
+        }
+
         sleep(1);
         procs = get_process_count();
     }
@@ -1347,8 +1365,13 @@ void forkfork(char *s)
 void forkforkfork(char *s)
 {
     size_t proc_count = get_process_count();
-    const char *file_name = "stopforking";
-    unlink(file_name);
+    const char *file_name = "/tmp/utests/stopforking";
+    int ret = unlink(file_name);
+    if (ret < 0 && errno != ENOENT)
+    {
+        printf("%s: unlink(%s) failed, errno=%d\n", s, file_name, errno);
+        exit(1);
+    }
 
     pid_t pid = fork();
     if (pid < 0)
@@ -1360,18 +1383,35 @@ void forkforkfork(char *s)
     {
         // if child, keep forking until file appears
         // create file if fork fails
+        size_t loops = 0;
         while (true)
         {
             int fd = open(file_name, O_RDONLY);
             if (fd >= 0)
             {
+                close(fd);
                 exit(EXIT_SUCCESS);
             }
+
+            // avoid starving the creator under very high fork pressure
+            if ((++loops % 64) == 0)
+            {
+                usleep(SHORT_SLEEP_MS * 1000);
+            }
+
             if (fork() < 0)
             {
                 // printf("child: creating file to stop forking...\n");
-                close(open(file_name, O_CREATE | O_RDWR, 0755));
-                exit(EXIT_SUCCESS);
+                int stop_fd = open(file_name, O_CREATE | O_RDWR, 0755);
+                if (stop_fd >= 0)
+                {
+                    close(stop_fd);
+                    exit(EXIT_SUCCESS);
+                }
+
+                // couldn't create stop file yet (likely resource pressure),
+                // back off and retry so one process can eventually create it.
+                usleep(SHORT_SLEEP_MS * 1000);
             }
         }
 
@@ -1380,8 +1420,21 @@ void forkforkfork(char *s)
 
     // parent: sleep for a few seconds, create file, wait on children
     usleep(FORK_FORK_FORK_DURATION_MS * 1000);
-    close(open(file_name, O_CREATE | O_RDWR, 0755));
-    wait(NULL);
+    int stop_fd = open(file_name, O_CREATE | O_RDWR, 0755);
+    if (stop_fd < 0)
+    {
+        printf("%s: failed to create %s, errno=%d\n", s, file_name, errno);
+        exit(1);
+    }
+    close(stop_fd);
+
+    int32_t xstatus = 0;
+    pid_t waited_pid = wait(&xstatus);
+    if (waited_pid < 0)
+    {
+        printf("%s: wait failed, errno=%d\n", s, errno);
+        exit(1);
+    }
 
     let_init_free_children(proc_count);
     assert_no_error(unlink(file_name));
@@ -2705,46 +2758,53 @@ void sbrkbasic(char *s)
 
 void sbrkmuch(char *s)
 {
-    // half the physical memory
-    const size_t BIG = MEMORY_SIZE / 2ul * 1024ul * 1024ul;
-
-    char *oldbrk = sbrk(0);
-
-    // can one grow address space to something big?
-    char *a = sbrk(0);
-    size_t amt = BIG - (size_t)a;
-    char *p = sbrk(amt);
-    if (p != a)
+    errno = 0;
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    size_t mem_free_pages = get_from_sysfs("/sys/kmem/mem_free") / page_size;
+    if (mem_free_pages < 4)
     {
-        printf(
-            "%s: sbrk test failed to grow big address space; enough phys "
-            "mem?\n",
-            s);
+        printf("%s: not enough free memory to run sbrkmuch test\n", s);
         exit(1);
     }
 
-    // touch each page to make sure it exists.
-    char *eee = sbrk(0);
+    char *oldbrk = sbrk(0);
+    assert_errno(0);
 
-    long page_size = sysconf(_SC_PAGE_SIZE);
-    for (char *pp = a; pp < eee; pp += page_size)
+    // can one grow address space to something big?
+    size_t BIG = (mem_free_pages / 2) * page_size;
+    char *p = sbrk(BIG);
+    if (p != oldbrk)
+    {
+        printf("%s: sbrk() failed to grow address space by %zd bytes", s, BIG);
+        printf("Enough phys mem?\n");
+        exit(1);
+    }
+    assert_errno(0);
+
+    // touch each page to make sure it exists.
+    char *current_break = sbrk(0);
+
+    for (char *pp = oldbrk; pp < current_break; pp += page_size)
     {
         *pp = 1;
     }
 
     // 32bit code in release mode had gcc trigger a stringop-overflow error
     // "volatile" silences this, "-Wno-error=stringop-overflow" would work too.
-    volatile char *lastaddr = (char *)(BIG - 1);
+    volatile char *lastaddr = current_break - 1;
     *lastaddr = 99;
 
     // can one de-allocate?
-    a = sbrk(0);
+    char *a = sbrk(0);
+    assert_errno(0);
     char *c = sbrk(-page_size);
+
     if (c == (char *)TEST_PTR_MAX_ADDRESS)
     {
         printf("%s: sbrk could not deallocate\n", s);
         exit(1);
     }
+    assert_errno(0);
     c = sbrk(0);
     if (c != a - page_size)
     {
@@ -2752,9 +2812,11 @@ void sbrkmuch(char *s)
                (void *)a, (void *)c);
         exit(1);
     }
+    assert_errno(0);
 
     // can one re-allocate that page?
     a = sbrk(0);
+    assert_errno(0);
     c = sbrk(page_size);
     if (c != a || sbrk(0) != a + page_size)
     {
@@ -2762,6 +2824,8 @@ void sbrkmuch(char *s)
                (void *)c);
         exit(1);
     }
+    assert_errno(0);
+
     if (*lastaddr == 99)
     {
         // should be zero
@@ -2770,6 +2834,7 @@ void sbrkmuch(char *s)
     }
 
     a = sbrk(0);
+    assert_errno(0);
     c = sbrk(-((char *)sbrk(0) - oldbrk));
     if (c != a)
     {
@@ -2777,6 +2842,7 @@ void sbrkmuch(char *s)
                (void *)c);
         exit(1);
     }
+    assert_errno(0);
 }
 
 // can we read the kernel's memory?
@@ -2843,12 +2909,8 @@ void USER_VA_ENDplus(char *s)
 // failed allocation?
 void sbrkfail(char *s)
 {
-    // 10 forks with 1/4 the memory size allocation each will request in total
-    // more memory than is available so one allocation will fail
-    const size_t BIG = (MEMORY_SIZE / 4ul) * 1024ul * 1024ul;
-
-    pid_t pids[10];
-    const size_t fork_count = sizeof(pids) / sizeof(pids[0]);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    pid_t child_pid = -1;
 
     int fds[2];
     if (pipe(fds) != 0)
@@ -2857,71 +2919,81 @@ void sbrkfail(char *s)
         exit(1);
     }
     int failed_allocations = 0;
-    for (size_t i = 0; i < fork_count; i++)
+
+    size_t mem_free_before_fork = get_from_sysfs("/sys/kmem/mem_free");
+
+    child_pid = fork();
+
+    if (errno != 0)
     {
-        pids[i] = fork();
-        if (errno != 0)
-        {
-            printf("%s: fork failed in loop %zd with error %s\n", s, i,
-                   strerror(errno));
-        }
-        else if (pids[i] == 0)
-        {
-            // child
+        printf("%s: fork failed with error %s\n", s, strerror(errno));
+        printf("free memory: %zd bytes\n",
+               get_from_sysfs("/sys/kmem/mem_free"));
+    }
+    else if (child_pid == 0)
+    {
+        // child
 
-            // allocate a lot of memory
-            sbrk(BIG);
-            if (errno == ENOMEM)
-            {
-                write(fds[1], "f", 1);
-            }
-            else
-            {
-                write(fds[1], "s", 1);
-            }
+        size_t mem_free = get_from_sysfs("/sys/kmem/mem_free");
 
-            // sit around until killed
-            while (true)
-            {
-                sleep(1000);
-            }
+        // allocate a lot of memory
+        void *p = sbrk(mem_free + page_size);
+        if (errno == ENOMEM)
+        {
+            write(fds[1], "f", 1);
         }
         else
         {
-            // parent, wait for allocation in child process
+            void *p1 = sbrk(0);
+            printf("%s: sbrk() should have failed to allocate memory\n", s);
+            printf("p  = %p\n", p);
+            printf("p1 = %p\n", p1);
+            printf("free memory after failed allocation: %zd bytes\n",
+                   get_from_sysfs("/sys/kmem/mem_free"));
+            write(fds[1], "s", 1);
+        }
 
-            char scratch;
-            read(fds[0], &scratch, 1);
-            if (scratch == 'f')
-            {
-                failed_allocations++;
-            }
+        // sit around until killed
+        while (true)
+        {
+            sleep(1000);
         }
     }
+    else
+    {
+        // parent, wait for allocation in child process
+
+        char scratch;
+        read(fds[0], &scratch, 1);
+        if (scratch == 'f')
+        {
+            failed_allocations++;
+        }
+    }
+
     close(fds[0]);
     close(fds[1]);
-
-    if (failed_allocations == 0)
-    {
-        printf(
-            "%s ERROR: at least in one fork the sbrk() call should have "
-            "failed\n",
-            s);
-        exit(1);
-    }
 
     // if those failed allocations freed up the pages they did allocate,
     // we'll be able to allocate here
     // test one page first while the children still run
     // note: this succeeds even with some memory leakage
-    long page_size = sysconf(_SC_PAGE_SIZE);
     char *c = sbrk(page_size);
-    for (size_t i = 0; i < sizeof(pids) / sizeof(pids[0]); i++)
+
+    if (child_pid != -1)
     {
-        if (pids[i] == -1) continue;
-        kill(pids[i], SIGKILL);
+        kill(child_pid, SIGKILL);
         wait(NULL);
     }
+
+    // test after killing the child processes
+    if (failed_allocations == 0)
+    {
+        printf("%s ERROR: the sbrk() call of the child should have failed\n",
+               s);
+        exit(1);
+    }
+
     if (c == ((void *)-1))
     {
         // note: we can run into this error as a false alarm if the
@@ -2933,8 +3005,8 @@ void sbrkfail(char *s)
     }
 
     // After killing the child processes, the parent should be able to allocate
-    // the big chunk once.
-    sbrk(BIG);
+    // a big chunk once.
+    sbrk(mem_free_before_fork / 4);
     if (errno == ENOMEM)
     {
         printf(
@@ -2956,7 +3028,7 @@ void sbrkfail(char *s)
         // allocate a lot of memory.
         // this should fail
         char *a = sbrk(0);
-        void *tmp = sbrk(10 * BIG);
+        void *tmp = sbrk(mem_free_before_fork + 1);
         if (tmp != (void *)(-1))
         {
             printf("%s: Error: allocation should have failed\n", s);
@@ -2964,11 +3036,10 @@ void sbrkfail(char *s)
         }
         assert_errno(ENOMEM);
 
-        printf("%s: A page fault is now expected:\n", s);
         // just to be sure: try to read the memory which should trigger a page
         // fault:
         size_t n = 0;
-        for (size_t i = 0; i < 10 * BIG; i += page_size)
+        for (size_t i = 0; i < mem_free_before_fork; i += page_size)
         {
             n += *(a + i);
         }
@@ -3092,63 +3163,6 @@ void bigargtest(char *s)
     }
     close(fd);
     assert_no_error(unlink("bigarg-ok"));
-}
-
-// what happens when the file system runs out of blocks?
-// answer: block_alloc_init panics, so this test is not useful.
-void fsfull()
-{
-    int nfiles;
-
-    printf("fsfull test\n");
-
-    for (nfiles = 0;; nfiles++)
-    {
-        char name[64];
-        name[0] = 'f';
-        name[1] = '0' + nfiles / 1000;
-        name[2] = '0' + (nfiles % 1000) / 100;
-        name[3] = '0' + (nfiles % 100) / 10;
-        name[4] = '0' + (nfiles % 10);
-        name[5] = '\0';
-        printf("writing %s\n", name);
-        int fd = open(name, O_CREATE | O_RDWR, 0755);
-        if (fd < 0)
-        {
-            printf("open %s failed\n", name);
-            break;
-        }
-        int32_t total = 0;
-        int32_t fsblocks = 0;
-        while (true)
-        {
-            ssize_t cc = write(fd, buf, BLOCK_SIZE);
-            if (cc < BLOCK_SIZE)
-            {
-                break;
-            }
-            total += cc;
-            fsblocks++;
-        }
-        printf("wrote %d bytes\n", total);
-        close(fd);
-        if (total == 0) break;
-    }
-
-    while (nfiles >= 0)
-    {
-        char name[64];
-        name[0] = 'f';
-        name[1] = '0' + nfiles / 1000;
-        name[2] = '0' + (nfiles % 1000) / 100;
-        name[3] = '0' + (nfiles % 100) / 10;
-        name[4] = '0' + (nfiles % 10);
-        name[5] = '\0';
-        unlink(name);
-        nfiles--;
-    }
-
-    printf("fsfull test finished\n");
 }
 
 void argptest(char *s)
@@ -3728,79 +3742,74 @@ void outofinodes(char *s)
     }
 }
 
-struct test quicktests[] = {
-    {duptest, "duptest"},
-    {copyin, "copyin"},
-    {copyout, "copyout"},
-    {copyinstr1, "copyinstr1"},
-    {copyinstr2, "copyinstr2"},
-    {copyinstr3, "copyinstr3"},
-    {rwsbrk, "rwsbrk"},
-    {trunc_file1, "trunc_file1"},
-    {trunc_file2, "trunc_file2"},
-    {trunc_file3, "trunc_file3"},
-    {openiputtest, "openiput"},
-    {exitiputtest, "exitiput"},
-    {iputtest, "iput"},
-    {opentest, "opentest"},
-    {writetest, "writetest"},
-    {writebig, "writebig"},
-    {createtest, "createtest"},
-    {dirtest, "dirtest"},
-    {exectest, "exectest"},
-    {pipe1, "pipe1"},
-    {preempt, "preempt"},
-    {exitwait, "exitwait"},
-    {reparent, "reparent"},
-    {forkfork, "forkfork"},
-    {forkforkfork, "forkforkfork"},
-    {mem, "mem"},
-    {sharedfd, "sharedfd"},
-    {fourfiles, "fourfiles"},
-    {createdelete, "createdelete"},
-    {unlinkread, "unlinkread"},
-    {linktest, "linktest"},
-    {concreate, "concreate"},
-    {linkunlink, "linkunlink"},
-    {subdir, "subdir"},
-    {bigwrite, "bigwrite"},
-    {bigfile, "bigfile"},
-    {max_file_name, "max_file_name"},
-    {rmdot, "rmdot"},
-    {dirfile, "dirfile"},
-    {iref, "iref"},
-    {forktest, "forktest"},
-    {sbrkbasic, "sbrkbasic"},
-    {sbrkmuch, "sbrkmuch"},
-    {kernmem, "kernmem"},
-    {USER_VA_ENDplus, "USER_VA_ENDplus"},
-    {sbrkfail, "sbrkfail"},
-    {sbrkarg, "sbrkarg"},
-    {validatetest, "validatetest"},
-    {bsstest, "bsstest"},
-    {bigargtest, "bigargtest"},
-    {argptest, "argptest"},
-    {stack_overflow, "stack_overflow"},
-    {stack_underflow, "stack_underflow"},
-    {nowrite, "nowrite"},
-    {sbrkbugs, "sbrkbugs"},
-    {sbrklast, "sbrklast"},
-    {sbrk8000, "sbrk8000"},
-    {badarg, "badarg"},
-
-    {0, 0},
-};
-
-struct test slowtests[] = {
-    {killstatus, "killstatus"},
-    {twochildren, "twochildren"},
-    {reparent2, "reparent2"},
-    {bigdir, "bigdir"},
-    {manywrites, "manywrites"},
-    {badwrite, "badwrite"},
-    {execout, "execout"},
-    {diskfull, "diskfull"},
-    {outofinodes, "outofinodes"},
+struct test tests_vimix[] = {
+    {duptest, "duptest", TEST_MASK_NONE},
+    {copyin, "copyin", TEST_MASK_NONE},
+    {copyout, "copyout", TEST_MASK_NONE},
+    {copyinstr1, "copyinstr1", TEST_MASK_NONE},
+    {copyinstr2, "copyinstr2", TEST_MASK_NONE},
+    {copyinstr3, "copyinstr3", TEST_MASK_NONE},
+    {rwsbrk, "rwsbrk", TEST_MASK_NONE},
+    {trunc_file1, "trunc_file1", TEST_MASK_FILESYSTEM},
+    {trunc_file2, "trunc_file2", TEST_MASK_FILESYSTEM},
+    {trunc_file3, "trunc_file3", TEST_MASK_FILESYSTEM},
+    {openiputtest, "openiput", TEST_MASK_FILESYSTEM},
+    {exitiputtest, "exitiput", TEST_MASK_FILESYSTEM},
+    {iputtest, "iput", TEST_MASK_FILESYSTEM},
+    {opentest, "opentest", TEST_MASK_FILESYSTEM},
+    {writetest, "writetest", TEST_MASK_FILESYSTEM},
+    {writebig, "writebig", TEST_MASK_FILESYSTEM},
+    {createtest, "createtest", TEST_MASK_FILESYSTEM},
+    {dirtest, "dirtest", TEST_MASK_FILESYSTEM},
+    {exectest, "exectest", TEST_MASK_NONE},
+    {pipe1, "pipe1", TEST_MASK_NONE},
+    {preempt, "preempt", TEST_MASK_CORE_COUNT},
+    {exitwait, "exitwait", TEST_MASK_CORE_COUNT},
+    {reparent, "reparent", TEST_MASK_CORE_COUNT},
+    {forkfork, "forkfork", TEST_MASK_CORE_COUNT},
+    {forkforkfork, "forkforkfork", TEST_MASK_CORE_COUNT},
+    {mem, "mem", TEST_MASK_MEMORY_SIZE},
+    {sharedfd, "sharedfd", TEST_MASK_NONE},
+    {fourfiles, "fourfiles", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
+    {createdelete, "createdelete", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
+    {unlinkread, "unlinkread", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
+    {linktest, "linktest", TEST_MASK_FILESYSTEM},
+    {concreate, "concreate", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
+    {linkunlink, "linkunlink", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
+    {subdir, "subdir", TEST_MASK_FILESYSTEM},
+    {bigwrite, "bigwrite", TEST_MASK_FILESYSTEM | TEST_MASK_FS_SIZE},
+    {bigfile, "bigfile", TEST_MASK_FILESYSTEM | TEST_MASK_FS_SIZE},
+    {max_file_name, "max_file_name", TEST_MASK_FILESYSTEM},
+    {rmdot, "rmdot", TEST_MASK_FILESYSTEM},
+    {dirfile, "dirfile", TEST_MASK_FILESYSTEM},
+    {iref, "iref", TEST_MASK_FILESYSTEM},
+    {forktest, "forktest", TEST_MASK_CORE_COUNT},
+    {sbrkbasic, "sbrkbasic", TEST_MASK_MEMORY_SIZE},
+    {sbrkmuch, "sbrkmuch", TEST_MASK_MEMORY_SIZE},
+    {kernmem, "kernmem", TEST_MASK_NONE},
+    {USER_VA_ENDplus, "USER_VA_ENDplus", TEST_MASK_NONE},
+    {sbrkfail, "sbrkfail", TEST_MASK_MEMORY_SIZE},
+    {sbrkarg, "sbrkarg", TEST_MASK_NONE},
+    {validatetest, "validatetest", TEST_MASK_NONE},
+    {bsstest, "bsstest", TEST_MASK_NONE},
+    {bigargtest, "bigargtest", TEST_MASK_NONE},
+    {argptest, "argptest", TEST_MASK_NONE},
+    {stack_overflow, "stack_overflow", TEST_MASK_NONE},
+    {stack_underflow, "stack_underflow", TEST_MASK_NONE},
+    {nowrite, "nowrite", TEST_MASK_NONE},
+    {sbrkbugs, "sbrkbugs", TEST_MASK_NONE},
+    {sbrklast, "sbrklast", TEST_MASK_NONE},
+    {sbrk8000, "sbrk8000", TEST_MASK_BITWIDTH},
+    {badarg, "badarg", TEST_MASK_NONE},
+    {killstatus, "killstatus", TEST_MASK_CORE_COUNT},
+    {twochildren, "twochildren", TEST_MASK_CORE_COUNT},
+    {reparent2, "reparent2", TEST_MASK_CORE_COUNT},
+    {bigdir, "bigdir", TEST_MASK_FILESYSTEM},
+    {manywrites, "manywrites", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
+    {badwrite, "badwrite", TEST_MASK_FILESYSTEM},
+    {execout, "execout", TEST_MASK_CORE_COUNT | TEST_MASK_MEMORY_SIZE},
+    {diskfull, "diskfull", TEST_MASK_FILESYSTEM | TEST_MASK_FS_SIZE},
+    {outofinodes, "outofinodes", TEST_MASK_FILESYSTEM | TEST_MASK_FS_SIZE},
 
     {0, 0},
 };

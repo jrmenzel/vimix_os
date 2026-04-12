@@ -32,6 +32,7 @@ build_analyze_2604:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -45,6 +46,7 @@ build_qemu32_deb:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -57,6 +59,7 @@ build_qemu32_rel:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -69,6 +72,7 @@ build_qemu64_deb:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -81,6 +85,7 @@ build_qemu64_rel:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -93,6 +98,7 @@ build_spike32_deb:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -105,6 +111,7 @@ build_spike32_rel:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -117,6 +124,7 @@ build_spike64_deb:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -129,6 +137,7 @@ build_spike64_rel:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -141,6 +150,7 @@ build_visionfive2_deb:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -153,6 +163,7 @@ build_visionfive2_rel:
       - build/filesystem.img
       - build/boot/kernel-vimix
       - build_host/root/usr/bin/mkfs
+      - build_host/root/usr/bin/fsck.vimixfs
     when: always
     expire_in: 1 week
 
@@ -197,13 +208,47 @@ usertests_debug:
     when: always
     expire_in: 1 week
 
+usertests_memory:
+  stage: usertests
+  needs:
+    - job: build_qemu64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 1 5
+    - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 2 8
+    - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 1 128
+  artifacts:
+    paths:
+      - build/logs/
+    when: always
+    expire_in: 1 week
+
+usertests_concurrent:
+  stage: usertests
+  needs:
+    - job: build_qemu64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 1 32
+    - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 2 32
+    - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 3 32
+    - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 8 32
+  artifacts:
+    paths:
+      - build/logs/
+    when: always
+    expire_in: 1 week
+
 fork_test:
   stage: usertests
   needs:
     - job: build_qemu64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh forktest.sh qemu64 "ALL TESTS PASSED"
+    - ./tools/tests/run_test.sh forktest.sh qemu64 "ALL TESTS PASSED" 1 32
+    - ./tools/tests/run_test.sh forktest.sh qemu64 "ALL TESTS PASSED" 2 32
+    - ./tools/tests/run_test.sh forktest.sh qemu64 "ALL TESTS PASSED" 4 32
+    - ./tools/tests/run_test.sh forktest.sh qemu64 "ALL TESTS PASSED" 8 32
   artifacts:
     paths:
       - build/logs/
@@ -223,15 +268,111 @@ stack_grows_test:
     when: always
     expire_in: 1 week
 
-grind_test:
+grind_test_2:
   stage: usertests
   needs:
     - job: build_qemu64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh grind_2.sh qemu64 "grind passed"
+    - ./tools/tests/run_test.sh grind_2.sh qemu64 "grind passed" 1 32
+    - ./tools/tests/run_test.sh grind_2.sh qemu64 "grind passed" 2 32
+    - ./tools/tests/run_test.sh grind_2.sh qemu64 "grind passed" 4 32
+    - ./tools/tests/run_test.sh grind_2.sh qemu64 "grind passed" 8 32
   artifacts:
     paths:
       - build/logs/
     when: always
     expire_in: 1 week
+
+grind_test_8:
+  stage: usertests
+  needs:
+    - job: build_qemu64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh grind_8.sh qemu64 "grind passed" 1 32
+    - ./tools/tests/run_test.sh grind_8.sh qemu64 "grind passed" 2 32
+    - ./tools/tests/run_test.sh grind_8.sh qemu64 "grind passed" 4 32
+    - ./tools/tests/run_test.sh grind_8.sh qemu64 "grind passed" 8 32
+  artifacts:
+    paths:
+      - build/logs/
+    when: always
+    expire_in: 1 week
+
+# Spike
+
+spike_boot64_rel:
+  stage: usertests
+  needs:
+    - job: build_spike64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh echo.sh spike64 "ALL TESTS PASSED"
+  artifacts:
+    paths:
+      - build/logs/
+    when: always
+    expire_in: 1 week
+
+spike_boot32_rel:
+  stage: usertests
+  needs:
+    - job: build_spike32_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh echo.sh spike32 "ALL TESTS PASSED"
+  artifacts:
+    paths:
+      - build/logs/
+    when: always
+    expire_in: 1 week
+
+spike_usertests_misc:
+  stage: usertests
+  needs:
+    - job: build_spike64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests_misc.sh spike64 "ALL TESTS PASSED"
+  artifacts:
+    paths:
+      - build/logs/
+    when: always
+    expire_in: 1 week
+
+spike_usertests_concurrent:
+  stage: usertests
+  needs:
+    - job: build_spike64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests_concurrent.sh spike64 "ALL TESTS PASSED"
+  artifacts:
+    paths:
+      - build/logs/
+    when: always
+    expire_in: 1 week
+
+spike_usertests_mem:
+  stage: usertests
+  needs:
+    - job: build_spike64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests_mem.sh spike64 "ALL TESTS PASSED"
+  artifacts:
+    paths:
+      - build/logs/
+    when: always
+    expire_in: 1 week
+
+# test tools
+
+test_mkfs:
+  stage: usertests
+  needs:
+    - job: build_qemu64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/test_mkfs.sh

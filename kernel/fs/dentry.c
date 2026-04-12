@@ -2,6 +2,7 @@
 
 #include <fs/dentry.h>
 #include <fs/dentry_cache.h>
+#include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <mm/kalloc.h>
 
@@ -11,10 +12,6 @@
 
 // from dentry_cache (only needed here)
 void dentry_cache_move_to_lru(struct dentry *dp);
-
-/// @brief Same as dentry_cache_lookup but requires parent to be locked.
-struct dentry *dentry_cache_lookup_locked(struct dentry *parent,
-                                          const char *name);
 
 struct dentry *dentry_alloc()
 {
@@ -72,8 +69,13 @@ struct dentry *dentry_alloc_init_orphan(const char *name, struct inode *ip)
 
 void dentry_register_with_parent(struct dentry *parent, struct dentry *child)
 {
-    DEBUG_EXTRA_PANIC(spin_lock_is_held_by_this_cpu(&parent->lock),
-                      "dentry_register_with_parent: parent lock not held");
+#ifdef CONFIG_DEBUG_SPINLOCK
+    bool has_parent_lock = spin_lock_is_held_by_this_cpu(&parent->lock);
+    bool has_tree_write_lock =
+        rwspin_write_lock_is_held_by_this_cpu(&g_dentry_cache.tree_lock);
+    DEBUG_EXTRA_PANIC(has_parent_lock || has_tree_write_lock,
+                      "dentry_register_with_parent: missing required lock");
+#endif
 
     child->parent = dentry_get(parent);
     list_add(&child->sibling_list, &parent->child_list);
@@ -87,8 +89,14 @@ void dentry_unregister_from_parent(struct dentry *child)
     {
         return;
     }
-    DEBUG_EXTRA_PANIC(spin_lock_is_held_by_this_cpu(&child->parent->lock),
-                      "dentry_unregister_from_parent: parent lock not held");
+
+#ifdef CONFIG_DEBUG_SPINLOCK
+    bool has_parent_lock = spin_lock_is_held_by_this_cpu(&child->parent->lock);
+    bool has_tree_write_lock =
+        rwspin_write_lock_is_held_by_this_cpu(&g_dentry_cache.tree_lock);
+    DEBUG_EXTRA_PANIC(has_parent_lock || has_tree_write_lock,
+                      "dentry_unregister_from_parent: missing required lock");
+#endif
 
     list_del(&child->sibling_list);
     dentry_put(child->parent);  // drop parent's reference to child
@@ -104,41 +112,18 @@ struct dentry *dentry_alloc_init(struct dentry *parent, const char *name,
         return NULL;
     }
 
-    dentry_lock(parent);
+    dcache_write_lock();
     dentry_register_with_parent(parent, new_dentry);
-    dentry_unlock(parent);
+    dcache_write_unlock();
 
     return new_dentry;
 }
 
 void dentry_switch_children(struct dentry *old_dp, struct dentry *new_dp)
 {
-    bool locked = false;
-    do
-    {
-        while (true)
-        {
-            if (dentry_trylock(old_dp))
-            {
-                if (dentry_trylock(new_dp))
-                {
-                    locked = true;
-                    break;
-                }
-                dentry_unlock(old_dp);
-            }
-        }
-        // now both old_dp and new_dp are locked
-        DEBUG_EXTRA_ASSERT(old_dp->parent != NULL,
-                           "dentry_switch_children: old_dp has no parent");
-        if (dentry_trylock(old_dp->parent) == false)
-        {
-            dentry_unlock(new_dp);
-            dentry_unlock(old_dp);
-            continue;
-        }
-
-    } while (locked == false);
+    dcache_write_lock();
+    DEBUG_EXTRA_ASSERT(old_dp->parent != NULL,
+                       "dentry_switch_children: old_dp has no parent");
 
     list_del(&old_dp->sibling_list);
     list_add(&new_dp->sibling_list, &old_dp->parent->child_list);
@@ -146,9 +131,7 @@ void dentry_switch_children(struct dentry *old_dp, struct dentry *new_dp)
     new_dp->parent = old_dp->parent;
     old_dp->parent = NULL;
 
-    dentry_unlock(new_dp->parent);
-    dentry_unlock(new_dp);
-    dentry_unlock(old_dp);
+    dcache_write_unlock();
 }
 
 void dentry_free(struct dentry *dp)
@@ -183,8 +166,11 @@ struct dentry *dentry_get(struct dentry *dp)
     {
         // re-use dentry from LRU list
         spin_lock(&g_dentry_cache.list_lock);
-        list_del(&dp->lru_list);
-        g_dentry_cache.lru_size--;
+        if (!list_empty(&dp->lru_list))
+        {
+            list_del(&dp->lru_list);
+            g_dentry_cache.lru_size--;
+        }
         spin_unlock(&g_dentry_cache.list_lock);
     }
     return dp;

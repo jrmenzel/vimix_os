@@ -165,10 +165,17 @@ int main(int argc, char *argv[])
 
     if (!ok)
     {
-        fprintf(stderr, "Usage: mkfs --fs fs.img [--in|--out] <dir>\n");
+        fprintf(
+            stderr,
+            "Usage: mkfs --fs fs.img --in <path on host> <path on target>\n");
+        fprintf(stderr, "       mkfs --fs fs.img --out <path on host>\n");
         fprintf(stderr,
                 "       mkfs --fs fs.img --create <size in blocks/kb>\n");
+        fprintf(stderr,
+                "       mkfs --fs fs.img --meta <path in target> [--uid uid] "
+                "[--gid gid] [--fmode mode] [--dmode mode]\n");
+        exit(EXIT_FAILURE);
     }
 
-    return (ok ? 0 : 1);
+    return 0;
 }

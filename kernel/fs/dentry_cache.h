@@ -5,6 +5,7 @@
 #include <kernel/container_of.h>
 #include <kernel/kernel.h>
 #include <kernel/kobject.h>
+#include <kernel/rwspinlock.h>
 #include <kernel/spinlock.h>
 
 /// @brief Dentry cache structure holding the known subset of the file system
@@ -18,6 +19,7 @@ struct dentry_cache
 {
     struct kobject kobj;
     struct dentry *root;
+    struct rwspinlock tree_lock;
     struct spinlock list_lock;
     struct list_head lru_list;
     struct list_head unlinked_list;
@@ -30,6 +32,26 @@ struct dentry_cache
     container_of(kobj_ptr, struct dentry_cache, kobj)
 
 extern struct dentry_cache g_dentry_cache;
+
+static inline void dcache_read_lock()
+{
+    rwspin_read_lock(&g_dentry_cache.tree_lock);
+}
+
+static inline void dcache_read_unlock()
+{
+    rwspin_read_unlock(&g_dentry_cache.tree_lock);
+}
+
+static inline void dcache_write_lock()
+{
+    rwspin_write_lock(&g_dentry_cache.tree_lock);
+}
+
+static inline void dcache_write_unlock()
+{
+    rwspin_write_unlock(&g_dentry_cache.tree_lock);
+}
 
 /// @brief Init the dentry cache, called once when root gets mounted.
 /// Creates the first dentry object pointed to by g_dentry_cache with ref
@@ -50,14 +72,14 @@ struct dentry *dentry_cache_get_root();
 /// found.
 struct dentry *dentry_cache_lookup(struct dentry *parent, const char *name);
 
-/// @brief Same as dentry_cache_lookup but requires the parent dentry to be
-/// locked already.
-/// @param parent The parent dentry, must be locked.
+/// @brief Same as dentry_cache_lookup but requires dcache read or write lock
+/// to be held by caller.
+/// @param parent The parent dentry.
 /// @param name The name of the child dentry to look for.
 /// @return The found dentry with increased reference count, or NULL if not
 /// found.
-struct dentry *dentry_cache_lookup_locked(struct dentry *parent,
-                                          const char *name);
+struct dentry *dentry_cache_lookup_tree_locked(struct dentry *parent,
+                                               const char *name);
 
 /// @brief Add a dentry to the dentry cache under the given parent with the
 /// given name and inode. If the dentry already exists by name, returns the

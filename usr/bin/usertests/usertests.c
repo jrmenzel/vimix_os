@@ -70,12 +70,16 @@ bool run(void f(char *), char *s)
     return xstatus == 0;
 }
 
-int runtests(struct test *tests, char *justone)
+int runtests(struct test *tests, char *justone, test_mask_t mask)
 {
     for (struct test *t = tests; t->s != 0; t++)
     {
         if ((justone == NULL) || strcmp(t->s, justone) == 0)
         {
+            if ((t->mask & mask) == 0)
+            {
+                continue;
+            }
             if (!run(t->f, t->s))
             {
                 printf("SOME TESTS FAILED\n");
@@ -86,7 +90,7 @@ int runtests(struct test *tests, char *justone)
     return 0;
 }
 
-int drivetests(int quick, int continuous, char *justone)
+int drivetests(test_mask_t mask, int continuous, char *justone)
 {
     mkdir("/tmp/utests", 0755);
     if (chdir("/tmp/utests") < 0) return -1;
@@ -95,24 +99,12 @@ int drivetests(int quick, int continuous, char *justone)
     {
         printf("usertests starting\n");
         size_t pages_free_start = memory_allocated();
-        if (runtests(quicktests_common, justone) ||
-            runtests(quicktests, justone))
+        if (runtests(tests_common, justone, mask) ||
+            runtests(tests_vimix, justone, mask))
         {
             if (continuous != 2)
             {
                 return 1;
-            }
-        }
-        if (!quick)
-        {
-            if (justone == 0) printf("usertests slow tests starting\n");
-            if (runtests(slowtests_common, justone) ||
-                runtests(slowtests, justone))
-            {
-                if (continuous != 2)
-                {
-                    return 1;
-                }
             }
         }
 
@@ -138,6 +130,15 @@ int drivetests(int quick, int continuous, char *justone)
     return 0;
 }
 
+void print_usage()
+{
+    printf("Usage: usertests [-c] [-C] [testname]\n");
+    printf("  -c: run continuously\n");
+    printf("  -C: run continuously\n");
+    printf("  -m <mask>: run only tests matching the given mask\n");
+    printf("  testname: run only the test with the given name\n");
+}
+
 int main(int argc, char *argv[])
 {
     prepare_test_environment();
@@ -145,39 +146,48 @@ int main(int argc, char *argv[])
     time_t start_time = time(NULL);
 
     int continuous = 0;
-    bool quick_tests_only = false;
     char *justone = NULL;
 
-    if (argc == 2 && strcmp(argv[1], "-q") == 0)
+    int arg_pos = 1;
+    test_mask_t mask = ALL_TESTS_MASK;
+    while (true)
     {
-        quick_tests_only = true;
-    }
-    else if (argc >= 2 && strcmp(argv[1], "-c") == 0)
-    {
-        continuous = 1;
-        if (argc == 3)
+        if (arg_pos >= argc)
         {
-            justone = argv[2];
+            break;
+        }
+        if (strcmp(argv[arg_pos], "-c") == 0)
+        {
+            continuous = 1;
+            arg_pos++;
+        }
+        else if (strcmp(argv[arg_pos], "-C") == 0)
+        {
+            continuous = 2;
+            arg_pos++;
+        }
+        else if (strcmp(argv[arg_pos], "-m") == 0)
+        {
+            arg_pos++;
+            if (arg_pos < argc)
+            {
+                mask = atoi(argv[arg_pos]);
+                arg_pos++;
+            }
+            else
+            {
+                print_usage();
+                return 1;
+            }
+        }
+        else
+        {
+            justone = argv[arg_pos];
+            break;
         }
     }
-    else if (argc >= 2 && strcmp(argv[1], "-C") == 0)
-    {
-        continuous = 2;
-        if (argc == 3)
-        {
-            justone = argv[2];
-        }
-    }
-    else if (argc == 2 && argv[1][0] != '-')
-    {
-        justone = argv[1];
-    }
-    else if (argc > 1)
-    {
-        printf("Usage: usertests [-c] [-C] [-q] [testname]\n");
-        return 1;
-    }
-    if (drivetests(quick_tests_only, continuous, justone))
+
+    if (drivetests(mask, continuous, justone))
     {
         printf("drivetests failed\n");
         return 1;
