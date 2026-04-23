@@ -47,13 +47,6 @@ const bool g_console_add_cr = true;
 /// but not from write().
 void console_putc(int32_t c)
 {
-    if (device_putc_sync == NULL)
-    {
-        // provide some output before the console was initialized:
-        sbi_console_putchar(c);
-        return;
-    }
-
     if (c == BACKSPACE)
     {
         // if the user typed backspace, overwrite with a space.
@@ -271,6 +264,7 @@ void console_debug_print_help()
     printk("CTRL+S: Print process list with kernel call stack\n");
     printk("CTRL+O: Print process list with open files\n");
     printk("CTRL+Y: Print sys tree\n");
+    printk("Time: %zd ticks\n", kticks_get_ticks());
 }
 
 bool console_handle_control_keys(int32_t c)
@@ -303,7 +297,7 @@ bool console_handle_control_keys(int32_t c)
         case CONTROL_KEY('B'):  // kernel page table - running out of memorable
                                 // key combos don't collide with VSCode
             printk("Kernel process table:\n");
-            debug_vm_print_page_table(g_kernel_pagetable);
+            debug_vm_print_page_table(g_kernel_pagetable.root);
             break;
         case CONTROL_KEY('Y'): debug_print_kobject_tree(); break;
         case CONTROL_KEY('D'): debug_print_dentry_cache(); break;

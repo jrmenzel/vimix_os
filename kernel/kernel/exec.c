@@ -9,6 +9,7 @@
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 #include <kernel/permission.h>
+#include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
@@ -228,7 +229,8 @@ static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,
             n = PAGE_SIZE;
         }
 
-        if (VFS_INODE_READ_KERNEL(ip, offset + i, pa, n) != n)
+        size_t page_kva = phys_to_virt(pa);
+        if (VFS_INODE_READ_KERNEL(ip, offset + i, page_kva, n) != n)
         {
             return -1;
         }

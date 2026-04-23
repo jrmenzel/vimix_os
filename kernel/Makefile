@@ -14,6 +14,7 @@ INIT_BUILD_DIR := $(K_BUILD_DIR)/$(ARCH_DIR)/asm
 #
 OBJS := $(OBJS_ARCH)
 OBJS +=	$(ARCH_DIR)/context.o \
+	$(ARCH_DIR)/mm/arch_early_pgtable.o \
 	$(ARCH_DIR)/mm/arch_vm.o \
 	$(ARCH_DIR)/start.o \
 	$(ARCH_DIR)/trap.o \
@@ -46,6 +47,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	fs/vimixfs/vimixfs.o \
 	fs/vimixfs/vimixfs_sysfs.o \
 	init/dtb.o \
+	init/early_pgtable.o \
 	init/main.o \
 	init/start.o \
 	ipc/pipe.o \
@@ -67,6 +69,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	mm/cache.o \
 	mm/kalloc.o \
 	mm/kmem_sysfs.o \
+	mm/memory_map.o \
 	mm/slab.o \
 	mm/vm.o \
 	syscalls/sys_cred.o \
@@ -150,7 +153,12 @@ KBUILD_CFLAGS += $(ARCH_KERNEL_CFLAGS)
 KBUILD_CFLAGS += -DMEMORY_SIZE=$(MEMORY_SIZE)
 KBUILD_CFLAGS += -DUSER_TEXT_START=$(USER_TEXT_START)
 KBUILD_CFLAGS += -D__ARCH_$(ARCH)
-#KBUILD_CFLAGS += -fpic -fpie
+KBUILD_CFLAGS += -DTEXT_OFFSET=$(TEXT_OFFSET) -DPHYS_OFFSET=$(PHYS_OFFSET) -DPAGE_OFFSET=$(PAGE_OFFSET)
+
+
+ifeq ($(RELOC_KERNEL), yes)
+KBUILD_CFLAGS += -D__CONFIG_RELOC_KERNEL
+endif
 
 ifeq ($(RAMDISK_EMBEDDED), yes)
 KBUILD_CFLAGS += -D__CONFIG_RAMDISK_EMBEDDED
@@ -166,6 +174,7 @@ KBUILD_AFLAGS := -D__ASSEMBLY__ $(KBUILD_CFLAGS)
 all: directories $(KERNEL_PATH) # build all
 
 directories: # create temp build directories
+	@mkdir -p ../$(BUILD_DIR)/boot
 	@mkdir -p $(SUB_DIRS_TO_MAKE)
 
 # compile assembly
@@ -236,9 +245,13 @@ $(K_BUILD_DIR)/dtb_embedded.h:
 	@touch $(K_BUILD_DIR)/dtb_embedded.h
 endif
 
+KERNEL_LD_FLAGS := --defsym=TEXT_OFFSET=$(TEXT_OFFSET) --defsym=PHYS_OFFSET=$(PHYS_OFFSET) --defsym=PAGE_OFFSET=$(PAGE_OFFSET)
+
+#KERNEL_LD_FLAGS += -M
+
 $(KERNEL_PATH): $(K_BUILD_DIR)/ramdisk_fs.h $(K_BUILD_DIR)/dtb_embedded.h $(OBJECT_FILES) $(ARCH_DIR)/kernel.ld # build kernel
 	@printf "$(TASK_COLOR)Link kernel: $(@)\n$(NO_COLOR)"
-	@$(LD) $(LDFLAGS) --defsym=KERNBASE=$(KERNBASE) $(ARCH_LD_FLAGS) -T $(ARCH_DIR)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
+	@$(LD) $(LDFLAGS) $(KERNEL_LD_FLAGS) $(ARCH_LD_FLAGS) -T $(ARCH_DIR)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
 ifeq ($(CREATE_ASSEMBLY), yes)
 	@printf "$(TASK_COLOR)Disassemble kernel: $(K_BUILD_DIR)/$(KERNEL_NAME).asm\n$(NO_COLOR)"
 	@$(OBJDUMP) -S $(KERNEL_PATH) > $(K_BUILD_DIR)/$(KERNEL_NAME).asm

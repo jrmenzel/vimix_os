@@ -3,6 +3,7 @@
 #include <drivers/console.h>
 #include <drivers/htif.h>
 #include <kernel/major.h>
+#include <kernel/pgtable.h>
 #include <kernel/reset.h>
 
 bool htif_is_initialized = false;
@@ -120,19 +121,27 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
     if (init_parameters->mem[0].start == 0)
     {
         // kernel defined tohost/fromhost
+        // size_t tohost = phys_to_virt((size_t)&tohost);
+        // size_t fromhost = phys_to_virt((size_t)&fromhost);
+        // htif_tohost = (uint64_t *)tohost;
+        // htif_fromhost = (uint64_t *)fromhost;
+
         htif_tohost = &tohost;
         htif_fromhost = &fromhost;
     }
     else
     {
-        htif_tohost = (volatile uint64_t *)(init_parameters->mem[0].start +
-                                            HTIF_REGISTER_TOHOST);
-        htif_fromhost = (volatile uint64_t *)(init_parameters->mem[0].start +
-                                              HTIF_REGISTER_FROMHOST);
+        size_t htif_mmio_base =
+            mmio_phys_to_virt(init_parameters->mem[0].start);
+        htif_tohost =
+            (volatile uint64_t *)(htif_mmio_base + HTIF_REGISTER_TOHOST);
+        htif_fromhost =
+            (volatile uint64_t *)(htif_mmio_base + HTIF_REGISTER_FROMHOST);
     }
-    // printk("register HTIF shutdown function\n");
+    printk("register HTIF shutdown function\n");
     g_machine_power_off_func = &htif_machine_power_off;
 
     htif_is_initialized = true;
+
     return MKDEV(HTIF_MAJOR, 0);
 }

@@ -12,6 +12,7 @@
 #include <kernel/buf.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
+#include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
@@ -44,7 +45,7 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     snprintf(device_name, 16, "virtio%zd", disk_index);
 
     spin_lock_init(&disk->vdisk_lock, "virtio_disk");
-    disk->mmio_base = mapping->mem[0].start;
+    disk->mmio_base = mmio_phys_to_virt(mapping->mem[0].start);
     size_t b = disk->mmio_base;
 
     uint32_t status = 0;
@@ -126,19 +127,25 @@ dev_t virtio_disk_init_internal(size_t disk_index,
 
     // write physical addresses.
 #if defined(__ARCH_32BIT)
-    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_QUEUE_DESC_LOW, (size_t)disk->desc);
-    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DRIVER_DESC_LOW, (size_t)disk->avail);
-    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DEVICE_DESC_LOW, (size_t)disk->used);
+    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_QUEUE_DESC_LOW,
+                       virt_to_phys((size_t)disk->desc));
+    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DRIVER_DESC_LOW,
+                       virt_to_phys((size_t)disk->avail));
+    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DEVICE_DESC_LOW,
+                       virt_to_phys((size_t)disk->used));
 #else
-    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_QUEUE_DESC_LOW, (size_t)disk->desc);
+    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_QUEUE_DESC_LOW,
+                       virt_to_phys((size_t)disk->desc));
     MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_QUEUE_DESC_HIGH,
-                       (size_t)disk->desc >> 32);
-    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DRIVER_DESC_LOW, (size_t)disk->avail);
+                       virt_to_phys((size_t)disk->desc) >> 32);
+    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DRIVER_DESC_LOW,
+                       virt_to_phys((size_t)disk->avail));
     MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DRIVER_DESC_HIGH,
-                       (size_t)disk->avail >> 32);
-    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DEVICE_DESC_LOW, (size_t)disk->used);
+                       virt_to_phys((size_t)disk->avail) >> 32);
+    MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DEVICE_DESC_LOW,
+                       virt_to_phys((size_t)disk->used));
     MMIO_WRITE_UINT_32(b, VIRTIO_MMIO_DEVICE_DESC_HIGH,
-                       (size_t)disk->used >> 32);
+                       virt_to_phys((size_t)disk->used) >> 32);
 #endif
 
     // queue is ready.
@@ -175,7 +182,7 @@ dev_t virtio_disk_init_internal(size_t disk_index,
 dev_t virtio_disk_init(struct Device_Init_Parameters *init_param,
                        const char *name)
 {
-    size_t b = init_param->mem[0].start;
+    size_t b = mmio_phys_to_virt(init_param->mem[0].start);
 
     if (MMIO_READ_UINT_32(b, VIRTIO_MMIO_MAGIC_VALUE) != VIRTIO_DISK_MAGIC ||
         MMIO_READ_UINT_32(b, VIRTIO_MMIO_VERSION) != 2 ||
@@ -310,12 +317,12 @@ void virtio_disk_rw(struct virtio_disk *disk, struct buf *b, bool write)
     buf0->reserved = 0;
     buf0->sector = sector;
 
-    disk->desc[idx[0]].addr = (size_t)buf0;
+    disk->desc[idx[0]].addr = virt_to_phys((size_t)buf0);
     disk->desc[idx[0]].len = sizeof(struct virtio_blk_req);
     disk->desc[idx[0]].flags = VRING_DESC_F_NEXT;
     disk->desc[idx[0]].next = idx[1];
 
-    disk->desc[idx[1]].addr = (size_t)b->data;
+    disk->desc[idx[1]].addr = virt_to_phys((size_t)b->data);
     disk->desc[idx[1]].len = read_amount;
     if (write)
     {
@@ -329,7 +336,7 @@ void virtio_disk_rw(struct virtio_disk *disk, struct buf *b, bool write)
     disk->desc[idx[1]].next = idx[2];
 
     disk->info[idx[0]].status = 0xff;  // device writes 0 on success
-    disk->desc[idx[2]].addr = (size_t)&disk->info[idx[0]].status;
+    disk->desc[idx[2]].addr = virt_to_phys((size_t)&disk->info[idx[0]].status);
     disk->desc[idx[2]].len = 1;
     // device writes the status:
     disk->desc[idx[2]].flags = VRING_DESC_F_WRITE;

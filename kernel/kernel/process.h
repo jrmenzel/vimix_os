@@ -137,7 +137,7 @@ struct process *process_alloc_init();
 
 void process_free(struct process *proc);
 
-bool proc_init_kernel_stack(pagetable_t kpage_table, struct process *proc,
-                            size_t kstack_va);
+bool proc_init_kernel_stack(struct Page_Table *kpage_table,
+                            struct process *proc, size_t kstack_va);
 
 void proc_free_kernel_stack(size_t stack_va);

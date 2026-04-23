@@ -16,15 +16,15 @@ Compile and try out:
 
 How it looks like (text mode via UART only) running on [qemu](docs/development/run_on_qemu.md):
 ```
+VIMIX OS 64 bit (RISC V) kernel version cc83496 is booting
+Timer source: sstc extension
+init early memory management...
+init new page table...
+init devices list...
+init console: ns16550a
 init device riscv,plic0... OK (8,0)
 init device ns16550a... OK (13,0)
-
-VIMIX OS 64 bit (RISC V) kernel version 36bb03d is booting
-Console: ns16550a
-Timer source: sstc extension
-init memory management...
-init process and syscall support...
-init filesystem...
+Redirecting printk to console device...
 init remaining devices...
 init device /dev/null... OK (3,0)
 init device /dev/zero... OK (4,0)
@@ -32,35 +32,33 @@ init device /dev/random... OK (10,0)
 init device google,goldfish-rtc... OK (6,0)
 init device syscon... OK (7,0)
 init device virtio,mmio... OK (1,0)
-init device virtio,mmio... OK (1,1)
-fs root device: virtio,mmio (1,0)
-SBI implementation: OpenSBI (version 65541)
-SBI specification: v2.0
-SBI extension SRST detected: register SBI reboot/shutdown functions
+init filesystem...
+found root file system on device: virtio,mmio (1,0)
 init userspace...
-CPU 0 starting 
-CPU 2 starting 
-CPU 3 starting 
-CPU 1 starting (boot CPU)
+CPU 0 entering scheduler 
+CPU 2 entering scheduler (boot CPU)
+CPU 1 entering scheduler 
+CPU 3 entering scheduler 
 forkret() mounting /... OK
+Loaded kernel debug symbols from /kernel-vimix.xdbg.
 forkret() loading /usr/bin/init... OK
 init mounting /dev... OK
 init mounting /sys... OK
-init mounting /home... OK
-init starting /usr/bin/sh
+init starting /usr/bin/login
 $ ls /
 /:
-drwxr-xr-x root root     1024 B  2.11.2025  19:48:58 .
-drwxr-xr-x root root     1024 B  2.11.2025  19:48:58 ..
-.rw-r--r-- root root     5911 B  2.11.2025  19:43:25 README.md
-drwxr-xr-x root root        0 B  2.11.2025  19:48:58 dev
-drwxr-xr-x root root     5120 B  1.11.2025  12:38:22 etc
-drwxr-xr-x root root      256 B  2.11.2025  09:34:08 home
-drwxr-x--- root root      128 B  19.10.2025 08:45:18 root
-drwxr-xr-x root root        0 B  2.11.2025  19:48:58 sys
-drwxr-xr-x root root     7168 B  26.10.2025 16:43:02 tests
-drwxrwxrwt root root      128 B  31.10.2025 23:16:27 tmp
-drwxr-xr-x root root      256 B  31.10.2025 21:40:22 usr
+drwxr-xr-x root root     2048 B  22.4.2026  20:41:14 .
+drwxr-xr-x root root     2048 B  22.4.2026  20:41:14 ..
+.rw-r--r-- root root     6413 B  5.4.2026   19:17:33 README.md
+drwxr-xr-x root root        0 B  22.4.2026  20:41:14 dev
+drwxr-xr-x root root     5120 B  29.3.2026  11:00:31 etc
+drwxr-xr-x root root      256 B  4.1.2026   20:23:49 home
+.rw-r--r-- root root   367488 B  22.4.2026  20:41:13 kernel-vimix.xdbg
+drwxr-x--- root root      128 B  4.1.2026   20:23:49 root
+drwxr-xr-x root root        0 B  22.4.2026  20:41:14 sys
+drwxr-xr-x root root     9216 B  12.4.2026  18:38:11 tests
+drwxrwxrwt root root      128 B  4.1.2026   20:23:49 tmp
+drwxr-xr-x root root      256 B  4.1.2026   20:23:49 usr
 $ cat /README.md | grep RISC | wc
 4 78 607 
 $ fortune

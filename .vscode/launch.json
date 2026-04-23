@@ -13,14 +13,22 @@
             "miDebuggerPath": "riscv64-elf-gdb",
             "miDebuggerServerAddress": "127.0.0.1:26000",
             "MIMode": "gdb",
-            "stopAtEntry": false,
+            "stopAtEntry": true,
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
+                },
+                {
+                    "description": "Set GDB working directory",
+                    "text": "cd ${workspaceFolder}",
+                },
+                {
+                    "description": "Load workspace gdb commands (relocation-aware symbols)",
+                    "text": "source ${workspaceFolder}/.gdbinit_vscode",
                     "ignoreFailures": false
                 }
-            ]
+            ],
         },
         {
             // debug a user space application

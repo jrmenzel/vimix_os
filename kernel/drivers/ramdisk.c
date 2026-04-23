@@ -5,6 +5,7 @@
 #include <kernel/container_of.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
+#include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/stdatomic.h>
 #include <kernel/string.h>
@@ -87,7 +88,7 @@ dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
     size_t minor = (size_t)atomic_fetch_add(&g_ramdisk_next_minor, 1);
     // printk("ramdisk_init %zd\n", minor);
 
-    rdisk->ram_base = (void *)init_parameters->mem[0].start;
+    rdisk->ram_base = (void *)phys_to_virt(init_parameters->mem[0].start);
     rdisk->disk.bdev.size = init_parameters->mem[0].size;
 
     char *device_name = kmalloc(16, ALLOC_FLAG_NONE);

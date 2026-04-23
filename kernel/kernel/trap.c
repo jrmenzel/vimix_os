@@ -36,10 +36,7 @@ void dump_exception_cause_and_kill_proc(struct process *proc,
 bool source_is_software_timer(struct Interrupt_Context *ctx)
 {
 #if defined(CONFIG_RISCV_BOOT_M_MODE)
-    if (ctx->scause == SCAUSE_SUPERVISOR_SOFTWARE_INTERRUPT)
-    {
-        return m_mode_consume_timer_event();
-    }
+    return m_mode_consume_timer_event();
 #endif
 
     return false;
@@ -91,12 +88,6 @@ void user_mode_interrupt_handler(size_t *stack)
         handle_timer_interrupt();
         yield_process = true;
     }
-    else if (source_is_software_timer(&ctx))
-    {
-        int_acknowledge_software();
-        handle_timer_interrupt();
-        yield_process = true;
-    }
     else if (int_ctx_source_is_device(&ctx))
     {
         handle_device_interrupt();
@@ -105,6 +96,12 @@ void user_mode_interrupt_handler(size_t *stack)
     {
         int_acknowledge_software();
         yield_process = handle_ipi_interrupt();
+
+        if (source_is_software_timer(&ctx))
+        {
+            handle_timer_interrupt();
+            yield_process = true;
+        }
     }
     else if (int_ctx_source_is_page_fault(&ctx))
     {
@@ -172,12 +169,6 @@ void kernel_mode_interrupt_handler(size_t *stack)
         handle_timer_interrupt();
         yield_process = true;
     }
-    else if (source_is_software_timer(&ctx))
-    {
-        int_acknowledge_software();
-        handle_timer_interrupt();
-        yield_process = true;
-    }
     else if (int_ctx_source_is_device(&ctx))
     {
         handle_device_interrupt();
@@ -186,6 +177,17 @@ void kernel_mode_interrupt_handler(size_t *stack)
     {
         int_acknowledge_software();
         yield_process = handle_ipi_interrupt();
+
+        if (source_is_software_timer(&ctx))
+        {
+            // if (yield_process)
+            //{
+            //     printk("Yes, IPI + timer actually happened cat the same time.
+            //     Good we cchecked for this.\n");
+            // }
+            handle_timer_interrupt();
+            yield_process = true;
+        }
     }
     else
     {
@@ -235,7 +237,7 @@ bool handle_ipi_interrupt()
             {
                 // a process changed the kernels page table, reload it to
                 // flush TLBs
-                mmu_set_page_table((size_t)g_kernel_pagetable, 0);
+                mmu_set_kernel_page_table(&g_kernel_pagetable);
                 break;
             }
             case IPI_KERNEL_PANIC:

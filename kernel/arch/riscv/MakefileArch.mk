@@ -34,6 +34,7 @@ CPUS := 4
 ifeq ($(PLATFORM), qemu64)
 BITWIDTH := 64
 BOOT_MODE := BOOT_S_MODE
+RELOC_KERNEL := yes
 VIRTIO_DISK := yes
 #RAMDISK_EMBEDDED := yes
 #RAMDISK_BOOTLOADER := yes
@@ -42,37 +43,57 @@ else ifeq ($(PLATFORM), qemu32)
 # test config
 BITWIDTH := 32
 BOOT_MODE := BOOT_M_MODE
+RELOC_KERNEL := yes
 RAMDISK_BOOTLOADER := yes
+#RAMDISK_EMBEDDED := yes
 QEMU_MACHINE := virt
 else ifeq ($(PLATFORM), spike32)
 BITWIDTH := 32
 BOOT_MODE := BOOT_M_MODE
+RELOC_KERNEL := no
 #RAMDISK_EMBEDDED := yes
 RAMDISK_BOOTLOADER := yes
 else ifeq ($(PLATFORM), spike64)
 BITWIDTH := 64
 BOOT_MODE := BOOT_M_MODE
+RELOC_KERNEL := no
 RAMDISK_BOOTLOADER := yes
 else ifeq ($(PLATFORM), visionfive2)
 DTB_FILE := boot/dtb/jh7110-starfive-visionfive-2-v1.3b.dtb
 #DTB_EMBEDDED := yes
 BITWIDTH := 64
 BOOT_MODE := BOOT_S_MODE
+RELOC_KERNEL := yes
 RAMDISK_BOOTLOADER := yes
 else
 $(error PLATFORM not set)
 endif
 
+ifeq ($(BOOT_MODE), BOOT_M_MODE)
+TEXT_OFFSET := 0
+else
+TEXT_OFFSET := 0x200000
+endif
+
 ifeq ($(PLATFORM), visionfive2)
-KERNBASE := 0x40200000
+PHYS_OFFSET := 0x40000000
 else
-# qemu & spike:
-ifeq ($(BOOT_MODE), BOOT_S_MODE)
-KERNBASE := 0x80200000
+PHYS_OFFSET := 0x80000000
+endif
+
+# relocation address should be on a 2MB boundry (32 bit) or 
+# 4MB boundry (64 bit) to maximize the size of the kernel that 
+# can be mapped with the early page tables
+ifeq ($(RELOC_KERNEL), yes)
+ifeq ($(BITWIDTH), 32)
+PAGE_OFFSET := 0x80000000
 else
-KERNBASE := 0x80000000
+PAGE_OFFSET := 0xFFFFFFC000000000
 endif
+else
+PAGE_OFFSET := $(PHYS_OFFSET)
 endif
+
 
 #####
 # TOOLPREFIX, e.g. riscv64-unknown-elf-
@@ -133,7 +154,7 @@ ARCH_CFLAGS += -mcmodel=medany -mno-relax
 ARCH_KERNEL_CFLAGS += -DCONFIG_RISCV_$(BOOT_MODE)
 
 ifeq ($(PLATFORM), visionfive2)
-ARCH_KERNEL_CFLAGS += -D__PLATFORM_VISIONFIVE2 -D__LIMIT_MEMORY
+ARCH_KERNEL_CFLAGS += -D__PLATFORM_VISIONFIVE2
 endif
 ifeq ($(PLATFORM), spike32)
 ARCH_KERNEL_CFLAGS += -D__PLATFORM_SPIKE
@@ -149,6 +170,7 @@ OBJS_ARCH := arch/riscv/asm/entry.o \
 	arch/riscv/asm/s_mode_trap_vector.o \
 	arch/riscv/asm/u_mode_trap_vector.o \
 	arch/riscv/asm/context_switch.o \
+	arch/riscv/asm/shared_asm.o \
 	arch/riscv/plic.o \
 	arch/riscv/timer.o \
 	arch/riscv/scause.o \

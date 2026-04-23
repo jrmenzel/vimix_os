@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <init/start.h>
 #include <kernel/elf.h>
 #include <kernel/errno.h>
 #include <kernel/fs.h>
@@ -15,64 +16,53 @@
 #include <mm/vm.h>
 
 //
-// The kernel's page table: all memory is mapped to its real location.
+// The kernel's page table: physical memory (RAM/MMIO) is mapped to
+// the kernel virtual address space.
 // Also the per process kernel stack is mapped to high memory.
 // protect modifications with g_kernel_pagetable_lock.
-pagetable_t g_kernel_pagetable;
-struct spinlock g_kernel_pagetable_lock;
+// pagetable_t g_kernel_pagetable;
+// struct spinlock g_kernel_pagetable_lock;
 
-extern char end_of_text[];  // kernel.ld sets this to end of kernel code.
+struct Page_Table g_kernel_pagetable = {0};
+size_t g_kernel_pagetable_register_value;  // cached register value
 
-extern char trampoline[];  // u_mode_trap_vector.S
-
-void mmu_set_page_table(size_t addr_of_first_block, uint32_t asid)
+void page_table_init(struct Page_Table *pagetable, pagetable_t root)
 {
-    size_t reg_value = mmu_make_page_table_reg(addr_of_first_block, asid);
+    if (root == NULL)
+    {
+        root = (pagetable_t)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
+        if (root == NULL)
+        {
+            panic("page_table_init: out of memory");
+        }
+    }
+    pagetable->root = root;
+    spin_lock_init(&pagetable->lock, "pagetable_lock");
+}
+
+size_t mmu_set_page_table(pagetable_t pagetable, uint32_t asid)
+{
+    size_t reg_value = mmu_make_page_table_reg((size_t)pagetable, asid);
     mmu_set_page_table_reg_value(reg_value);
+    return reg_value;
 }
 
 /// @brief Map MMIO device to kernel page.
 /// @param k_pagetable Page table to add mapping to.
-/// @param address Physical address which will also be the virtual address.
+/// @param address Physical address.
 /// @param size Size of mapping in bytes.
 void kvm_map_mmio(pagetable_t k_pagetable, size_t address, size_t size)
 {
-    kvm_map_or_panic(k_pagetable, address, address, size, PTE_MMIO_FLAGS);
+    // printk("map MMIO device at pa 0x%zx to va 0x%zx, size 0x%zx\n", address,
+    //        mmio_phys_to_virt(address), size);
+    kvm_map_or_panic(k_pagetable, mmio_phys_to_virt(address), address, size,
+                     PTE_MMIO_FLAGS);
 }
 
-/// Make a direct-map page table for the kernel.
-/// Here the "memory mapped devices" are mapped into kernel memory space
-/// (once the created pagetable is used).
-pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
-                                      struct Devices_List *dev_list)
+void kvm_map_all_devices(struct Page_Table *kpagetable,
+                         struct Devices_List *dev_list)
 {
-    pagetable_t kpage_table = (pagetable_t)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
-
-    // map kernel text as executable and read-only.
-    kvm_map_or_panic(
-        kpage_table, memory_map->kernel_start, memory_map->kernel_start,
-        (size_t)end_of_text - memory_map->kernel_start, PTE_RO_TEXT);
-
-    // map kernel data and the physical RAM we'll make use of.
-    kvm_map_or_panic(kpage_table, (size_t)end_of_text, (size_t)end_of_text,
-                     (size_t)memory_map->ram_end - (size_t)end_of_text,
-                     PTE_RW_RAM);
-
-    // map dtb (unless it is mapped in RAM)
-    if ((memory_map->dtb_file_start < memory_map->ram_start) ||
-        (memory_map->dtb_file_start > memory_map->ram_end))
-    {
-        size_t map_start = PAGE_ROUND_DOWN(memory_map->dtb_file_start);
-        size_t map_end = PAGE_ROUND_UP(memory_map->dtb_file_end);
-
-        kvm_map_or_panic(kpage_table, map_start, map_start, map_end - map_start,
-                         PTE_RW_RAM);
-    }
-
-    // map the trampoline for trap entry/exit to
-    // the highest virtual address in the kernel.
-    kvm_map_or_panic(kpage_table, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
-                     PTE_RO_TEXT);
+    spin_lock(&kpagetable->lock);
 
     // map all found MMIO devices
     for (size_t i = 0; i < dev_list->dev_array_length; ++i)
@@ -91,21 +81,49 @@ pagetable_t kvm_make_kernel_pagetable(struct Minimal_Memory_Map *memory_map,
                     PAGE_ROUND_UP(dev->init_parameters.mem[i].start +
                                   dev->init_parameters.mem[i].size);
 
-                kvm_map_mmio(kpage_table, map_start, map_end - map_start);
+                kvm_map_mmio(kpagetable->root, map_start, map_end - map_start);
             }
         }
     }
 
-    return kpage_table;
+    spin_unlock(&kpagetable->lock);
 }
 
-void kvm_init(struct Minimal_Memory_Map *memory_map,
-              struct Devices_List *dev_list)
+void kvm_map_special_kernel_pages(struct Page_Table *kpagetable)
 {
-    spin_lock_init(&g_kernel_pagetable_lock, "kvm_lock");
-    spin_lock(&g_kernel_pagetable_lock);
-    g_kernel_pagetable = kvm_make_kernel_pagetable(memory_map, dev_list);
-    spin_unlock(&g_kernel_pagetable_lock);
+    spin_lock(&kpagetable->lock);
+
+    // map the trampoline for trap entry/exit to
+    // the highest virtual address in the kernel.
+    kvm_map_or_panic(kpagetable->root, TRAMPOLINE,
+                     virt_to_phys((size_t)trampoline), PAGE_SIZE, PTE_RO_TEXT);
+
+    spin_unlock(&kpagetable->lock);
+}
+
+void kvm_map_region(struct Page_Table *kpagetable,
+                    struct Memory_Map_Region *region)
+{
+    pte_t flags = memory_map_get_pte(region);
+    if (flags == 0) return;
+
+    spin_lock(&kpagetable->lock);
+
+    kvm_map_or_panic(kpagetable->root, region->start_va, region->start_pa,
+                     region->size, flags);
+
+    spin_unlock(&kpagetable->lock);
+}
+
+void kvm_init_kpage_table(struct Page_Table *kpagetable,
+                          struct Memory_Map *memory_map)
+{
+    for (size_t i = 0; i < memory_map->region_count; ++i)
+    {
+        kvm_map_region(kpagetable, &memory_map->region[i]);
+    }
+
+    kvm_map_special_kernel_pages(kpagetable);
 }
 
 #if defined(__ARCH_32BIT)
@@ -114,14 +132,20 @@ const size_t MAX_PTES_PER_PAGE_TABLE = 1024;
 const size_t MAX_PTES_PER_PAGE_TABLE = 512;
 #endif
 
-static inline bool vm_is_valid_page_pointer(size_t pa)
+static inline bool vm_is_valid_page_pointer_pa(size_t pa)
 {
     if (pa == 0) return false;
     if ((pa % PAGE_SIZE) != 0) return false;
 
-    size_t ram_start = g_kernel_memory.memory_map.ram_start;
-    size_t ram_end = g_kernel_memory.memory_map.ram_end;
-    return (pa >= ram_start && pa < ram_end);
+    return addr_is_in_ram_pa(pa);
+}
+
+static inline bool vm_is_valid_page_pointer_kva(size_t kva)
+{
+    if (kva == 0) return false;
+    if ((kva % PAGE_SIZE) != 0) return false;
+
+    return addr_is_in_ram_kva(kva);
 }
 
 /// Return the address of the PTE in page table pagetable
@@ -176,7 +200,8 @@ pte_t *vm_walk2(pagetable_t pagetable, size_t va, bool *is_super_page,
                 pagetable = (pagetable_t)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
                 if (pagetable == NULL) return NULL;
 
-                *pte = PTE_BUILD(pagetable, 0);
+                size_t pagetable_pa = virt_to_phys((size_t)pagetable);
+                *pte = PTE_BUILD(pagetable_pa, 0);
                 PTE_MAKE_VALID_TABLE(*pte);
             }
             else
@@ -193,7 +218,9 @@ pte_t *vm_walk2(pagetable_t pagetable, size_t va, bool *is_super_page,
                 return pte;
             }
             // else it's pointing to the next level of the tree:
-            pagetable = (pagetable_t)PTE_GET_PA(*pte);
+            size_t next_level_pa = PTE_GET_PA(*pte);
+            size_t next_level_va = phys_to_virt(next_level_pa);
+            pagetable = (pagetable_t)next_level_va;
         }
     }
     return &pagetable[PAGE_TABLE_INDEX(0, va)];
@@ -244,7 +271,7 @@ size_t kvm_get_physical_paddr(size_t va)
         return 0;
     }
 
-    pte_t *pte = vm_walk2(g_kernel_pagetable, va, NULL, false);
+    pte_t *pte = vm_walk2(g_kernel_pagetable.root, va, NULL, false);
     if (pte == NULL) return 0;
     if (PTE_IS_VALID_NODE(*pte) == false) return 0;
 
@@ -265,15 +292,22 @@ int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
 int32_t vm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
                pte_t perm, bool allow_super_pages)
 {
+    // Most callers pass a kernel-usable virtual address from alloc_page().
+    // Hardware PTEs must always contain physical addresses.
+    if (VA_IS_IN_RANGE_FOR_KERNEL(pa))
+    {
+        pa = virt_to_phys(pa);
+    }
+
     perm |= PTE_MAP_DEFAULT_FLAGS;
 
-    /*
     // useful debug prints
-    printk("mapping (physical 0x%zx) to 0x%zx - 0x%zx (size: %zd pages) (", pa,
-           va, va + size - 1, size / PAGE_SIZE);
-    debug_vm_print_pte_flags(perm);
-    printk(")\n");
-    */
+    // printk("page table: 0x%zx\n", (size_t)pagetable);
+    // printk("mapping (physical 0x%zx) to 0x%zx - 0x%zx (size: %zd pages) (",
+    // pa,
+    //       va, va + size - 1, size / PAGE_SIZE);
+    // debug_vm_print_pte_flags(perm);
+    // printk(")\n");
 
     if ((va % PAGE_SIZE) != 0)
     {
@@ -373,7 +407,7 @@ void uvm_unmap(pagetable_t pagetable, size_t va, size_t npages, bool do_free)
         if (do_free)
         {
             size_t pa = PTE_GET_PA(*pte);
-            free_page((void *)pa);
+            free_page((void *)phys_to_virt(pa));
         }
         *pte = 0;
     }
@@ -510,7 +544,7 @@ size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low)
 
 void uvm_free_pagetable(pagetable_t pagetable)
 {
-    if (!vm_is_valid_page_pointer((size_t)pagetable))
+    if (!vm_is_valid_page_pointer_kva((size_t)pagetable))
     {
         printk("uvm_free_pagetable: invalid pagetable pointer 0x%zx\n",
                (size_t)pagetable);
@@ -526,7 +560,7 @@ void uvm_free_pagetable(pagetable_t pagetable)
 
         if (PTE_IS_VALID_NODE(pte))
         {
-            if (!vm_is_valid_page_pointer(child))
+            if (!vm_is_valid_page_pointer_pa(child))
             {
                 printk(
                     "uvm_free_pagetable: skipping invalid child pointer "
@@ -539,12 +573,12 @@ void uvm_free_pagetable(pagetable_t pagetable)
             if (PTE_IS_LEAF(pte))
             {
                 // a leaf pointing to a mapped page
-                free_page((void *)child);
+                free_page((void *)phys_to_virt(child));
             }
             else
             {
                 // this PTE points to a lower-level page table
-                uvm_free_pagetable((pagetable_t)child);
+                uvm_free_pagetable((pagetable_t)phys_to_virt(child));
             }
         }
         pagetable[i] = 0;
@@ -580,7 +614,7 @@ int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
             break;
         }
 
-        memmove(mem, (char *)pa, PAGE_SIZE);
+        memmove(mem, (char *)phys_to_virt(pa), PAGE_SIZE);
         if (vm_map(dst_page, va, (size_t)mem, PAGE_SIZE, flags, false) != 0)
         {
             free_page(mem);
@@ -635,7 +669,8 @@ int32_t uvm_copy_out(pagetable_t pagetable, size_t dst_va, char *src_pa,
         {
             n = len;
         }
-        memmove((void *)(dst_pa_page_start + dst_offset_in_page), src_pa, n);
+        memmove((void *)(phys_to_virt(dst_pa_page_start) + dst_offset_in_page),
+                src_pa, n);
 
         len -= n;
         src_pa += n;
@@ -665,7 +700,9 @@ int32_t uvm_copy_in(pagetable_t pagetable, char *dst_pa, size_t src_va,
         {
             n = len;
         }
-        memmove(dst_pa, (void *)(src_pa_page_start + src_offset_in_page), n);
+        memmove(dst_pa,
+                (void *)(phys_to_virt(src_pa_page_start) + src_offset_in_page),
+                n);
 
         len -= n;
         dst_pa += n;
@@ -696,7 +733,8 @@ int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
             n = max;
         }
 
-        char *src_pa = (char *)(src_pa_page_start + src_offset_in_page);
+        char *src_pa =
+            (char *)(phys_to_virt(src_pa_page_start) + src_offset_in_page);
         while (n > 0)
         {
             if (*src_pa == '\0')
@@ -750,7 +788,7 @@ bool vm_trim_pagetable(pagetable_t pagetable, size_t va_removed)
 
         // this PTE points to a lower-level page table
         pte_of_parent_of_va_removed = pte;
-        parent_of_va_removed = (pagetable_t)PTE_GET_PA(*pte);
+        parent_of_va_removed = (pagetable_t)phys_to_virt(PTE_GET_PA(*pte));
     }
 
     for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
@@ -771,12 +809,34 @@ bool vm_trim_pagetable(pagetable_t pagetable, size_t va_removed)
 }
 
 #if defined(DEBUG)
-void debug_print_pt_level(pagetable_t pagetable, size_t level,
+static inline size_t debug_va_sign_extend(size_t va)
+{
+#if defined(__ARCH_64BIT)
+    // Rebuild canonical Sv39 addresses for debug output.
+    // PAGE_SHIFT + PAGE_TABLE_MAX_LEVELS * PT_IDX_BITS = 39 on RV64.
+    const size_t used_va_bits =
+        PAGE_SHIFT + PAGE_TABLE_MAX_LEVELS * PT_IDX_BITS;
+    const size_t sign_bit = used_va_bits - 1;
+    if (va & (1UL << sign_bit))
+    {
+        va |= (~0UL) << used_va_bits;
+    }
+#endif
+    return va;
+}
+
+void debug_print_pt_level(pagetable_t pagetable, ssize_t level,
                           size_t partial_va)
 {
-    if (level >= PAGE_TABLE_MAX_LEVELS)
+    if ((level < 0) || (level >= PAGE_TABLE_MAX_LEVELS))
     {
         printk("ERROR, malformatted page table\n");
+        return;
+    }
+
+    if (pagetable == NULL)
+    {
+        printk("ERROR, null pagetable pointer\n");
         return;
     }
 
@@ -793,6 +853,7 @@ void debug_print_pt_level(pagetable_t pagetable, size_t level,
             debug_vm_print_pte_flags(pte);
 
             size_t va = partial_va | VA_FROM_PAGE_TABLE_INDEX(level, i);
+            va = debug_va_sign_extend(va);
             if (PTE_IS_LEAF(pte))
             {
                 printk(" - va: 0x%zx ", va);
@@ -815,7 +876,9 @@ void debug_print_pt_level(pagetable_t pagetable, size_t level,
             {
                 printk("\n");
 
-                pagetable_t sub_pagetable = (pagetable_t)PTE_GET_PA(pte);
+                pagetable_t sub_pagetable_pa = (pagetable_t)PTE_GET_PA(pte);
+                pagetable_t sub_pagetable =
+                    (pagetable_t)phys_to_virt((size_t)sub_pagetable_pa);
                 debug_print_pt_level(sub_pagetable, level - 1, va);
             }
         }
@@ -828,7 +891,8 @@ void debug_print_pt_level(pagetable_t pagetable, size_t level,
 
 void debug_vm_print_page_table(pagetable_t pagetable)
 {
-    printk("page table 0x%p\n", pagetable);
+    size_t reg_value = mmu_make_page_table_reg((size_t)pagetable, 0);
+    printk("page table 0x%p (reg. value: 0x%zx)\n", pagetable, reg_value);
     debug_print_pt_level(pagetable, PAGE_TABLE_MAX_LEVELS - 1, 0);
 }
 
@@ -846,7 +910,9 @@ size_t debug_vm_get_size_level(pagetable_t pagetable, size_t level)
             // to additional allocations
             if (level > 1)
             {
-                pagetable_t sub_pagetable = (pagetable_t)PTE_GET_PA(pte);
+                pagetable_t sub_pagetable_pa = (pagetable_t)PTE_GET_PA(pte);
+                pagetable_t sub_pagetable =
+                    (pagetable_t)phys_to_virt((size_t)sub_pagetable_pa);
                 size += debug_vm_get_size_level(sub_pagetable, level - 1);
             }
         }

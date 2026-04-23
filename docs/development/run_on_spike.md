@@ -13,6 +13,8 @@
 Run
 > make PLATFORM=spike64 spike
 
+**Known limitations:**
+- Kernel relocation is unsupported (debugging fails when relocation is enabled)
 
 ## Debugging on Spike with VSCode
 

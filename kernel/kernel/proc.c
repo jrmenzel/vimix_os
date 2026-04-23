@@ -34,7 +34,7 @@ struct spinlock g_cpus_ipi_lock;
 struct process_list g_process_list;
 
 /// @brief The init process in user mode.
-/// Created in userspace_init(), the only process not created by fork()
+/// Created in init_userspace(), the only process not created by fork()
 struct process *g_initial_user_process;
 
 void wakeup_holding_plist_lock(void *chan);
@@ -149,11 +149,14 @@ void proc_free_pagetable(pagetable_t pagetable)
 
 /// Set up first user process.
 /// This creates the only process not created by fork()
-void userspace_init()
+void init_userspace()
 {
+    printk("init userspace...\n");
+    proc_init();  // process table
+
     g_initial_user_process = process_alloc_init();
     if (g_initial_user_process == NULL)
-        panic("userspace_init() already out of memory");
+        panic("init_userspace() already out of memory");
     g_initial_user_process->cred.groups = groups_alloc(0);
     g_initial_user_process->state = RUNNABLE;
 
@@ -741,6 +744,10 @@ int either_copyout(bool addr_is_userspace, size_t dst, void *src, size_t len)
     }
     else
     {
+        if (dst > 0x80200000 && dst < 0x81200000)
+        {
+            printk("foo\n");
+        }
         memmove((char *)dst, src, len);
         return 0;
     }

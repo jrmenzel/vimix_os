@@ -6,7 +6,7 @@
 #include <drivers/devices_list.h>
 #include <kernel/kernel.h>
 #include <libfdt.h>
-#include <mm/vm.h>
+#include <mm/memory_map.h>
 
 /// @brief 64 bit values in the device tree are 32 bit aligned! Use this type
 /// when casting void* from the device tree.
@@ -24,12 +24,14 @@ void dtb_add_devices_to_dev_list(void *dtb, struct Device_Driver *driver_list,
 /// @brief Query the memory map, RAM size, ram disk location...
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
 /// @param memory_map Map to fill
-void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map);
+void dtb_get_memory_regions(void *dtb, struct Memory_Map *memory_map);
 
 /// @brief Returns the timebase frequency used by the timer.
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
 /// @return dtb based timebase frequency (or fallback on error) in Hz.
 uint64_t dtb_get_timebase(void *dtb);
+
+int dtb_find_boot_console_index(void *dtb);
 
 ssize_t dtb_find_boot_console_in_dev_list(void *dtb,
                                           struct Devices_List *dev_list);

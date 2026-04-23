@@ -100,7 +100,7 @@ void sched();
 /// @param lk Lock to release before sleeping and reacquire after. Can be NULL.
 void sleep(void *channel, struct spinlock *lk);
 
-void userspace_init();
+void init_userspace();
 
 /// @brief Wait for a child process to exit and return its pid.
 /// exposed via sys/wait.h

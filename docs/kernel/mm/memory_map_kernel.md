@@ -28,8 +28,8 @@ On bare-metal qemu the RAM starts at 0x8000.0000:
 
 | VA start    | VA end      | alias         | mapped from | Permissions |
 | ----------- | ----------- | ------------- | ----------- | ----------- |
-| end_of_text | 87FF FFFF   | ~128 MB RAM   | VA = PA     | R, W        |
-| 8000 0000   | end_of_text | kernel binary | VA = PA     | R, X        |
+| __end_text | 87FF FFFF   | ~128 MB RAM   | VA = PA     | R, W        |
+| 8000 0000   | __end_text | kernel binary | VA = PA     | R, X        |
 
 ### RAM (SBI)
 
@@ -37,8 +37,8 @@ On [SBI](../../riscv/SBI.md) enabled qemu the usable RAM starts at 0x8020.0000:
 
 | VA start    | VA end      | alias         | mapped from | Permissions |
 | ----------- | ----------- | ------------- | ----------- | ----------- |
-| end_of_text | 87FF FFFF   | ~128 MB RAM   | VA = PA     | R, W        |
-| 8020 0000   | end_of_text | kernel binary | VA = PA     | R, X        |
+| __end_text | 87FF FFFF   | ~128 MB RAM   | VA = PA     | R, W        |
+| 8020 0000   | __end_text | kernel binary | VA = PA     | R, X        |
 
 ### Memory Mapped IO Devices
 

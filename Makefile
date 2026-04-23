@@ -56,6 +56,7 @@ QEMU_OPTS := $(QEMU_OPTS_ARCH) -kernel $(KERNEL_FILE) -m $(MEMORY_SIZE)M -smp $(
 ifeq ($(VIRTIO_DISK), yes)
 QEMU_OPTS += -drive file=$(BUILD_DIR)/filesystem.img,if=none,format=raw,id=x0
 QEMU_OPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+#QEMU_OPTS += -d int,mmu,in_asm -D qemu_mmu.log
 # add a second file system if it is present
 ifneq ("$(wildcard home.img)","")
 	QEMU_OPTS += -drive file=home.img,if=none,format=raw,id=x1
@@ -98,10 +99,20 @@ qemu-dump-tree: qemu-requirements
 .gdbinit: tools/gdbinit Makefile MakefileCommon.mk
 	@cp tools/gdbinit .gdbinit
 	@sed -i 's/_PORT/$(GDB_PORT)/g' .gdbinit
+	@sed -i 's/_KERNEL_VIRT_BASE/($(PAGE_OFFSET)+$(TEXT_OFFSET))/g' .gdbinit
+	@sed -i 's/_KERNEL_PHYS_BASE/($(PHYS_OFFSET)+$(TEXT_OFFSET))/g' .gdbinit
 	@sed -i "s~_KERNEL~$(KERNEL_FILE)~g" .gdbinit
 	@sed -i 's/_ARCHITECTURE/$(GDB_ARCHITECTURE)/g' .gdbinit
 
-qemu-gdb: qemu-requirements .gdbinit # run in qemu waiting for a debugger
+.gdbinit_vscode: tools/gdbinit_vscode Makefile MakefileCommon.mk
+	@cp tools/gdbinit_vscode .gdbinit_vscode
+	@sed -i 's/_PORT/$(GDB_PORT)/g' .gdbinit_vscode
+	@sed -i 's/_KERNEL_VIRT_BASE/($(PAGE_OFFSET)+$(TEXT_OFFSET))/g' .gdbinit_vscode
+	@sed -i 's/_KERNEL_PHYS_BASE/($(PHYS_OFFSET)+$(TEXT_OFFSET))/g' .gdbinit_vscode
+	@sed -i "s~_KERNEL~$(KERNEL_FILE)~g" .gdbinit_vscode
+	@sed -i 's/_ARCHITECTURE/$(GDB_ARCHITECTURE)/g' .gdbinit_vscode
+
+qemu-gdb: qemu-requirements .gdbinit_vscode # run in qemu waiting for a debugger
 	@printf "\n$(YELLOW)CTRL+A X to close qemu\n"
 	@printf " Now run 'gdb' in another window.\n"
 	@printf " OR attach with VSCode for debugging.$(NO_COLOR)\n"
@@ -152,7 +163,7 @@ spike-run: # run in spike, without rebuilding, useful for automated tests
 	@printf "\n$(YELLOW)CTRL+C q Enter to close Spike$(NO_COLOR)\n"
 	$(SPIKE) $(SPIKE_OPTIONS)
 
-spike-gdb: spike-requirements .gdbinit # run in spike waiting for a debugger, rebuilds if needed
+spike-gdb: spike-requirements .gdbinit_vscode # run in spike waiting for a debugger, rebuilds if needed
 	$(SPIKE) --rbb-port=9824 --halted $(SPIKE_OPTIONS)
 
 # dump device tree

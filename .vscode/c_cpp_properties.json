@@ -12,7 +12,9 @@
         "kernel_defines": [
             "DEBUG",
             "MEMORY_SIZE=64",
-            "USER_TEXT_START=0x400000"
+            "USER_TEXT_START=0x400000",
+            "PHYS_OFFSET=0x80000000",
+            "TEXT_OFFSET=0x200000"
         ],
         "kernel_defines_riscv": [
             "__ARCH_riscv",
@@ -43,7 +45,8 @@
                 "${kernel_defines}",
                 "${kernel_defines_riscv}",
                 "__riscv_xlen=64",
-                "__ARCH_64BIT"
+                "__ARCH_64BIT",
+                "PAGE_OFFSET=0xFFFFFFC000000000"
             ],
             "compilerArgs": [
                 "-nostdinc"
@@ -63,6 +66,7 @@
                 "${kernel_defines_riscv}",
                 "__riscv_xlen=32",
                 "__ARCH_32BIT",
+                "PAGE_OFFSET=0x80000000",
                 "CONFIG_RISCV_BOOT_M_MODE"
             ],
             "compilerArgs": [

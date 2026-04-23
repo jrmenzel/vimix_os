@@ -5,9 +5,11 @@
 // and pipe buffers. Allocates whole 4096-byte pages.
 
 #include <init/main.h>
+#include <init/start.h>
 #include <kernel/kernel.h>
 #include <kernel/kobject.h>
 #include <kernel/list.h>
+#include <kernel/pgtable.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
@@ -176,53 +178,44 @@ void kalloc_init_memory_region(size_t mem_start, size_t mem_end)
             order++;
         }
 
-        free_pages((void *)addr, order);
-        addr += (PAGE_SIZE * (1 << order));
+        size_t new_addr = addr + (PAGE_SIZE * (1 << order));
+        if (new_addr <= mem_end)
+        {
+            // this is not freeing memory, but adding it the first time to the
+            // pool so counter the decrement in free_pages() by incrementing
+            // here
+            atomic_fetch_add(&g_kernel_memory.pages_allocated, (1 << order));
+            free_pages((void *)addr, order);
+            addr += (PAGE_SIZE * (1 << order));
+        }
+        else
+        {
+            // this is not freeing memory, but adding it the first time to the
+            // pool so counter the decrement in free_pages() by incrementing
+            // here
+            atomic_fetch_add(&g_kernel_memory.pages_allocated, 1);
+            free_pages((void *)addr, 0);
+            addr += PAGE_SIZE;
+        }
     }
 }
 
-void kalloc_init_memory(struct Minimal_Memory_Map *memory_map)
+void kalloc_init_memory(struct Memory_Map *memory_map,
+                        enum Memory_Map_Region_Type type)
 {
-    // The available memory after kernel_end can have up to two holes:
-    // the dtb file and a initrd ramdisk, both are optional.
-    // The dtb could also be outside of the RAM area (e.g. in flash)
-    // or inside of the kernel (if it's compiled in).
-
-    size_t region_start = memory_map->kernel_end;
-    region_start = PAGE_ROUND_UP(region_start);
-    while (true)
-    {
-        size_t region_end = memory_map->ram_end;
-        size_t next_region_start = 0;
-
-        if (memory_map->dtb_file_start != 0)
-        {
-            if (region_start < memory_map->dtb_file_start)
-            {
-                region_end = min(region_end, memory_map->dtb_file_start);
-                next_region_start = PAGE_ROUND_UP(memory_map->dtb_file_end);
-            }
-        }
-        if (memory_map->initrd_begin != 0)
-        {
-            if (region_start < memory_map->initrd_begin)
-            {
-                region_end = min(region_end, memory_map->initrd_begin);
-                next_region_start = PAGE_ROUND_UP(memory_map->initrd_end);
-            }
-        }
-
-        // printk("kalloc memory range: 0x%zx - 0x%zx\n", region_start,
-        //        region_end);
-        kalloc_init_memory_region(region_start, region_end);
-        if (region_end == memory_map->ram_end) break;
-
-        region_start = next_region_start;
-    }
-
-    // reset *after* kalloc_init_memory_region() calls (as kfree() decrements
-    // the counter)
     atomic_init(&g_kernel_memory.pages_allocated, 0);
+
+    for (size_t i = 0; i < memory_map->region_count; ++i)
+    {
+        if (memory_map->region[i].type == type)
+        {
+            size_t region_start = memory_map->region[i].start_va;
+            size_t region_end =
+                memory_map->region[i].start_va + memory_map->region[i].size;
+
+            kalloc_init_memory_region(region_start, region_end);
+        }
+    }
 }
 
 void kalloc_init_caches()
@@ -239,30 +232,30 @@ void kalloc_init_caches()
     kmem_cache_init(&g_kernel_memory.object_cache[OBJECT_CACHES - 1], 1280);
 }
 
-void kalloc_init(struct Minimal_Memory_Map *memory_map)
+void kalloc_init(struct Memory_Map *memory_map)
 {
     kobject_init(&g_kernel_memory.kobj, &kmem_kobj_ktype);
     kobject_add(&g_kernel_memory.kobj, &g_kobjects_root, "kmem");
 
     spin_lock_init(&g_kernel_memory.lock, "kmem");
-    g_kernel_memory.memory_map = *memory_map;
-    g_kernel_memory.end_of_physical_memory = (char *)memory_map->ram_end;
 
     for (size_t i = 0; i <= PAGE_ALLOC_MAX_ORDER; ++i)
     {
         list_init(&g_kernel_memory.list_of_free_memory[i]);
     }
 
-    kalloc_init_memory(memory_map);
+    g_kernel_memory.memory_map = *memory_map;
+    g_kernel_memory.end_of_physical_memory =
+        (char *)memory_map->ram.start_pa + memory_map->ram.size;
+
+    kalloc_init_memory(memory_map, MEM_MAP_REGION_EARLY_RAM);
 
     // init object caches for kmalloc()
     kalloc_init_caches();
 
     // with all caches created, mark kmalloc as initialized
     // now kobject_add() can be called savely, as it might call kmalloc()
-#ifdef CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
-    g_kernel_memory.kmalloc_initialized = true;
-#endif  // CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
+    g_kernel_init_status = KERNEL_INIT_KMALLOC_READY;
 
     for (size_t i = 0; i < OBJECT_CACHES; ++i)
     {
@@ -274,37 +267,33 @@ void kalloc_init(struct Minimal_Memory_Map *memory_map)
     }
 }
 
-void kfree(void *pa)
+void kfree(void *kva)
 {
-    DEBUG_EXTRA_PANIC(g_kernel_memory.kmalloc_initialized,
+    DEBUG_EXTRA_PANIC(g_kernel_init_status >= KERNEL_INIT_KMALLOC_READY,
                       "kfree called before kalloc_init()");
-    if ((char *)pa < end_of_kernel  // or pa is before or inside the kernel
-                                    // binary in memory
-        || (char *)pa >=
-               g_kernel_memory.end_of_physical_memory)  // or pa is outside of
-                                                        // the physical memory
+    if (!addr_is_in_ram_kva((size_t)kva))
     {
-        panic("kfree: out of range or unaligned address");
+        panic("kfree: out of range");
     }
 
-    if (((size_t)pa % PAGE_SIZE) == 0)
+    if (((size_t)kva % PAGE_SIZE) == 0)
     {
         // page aligned
-        free_pages(pa, 0);
+        free_pages(kva, 0);
         return;
     }
 
     // must be from an object slab / cache
-    struct kmem_slab *slab = kmem_slab_infer_slab(pa);
+    struct kmem_slab *slab = kmem_slab_infer_slab(kva);
     if (slab->owning_cache == NULL)
     {
         // free the object, but NOT the slab (if empty)
-        kmem_slab_free(slab, pa);
+        kmem_slab_free(slab, kva);
     }
     else
     {
         // free the object AND the slab (if empty)
-        kmem_cache_free(slab->owning_cache, pa);
+        kmem_cache_free(slab->owning_cache, kva);
     }
 }
 
@@ -326,7 +315,7 @@ size_t next_power_of_two(size_t v)
 
 void *kmalloc(size_t size, int32_t flags)
 {
-    DEBUG_EXTRA_PANIC(g_kernel_memory.kmalloc_initialized,
+    DEBUG_EXTRA_PANIC(g_kernel_init_status >= KERNEL_INIT_KMALLOC_READY,
                       "kfree called before kalloc_init()");
     if (size > PAGE_SIZE)
     {
@@ -383,8 +372,7 @@ size_t kalloc_get_memory_allocated()
 
 size_t kalloc_get_total_memory()
 {
-    return (g_kernel_memory.memory_map.ram_end -
-            g_kernel_memory.memory_map.ram_start);
+    return (g_kernel_memory.memory_map.ram.size);
 }
 
 size_t kalloc_get_free_memory()

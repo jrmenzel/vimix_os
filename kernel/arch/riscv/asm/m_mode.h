@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #if defined(CONFIG_RISCV_BOOT_M_MODE)
 
-#define M_MODE_STACK 1024
+#define M_MODE_STACK_SIZE 1024
 
 #define MSTATUS_MBE (1L << 37)  //< M-Mode is Big Endian
 #define MSTATUS_SBE (1L << 36)  //< S-Mode is Big Endian
@@ -55,7 +55,6 @@
 
 #define INT_CAUSE_NONE 0
 #define INT_CAUSE_START 1
-#define INT_CAUSE_TIMER 2
 
 #ifndef __ASSEMBLY__
 

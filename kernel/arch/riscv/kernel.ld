@@ -3,71 +3,63 @@ ENTRY( _entry )
 
 SECTIONS
 {
+  . = PAGE_OFFSET + TEXT_OFFSET;
   /*
    * ensure that entry.S / _entry is at the expected location
    * (depends on the platform to build for)
    */
-  .text.start KERNBASE : {
-    PROVIDE(start_of_kernel = .);
+  .text.start : AT(ADDR(.text.start) - PAGE_OFFSET + PHYS_OFFSET) {
+    PROVIDE(__start_kernel = .);
     *entry.o( .text )
   }
 
-  .text : {
+  .text : AT(ADDR(.text) - PAGE_OFFSET + PHYS_OFFSET) {
     *(.text .text.*)
-    . = ALIGN(0x1000);
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
     _trampoline = .;
     *(trampsec)
-    . = ALIGN(0x1000);
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
     ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page");
-    PROVIDE(end_of_text = .);
+    PROVIDE(__end_text = .);
   }
 
-    /* keep m mode data out of BSS */
-  M_MODE : {
-    *(.M_MODE)
-  }
-
-  .rodata : ALIGN(CONSTANT(MAXPAGESIZE)) {
-    . = ALIGN(16);
-    PROVIDE(__start_data = .);
+  .rodata : AT(ADDR(.rodata) - PAGE_OFFSET + PHYS_OFFSET) {
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    PROVIDE(__start_rodata = .);
     *(.srodata .srodata.*) /* do not need to distinguish this from .rodata */
     . = ALIGN(16);
     *(.rodata .rodata.*)
   }
 
-  .data : ALIGN(CONSTANT(MAXPAGESIZE)) {
-    . = ALIGN(16);
+  .data : AT(ADDR(.data) - PAGE_OFFSET + PHYS_OFFSET) {
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    PROVIDE(__start_data = .);
     *(.sdata .sdata.*) /* do not need to distinguish this from .data */
     . = ALIGN(16);
     *(.data .data.*)
-
-    PROVIDE(__end_data = .);
 
     /* avoid writing to HTIF locations during bss clear */
     . = ALIGN(16);
     tohost = .;
     fromhost = .;
+
+    PROVIDE(__end_data = .);
   }
 
-  .bss : ALIGN(CONSTANT(MAXPAGESIZE)) {
-    . = ALIGN(16);
-    PROVIDE(bss_start = .);
+  .bss : AT(ADDR(.bss) - PAGE_OFFSET + PHYS_OFFSET) {
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    PROVIDE(__start_bss = .);
     *(.sbss .sbss.*) /* do not need to distinguish this from .bss */
     . = ALIGN(16);
     *(.bss .bss.*)
-    PROVIDE(bss_end = .);
+    . = ALIGN(8); /* keep __size_of_bss a multiple of 64 bit sizeof(size_t) */
+    PROVIDE(__end_bss = .);
   }
 
-  /* keep the kernel stack out of .bss to allow clearing the .bss
-     early from C instead of from entry.S */
-  STACK : {
-    *(.STACK)
-  }
+  PROVIDE(__end_of_kernel = .);
 
-  PROVIDE(end_of_kernel = .);
-
-  PROVIDE(size_of_text = SIZEOF(.text));
-  PROVIDE(size_of_rodata = SIZEOF(.rodata));
-  PROVIDE(size_of_data = SIZEOF(.data));
-  PROVIDE(size_of_bss = SIZEOF(.bss));
+  PROVIDE(__size_of_text = SIZEOF(.text));
+  PROVIDE(__size_of_rodata = SIZEOF(.rodata));
+  PROVIDE(__size_of_data = SIZEOF(.data));
+  PROVIDE(__size_of_bss = SIZEOF(.bss));
 }

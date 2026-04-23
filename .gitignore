@@ -16,6 +16,7 @@ build_host/*
 
 # auto generated:
 .gdbinit
+.gdbinit_vscode
 
 # 3rd party tools
 .obsidian

@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <kernel/page.h>
+
 // The SATP register sets the page table (pointer to first page of PTEs), the
 // mode and the ASID.
 #if defined(__ARCH_32BIT)

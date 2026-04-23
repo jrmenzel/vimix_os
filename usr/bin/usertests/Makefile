@@ -27,7 +27,7 @@ $(B_DEPLOY_DIR)/usertests: $(OBJECTS) $(COMMON_LIBS)
 
 $(B_BUILD_DIR)/%.o: %.c 
 	@printf "$(TASK_COLOR)Compile with extra flags: $(@)\n$(NO_COLOR)"
-	@$(CC) $(CFLAGS) -DKERNBASE=$(KERNBASE) $(USER_SPACE_INC_PARAMS) -c $< -o $@
+	@$(CC) $(CFLAGS) -DKERNBASE=$(PAGE_OFFSET) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 ###########################################################
 

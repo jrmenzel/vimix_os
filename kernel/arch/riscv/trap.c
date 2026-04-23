@@ -126,8 +126,8 @@ void return_to_user_mode()
 
     // set up trapframe values that u_mode_trap_vector will need when
     // the process next traps into the kernel.
-    proc->trapframe->kernel_page_table =  // mmu_get_page_table_address();
-        mmu_get_page_table_reg_value();   // kernel page table
+    proc->trapframe->kernel_page_table =
+        mmu_get_page_table_reg_value();  // kernel page table
     proc->trapframe->kernel_sp =
         proc->kstack + KERNEL_STACK_SIZE;  // process's kernel stack
     proc->trapframe->kernel_trap = (size_t)user_mode_interrupt_handler;

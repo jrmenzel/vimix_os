@@ -5,6 +5,7 @@
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
 #include <kernel/major.h>
+#include <kernel/pgtable.h>
 
 struct Device_Init_Parameters goldfish_mapping = {0};
 bool rtc_is_initialized = false;
@@ -16,6 +17,8 @@ dev_t rtc_init(struct Device_Init_Parameters *init_parameters, const char *name)
         return 0;
     }
     goldfish_mapping = *init_parameters;
+    goldfish_mapping.mem[0].start =
+        mmio_phys_to_virt(goldfish_mapping.mem[0].start);
     rtc_is_initialized = true;
     return MKDEV(RTC_MAJOR, 0);
 }

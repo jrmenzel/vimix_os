@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <init/main.h>  // bss_start, bss_end
+#include <init/start.h>  // __start_bss, __end_bss
 #include <kernel/errno.h>
 #include <kernel/kernel.h>
 #include <kernel/kobject.h>
@@ -36,8 +36,8 @@ struct sysfs_attribute kmem_attributes[] = {
     [KM_MEM_ALLOC] = {.name = "mem_alloc", .mode = 0444},
     [KM_KERNEL_START] = {.name = "kernel_start", .mode = 0444},
     [KM_KERNEL_END] = {.name = "kernel_end", .mode = 0444},
-    [KM_BSS_START] = {.name = "bss_start", .mode = 0444},
-    [KM_BSS_END] = {.name = "bss_end", .mode = 0444},
+    [KM_BSS_START] = {.name = "__start_bss", .mode = 0444},
+    [KM_BSS_END] = {.name = "__end_bss", .mode = 0444},
     [KM_RAM_START] = {.name = "ram_start", .mode = 0444},
     [KM_RAM_END] = {.name = "ram_end", .mode = 0444},
     [KM_INITRD_START] = {.name = "initrd_start", .mode = 0444},
@@ -49,7 +49,7 @@ ssize_t km_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx, char *buf,
                           size_t n)
 {
     struct kernel_memory *kmem = kernel_memory_from_kobj(kobj);
-    struct Minimal_Memory_Map *map = &kmem->memory_map;
+    struct Memory_Map *map = &kmem->memory_map;
 
     ssize_t ret = 0;
     switch (attribute_idx)
@@ -67,32 +67,35 @@ ssize_t km_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx, char *buf,
             ret = snprintf(buf, n, "%zu\n", kalloc_get_memory_allocated());
             break;
         case KM_KERNEL_START:
-            ret = snprintf(buf, n, "%zu\n", map->kernel_start);
+            ret = snprintf(buf, n, "%zu\n", (size_t)__start_kernel);
             break;
         case KM_KERNEL_END:
-            ret = snprintf(buf, n, "%zu\n", map->kernel_end);
+            ret = snprintf(buf, n, "%zu\n", (size_t)__end_of_kernel);
             break;
         case KM_BSS_START:
-            ret = snprintf(buf, n, "%zu\n", (size_t)bss_start);
+            ret = snprintf(buf, n, "%zu\n", (size_t)__start_bss);
             break;
         case KM_BSS_END:
-            ret = snprintf(buf, n, "%zu\n", (size_t)bss_end);
+            ret = snprintf(buf, n, "%zu\n", (size_t)__end_bss);
             break;
         case KM_RAM_START:
-            ret = snprintf(buf, n, "%zu\n", map->ram_start);
+            ret = snprintf(buf, n, "%zu\n", map->ram.start_va);
             break;
-        case KM_RAM_END: ret = snprintf(buf, n, "%zu\n", map->ram_end); break;
+        case KM_RAM_END:
+            ret = snprintf(buf, n, "%zu\n", map->ram.start_va + map->ram.size);
+            break;
         case KM_INITRD_START:
-            ret = snprintf(buf, n, "%zu\n", map->initrd_begin);
+            ret = snprintf(buf, n, "%zu\n", (size_t)0);  // map->initrd_begin);
             break;
         case KM_INITRD_END:
-            ret = snprintf(buf, n, "%zu\n", map->initrd_end);
+            ret = snprintf(buf, n, "%zu\n", (size_t)0);  // map->initrd_end);
             break;
         case KM_DTB_START:
-            ret = snprintf(buf, n, "%zu\n", map->dtb_file_start);
+            ret =
+                snprintf(buf, n, "%zu\n", (size_t)0);  // map->dtb_file_start);
             break;
         case KM_DTB_END:
-            ret = snprintf(buf, n, "%zu\n", map->dtb_file_end);
+            ret = snprintf(buf, n, "%zu\n", (size_t)0);  // map->dtb_file_end);
             break;
         default: ret = -ENOENT; break;
     }

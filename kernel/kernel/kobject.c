@@ -7,12 +7,12 @@
 #include <kernel/string.h>
 #include <mm/kalloc.h>
 
-extern char __start_data[];  // in kernel.ld
-extern char __end_data[];    // in kernel.ld
+extern char __start_rodata[];  // in kernel.ld
+extern char __end_data[];      // in kernel.ld
 
 static inline bool is_kernel_data(size_t addr)
 {
-    return ((addr >= (size_t)__start_data) && (addr < (size_t)__end_data));
+    return ((addr >= (size_t)__start_rodata) && (addr < (size_t)__end_data));
 }
 
 struct kobject g_kobjects_root = {0};  // the root of all kobjects

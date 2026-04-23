@@ -13,6 +13,9 @@
 // call at boot as soon as possible
 void printk_init();
 
+// call after a console device was initialized
+void printk_redirect_to_console();
+
 // called on panic to prevent deadlocks from printing the last messages
 void printk_disable_locking();
 

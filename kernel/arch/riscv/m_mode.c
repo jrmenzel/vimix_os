@@ -9,8 +9,8 @@
 #include <kernel/param.h>
 #include <kernel/smp.h>
 
-__attribute__((aligned(M_MODE_STACK))) __attribute__((
-    section("STACK"))) char g_m_mode_cpu_stack[MAX_CPUS * M_MODE_STACK];
+__attribute__((aligned(
+    M_MODE_STACK_SIZE))) char g_m_mode_cpu_stack[MAX_CPUS * M_MODE_STACK_SIZE];
 
 struct m_code_cpu_data
 {
@@ -18,17 +18,17 @@ struct m_code_cpu_data
     size_t opaque;
     size_t int_cause;
     size_t hart_status;
+    size_t timer_pending;
 };
 
-__attribute__((
-    section("M_MODE"))) struct m_code_cpu_data g_m_mode_cpu_data[MAX_CPUS];
+struct m_code_cpu_data g_m_mode_cpu_data[MAX_CPUS];
 
 // atomically read when performing the lottery to get the boot hart, so keep 32
 // bit
-__attribute__((section("M_MODE"))) int32_t g_m_mode_boot_hart = MAX_CPUS;
+int32_t g_m_mode_boot_hart = 1;
 
 extern void m_mode_trap_vector();
-extern void _entry_s_mode();
+extern void _entry_s_mode_boot_hart();
 
 /// enable machine mode interrupts by setting bit MSTATUS_MIE in mstatus
 static inline void cpu_enable_m_mode_interrupts()
@@ -80,6 +80,7 @@ void m_mode_start(size_t hart_id)
     g_m_mode_cpu_data[hart_id].opaque = 0;
     g_m_mode_cpu_data[hart_id].int_cause = INT_CAUSE_NONE;
     g_m_mode_cpu_data[hart_id].hart_status = SBI_HSM_HART_STOPPED;
+    g_m_mode_cpu_data[hart_id].timer_pending = 0;
 
     // delegate all interrupts and exceptions to supervisor mode except
     // ecalls from the kernel and illegal instructions
@@ -120,7 +121,7 @@ void m_mode_start(size_t hart_id)
 // only the boot hart runs this
 void m_mode_boot_hart_setup(size_t hart_id, size_t dtb)
 {
-    g_m_mode_cpu_data[hart_id].start_addr = (size_t)_entry_s_mode;
+    g_m_mode_cpu_data[hart_id].start_addr = (size_t)_entry_s_mode_boot_hart;
     g_m_mode_cpu_data[hart_id].opaque = dtb;
     g_m_mode_cpu_data[hart_id].hart_status = SBI_HSM_HART_STARTED;
     atomic_thread_fence(memory_order_seq_cst);
@@ -343,10 +344,12 @@ void m_mode_interrupt_handler(xlen_t *stack)
         clint_set_timer((-1));  // infinitely far into the future
 
         size_t hart_id = rv_read_csr_mhartid();
-        g_m_mode_cpu_data[hart_id].int_cause = INT_CAUSE_TIMER;
+        g_m_mode_cpu_data[hart_id].timer_pending++;
 
         // Forward timer event to S mode via supervisor software interrupt.
-        // S-mode will consume INT_CAUSE_TIMER to disambiguate timer-vs-IPI.
+        // S-mode will consume timer_pending to disambiguate timer-vs-IPI.
+        // Better would be SIP_STIP, but that is not reliable on Spark for
+        // some reason.
         rv_set_csr_sip(SIP_SSIP);
     }
     else if (mcause == MCAUSE_MACHINE_SOFTWARE)
@@ -376,12 +379,12 @@ bool m_mode_consume_timer_event()
 {
     size_t hart_id = smp_processor_id();
 
-    if (g_m_mode_cpu_data[hart_id].int_cause != INT_CAUSE_TIMER)
+    if (g_m_mode_cpu_data[hart_id].timer_pending == 0)
     {
         return false;
     }
 
-    g_m_mode_cpu_data[hart_id].int_cause = INT_CAUSE_NONE;
+    g_m_mode_cpu_data[hart_id].timer_pending = 0;
     atomic_thread_fence(memory_order_seq_cst);
     return true;
 }

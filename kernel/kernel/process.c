@@ -3,6 +3,7 @@
 #include <arch/trapframe.h>
 #include <kernel/ipi.h>
 #include <kernel/kernel.h>
+#include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/process.h>
 #include <kernel/string.h>
@@ -83,7 +84,7 @@ struct process *process_alloc_init()
     }
 
     bool pagetable_updated =
-        proc_init_kernel_stack(g_kernel_pagetable, proc, proc->kstack);
+        proc_init_kernel_stack(&g_kernel_pagetable, proc, proc->kstack);
     if (pagetable_updated == false)
     {
         // a bit special case: free_proc() expects the kernel stack to be set in
@@ -134,7 +135,7 @@ struct process *process_alloc_init()
     // Set up new context to start executing at forkret,
     // which returns to user space.
     // proc was zero initialized, so is proc->context at this point
-    context_set_return_register(&proc->context, (xlen_t)forkret);
+    context_set_return_register(&proc->context, (xlen_t)(forkret));
     context_set_stack_pointer(&proc->context, proc->kstack + KERNEL_STACK_SIZE);
 
     DEBUG_ASSERT_CPU_HOLDS_LOCK(&proc->lock);
@@ -160,12 +161,13 @@ void process_free(struct process *proc)
     // unmap and free kernel stack:
     if (proc->kstack != 0)
     {
-        spin_lock(&g_kernel_pagetable_lock);
-        uvm_unmap(g_kernel_pagetable, proc->kstack, KERNEL_STACK_PAGES, true);
-        vm_trim_pagetable(g_kernel_pagetable, proc->kstack);
-        mmu_set_page_table((size_t)g_kernel_pagetable,
-                           0);  // update pagetable, flush cache
-        spin_unlock(&g_kernel_pagetable_lock);
+        spin_lock(&g_kernel_pagetable.lock);
+        uvm_unmap(g_kernel_pagetable.root, proc->kstack, KERNEL_STACK_PAGES,
+                  true);
+        vm_trim_pagetable(g_kernel_pagetable.root, proc->kstack);
+        // update pagetable, flush cache:
+        mmu_set_kernel_page_table(&g_kernel_pagetable);
+        spin_unlock(&g_kernel_pagetable.lock);
 
         // tell other cores to also to reload the kernel page table
         cpu_mask mask = ipi_cpu_mask_all_but_self();
@@ -191,36 +193,37 @@ void process_free(struct process *proc)
     kfree(proc);
 }
 
-bool proc_init_kernel_stack(pagetable_t kpage_table, struct process *proc,
-                            size_t kstack_va)
+bool proc_init_kernel_stack(struct Page_Table *kpage_table,
+                            struct process *proc, size_t kstack_va)
 {
-    spin_lock(&g_kernel_pagetable_lock);
+    spin_lock(&kpage_table->lock);
     for (size_t i = 0; i < KERNEL_STACK_PAGES; ++i)
     {
-        char *pa = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
-        if (pa == NULL)
+        char *page_va = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
+        if (page_va == NULL)
         {
-            spin_unlock(&g_kernel_pagetable_lock);
+            spin_unlock(&kpage_table->lock);
             return false;
         }
-        if (vm_map(kpage_table, kstack_va + (i * PAGE_SIZE), (size_t)pa,
+        size_t page_pa = virt_to_phys((size_t)page_va);
+        if (vm_map(kpage_table->root, kstack_va + (i * PAGE_SIZE), page_pa,
                    PAGE_SIZE, PTE_KERNEL_STACK, true) < 0)
         {
             // out of memory
-            free_page(pa);
+            free_page(page_va);
 
             // todo: unmap and free previously mapped pages
             _Static_assert(KERNEL_STACK_PAGES == 1,
                            "implement cleaning up a half allocated stack");
 
-            spin_unlock(&g_kernel_pagetable_lock);
+            spin_unlock(&kpage_table->lock);
             return false;
         }
     }
-    mmu_set_page_table((size_t)kpage_table,
-                       0);  // update pagetable, flush cache
+    // update pagetable, flush cache:
+    mmu_set_kernel_page_table(kpage_table);
 
-    spin_unlock(&g_kernel_pagetable_lock);
+    spin_unlock(&kpage_table->lock);
 
     // tell other cores to also to reload the kernel page table
     cpu_mask mask = ipi_cpu_mask_all_but_self();

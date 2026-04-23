@@ -11,6 +11,7 @@
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
+#include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
@@ -96,7 +97,7 @@ dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name)
     if (g_uart_16550_initialized)
         return INVALID_DEVICE;  // only one instance for now
 
-    g_uart_16550.mmio_base = init_param->mem[0].start;
+    g_uart_16550.mmio_base = mmio_phys_to_virt(init_param->mem[0].start);
     g_uart_16550.reg_io_width = init_param->reg_io_width;
     g_uart_16550.reg_shift = init_param->reg_shift;
 

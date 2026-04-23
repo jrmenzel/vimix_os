@@ -3,7 +3,8 @@
 #include <arch/platform.h>
 #include <drivers/device.h>
 #include <init/dtb.h>
-#include <init/main.h>
+#include <init/start.h>
+#include <kernel/pgtable.h>
 #include <lib/minmax.h>
 #include <libfdt.h>
 
@@ -60,7 +61,7 @@ void dtb_add_devices_to_dev_list(void *dtb, struct Device_Driver *driver_list,
     }
 }
 
-void dtb_get_initrd(void *dtb, struct Minimal_Memory_Map *memory_map)
+void dtb_get_initrd(void *dtb, struct Memory_Map *memory_map)
 {
     size_t initrd_begin = 0;
     size_t initrd_end = 0;
@@ -89,28 +90,34 @@ void dtb_get_initrd(void *dtb, struct Minimal_Memory_Map *memory_map)
                 (size_t)fdt64_to_cpu(*(const dtb_aligned_uint64_t *)endp);
         }
     }
-    memory_map->initrd_begin = initrd_begin;
-    memory_map->initrd_end = initrd_end;
+
+    if (initrd_begin != 0 && initrd_end != 0)
+    {
+        memory_map_add_region(memory_map, initrd_begin,
+                              phys_to_virt(initrd_begin),
+                              initrd_end - initrd_begin, MEM_MAP_REGION_INITRD);
+    }
 }
 
-void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map)
+void dtb_get_memory_regions(void *dtb, struct Memory_Map *memory_map)
 {
-    // fallback values
-    memory_map->ram_start = (size_t)start_of_kernel;
-    memory_map->kernel_start = (size_t)start_of_kernel;
-    memory_map->kernel_end = (size_t)end_of_kernel;
-    memory_map->ram_end =
-        (memory_map->ram_start + (size_t)MEMORY_SIZE * 1024 * 1024);
-    memory_map->dtb_file_start = 0;
-    memory_map->dtb_file_end = 0;
-
     if (fdt_magic(dtb) != FDT_MAGIC)
     {
         return;
     }
-    memory_map->dtb_file_start = (size_t)dtb;
-    memory_map->dtb_file_end = (size_t)dtb + fdt_totalsize(dtb);
 
+    /*
+    size_t dtb_page = PAGE_ROUND_DOWN((size_t)dtb);
+    size_t dtb_size = fdt_totalsize(dtb);
+    if (dtb_page < (size_t)dtb)
+    {
+        // the dtb is not page aligned
+        dtb_size += ((size_t)dtb - dtb_page);
+    }
+    dtb_size = PAGE_ROUND_UP(dtb_size);
+    memory_map_add_region(memory_map, virt_to_phys(dtb_page), dtb_page,
+                          dtb_size, MEM_MAP_REGION_DTB);
+*/
     int offset = fdt_path_offset(dtb, "/memory");
     if (offset < 0)
     {
@@ -127,8 +134,10 @@ void dtb_get_memory(void *dtb, struct Minimal_Memory_Map *memory_map)
         panic("No valid memory size read from device tree");
     }
 
-    memory_map->ram_start = base;
-    memory_map->ram_end = base + size;
+    memory_map->ram.start_pa = base;
+    memory_map->ram.start_va = phys_to_virt(base);
+    memory_map->ram.size = size;
+    memory_map->ram.type = MEM_MAP_REGION_USABLE_RAM;
 
     dtb_get_initrd(dtb, memory_map);
 }
@@ -336,8 +345,7 @@ uint64_t dtb_get_timebase(void *dtb)
     return timebase;
 }
 
-ssize_t dtb_find_boot_console_in_dev_list(void *dtb,
-                                          struct Devices_List *dev_list)
+int dtb_find_boot_console_index(void *dtb)
 {
     // find /chosen/stdout-path
     int offset = fdt_path_offset(dtb, "/chosen");
@@ -362,7 +370,13 @@ ssize_t dtb_find_boot_console_in_dev_list(void *dtb,
         }
     }
 
-    int console_offset = fdt_path_offset(dtb, name);
+    return fdt_path_offset(dtb, name);
+}
+
+ssize_t dtb_find_boot_console_in_dev_list(void *dtb,
+                                          struct Devices_List *dev_list)
+{
+    int console_offset = dtb_find_boot_console_index(dtb);
     if (console_offset < 0)
         return console_offset;  // contains a negative error code
 

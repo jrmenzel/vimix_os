@@ -39,7 +39,6 @@
 ///   stack
 ///   TRAPFRAME (p->trapframe, used by the trampoline)
 ///   TRAMPOLINE (the same page as in the kernel)
-// #define TRAPFRAME (USER_VA_END - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
 
 /// Highest address of the user stack.

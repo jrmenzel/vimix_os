@@ -5,30 +5,41 @@
 #include <kernel/kernel.h>
 #include <kernel/page.h>
 #include <kernel/spinlock.h>
+#include <mm/memory_map.h>
 #include <mm/pte.h>
 #include <mm/vm.h>
 
-extern pagetable_t g_kernel_pagetable;
-extern struct spinlock g_kernel_pagetable_lock;
-
-// Memory map filled in main from a device tree and used to init the free memory
-struct Minimal_Memory_Map
+struct Page_Table
 {
-    size_t ram_start;  // RAM could contain BIOS/bootloader code before the
-                       // kernel code starts
-    size_t kernel_start;
-    size_t kernel_end;  // after the kernel and its data incl BSS
-    size_t ram_end;
-    size_t initrd_begin;  // 0 if there is no initrd
-    size_t initrd_end;    // 0 if there is no initrd
-    size_t dtb_file_start;
-    size_t dtb_file_end;
+    pagetable_t root;
+    struct spinlock lock;
 };
 
+extern struct Page_Table g_kernel_pagetable;
+// extern struct spinlock g_kernel_pagetable_lock;
+extern size_t g_kernel_pagetable_register_value;
+
+void page_table_init(struct Page_Table *pagetable, pagetable_t root);
+
 /// @brief Enables paging with the page table pointed to and sets the ASID.
-/// @param addr_of_first_block Pointer to page table.
+/// @param pagetable Page table to use.
 /// @param asid ASID to use.
-void mmu_set_page_table(size_t addr_of_first_block, uint32_t asid);
+/// @return The register value of the MMU.
+size_t mmu_set_page_table(pagetable_t pagetable, uint32_t asid);
+
+static inline void mmu_set_kernel_page_table(struct Page_Table *kpage_table)
+{
+    g_kernel_pagetable_register_value =
+        mmu_set_page_table(kpage_table->root, 0);
+}
+
+/// @brief Construct the page table enable register value. It encodes the page
+/// table address, the ASID and flags. The format is ARCH specific.
+/// @param phys_addr_of_first_block Physical address of page table.
+/// @param asid ASID to use.
+/// @return The register value for mmu_set_page_table_reg_value()
+size_t mmu_make_page_table_reg_pa(size_t phys_addr_of_first_block,
+                                  uint32_t asid);
 
 /// @brief Construct the page table enable register value. It encodes the page
 /// table address, the ASID and flags. The format is ARCH specific.
@@ -56,9 +67,12 @@ size_t mmu_get_page_table_address(size_t reg_value);
 /// @return ASID
 size_t mmu_get_page_table_asid(size_t reg_value);
 
-/// Initialize the one g_kernel_pagetable
-void kvm_init(struct Minimal_Memory_Map *memory_map,
-              struct Devices_List *dev_list);
+/// Initialize the given page table
+void kvm_init_kpage_table(struct Page_Table *kpagetable,
+                          struct Memory_Map *memory_map);
+
+void kvm_map_all_devices(struct Page_Table *kpagetable,
+                         struct Devices_List *dev_list);
 
 /// @brief add a mapping to the page table.
 /// only used when booting, does not flush TLB or enable paging. Kernel panic if
@@ -254,7 +268,7 @@ size_t debug_vm_get_size(pagetable_t pagetable);
 void debug_vm_print_pte_flags(size_t flags);
 
 #else
-static inline void debug_vm_print_page_table(pagetable_t) {}
+static inline void debug_vm_print_page_table(pagetable_t pagetable) {}
 static inline size_t debug_vm_get_size(pagetable_t pagetable) { return 0; }
 static inline void debug_vm_print_pte_flags(size_t flags) {}
 #endif  // DEBUG
@@ -262,8 +276,7 @@ static inline void debug_vm_print_pte_flags(size_t flags) {}
 /// the va is in the range of a valid user virtual address (starting at 0)
 #define VA_IS_IN_RANGE_FOR_USER(va) (va < USER_VA_END)
 
-// TODO: set after remapping
-#define KERNEL_VA_START 0
+#define KERNEL_VA_START (PAGE_OFFSET)
 
 /// the va is in the range of a valid kernel virtual address (ending at
 /// FFFFF...)

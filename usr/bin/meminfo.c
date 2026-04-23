@@ -94,8 +94,8 @@ void print_memory_map()
     size_t ram_end = get_from_sysfs("/sys/kmem/ram_end");
     size_t kernel_start = get_from_sysfs("/sys/kmem/kernel_start");
     size_t kernel_end = get_from_sysfs("/sys/kmem/kernel_end");
-    size_t bss_start = get_from_sysfs("/sys/kmem/bss_start");
-    size_t bss_end = get_from_sysfs("/sys/kmem/bss_end");
+    size_t __start_bss = get_from_sysfs("/sys/kmem/__start_bss");
+    size_t __end_bss = get_from_sysfs("/sys/kmem/__end_bss");
     size_t initrd_start = get_from_sysfs("/sys/kmem/initrd_start");
     size_t initrd_end = get_from_sysfs("/sys/kmem/initrd_end");
     size_t dtb_start = get_from_sysfs("/sys/kmem/dtb_start");
@@ -103,9 +103,9 @@ void print_memory_map()
 
     printf("    RAM S: 0x%08zx\n", ram_start);
     printf(" KERNEL S: 0x%08zx\n", kernel_start);
-    printf("    BSS S: 0x%08zx\n", bss_start);
-    printf("    BSS E: 0x%08zx - size: %zd kb\n", bss_end,
-           (bss_end - bss_start) / 1024);
+    printf("    BSS S: 0x%08zx\n", __start_bss);
+    printf("    BSS E: 0x%08zx - size: %zd kb\n", __end_bss,
+           (__end_bss - __start_bss) / 1024);
     printf(" KERNEL E: 0x%08zx - size: %zd kb\n", kernel_end,
            (kernel_end - kernel_start) / 1024);
     if (dtb_start != 0)

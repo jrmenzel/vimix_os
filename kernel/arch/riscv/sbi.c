@@ -4,6 +4,7 @@
 #include <init/dtb.h>
 #include <kernel/ipi.h>
 #include <kernel/kernel.h>
+#include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/reset.h>
 #include <kernel/smp.h>
@@ -256,8 +257,8 @@ void sbi_start_harts(size_t opaque)
             if (plic_get_hart_s_context(hartid) != -1)
             {
                 //  CPU exists in device tree and supports s mode interrupts
-                long ret =
-                    sbi_hart_start(hartid, (size_t)_entry_s_mode, opaque);
+                size_t entry_addr = virt_to_phys((size_t)_entry_s_mode);
+                long ret = sbi_hart_start(hartid, entry_addr, opaque);
                 if (ret != SBI_SUCCESS)
                 {
                     printk("SBI HSM: starting hart %zd: FAILED\n", hartid);

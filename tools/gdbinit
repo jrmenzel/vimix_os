@@ -2,7 +2,15 @@ set confirm off
 set architecture _ARCHITECTURE
 set disassemble-next-line auto
 set riscv use-compressed-breakpoints yes
-symbol-file _KERNEL
+set breakpoint auto-hw on
+
+set $kernel_virt_base = _KERNEL_VIRT_BASE
+set $kernel_phys_base = _KERNEL_PHYS_BASE
+set $kernel_reloc_off = $kernel_phys_base - $kernel_virt_base
+
 file _KERNEL
+
+add-symbol-file _KERNEL -o $kernel_reloc_off
+
 target remote 127.0.0.1:_PORT
 source tools/gdbinit-gef.py

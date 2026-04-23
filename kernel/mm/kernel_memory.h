@@ -34,15 +34,26 @@ struct kernel_memory
     struct kmem_cache object_cache[OBJECT_CACHES];
 
     atomic_size_t pages_allocated;
-    struct Minimal_Memory_Map memory_map;
-
-#ifdef CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
-    // detect kmalloc usage before init
-    bool kmalloc_initialized;
-#endif  // CONFIG_DEBUG_EXTRA_RUNTIME_TESTS
+    struct Memory_Map memory_map;
 };
 
 #define kernel_memory_from_kobj(kobj_ptr) \
     container_of(kobj_ptr, struct kernel_memory, kobj)
 
 extern struct kernel_memory g_kernel_memory;
+
+static inline bool addr_is_in_ram_pa(size_t pa)
+{
+    size_t ram_start = g_kernel_memory.memory_map.ram.start_pa;
+    size_t ram_end = g_kernel_memory.memory_map.ram.start_pa +
+                     g_kernel_memory.memory_map.ram.size;
+    return (pa >= ram_start && pa < ram_end);
+}
+
+static inline bool addr_is_in_ram_kva(size_t kva)
+{
+    size_t ram_start = g_kernel_memory.memory_map.ram.start_va;
+    size_t ram_end = g_kernel_memory.memory_map.ram.start_va +
+                     g_kernel_memory.memory_map.ram.size;
+    return (kva >= ram_start && kva < ram_end);
+}

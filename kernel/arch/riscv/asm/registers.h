@@ -64,6 +64,9 @@
 
 #if (__riscv_xlen == 32)
 #define SIZE_OF_REG 4
+#define STORE_SIZET(value, addr) sw value, 0(addr)
+#define LOAD_SIZET(value, addr) lw value, 0(addr)
+
 #define SAVE_REG_TO_ARRAY(REGISTER, OFFSET, REG) \
     sw REGISTER, (OFFSET * SIZE_OF_REG)(REG)
 #define LOAD_REG_FROM_ARRAY(REGISTER, OFFSET, REG) \
@@ -71,6 +74,9 @@
 #else
 // 64 bit
 #define SIZE_OF_REG 8
+#define STORE_SIZET(value, addr) sd value, 0(addr)
+#define LOAD_SIZET(value, addr) ld value, 0(addr)
+
 #define SAVE_REG_TO_ARRAY(REGISTER, OFFSET, REG) \
     sd REGISTER, (OFFSET * SIZE_OF_REG)(REG)
 #define LOAD_REG_FROM_ARRAY(REGISTER, OFFSET, REG) \
