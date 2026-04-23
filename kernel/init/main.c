@@ -181,16 +181,17 @@ void main(void *dtb, bool is_boot_hart)
     if (is_boot_hart)
     {
         g_boot_hart = smp_processor_id();
-        // printk might not print until a console driver is loaded!
-        printk_init();
-        init_kobject_root();
-        kticks_init();
-        init_platform();
+        printk_init();  // printk might not print until a console driver is
+                        // loaded!
 
         printk("\n");
         printk("VIMIX OS " __ARCH_bits_string " bit " FEATURE_STRING
                " kernel version " str_from_define(GIT_HASH) " is booting\n");
         print_timer_source(dtb);
+
+        init_kobject_root();
+        kticks_init();
+        init_platform();
 
         // after this kmalloc() is allowed
         init_memory_management(dtb);

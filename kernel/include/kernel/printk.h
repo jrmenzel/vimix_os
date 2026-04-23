@@ -10,13 +10,17 @@
 #define FORMAT_REG_SIZE "0x%016zx"
 #endif
 
-// call at boot as soon as possible
+// Call at boot before calling any printk().
+// Until a console driver (or SBI based fallback) is found, printk will store
+// the output in a buffer and flush it to the console when
+// printk_redirect_to_console() is called later.
 void printk_init();
 
 // call after a console device was initialized
 void printk_redirect_to_console();
 
 // called on panic to prevent deadlocks from printing the last messages
+// only used in ccase of kernel panics
 void printk_disable_locking();
 
 // like printf() but instead of printing chars via sys calls the kernel directly

@@ -84,6 +84,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	syscalls/sys_process.o \
 	syscalls/syscall.o \
 	lib/bitmap.o \
+	lib/cbuffer.o \
 	lib/rwspinlock.o \
 	lib/string.o \
 	lib/sleeplock.o \
