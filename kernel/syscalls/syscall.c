@@ -49,7 +49,10 @@ int32_t fetchaddr(size_t addr, size_t *ip)
 size_t fetchstr(size_t addr, char *buf, size_t max)
 {
     struct process *proc = get_current();
-    if (uvm_copy_in_str(proc->pagetable, buf, addr, max) < 0)
+    spin_lock(&proc->pagetable->lock);
+    int32_t result = uvm_copy_in_str(proc->pagetable, buf, addr, max);
+    spin_unlock(&proc->pagetable->lock);
+    if (result < 0)
     {
         return -1;
     }

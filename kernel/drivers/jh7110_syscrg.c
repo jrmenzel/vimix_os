@@ -22,8 +22,7 @@ dev_t jh7110_syscrg_init(struct Device_Init_Parameters *init_parameters,
     if (g_jh7110_syscrg.is_initialized) return INVALID_DEVICE;
 
     printk("syscrg init\n");
-    g_jh7110_syscrg.mmio_base =
-        mmio_phys_to_virt(init_parameters->mem[0].start);
+    g_jh7110_syscrg.mmio_base = init_parameters->mem[0].start_va;
 
     g_jh7110_syscrg.is_initialized = true;
     return MKDEV(JH7110_SYSCRG_MAJOR, 0);

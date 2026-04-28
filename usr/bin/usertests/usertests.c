@@ -57,7 +57,7 @@ bool run(void f(char *), char *s)
                 "FAILED due to leaked memory; used at start: %zu, used at end: "
                 "%zu\n",
                 alloc_start, alloc_end);
-            xstatus = 0;  // fail the test
+            xstatus = -1;  // fail the test
         }
         else
         {

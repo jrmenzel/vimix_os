@@ -186,10 +186,10 @@ ssize_t dev_list_get_first_device_index(struct Devices_List *dev_list,
         if ((dev->dev_num != INVALID_DEVICE) &&
             (strcmp(dev->driver->dtb_name, name) == 0))
         {
-            if (dev->init_parameters.mem[0].start < addr_fist)
+            if (dev->init_parameters.mem[0].start_pa < addr_fist)
             {
                 index_first = i;
-                addr_fist = dev->init_parameters.mem[0].start;
+                addr_fist = dev->init_parameters.mem[0].start_pa;
             }
         }
     }
@@ -323,7 +323,7 @@ void dev_list_sort(struct Devices_List *dev_list, const char *name)
         for (size_t i = 0; i < next_index; ++i)
         {
             ssize_t idx = index[i];
-            size_t addr = dev_list->dev[idx].init_parameters.mem[0].start;
+            size_t addr = dev_list->dev[idx].init_parameters.mem[0].start_pa;
             if (addr < max_addr)
             {
                 // swap idx and max_addr_index
@@ -349,8 +349,11 @@ void debug_dev_list_print(struct Devices_List *dev_list)
         printk("Found device %s ", dev->driver->dtb_name);
         if (dev->init_parameters.mem[0].size != 0)
         {
-            printk("at 0x%zx size: 0x%zx ", dev->init_parameters.mem[0].start,
+            printk("at 0x%zx size: 0x%zx ",
+                   dev->init_parameters.mem[0].start_pa,
                    dev->init_parameters.mem[0].size);
+            printk("mapped to va: 0x%zx ",
+                   dev->init_parameters.mem[0].start_va);
             printk("reg-width: %d, reg-shift: %d ",
                    dev->init_parameters.reg_io_width,
                    dev->init_parameters.reg_shift);

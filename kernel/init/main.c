@@ -9,6 +9,7 @@
 #include <drivers/ramdisk.h>
 #include <drivers/virtio_disk.h>
 #include <init/dtb.h>
+#include <init/early_pgtable.h>
 #include <init/main.h>
 #include <init/start.h>
 #include <kernel/bio.h>
@@ -22,6 +23,7 @@
 #include <kernel/scheduler.h>
 #include <kernel/smp.h>
 #include <mm/kalloc.h>
+#include <mm/memlayout.h>
 #include <mm/memory_map.h>
 #include <mm/vm.h>
 
@@ -51,28 +53,29 @@ void print_timer_source(void *dtb)
     }
 }
 
-void add_ramdisks_to_dev_list(struct Devices_List *dev_list,
-                              struct Memory_Map *memory_map)
+void add_ramdisks_to_dev_list(void *dtb, struct Devices_List *dev_list)
 {
+#if defined(__CONFIG_RAMDISK_EMBEDDED)
     struct Device_Init_Parameters init_params;
     clear_init_parameters(&init_params);
-#if defined(__CONFIG_RAMDISK_EMBEDDED)
-    init_params.mem[0].start = (size_t)ramdisk_fs;
+    init_params.mem[0].start = virt_to_phys((size_t)ramdisk_fs);
     init_params.mem[0].size = (size_t)ramdisk_fs_size;
     dev_list_add_with_parameters(dev_list, &g_ramdisk_driver, init_params);
 #endif
-    struct Memory_Map_Region *initrd =
-        memory_map_get_region(memory_map, MEM_MAP_REGION_INITRD);
-    if (initrd != NULL)
+
+    // get initrd / ramdisk if present
+    size_t initrd_base;
+    size_t initrd_size;
+    dtb_get_initrd(dtb, &initrd_base, &initrd_size);
+    if (initrd_base != 0 && initrd_size != 0)
     {
-        // initrd from bootloader detected
-        init_params.mem[0].start = initrd->start_va;
-        init_params.mem[0].size = initrd->size;
+        struct Device_Init_Parameters init_params;
+        clear_init_parameters(&init_params);
+        init_params.mem[0].start_pa = initrd_base;
+        init_params.mem[0].size = initrd_size;
         dev_list_add_with_parameters(dev_list, &g_ramdisk_driver, init_params);
     }
 }
-
-struct Memory_Map g_memory_map = {0};
 
 void init_devices(struct Devices_List *dev_list, void *dtb)
 {
@@ -80,7 +83,7 @@ void init_devices(struct Devices_List *dev_list, void *dtb)
     // Collect all found devices in this list for later init:
     dtb_add_devices_to_dev_list(dtb, get_generell_drivers(), dev_list);
     // add ramdisk if present:
-    add_ramdisks_to_dev_list(dev_list, &g_memory_map);
+    add_ramdisks_to_dev_list(dtb, dev_list);
     // sort for predictable device numbers:
     dev_list_sort(dev_list, "virtio,mmio");
 
@@ -88,8 +91,10 @@ void init_devices(struct Devices_List *dev_list, void *dtb)
     ssize_t con_idx = dtb_find_boot_console_in_dev_list(dtb, dev_list);
 
     // map devices
-    kvm_map_all_devices(&g_kernel_pagetable, dev_list);
-    mmu_set_kernel_page_table(&g_kernel_pagetable);
+    memory_map_add_device_mmio(&g_kernel_pagetable->memory_map, dev_list);
+    kvm_apply_mapping(g_kernel_pagetable);
+    // now we are done with the page table: unlock
+    spin_unlock(&g_kernel_pagetable->lock);
 
     if (con_idx >= 0)
     {
@@ -114,19 +119,46 @@ void init_devices(struct Devices_List *dev_list, void *dtb)
 void init_memory_management(void *dtb)
 {
     printk("init early memory management...\n");
-    dtb_get_memory_regions(dtb, &g_memory_map);
-    memory_map_sort(&g_memory_map);
-    kalloc_init(&g_memory_map);  // physical page allocator, early RAM only
+
+    struct MM_Region *early_ram =
+        early_memory_map_get_region(&g_early_memory_map, MM_REGION_EARLY_RAM);
+    kalloc_init(early_ram);  // physical page allocator
 
     // from now on kmalloc() can be used, but available memory is limited
 
     printk("init new page table...\n");
-    page_table_init(&g_kernel_pagetable, NULL);
-    kvm_init_kpage_table(&g_kernel_pagetable, &g_memory_map);
-    mmu_set_kernel_page_table(&g_kernel_pagetable);
+    g_kernel_pagetable = page_table_alloc_init();
+
+    // get total RAM from dtb
+    size_t phy_ram_base;
+    size_t phy_ram_size;
+    dtb_get_memory(dtb, &phy_ram_base, &phy_ram_size);
+    memory_map_set_ram(&g_kernel_pagetable->memory_map, phy_ram_base,
+                       phys_to_virt(phy_ram_base), phy_ram_size);
+
+    // copy known memory regions from early memory map:
+    memory_map_copy_from_early_memory_map(&g_kernel_pagetable->memory_map,
+                                          &g_early_memory_map);
+
+    memory_map_add_region_and_split(
+        &g_kernel_pagetable->memory_map, virt_to_phys((size_t)trampoline),
+        TRAMPOLINE, PAGE_SIZE, MM_REGION_KERNEL_TEXT);
+
+    // get initrd / ramdisk if present
+    size_t initrd_base;
+    size_t initrd_size;
+    dtb_get_initrd(dtb, &initrd_base, &initrd_size);
+    if (initrd_base != 0 && initrd_size != 0)
+    {
+        memory_map_add_region_and_split(&g_kernel_pagetable->memory_map,
+                                        initrd_base, phys_to_virt(initrd_base),
+                                        initrd_size, MM_REGION_INITRD);
+    }
+
+    kvm_apply_mapping(g_kernel_pagetable);
 
     // make all additional memory available for kmalloc()
-    kalloc_init_memory(&g_memory_map, MEM_MAP_REGION_USABLE_RAM);
+    kalloc_init_memory(&g_kernel_pagetable->memory_map, MM_REGION_USABLE_RAM);
 }
 
 void init_filesystem(struct Devices_List *dev_list)

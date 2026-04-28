@@ -2,12 +2,12 @@
 set -e
 
 usage() {
-  echo "Usage: $0 SCRIPT [PLATFORM] [SEARCH_STRING]"
+  echo "Usage: $0 SCRIPT [PLATFORM] [SEARCH_STRING] [CPU_COUNT] [MEMORY]"
   echo "  SCRIPT        : file name under root/tests (e.g. echo.sh)"
   echo "  PLATFORM      : platform name (default: qemu64)"
   echo "  SEARCH_STRING : string to search the log for (default: ALL TESTS PASSED)"
-  echo "  CPU_COUNT      : number of CPUs to use for qemu-run (default: 4)"
-  echo "  MEMORY         : amount of memory in megabyte to use for qemu-run (default: 64)"
+  echo "  CPU_COUNT     : number of CPUs to use for qemu-run (default: 4)"
+  echo "  MEMORY        : amount of memory in megabyte to use for qemu-run (default: 64)"
   exit 2
 }
 
@@ -18,8 +18,8 @@ fi
 SCRIPT="$1"
 PLATFORM="${2:-qemu64}"
 SEARCH="${3:-ALL TESTS PASSED}"
-CPU_COUNT="${CPU_COUNT:-4}"
-MEMORY="${MEMORY:-64}"
+CPU_COUNT="${4:-4}"
+MEMORY="${5:-64}"
 
 # check if script exists
 TARGET_SCRIPT="root/tests/${SCRIPT}"

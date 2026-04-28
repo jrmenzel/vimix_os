@@ -92,7 +92,9 @@ void dump_exception_cause(struct Interrupt_Context *ctx)
                 return;
             }
 
+            spin_lock(&proc->pagetable->lock);
             pte_t *pte = vm_walk(proc->pagetable, ctx->stval, false);
+            spin_unlock(&proc->pagetable->lock);
             if (!pte)
             {
                 printk("Page of address 0x%zx is not mapped\n", ctx->stval);
@@ -146,7 +148,7 @@ void return_to_user_mode()
     rv_write_csr_sepc(trapframe_get_program_counter(proc->trapframe));
 
     // tell u_mode_trap_vector.S the user page table to switch to.
-    size_t satp = mmu_make_page_table_reg((size_t)proc->pagetable, 0);
+    size_t satp = mmu_make_page_table_reg((size_t)proc->pagetable->root, 0);
 
     // jump to return_to_user_mode_asm in u_mode_trap_vector.S at the top of
     // memory, which switches to the user page table, restores user registers,

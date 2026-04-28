@@ -110,9 +110,9 @@ struct process
     size_t heap_end;    ///< heap_end
     size_t stack_low;   ///< First/lowest stack page address. Stack goes to
                        ///< USER_STACK_HIGH - 1 and sp starts at USER_STACK_HIGH
-    pagetable_t pagetable;        ///< User page table
-    struct trapframe *trapframe;  ///< data page for u_mode_trap_vector.S
-    struct context context;       ///< context_switch() here to run process
+    struct Page_Table *pagetable;  ///< User page table
+    struct trapframe *trapframe;   ///< data page for u_mode_trap_vector.S
+    struct context context;        ///< context_switch() here to run process
     struct file *files[MAX_FILES_PER_PROCESS];  ///< Open files. Indexed by a
                                                 ///< FILE_DESCRIPTOR value.
     struct dentry *cwd_dentry;                  ///< Current Working Directory

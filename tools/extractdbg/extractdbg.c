@@ -207,9 +207,6 @@ static int collect_compilation_units(Dwarf *dbg, Dwarf_Addr bias,
     uint64_t highest = 0;
     int have_addresses = 0;
 
-    // printf("[extractdbg] Collecting compilation units and address
-    // ranges...\n");
-
     while (1)
     {
         Dwarf_Die cu_die;
@@ -238,7 +235,6 @@ static int collect_compilation_units(Dwarf *dbg, Dwarf_Addr bias,
                     cu_name);
             return -1;
         }
-        // printf("  CU %zu: %s\n", cu_index, cu_name);
 
         Dwarf_Lines *lines;
         size_t nlines;

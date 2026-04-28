@@ -111,7 +111,6 @@ int main()
             if (wpid == pid)
             {
                 // the login exited; restart it.
-                // printf("login exited with status %d\n", status);
                 break;
             }
             else if (wpid < 0)

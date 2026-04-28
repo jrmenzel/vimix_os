@@ -259,6 +259,7 @@ void console_debug_print_help()
     printk("CTRL+P: Print process list\n");
     printk("CTRL+L: Print process list\n");
     printk("CTRL+T: Print process list with page tables\n");
+    printk("CTRL+Z: Print kernel memory map\n");
     printk("CTRL+B: Print kernel page table (warning, long!)\n");
     printk("CTRL+U: Print process list with user call stack\n");
     printk("CTRL+S: Print process list with kernel call stack\n");
@@ -296,8 +297,11 @@ bool console_handle_control_keys(int32_t c)
             break;
         case CONTROL_KEY('B'):  // kernel page table - running out of memorable
                                 // key combos don't collide with VSCode
-            printk("Kernel process table:\n");
-            debug_vm_print_page_table(g_kernel_pagetable.root);
+            printk("Kernel page table:\n");
+            debug_vm_print_page_table(g_kernel_pagetable);
+            break;
+        case CONTROL_KEY('Z'):
+            debug_print_memory_map(&g_kernel_pagetable->memory_map);
             break;
         case CONTROL_KEY('Y'): debug_print_kobject_tree(); break;
         case CONTROL_KEY('D'): debug_print_dentry_cache(); break;

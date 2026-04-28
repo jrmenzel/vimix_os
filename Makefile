@@ -174,3 +174,5 @@ clean: # clean up
 	@$(MAKE) -C tools/extractdbg clean;
 	-@rm -rf build/*
 	-@rm -rf build_host/*
+	-@rm -f .gdbinit
+	-@rm -f .gdbinit_vscode

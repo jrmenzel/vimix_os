@@ -6,10 +6,10 @@
 
 
 Run 
-> make qemu
+> make qemu64
 
 Or run manually:
-> qemu-system-riscv64 -machine virt -bios none -kernel build/kernel-vimix -m 128M -smp 4 -nographic -global virtio-mmio.force-legacy=false -drive file=build/filesystem.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+> qemu-system-riscv64 -machine virt -bios none -kernel build/boot/kernel-vimix -m 128M -smp 4 -nographic -global virtio-mmio.force-legacy=false -drive file=build/filesystem.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 To run via make without recompiling (and re-generating the file system image) call:
 > make qemu-run

@@ -74,7 +74,7 @@ dev_t jh7110_temp_init(struct Device_Init_Parameters *init_parameters,
         return INVALID_DEVICE;
     }
 
-    g_jh7110_temp.mmio_base = mmio_phys_to_virt(init_parameters->mem[0].start);
+    g_jh7110_temp.mmio_base = init_parameters->mem[0].start_va;
 
     jh7110_syscrg_enable(SYSCLK_TEMP_APB);
     jh7110_syscrg_enable(SYSCLK_TEMP_CORE);

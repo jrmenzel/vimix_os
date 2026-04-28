@@ -29,7 +29,6 @@ void go(int which_child, int max_iterations)
     mkdir("grindir", 0755);
     if (chdir("grindir") != 0)
     {
-        // printf("grind: chdir grindir failed\n");
         exit(1);
     }
     chdir("/");
@@ -59,7 +58,6 @@ void go(int which_child, int max_iterations)
         {
             if (chdir("grindir") != 0)
             {
-                // printf("grind: chdir grindir failed\n");
                 exit(1);
             }
             unlink("../b");

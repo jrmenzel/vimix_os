@@ -79,8 +79,6 @@ void register_device(struct Device *dev)
     if (dev->irq_number != INVALID_IRQ_NUMBER)
     {
         interrupt_controller_set_interrupt_priority(dev->irq_number, 1);
-        // printk("register device %d with IRQ %d\n", dev->device_number,
-        //        dev->irq_number);
     }
 
 #pragma GCC diagnostic push

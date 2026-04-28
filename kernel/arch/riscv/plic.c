@@ -160,7 +160,7 @@ dev_t plic_init(struct Device_Init_Parameters *init_parameters,
     {
         return 0;
     }
-    g_plic.mmio_base = mmio_phys_to_virt(init_parameters->mem[0].start);
+    g_plic.mmio_base = init_parameters->mem[0].start_va;
 
     plic_init_hart_context_lookup(init_parameters->dtb,
                                   init_parameters->dev_offset);

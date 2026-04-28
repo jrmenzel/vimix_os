@@ -6,6 +6,7 @@
 #include <kernel/kernel.h>
 #include <kernel/page.h>
 #include <kernel/pgtable.h>
+#include <lib/minmax.h>
 #include <libfdt.h>
 #include <mm/arch_early_pgtable.h>
 #include <mm/memory_map.h>
@@ -14,6 +15,8 @@
 __attribute__((
     aligned(PAGE_SIZE))) char g_early_kernel_page_table[EARLY_PAGE_TABLE_SIZE];
 
+struct Early_Memory_Map g_early_memory_map = {0};
+
 struct early_alloc_state
 {
     size_t next_free_page;
@@ -21,6 +24,55 @@ struct early_alloc_state
 };
 
 void early_panic() { infinite_loop; }
+
+void early_memory_map_init(struct Early_Memory_Map *map)
+{
+    map->region_count = 0;
+
+    if (TEXT_OFFSET != 0)
+    {
+        early_memory_map_add_region(map, virt_to_phys(PAGE_OFFSET), PAGE_OFFSET,
+                                    TEXT_OFFSET, MM_REGION_RESERVED);
+    }
+}
+
+void early_memory_map_add_region(struct Early_Memory_Map *map, size_t start_pa,
+                                 size_t start_va, size_t size,
+                                 enum MM_Region_Type type)
+{
+    if (map->region_count >= MEM_MAP_MAX_REGIONS)
+    {
+        early_panic();
+    }
+    if (size == 0)
+    {
+        return;
+    }
+
+    size_t idx = map->region_count;
+    map->region_count++;
+
+    size = PAGE_ROUND_UP(size);
+
+    map->region[idx].start_pa = start_pa;
+    map->region[idx].start_va = start_va;
+    map->region[idx].size = size;
+    map->region[idx].type = type;
+    map->region[idx].mapped = false;
+}
+
+struct MM_Region *early_memory_map_get_region(struct Early_Memory_Map *map,
+                                              enum MM_Region_Type type)
+{
+    for (size_t i = 0; i < map->region_count; ++i)
+    {
+        if (map->region[i].type == type)
+        {
+            return &map->region[i];
+        }
+    }
+    return NULL;
+}
 
 size_t early_vm_alloc_page(struct early_alloc_state *alloc_state)
 {
@@ -80,8 +132,9 @@ void early_vm_map(pagetable_t pagetable, struct early_alloc_state *alloc_state,
 size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
                           size_t memory_map_paddr)
 {
-    struct Memory_Map *memory_map = (struct Memory_Map *)memory_map_paddr;
-    memory_map_init(memory_map);
+    struct Early_Memory_Map *memory_map =
+        (struct Early_Memory_Map *)memory_map_paddr;
+    early_memory_map_init(memory_map);
 
     pagetable_t pagetable = (pagetable_t)(pt_paddr);
 
@@ -117,34 +170,40 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     memory_map->kernel.start_pa = kernel_start_pa;
     memory_map->kernel.start_va = kernel_start_va;
     memory_map->kernel.size = PAGE_ROUND_UP(kernel_end_off);
-    memory_map->kernel.type = MEM_MAP_REGION_KERNEL;
+    memory_map->kernel.type = MM_REGION_KERNEL;
     memory_map->kernel.mapped = false;
 
     // map first page of kernel text (init code) once with va=pa to be able to
     // fetch instructions after enabling this page table for the jump to the
-    // higher VA.
-    memory_map_add_region(memory_map, kernel_start_pa, kernel_start_pa,
-                          PAGE_SIZE, MEM_MAP_REGION_KERNEL_TEXT);
+    // higher VA. Needed till all cores are up.
+    early_memory_map_add_region(memory_map, kernel_start_pa, kernel_start_pa,
+                                PAGE_SIZE, MM_REGION_KERNEL_TEXT_PA);
 
-    memory_map_add_region(memory_map, kernel_start_pa, kernel_start_va,
-                          PAGE_ROUND_UP((size_t)__size_of_text),
-                          MEM_MAP_REGION_KERNEL_TEXT);
-    memory_map_add_region(memory_map, kernel_rodata_pa, kernel_rodata_va,
-                          PAGE_ROUND_UP((size_t)__size_of_rodata),
-                          MEM_MAP_REGION_KERNEL_RO_DATA);
-    memory_map_add_region(memory_map, kernel_data_pa, kernel_data_va,
-                          PAGE_ROUND_UP((size_t)__size_of_data),
-                          MEM_MAP_REGION_KERNEL_DATA);
-    memory_map_add_region(memory_map, kernel_bss_pa, kernel_bss_va,
-                          PAGE_ROUND_UP((size_t)__size_of_bss),
-                          MEM_MAP_REGION_KERNEL_BSS);
+    early_memory_map_add_region(memory_map, kernel_start_pa, kernel_start_va,
+                                PAGE_ROUND_UP((size_t)__size_of_text),
+                                MM_REGION_KERNEL_TEXT);
+    early_memory_map_add_region(memory_map, kernel_rodata_pa, kernel_rodata_va,
+                                PAGE_ROUND_UP((size_t)__size_of_rodata),
+                                MM_REGION_KERNEL_RO_DATA);
+    early_memory_map_add_region(memory_map, kernel_data_pa, kernel_data_va,
+                                PAGE_ROUND_UP((size_t)__size_of_data),
+                                MM_REGION_KERNEL_DATA);
+    early_memory_map_add_region(memory_map, kernel_bss_pa, kernel_bss_va,
+                                PAGE_ROUND_UP((size_t)__size_of_bss),
+                                MM_REGION_KERNEL_BSS);
 
     // early RAM
     size_t ram_start_pa = PAGE_ROUND_UP(kernel_end_pa);
     size_t ram_end_pa = MEGA_PAGE_ROUND_UP(kernel_end_pa) + MEGA_PAGE_SIZE;
 
-    memory_map_add_region(memory_map, ram_start_pa, phys_to_virt(ram_start_pa),
-                          ram_end_pa - ram_start_pa, MEM_MAP_REGION_EARLY_RAM);
+    size_t phy_ram_base;
+    size_t phy_ram_size;
+    dtb_get_memory((void *)dtb_paddr, &phy_ram_base, &phy_ram_size);
+    ram_end_pa = min(ram_end_pa, phy_ram_base + phy_ram_size);
+
+    early_memory_map_add_region(memory_map, ram_start_pa,
+                                phys_to_virt(ram_start_pa),
+                                ram_end_pa - ram_start_pa, MM_REGION_EARLY_RAM);
 
     // map DTB
     size_t dtb_page = PAGE_ROUND_DOWN(dtb_paddr);
@@ -156,17 +215,17 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     }
     dtb_size = PAGE_ROUND_UP(dtb_size);
 
-    memory_map_add_region(memory_map, dtb_page, phys_to_virt(dtb_page),
-                          dtb_size, MEM_MAP_REGION_DTB);
+    early_memory_map_add_region(memory_map, dtb_page, phys_to_virt(dtb_page),
+                                dtb_size, MM_REGION_DTB);
 
     for (size_t i = 0; i < memory_map->region_count; ++i)
     {
-        struct Memory_Map_Region *region = &memory_map->region[i];
-        if (region->type == MEM_MAP_REGION_UNUSED)
+        struct MM_Region *region = &memory_map->region[i];
+        if (region->type == MM_REGION_RESERVED)
         {
             continue;
         }
-        uint32_t flags = memory_map_get_pte(region);
+        uint32_t flags = mm_region_get_pte(region);
         if (flags == 0)
         {
             continue;

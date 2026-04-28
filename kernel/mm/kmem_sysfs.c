@@ -49,7 +49,7 @@ ssize_t km_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx, char *buf,
                           size_t n)
 {
     struct kernel_memory *kmem = kernel_memory_from_kobj(kobj);
-    struct Memory_Map *map = &kmem->memory_map;
+    struct Memory_Map *map = kmem->memory_map;
 
     ssize_t ret = 0;
     switch (attribute_idx)

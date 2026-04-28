@@ -56,10 +56,5 @@ int main(int argc, char **argv)
     }
     printf("\n");
 
-    // printf("ruid=%d(%s) rgid=%d(%s)\n", (int)ruid, user_from_uid(ruid),
-    //        (int)rgid, group_from_gid(rgid));
-    // printf("suid=%d(%s) sgid=%d(%s)\n", (int)suid, user_from_uid(suid),
-    //        (int)sgid, group_from_gid(sgid));
-
     return 0;
 }

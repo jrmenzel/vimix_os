@@ -28,10 +28,31 @@
 // and it's relocated to a 4MB / 2MB boundry, one leaf of the page table will
 // contain the full mapping (ensuring only PAGE_TABLE_MAX_LEVELS pages are
 // needed).
-#ifndef __ASSEMBLY__
 
 #include <init/start.h>
 #include <kernel/pgtable.h>
+#include <mm/memory_map.h>
+
+#define MEM_MAP_MAX_REGIONS 16
+struct Early_Memory_Map
+{
+    struct MM_Region region[MEM_MAP_MAX_REGIONS];
+    struct MM_Region ram;     // unsplit copy
+    struct MM_Region kernel;  // unsplit copy
+    size_t region_count;
+};
+
+extern struct Early_Memory_Map g_early_memory_map;
+
+void early_memory_map_init(struct Early_Memory_Map *map);
+
+void early_memory_map_add_region(struct Early_Memory_Map *map, size_t start_pa,
+                                 size_t start_va, size_t size,
+                                 enum MM_Region_Type type);
+
+// returns the first region of the given type, or NULL if not found
+struct MM_Region *early_memory_map_get_region(struct Early_Memory_Map *map,
+                                              enum MM_Region_Type type);
 
 extern char g_early_kernel_page_table[EARLY_PAGE_TABLE_SIZE];
 
@@ -48,5 +69,3 @@ static inline size_t early_ram_end()
     size_t kernel_mega_page_end = MEGA_PAGE_ROUND_UP((size_t)__end_of_kernel);
     return kernel_mega_page_end + MEGA_PAGE_SIZE;
 }
-
-#endif

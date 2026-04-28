@@ -71,6 +71,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	mm/kmem_sysfs.o \
 	mm/memory_map.o \
 	mm/slab.o \
+	mm/page_table.o \
 	mm/vm.o \
 	syscalls/sys_cred.o \
 	syscalls/sys_device.o \

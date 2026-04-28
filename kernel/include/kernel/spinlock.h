@@ -42,18 +42,24 @@ void spin_unlock(struct spinlock *lk);
 /// Check whether this cpu is holding the lock. Interrupts must be off.
 bool spin_lock_is_held_by_this_cpu(struct spinlock *lk);
 
+extern atomic_size_t g_kernel_panicked;
+
 /// verifies that the CPU holds the lock
 /// lock is a struct spinlock*
+/// skip if there is a panic
 #define DEBUG_ASSERT_CPU_HOLDS_LOCK(lock)                           \
-    if (spin_lock_is_held_by_this_cpu(lock) == false)               \
+    if ((spin_lock_is_held_by_this_cpu(lock) == false) &&           \
+        (g_kernel_panicked == 0))                                   \
     {                                                               \
         panic("debug assert failed: spin lock is not held by CPU"); \
     }
 
 /// verifies that the CPU does not hold the lock
 /// lock is a struct spinlock*
+/// skip if there is a panic
 #define DEBUG_ASSERT_CPU_DOES_NOT_HOLD_LOCK(lock)               \
-    if (spin_lock_is_held_by_this_cpu(lock) == true)            \
+    if ((spin_lock_is_held_by_this_cpu(lock) == true) &&        \
+        (g_kernel_panicked == 0))                               \
     {                                                           \
         panic("debug assert failed: spin lock is held by CPU"); \
     }

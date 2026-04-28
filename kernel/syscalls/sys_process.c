@@ -139,7 +139,7 @@ syserr_t sys_execv()
         error_code = do_execv(path, argv);
     }
     // cleanup on error and success:
-    for (size_t i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    for (size_t i = 0; i < NELEM(argv) && argv[i] != NULL; i++)
     {
         free_page(argv[i]);
     }

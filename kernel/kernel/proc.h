@@ -60,11 +60,7 @@ syserr_t do_fork();
 /// @return 0 on success, -1 on failure.
 int32_t proc_grow_memory(ssize_t n);
 
-pagetable_t proc_pagetable(struct process *proc);
-
-/// @brief Free a process's page table, and free the
-/// physical memory it refers to.
-void proc_free_pagetable(pagetable_t pagetable);
+struct Page_Table *proc_pagetable(struct process *proc);
 
 /// @brief Sends a signal to a process, basically kill syscall
 /// @param pid The PID of the process
@@ -173,4 +169,4 @@ FILE_DESCRIPTOR fd_alloc(struct file *f);
 
 void forkret();
 
-size_t proc_get_kernel_stack();
+size_t proc_get_free_kernel_stack_va();

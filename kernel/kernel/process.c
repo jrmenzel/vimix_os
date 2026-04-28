@@ -76,7 +76,7 @@ struct process *process_alloc_init()
     spin_lock(&proc->lock);
 
     // kernel stack
-    proc->kstack = proc_get_kernel_stack();
+    proc->kstack = proc_get_free_kernel_stack_va();
     if (proc->kstack == 0)
     {
         proc_put(proc);
@@ -84,7 +84,7 @@ struct process *process_alloc_init()
     }
 
     bool pagetable_updated =
-        proc_init_kernel_stack(&g_kernel_pagetable, proc, proc->kstack);
+        proc_init_kernel_stack(g_kernel_pagetable, proc, proc->kstack);
     if (pagetable_updated == false)
     {
         // a bit special case: free_proc() expects the kernel stack to be set in
@@ -108,7 +108,7 @@ struct process *process_alloc_init()
         return NULL;
     }
 
-    // An empty user page table.
+    // A mostly empty user page table.
     proc->pagetable = proc_pagetable(proc);
     if (proc->pagetable == NULL)
     {
@@ -125,12 +125,6 @@ struct process *process_alloc_init()
     memset(&proc->cred, 0, sizeof(struct cred));
     proc->cred.groups = NULL;
     proc->umask = 0;
-
-    // printk(
-    //     "CPU %zd: new  process %d at kstack: 0x%zx (lower address) trapframe:
-    //     " "0x%zx\n",
-    //     __arch_smp_processor_id(), proc->pid, proc->kstack,
-    //     (size_t)proc->trapframe);
 
     // Set up new context to start executing at forkret,
     // which returns to user space.
@@ -154,22 +148,24 @@ void process_free(struct process *proc)
 
     if (proc->pagetable)
     {
-        proc_free_pagetable(proc->pagetable);
+        page_table_free(proc->pagetable);
     }
-    proc->pagetable = INVALID_PAGETABLE_T;
+    proc->pagetable = NULL;
 
     // unmap and free kernel stack:
     if (proc->kstack != 0)
     {
-        spin_lock(&g_kernel_pagetable.lock);
-        uvm_unmap(g_kernel_pagetable.root, proc->kstack, KERNEL_STACK_PAGES,
-                  true);
-        vm_trim_pagetable(g_kernel_pagetable.root, proc->kstack);
-        // update pagetable, flush cache:
-        mmu_set_kernel_page_table(&g_kernel_pagetable);
-        spin_unlock(&g_kernel_pagetable.lock);
+        spin_lock(&g_kernel_pagetable->lock);
+        // remove from memory map
+        page_table_unmap_range(g_kernel_pagetable, proc->kstack,
+                               KERNEL_STACK_PAGES * PAGE_SIZE);
 
-        // tell other cores to also to reload the kernel page table
+        vm_trim_pagetable(g_kernel_pagetable, proc->kstack);
+        // update pagetable, flush cache:
+        mmu_set_kernel_page_table(g_kernel_pagetable);
+        spin_unlock(&g_kernel_pagetable->lock);
+
+        // tell other cores also to reload the kernel page table
         cpu_mask mask = ipi_cpu_mask_all_but_self();
         ipi_send_interrupt(mask, IPI_KERNEL_PAGETABLE_CHANGED, NULL);
 
@@ -196,29 +192,41 @@ void process_free(struct process *proc)
 bool proc_init_kernel_stack(struct Page_Table *kpage_table,
                             struct process *proc, size_t kstack_va)
 {
+    // init per process kernel stack, so modify kernels page table
+
+    bool failure = false;
     spin_lock(&kpage_table->lock);
     for (size_t i = 0; i < KERNEL_STACK_PAGES; ++i)
     {
         char *page_va = alloc_page(ALLOC_FLAG_ZERO_MEMORY);
         if (page_va == NULL)
         {
-            spin_unlock(&kpage_table->lock);
-            return false;
+            failure = true;
+            break;
         }
         size_t page_pa = virt_to_phys((size_t)page_va);
-        if (vm_map(kpage_table->root, kstack_va + (i * PAGE_SIZE), page_pa,
-                   PAGE_SIZE, PTE_KERNEL_STACK, true) < 0)
+
+        struct MM_Region *region =
+            mm_region_alloc_init(page_pa, kstack_va + (i * PAGE_SIZE),
+                                 PAGE_SIZE, MM_REGION_USER_KSTACK);
+        if (region == NULL)
         {
-            // out of memory
             free_page(page_va);
-
-            // todo: unmap and free previously mapped pages
-            _Static_assert(KERNEL_STACK_PAGES == 1,
-                           "implement cleaning up a half allocated stack");
-
-            spin_unlock(&kpage_table->lock);
-            return false;
+            failure = true;
+            break;
         }
+        memory_map_add_single_region(&kpage_table->memory_map, region);
+    }
+    if (failure)
+    {
+        page_table_unmap_partial_mappings(kpage_table);
+        spin_unlock(&kpage_table->lock);
+        return false;
+    }
+    if (page_table_apply_mapping(kpage_table) < 0)
+    {
+        spin_unlock(&kpage_table->lock);
+        return false;
     }
     // update pagetable, flush cache:
     mmu_set_kernel_page_table(kpage_table);

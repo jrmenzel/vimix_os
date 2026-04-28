@@ -1423,8 +1423,6 @@ syserr_t vimixfs_iops_truncate(struct dentry *dp, off_t new_size)
         {
             return ret;
         }
-
-        // printk("truncated to %zd (wanted %zd)\n", file_size, new_size);
     }
 
     return 0;

@@ -9,7 +9,8 @@ struct Device_Driver;
 #define DEVICE_MAX_CLOCKS (4)
 struct Memory_Mapped_Registers
 {
-    size_t start;
+    size_t start_pa;
+    size_t start_va;
     size_t size;
     const char *name;  ///< optional, can be NULL
 };

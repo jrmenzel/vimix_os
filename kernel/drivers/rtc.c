@@ -17,8 +17,7 @@ dev_t rtc_init(struct Device_Init_Parameters *init_parameters, const char *name)
         return 0;
     }
     goldfish_mapping = *init_parameters;
-    goldfish_mapping.mem[0].start =
-        mmio_phys_to_virt(goldfish_mapping.mem[0].start);
+    goldfish_mapping.mem[0].start_pa = goldfish_mapping.mem[0].start_va;
     rtc_is_initialized = true;
     return MKDEV(RTC_MAJOR, 0);
 }
@@ -41,8 +40,9 @@ struct timespec rtc_get_time()
 
     uint32_t t_low;  // unsigned !
     int32_t t_high;  // signed !
-    t_low = MMIO_READ_UINT_32(goldfish_mapping.mem[0].start, TIMER_TIME_LOW);
-    t_high = MMIO_READ_UINT_32(goldfish_mapping.mem[0].start, TIMER_TIME_HIGH);
+    t_low = MMIO_READ_UINT_32(goldfish_mapping.mem[0].start_pa, TIMER_TIME_LOW);
+    t_high =
+        MMIO_READ_UINT_32(goldfish_mapping.mem[0].start_pa, TIMER_TIME_HIGH);
 
     int64_t time_in_nsec = ((int64_t)t_high << 32) | (int64_t)t_low;
 

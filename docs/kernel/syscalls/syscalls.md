@@ -38,7 +38,7 @@ See also: [calling_syscall](calling_syscall.md).
 - [getresuid](getresuid.md) - Get [process](../processes/processes.md) [user IDs](../security/user_group_id.md).
 - [setuid](setuid.md) - Set [process](../processes/processes.md) effective [user ID](../security/user_group_id.md).
 - [setgid](setgid.md) - Set [process](../processes/processes.md) effective [group IDs](../security/user_group_id.md).
-- [setresgid](setresgid.md) - Set any [process](../processes/processes.md) [user ID](../security/user_group_id.md).
+- [setresgid](setresgid.md) - Set any [process](../processes/processes.md) [group ID](../security/user_group_id.md).
 - [setresuid](setresuid.md) - Set any [process](../processes/processes.md) [user ID](../security/user_group_id.md).
 
 **File Information**
@@ -48,8 +48,8 @@ See also: [calling_syscall](calling_syscall.md).
 - [reboot](reboot.md) - halt or reboot the system
 - [mount](mount.md) - mount [file_system](../file_system/file_system.md)
 - [umount](umount.md) - unmount file system
-- [uptime](uptime.md) - returns how log the system is running
-- [statvfs](../../userspace/bin/statvfs.md) - get file system statistics
+- [uptime](uptime.md) - returns how long the system is running
+- [statvfs](statvfs.md) - get file system statistics
 
 **Communication**
 - [pipe](pipe.md) - Pipe between two processes.

@@ -13,14 +13,15 @@
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
+#include <mm/memory_map.h>
 #include <mm/vm.h>
 
 // Load a program segment into pagetable at virtual address va.
 // va must be page-aligned
 // and the pages from va to va+sz must already be mapped.
 // Returns 0 on success, -1 on failure.
-static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,
-                       size_t offset, size_t sz);
+static int32_t loadseg(struct Page_Table *pagetable, size_t va,
+                       struct inode *ip, size_t offset, size_t sz);
 
 /// @brief Converts access flags from an ELF file to VM access permissions.
 /// @param elf_flags Flags from an ELF file
@@ -35,8 +36,31 @@ pte_t elf_flags_to_perm(int32_t elf_flags, pte_t flags_in)
     return flags_in;
 }
 
+enum MM_Region_Type elf_flags_to_map_type(int32_t elf_flags)
+{
+    bool is_executable = elf_flags & 0x1;
+    bool is_writeable = elf_flags & 0x2;
+
+    if (is_executable && is_writeable)
+    {
+        return MM_REGION_USER_RW_TEXT;
+    }
+    else if (is_executable && !is_writeable)
+    {
+        return MM_REGION_USER_TEXT;
+    }
+    else if (!is_executable && is_writeable)
+    {
+        return MM_REGION_USER_DATA;
+    }
+    else
+    {
+        return MM_REGION_USER_RO_DATA;
+    }
+}
+
 bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
-                            pagetable_t pagetable, size_t *last_va)
+                            struct Page_Table *pagetable, size_t *last_va)
 {
     for (int32_t i = 0; i < elf->phnum; i++)
     {
@@ -61,9 +85,9 @@ bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
 
         // allocate pages and update last_va
         size_t alloc_size = (ph.vaddr + ph.memsz) - *last_va;
-        pte_t flags = PTE_USER_RAM;
-        flags = elf_flags_to_perm(ph.flags, flags);
-        size_t sz = uvm_alloc_heap(pagetable, *last_va, alloc_size, flags);
+
+        size_t sz = uvm_alloc_heap(pagetable, *last_va, alloc_size,
+                                   elf_flags_to_map_type(ph.flags));
         if (sz != alloc_size)
         {
             return false;
@@ -121,7 +145,7 @@ syserr_t do_execv(char *path, char **argv)
         return -ENOEXEC;
     }
 
-    pagetable_t pagetable = proc_pagetable(proc);
+    struct Page_Table *pagetable = proc_pagetable(proc);
     if (pagetable == NULL)
     {
         inode_unlock_put(ip);
@@ -140,7 +164,7 @@ syserr_t do_execv(char *path, char **argv)
     // anyways
     if (fatal_error)
     {
-        proc_free_pagetable(pagetable);
+        page_table_free(pagetable);
         return -ENOMEM;
     }
 
@@ -149,7 +173,7 @@ syserr_t do_execv(char *path, char **argv)
     size_t argc = uvm_create_stack(pagetable, argv, &stack_low, &sp);
     if (argc == -1)
     {
-        proc_free_pagetable(pagetable);
+        page_table_free(pagetable);
         return -ENOMEM;
     }
 
@@ -181,7 +205,9 @@ syserr_t do_execv(char *path, char **argv)
     heap_begin += (16 - heap_begin % 16) % 16;
 
     // Commit to the user image.
-    pagetable_t oldpagetable = proc->pagetable;
+    struct Page_Table *oldpagetable = proc->pagetable;
+    spin_lock(&oldpagetable->lock);
+
     proc->pagetable = pagetable;
     proc->heap_begin = heap_begin;
     proc->heap_end = proc->heap_begin;
@@ -189,7 +215,7 @@ syserr_t do_execv(char *path, char **argv)
 
     trapframe_set_program_counter(proc->trapframe, elf.entry);
     trapframe_set_stack_pointer(proc->trapframe, sp);
-    proc_free_pagetable(oldpagetable);
+    page_table_free(oldpagetable);
 
     // change UID/GID after anything that could fail
     if (set_uid)
@@ -208,12 +234,14 @@ syserr_t do_execv(char *path, char **argv)
     return argc;
 }
 
-static int32_t loadseg(pagetable_t pagetable, size_t va, struct inode *ip,
-                       size_t offset, size_t sz)
+static int32_t loadseg(struct Page_Table *pagetable, size_t va,
+                       struct inode *ip, size_t offset, size_t sz)
 {
     for (size_t i = 0; i < sz; i += PAGE_SIZE)
     {
+        spin_lock(&pagetable->lock);
         size_t pa = uvm_get_physical_paddr(pagetable, va + i, NULL);
+        spin_unlock(&pagetable->lock);
         if (pa == 0)
         {
             panic("loadseg: address should exist");

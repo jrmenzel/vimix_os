@@ -104,8 +104,8 @@ void *get_specific_page(size_t pa, size_t order)
 {
     if (order > PAGE_ALLOC_MAX_ORDER) return NULL;
 
-    struct list_head *block;
-    list_for_each(block, &g_kernel_memory.list_of_free_memory[order])
+    struct list_head *block, *n;
+    list_for_each_safe(block, n, &g_kernel_memory.list_of_free_memory[order])
     {
         if (pa == (size_t)block)
         {
@@ -148,7 +148,7 @@ void __free_pages(void *pa, size_t order)
     }
 }
 
-void free_pages(void *pa, size_t order)
+void free_pages(void *kva, size_t order)
 {
     if (order > PAGE_ALLOC_MAX_ORDER)
     {
@@ -157,10 +157,22 @@ void free_pages(void *pa, size_t order)
 
     spin_lock(&g_kernel_memory.lock);
 
-    __free_pages(pa, order);
+    __free_pages(kva, order);
 
     atomic_fetch_add(&g_kernel_memory.pages_allocated, -(1 << order));
 
+    spin_unlock(&g_kernel_memory.lock);
+}
+
+void free_pages_range(void *kva, size_t page_count)
+{
+    spin_lock(&g_kernel_memory.lock);
+    for (size_t i = 0; i < page_count; ++i)
+    {
+        __free_pages((void *)((size_t)kva + i * PAGE_SIZE), 0);
+    }
+    atomic_fetch_add(&g_kernel_memory.pages_allocated,
+                     -1 * (ssize_t)page_count);
     spin_unlock(&g_kernel_memory.lock);
 }
 
@@ -200,18 +212,20 @@ void kalloc_init_memory_region(size_t mem_start, size_t mem_end)
     }
 }
 
-void kalloc_init_memory(struct Memory_Map *memory_map,
-                        enum Memory_Map_Region_Type type)
+void kalloc_init_memory(struct Memory_Map *memory_map, enum MM_Region_Type type)
 {
-    atomic_init(&g_kernel_memory.pages_allocated, 0);
+    g_kernel_memory.memory_map = memory_map;
+    g_kernel_memory.end_of_physical_memory =
+        (char *)memory_map->ram.start_pa + memory_map->ram.size;
 
-    for (size_t i = 0; i < memory_map->region_count; ++i)
+    struct list_head *pos;
+    list_for_each(pos, &memory_map->region_list)
     {
-        if (memory_map->region[i].type == type)
+        struct MM_Region *region = region_from_list(pos);
+        if (region->type == type)
         {
-            size_t region_start = memory_map->region[i].start_va;
-            size_t region_end =
-                memory_map->region[i].start_va + memory_map->region[i].size;
+            size_t region_start = region->start_va;
+            size_t region_end = region->start_va + region->size;
 
             kalloc_init_memory_region(region_start, region_end);
         }
@@ -232,10 +246,12 @@ void kalloc_init_caches()
     kmem_cache_init(&g_kernel_memory.object_cache[OBJECT_CACHES - 1], 1280);
 }
 
-void kalloc_init(struct Memory_Map *memory_map)
+void kalloc_init(struct MM_Region *region)
 {
+    atomic_init(&g_kernel_memory.pages_allocated, 0);
     kobject_init(&g_kernel_memory.kobj, &kmem_kobj_ktype);
     kobject_add(&g_kernel_memory.kobj, &g_kobjects_root, "kmem");
+    g_kernel_memory.memory_map = NULL;
 
     spin_lock_init(&g_kernel_memory.lock, "kmem");
 
@@ -244,11 +260,9 @@ void kalloc_init(struct Memory_Map *memory_map)
         list_init(&g_kernel_memory.list_of_free_memory[i]);
     }
 
-    g_kernel_memory.memory_map = *memory_map;
-    g_kernel_memory.end_of_physical_memory =
-        (char *)memory_map->ram.start_pa + memory_map->ram.size;
-
-    kalloc_init_memory(memory_map, MEM_MAP_REGION_EARLY_RAM);
+    size_t region_start = region->start_va;
+    size_t region_end = region->start_va + region->size;
+    kalloc_init_memory_region(region_start, region_end);
 
     // init object caches for kmalloc()
     kalloc_init_caches();
@@ -273,6 +287,7 @@ void kfree(void *kva)
                       "kfree called before kalloc_init()");
     if (!addr_is_in_ram_kva((size_t)kva))
     {
+        printk("kfree: invalid address 0x%zx\n", (size_t)kva);
         panic("kfree: out of range");
     }
 
@@ -372,7 +387,7 @@ size_t kalloc_get_memory_allocated()
 
 size_t kalloc_get_total_memory()
 {
-    return (g_kernel_memory.memory_map.ram.size);
+    return (g_kernel_memory.memory_map->ram.size);
 }
 
 size_t kalloc_get_free_memory()

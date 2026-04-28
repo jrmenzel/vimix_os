@@ -9,7 +9,7 @@
 
 #include <asm/pgtable-bits.h>
 #include <asm/registers.h>
-#include <init/early_pgtable.h>
+//#include <init/early_pgtable.h>
 #include <kernel/page.h>
 #include <kernel/param.h>
 #include <arch/riscv/asm/shared_asm.S>
@@ -101,7 +101,7 @@ _behind_header:
     # build early page table in C
     lla a0, g_early_kernel_page_table
     mv a1, dtb
-    lla a2, g_memory_map
+    lla a2, g_early_memory_map
     jal early_pgtable_init
     # return value is in a0 = satp register value
     # update dtb pointer: dtb = dtb - PHYS_OFFSET + PAGE_OFFSET

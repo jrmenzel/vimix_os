@@ -43,12 +43,12 @@ Page table: `pagetable_t`. An array of 512 `pagetable_element` which are just 64
 **32-bit:**
 Page table: `pagetable_t`. An array of 1024 `pagetable_element` which are just 32-bit ints.
 
+All mapped memory regions of the kernels page table as well as of each [process](../processes/processes.md) are tracked in `struct Memory_Map`.
 
 All harts use the same kernel page table:
-- all memory is mapped to the physical location
-	- 2 MB blocks can be mapped as one super page
-- [devices](../devices/devices.md) are mapped
-- the trampoline function gets mapped to the highest address
+- all memory is mapped
+- found [devices](../devices/devices.md) are mapped
+- the trampoline function gets mapped
 See [memory_map_kernel](memory_map_kernel.md) for details.
 
 

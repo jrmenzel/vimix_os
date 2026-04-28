@@ -20,12 +20,12 @@ Note that all values returned from the device tree are 32 bit aligned. When cast
 
 To dump the device tree of [qemu](../development/run_on_qemu.md) run:
 
-> make PLATFORM=qemu qemu-dump-tree
+> make PLATFORM=qemu64 qemu-dump-tree
 
 
 To dump the device tree of [Spike](../development/run_on_spike.md) run:
 
-> make PLATFORM=spike spike-dump-tree
+> make PLATFORM=spike64 spike-dump-tree
 
 Both will generate `*.dtb` and `*.dts` files named after the current platform. Requires the dtc app.
 

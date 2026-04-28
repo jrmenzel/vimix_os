@@ -90,8 +90,7 @@ dev_t syscon_init(struct Device_Init_Parameters *init_parameters,
         return INVALID_DEVICE;
     }
 
-    g_syscon.mmio_base = mmio_phys_to_virt(init_parameters->mem[0].start);
-    // printk("register syscon reboot/shutdown functions\n");
+    g_syscon.mmio_base = init_parameters->mem[0].start_va;
     g_machine_power_off_func = &syscon_machine_power_off;
 
     if (parse_dtb_reboot_node(init_parameters->dtb))

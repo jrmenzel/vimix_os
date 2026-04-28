@@ -1032,12 +1032,8 @@ void file_access(char *s)
         {
             // child process: still root
             // root should always have access
-            // printf("Testing file with mode %o, uid %d, gid %d as root\n",
-            //       test_files[i].mode, test_files[i].uid, test_files[i].gid);
             test_read_access(file_name, true, s);
-            // printf("now writing:\n");
             test_write_access(file_name, true, s);
-            // printf("done.\n");
 
             // child process: switch to user with uid/gid 1000
             struct passwd *pw = getpwuid(1000);

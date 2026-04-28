@@ -20,9 +20,15 @@ void *alloc_pages(int32_t flags, size_t order);
 static inline void *alloc_page(int32_t flags) { return alloc_pages(flags, 0); }
 
 /// @brief Free an allocation done with alloc_pages
-/// @param pa Pointer to allocation
+/// @param kva Pointer to allocation
 /// @param order Same value as used during allocation
-void free_pages(void *pa, size_t order);
+void free_pages(void *kva, size_t order);
+
+/// @brief Free a range of consecutive pages allocated by alloc_pages. Order is
+/// implicitly 0.
+/// @param kva Start address
+/// @param page_count Number of pages to free
+void free_pages_range(void *kva, size_t page_count);
 
 /// @brief Free one page allocated by alloc_page()
 /// @param kva Address of page to free
@@ -43,14 +49,14 @@ void *kmalloc(size_t size, int32_t flags);
 /// @param kva kernel virtual address of the memory to free
 void kfree(void *kva);
 
-/// @brief Free the RAM of region MEM_MAP_REGION_EARLY_RAM, called once at
+/// @brief Free the RAM of region MM_REGION_EARLY_RAM, called once at
 /// boot.
-/// @param memory_map physical addresses of the memory to use (region
-/// MEM_MAP_REGION_EARLY_RAM)
-void kalloc_init(struct Memory_Map *memory_map);
+/// @param region physical addresses of the memory to use (region
+/// MM_REGION_EARLY_RAM)
+void kalloc_init(struct MM_Region *region);
 
 void kalloc_init_memory(struct Memory_Map *memory_map,
-                        enum Memory_Map_Region_Type type);
+                        enum MM_Region_Type type);
 
 /// Returns the number of 4K allocations currently used.
 size_t kalloc_get_allocation_count();

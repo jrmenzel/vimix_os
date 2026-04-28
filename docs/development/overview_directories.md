@@ -15,7 +15,7 @@ Files required to boot on some systems, e.g. [VisionFive2](run_on_visionfive2.md
 
 Temp build files. See [build_instructions](development/build_instructions.md) on how to compile the system.
 - `build/root` Compiled [user space](userspace/userspace.md) apps for VIMIX. This directory will be copied into a [file_system](kernel/file_system/file_system.md) in a file (`filesystem.img`) as the root file system of VIMIX.
-- `build/kernel-vimix` The compiled kernel
+- `build/boot/kernel-vimix` The compiled kernel
 - `build/filesystem.img` The final image of the file system for qemu
 - `build_host` The applications which can be build on the host as well end up here in the same structure as in `build`.
 

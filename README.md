@@ -16,8 +16,12 @@ Compile and try out:
 
 How it looks like (text mode via UART only) running on [qemu](docs/development/run_on_qemu.md):
 ```
-VIMIX OS 64 bit (RISC V) kernel version cc83496 is booting
+Early console detected: SBI
+
+VIMIX OS 64 bit (RISC V) kernel version 62ff674 is booting
 Timer source: sstc extension
+SBI implementation: OpenSBI (version 65543)
+SBI specification: v3.0
 init early memory management...
 init new page table...
 init devices list...
@@ -35,10 +39,7 @@ init device virtio,mmio... OK (1,0)
 init filesystem...
 found root file system on device: virtio,mmio (1,0)
 init userspace...
-CPU 0 entering scheduler 
-CPU 2 entering scheduler (boot CPU)
-CPU 1 entering scheduler 
-CPU 3 entering scheduler 
+CPU 0 entering scheduler (boot CPU)
 forkret() mounting /... OK
 Loaded kernel debug symbols from /kernel-vimix.xdbg.
 forkret() loading /usr/bin/init... OK

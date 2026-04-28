@@ -28,6 +28,7 @@ void dump_exception_cause_and_kill_proc(struct process *proc,
             printk("Call stack:\n");
             debug_print_call_stack_user(proc);
             printk("\n");
+            debug_print_memory_map(&proc->pagetable->memory_map);
         }
     }
     proc_set_killed(proc);
@@ -237,7 +238,7 @@ bool handle_ipi_interrupt()
             {
                 // a process changed the kernels page table, reload it to
                 // flush TLBs
-                mmu_set_kernel_page_table(&g_kernel_pagetable);
+                mmu_set_kernel_page_table(g_kernel_pagetable);
                 break;
             }
             case IPI_KERNEL_PANIC:

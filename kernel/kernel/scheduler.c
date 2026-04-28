@@ -76,7 +76,6 @@ void scheduler()
             struct process *proc = get_next_runnable_process();
             if (proc != NULL)
             {
-                // printk("run %s\n", proc->name);
                 struct cpu *this_cpu = get_cpu();
 
                 if (proc->trapframe == NULL) panic("NULL");

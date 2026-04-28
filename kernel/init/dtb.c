@@ -42,6 +42,11 @@ ssize_t dtb_add_driver_if_compatible(void *dtb, const char *device_name,
     return -1;
 }
 
+/// @brief Look for supported devices in the DTB and add them to the dev_list
+/// @param dtb Device Tree
+/// @param driver_list Known, supported drivers to look for in the DTB
+/// @param dev_list Output list of found devices with init parameters read from
+/// the DTB
 void dtb_add_devices_to_dev_list(void *dtb, struct Device_Driver *driver_list,
                                  struct Devices_List *dev_list)
 {
@@ -61,7 +66,7 @@ void dtb_add_devices_to_dev_list(void *dtb, struct Device_Driver *driver_list,
     }
 }
 
-void dtb_get_initrd(void *dtb, struct Memory_Map *memory_map)
+void dtb_get_initrd(void *dtb, size_t *base, size_t *size)
 {
     size_t initrd_begin = 0;
     size_t initrd_end = 0;
@@ -91,33 +96,17 @@ void dtb_get_initrd(void *dtb, struct Memory_Map *memory_map)
         }
     }
 
-    if (initrd_begin != 0 && initrd_end != 0)
-    {
-        memory_map_add_region(memory_map, initrd_begin,
-                              phys_to_virt(initrd_begin),
-                              initrd_end - initrd_begin, MEM_MAP_REGION_INITRD);
-    }
+    *base = initrd_begin;
+    *size = initrd_end - initrd_begin;
 }
 
-void dtb_get_memory_regions(void *dtb, struct Memory_Map *memory_map)
+void dtb_get_memory(void *dtb, size_t *base, size_t *size)
 {
     if (fdt_magic(dtb) != FDT_MAGIC)
     {
         return;
     }
 
-    /*
-    size_t dtb_page = PAGE_ROUND_DOWN((size_t)dtb);
-    size_t dtb_size = fdt_totalsize(dtb);
-    if (dtb_page < (size_t)dtb)
-    {
-        // the dtb is not page aligned
-        dtb_size += ((size_t)dtb - dtb_page);
-    }
-    dtb_size = PAGE_ROUND_UP(dtb_size);
-    memory_map_add_region(memory_map, virt_to_phys(dtb_page), dtb_page,
-                          dtb_size, MEM_MAP_REGION_DTB);
-*/
     int offset = fdt_path_offset(dtb, "/memory");
     if (offset < 0)
     {
@@ -125,21 +114,12 @@ void dtb_get_memory_regions(void *dtb, struct Memory_Map *memory_map)
         return;
     }
 
-    size_t base;
-    size_t size;
-    dtb_get_reg(dtb, offset, &base, &size);
+    dtb_get_reg(dtb, offset, base, size);
 
-    if (size == 0)
+    if (*size == 0)
     {
         panic("No valid memory size read from device tree");
     }
-
-    memory_map->ram.start_pa = base;
-    memory_map->ram.start_va = phys_to_virt(base);
-    memory_map->ram.size = size;
-    memory_map->ram.type = MEM_MAP_REGION_USABLE_RAM;
-
-    dtb_get_initrd(dtb, memory_map);
 }
 
 uint32_t *dtb_parse_cell(int cells_per_value, uint32_t *cells,
@@ -255,7 +235,7 @@ bool dtb_get_regs(void *dtb, int offset, struct Device_Init_Parameters *params)
     {
         // get address and size:
         reg_index = dtb_parse_cell(addr_cells, reg_index,
-                                   &(params->mem[map_idx].start));
+                                   &(params->mem[map_idx].start_pa));
         reg_index =
             dtb_parse_cell(size_cells, reg_index, &(params->mem[map_idx].size));
 
@@ -263,8 +243,8 @@ bool dtb_get_regs(void *dtb, int offset, struct Device_Init_Parameters *params)
         {
             // address mapping if the device tree stores bus local addresses
             // convert those to CPU mapped addresses
-            params->mem[map_idx].start = map_mmio_address(
-                params->mem[map_idx].start, range, range_count);
+            params->mem[map_idx].start_pa = map_mmio_address(
+                params->mem[map_idx].start_pa, range, range_count);
         }
 
         // get optional name:
@@ -331,7 +311,6 @@ uint64_t dtb_get_timebase(void *dtb)
     int offset = fdt_path_offset(dtb, "/cpus");
     if (offset < 0)
     {
-        // printk("dtb error: %s\n", (char *)fdt_strerror(offset));
         return fallback;
     }
     const uint32_t *value =
@@ -525,7 +504,6 @@ CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id)
     {
         while (true)
         {
-            // printk("ext: %s\n", riscv_isa_ext);
 #if defined(__RISCV_EXT_SSTC)
             if (strcmp(riscv_isa_ext, "sstc"))
             {

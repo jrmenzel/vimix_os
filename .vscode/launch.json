@@ -13,12 +13,17 @@
             "miDebuggerPath": "riscv64-elf-gdb",
             "miDebuggerServerAddress": "127.0.0.1:26000",
             "MIMode": "gdb",
-            "stopAtEntry": true,
+            "stopAtEntry": false,
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                 },
+                //{
+                //    "description": "Set hex output for all vars, useful when debugging addesses",
+                //    "text": "set output-radix 16",
+                //    "ignoreFailures": true
+                //},
                 {
                     "description": "Set GDB working directory",
                     "text": "cd ${workspaceFolder}",

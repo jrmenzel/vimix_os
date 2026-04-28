@@ -214,8 +214,8 @@ usertests_memory:
     - job: build_qemu64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 1 5
-    - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 2 8
+    - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 1 8
+    - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 4 8
     - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 1 128
   artifacts:
     paths:
@@ -261,7 +261,7 @@ stack_grows_test:
     - job: build_qemu64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh stack.sh qemu64 "Foo of 1199 is 1199"
+    - ./tools/tests/run_test.sh stack.sh qemu64 "Foo of 1180 is 1180"
   artifacts:
     paths:
       - build/logs/

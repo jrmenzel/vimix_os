@@ -21,10 +21,17 @@ typedef int64_t __attribute__((__aligned__(4))) dtb_aligned_int64_t;
 void dtb_add_devices_to_dev_list(void *dtb, struct Device_Driver *driver_list,
                                  struct Devices_List *dev_list);
 
-/// @brief Query the memory map, RAM size, ram disk location...
+/// @brief Query the RAM size.
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
-/// @param memory_map Map to fill
-void dtb_get_memory_regions(void *dtb, struct Memory_Map *memory_map);
+/// @param base Output parameter for the physical base address of usable RAM.
+/// @param size Output parameter for the size of usable RAM in bytes.
+void dtb_get_memory(void *dtb, size_t *base, size_t *size);
+
+/// @brief Query the initrd location and size.
+/// @param dtb Device Tree Binary pointer (provided by the boot loader)
+/// @param base Output parameter for the physical base address of the initrd.
+/// @param size Output parameter for the size of the initrd in bytes.
+void dtb_get_initrd(void *dtb, size_t *base, size_t *size);
 
 /// @brief Returns the timebase frequency used by the timer.
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)

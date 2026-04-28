@@ -72,7 +72,8 @@ void ramdisk_block_device_write(struct Block_Device *bd, struct buf *b)
 dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
                    const char *name)
 {
-    if (init_parameters->mem[0].start == 0 || init_parameters->mem[0].size == 0)
+    if (init_parameters->mem[0].start_pa == 0 ||
+        init_parameters->mem[0].size == 0)
     {
         panic("invalid ramdisk_init parameters");
     }
@@ -86,9 +87,8 @@ dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
     }
 
     size_t minor = (size_t)atomic_fetch_add(&g_ramdisk_next_minor, 1);
-    // printk("ramdisk_init %zd\n", minor);
 
-    rdisk->ram_base = (void *)phys_to_virt(init_parameters->mem[0].start);
+    rdisk->ram_base = (void *)phys_to_virt(init_parameters->mem[0].start_pa);
     rdisk->disk.bdev.size = init_parameters->mem[0].size;
 
     char *device_name = kmalloc(16, ALLOC_FLAG_NONE);

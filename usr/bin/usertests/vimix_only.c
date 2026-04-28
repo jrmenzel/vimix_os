@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <mm/mm.h>  // for USER_VA_END
 #include <sys/statvfs.h>
+#include <vimixutils/minmax.h>
 #include <vimixutils/sysfs.h>
 #include <vimixutils/time.h>
 
@@ -1401,7 +1402,6 @@ void forkforkfork(char *s)
 
             if (fork() < 0)
             {
-                // printf("child: creating file to stop forking...\n");
                 int stop_fd = open(file_name, O_CREATE | O_RDWR, 0755);
                 if (stop_fd >= 0)
                 {
@@ -3579,7 +3579,7 @@ void badwrite(char *s)
 // doesn't cause a panic.
 void execout(char *s)
 {
-    for (size_t avail = 0; avail < 15; avail++)
+    for (size_t avail = 0; avail < 20; avail++)
     {
         pid_t pid = fork();
         if (pid < 0)
@@ -3590,11 +3590,17 @@ void execout(char *s)
         else if (pid == 0)
         {
             long page_size = sysconf(_SC_PAGE_SIZE);
-            // allocate all of memory.
+            // allocate all of memory: fist one big chunk, then one page at a
+            // time until we get an ENOMEM.
+            size_t mem_free = get_from_sysfs("/sys/kmem/mem_free");
+            size_t allocate = max(mem_free - (64 * page_size), 0);
+            sbrk(allocate);
+
+            // allocate remaining memory one page at a time
             while (true)
             {
                 intptr_t a = (intptr_t)sbrk(page_size);
-                if (a == TEST_PTR_MAX_ADDRESS)
+                if (errno == ENOMEM)
                 {
                     break;
                 }
@@ -3602,7 +3608,7 @@ void execout(char *s)
             }
 
             // free a few pages, in order to let execv() make some
-            // progress.
+            // progress and fail at different stages
             for (size_t i = 0; i < avail; i++)
             {
                 sbrk(-page_size);
@@ -3742,7 +3748,33 @@ void outofinodes(char *s)
     }
 }
 
+// forks and quits the child.
+// used to test if a fork leaks memory.
+void fork_leak(char *s)
+{
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        printf("%s: fork failed\n", s);
+        exit(1);
+    }
+    if (pid == 0)
+    {
+        exit(0);
+    }
+
+    int32_t xstatus;
+    wait(&xstatus);
+    xstatus = WEXITSTATUS(xstatus);
+    if (xstatus != 0)
+    {
+        printf("%s: unexpected return code\n", s);
+        exit(1);
+    }
+}
+
 struct test tests_vimix[] = {
+    {fork_leak, "fork_leak", TEST_MASK_NONE},
     {duptest, "duptest", TEST_MASK_NONE},
     {copyin, "copyin", TEST_MASK_NONE},
     {copyout, "copyout", TEST_MASK_NONE},

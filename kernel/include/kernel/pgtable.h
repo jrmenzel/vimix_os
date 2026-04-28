@@ -46,7 +46,8 @@
 
 #define phys_to_virt(pa) ((pa) - PHYS_OFFSET + PAGE_OFFSET)
 
-#define MMIO_OFFSET 0
-
-#define mmio_virt_to_phys(va) ((va) - MMIO_OFFSET)
-#define mmio_phys_to_virt(pa) ((pa) + MMIO_OFFSET)
+#if defined(__ARCH_32BIT)
+#define MMIO_BASE 0xE0000000
+#else
+#define MMIO_BASE 0xFFFFFFF000000000
+#endif

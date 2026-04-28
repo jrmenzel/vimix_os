@@ -1,31 +1,18 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#include <drivers/devices_list.h>
 #include <kernel/kernel.h>
 #include <kernel/page.h>
-#include <kernel/spinlock.h>
 #include <mm/memory_map.h>
+#include <mm/page_table.h>
 #include <mm/pte.h>
 #include <mm/vm.h>
-
-struct Page_Table
-{
-    pagetable_t root;
-    struct spinlock lock;
-};
-
-extern struct Page_Table g_kernel_pagetable;
-// extern struct spinlock g_kernel_pagetable_lock;
-extern size_t g_kernel_pagetable_register_value;
-
-void page_table_init(struct Page_Table *pagetable, pagetable_t root);
 
 /// @brief Enables paging with the page table pointed to and sets the ASID.
 /// @param pagetable Page table to use.
 /// @param asid ASID to use.
 /// @return The register value of the MMU.
-size_t mmu_set_page_table(pagetable_t pagetable, uint32_t asid);
+size_t mmu_set_page_table(pagetable_t pgtable, uint32_t asid);
 
 static inline void mmu_set_kernel_page_table(struct Page_Table *kpage_table)
 {
@@ -67,23 +54,8 @@ size_t mmu_get_page_table_address(size_t reg_value);
 /// @return ASID
 size_t mmu_get_page_table_asid(size_t reg_value);
 
-/// Initialize the given page table
-void kvm_init_kpage_table(struct Page_Table *kpagetable,
-                          struct Memory_Map *memory_map);
-
-void kvm_map_all_devices(struct Page_Table *kpagetable,
-                         struct Devices_List *dev_list);
-
-/// @brief add a mapping to the page table.
-/// only used when booting, does not flush TLB or enable paging. Kernel panic if
-/// mapping failed.
-/// @param k_pagetable page table to modify
-/// @param va virtual address
-/// @param pa physical address
-/// @param size size in bytes
-/// @param perm access permission
-int32_t kvm_map_or_panic(pagetable_t k_pagetable, size_t va, size_t pa,
-                         size_t size, pte_t perm);
+/// Initialize the given page table with its memory map
+syserr_t kvm_apply_mapping(struct Page_Table *kpagetable);
 
 /// @brief Look up the physical address of a page behind a virtual address.
 ///        Can only be used to look up kernel pages.
@@ -102,7 +74,7 @@ size_t kvm_get_physical_paddr(size_t va);
 /// pages, those will be allocated (e.g. 2 MB alligned 2 MB blocks on 64 bit).
 /// @return Returns 0 on success, -1 if vm_walk() couldn't allocate a needed
 /// page-table page.
-int32_t vm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
+int32_t vm_map(struct Page_Table *pagetable, size_t va, size_t pa, size_t size,
                pte_t perm, bool allow_super_pages);
 
 /// @brief Allocate PTEs and physical memory to grow the process heap (and text,
@@ -112,10 +84,10 @@ int32_t vm_map(pagetable_t pagetable, size_t va, size_t pa, size_t size,
 /// @param pagetable page table
 /// @param start_va start of new allocation
 /// @param alloc_size size of allocation in bytes
-/// @param perm access permission
+/// @param map_type type of memory region for access permissions
 /// @return Returns allocated bytes or 0 on error.
-size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
-                      pte_t perm);
+size_t uvm_alloc_heap(struct Page_Table *pagetable, size_t start_va,
+                      size_t alloc_size, enum MM_Region_Type map_type);
 
 /// @brief Deallocate user pages to bring the process heap down.
 ///  oldsz and newsz need not be page-aligned, nor does newsz
@@ -125,7 +97,7 @@ size_t uvm_alloc_heap(pagetable_t pagetable, size_t start_va, size_t alloc_size,
 /// @param end_va current end of heap
 /// @param dealloc_size number of bytes to dealloc
 /// @return Returns bytes deallocated
-size_t uvm_dealloc_heap(pagetable_t pagetable, size_t end_va,
+size_t uvm_dealloc_heap(struct Page_Table *pagetable, size_t end_va,
                         size_t dealloc_size);
 
 /// @brief Create a new user stack and fill it with argv as required by execv.
@@ -134,7 +106,7 @@ size_t uvm_dealloc_heap(pagetable_t pagetable, size_t end_va,
 /// @param stack_low_out Returns where the stack ends, lowest page address
 /// @param sp_out Returns the stack pointer
 /// @return argc (argv length) on success, -1 on failure
-int32_t uvm_create_stack(pagetable_t pagetable, char **argv,
+int32_t uvm_create_stack(struct Page_Table *pagetable, char **argv,
                          size_t *stack_low_out, size_t *sp_out);
 
 /// @brief Grows a user stack by one page
@@ -142,7 +114,7 @@ int32_t uvm_create_stack(pagetable_t pagetable, char **argv,
 /// @param stack_low Currently lowest stack page address, new page will get
 /// allocated just below.
 /// @return now lowest stack address, 0 on failure
-size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low);
+size_t uvm_grow_stack(struct Page_Table *pagetable, size_t stack_low);
 
 /// @brief Given a parent process's page table, copy
 /// its memory into a child's page table.
@@ -153,26 +125,20 @@ size_t uvm_grow_stack(pagetable_t pagetable, size_t stack_low);
 /// @param va_start First address to copy
 /// @param va_end Last address to copy
 /// @return 0 on success, -1 on failure. Frees any allocated pages on failure.
-int32_t uvm_copy(pagetable_t src_page, pagetable_t dst_page, size_t va_start,
-                 size_t va_end);
+// int32_t uvm_copy(struct Page_Table *src_page, struct Page_Table *dst_page,
+//                  size_t va_start, size_t va_end);
 
-/// @brief Free user memory pages, then free page-table pages.
-// void uvm_free(pagetable_t pagetable, size_t sz);
-
-/// @brief Free user memory pages, then free page-table pages.
-void uvm_free_pagetable(pagetable_t pagetable);
+/// @brief Free page-table pages. Does not care about the content of the page
+/// tables.
+void vm_free_pgtable(pagetable_t pagetable);
 
 /// @brief Remove npages of mappings starting from va. The mappings must exist.
 /// @param pagetable Pagetable for address translation.
 /// @param va Virtual address of start to unmap, must be page-aligned.
 /// @param npages Number of pages to unmap.
 /// @param do_free Free physical pages if set to true.
-void uvm_unmap(pagetable_t pagetable, size_t va, size_t npages, bool do_free);
-
-/// @brief mark a PTE invalid for user access.
-/// @param va Virtual address of the page to prevent user access to.
-/// Used by execv for the user stack guard page.
-void uvm_clear_user_access_bit(pagetable_t pagetable, size_t va);
+void vm_unmap(struct Page_Table *pagetable, size_t va, size_t npages,
+              bool do_free);
 
 /// @brief Return PTE in pagetable which maps the given address va. Optionally
 /// create any required page-table pages.
@@ -180,7 +146,7 @@ void uvm_clear_user_access_bit(pagetable_t pagetable, size_t va);
 /// @param va virtual address to look up PTE for
 /// @param alloc if true extend page table to map the given address
 /// @return PTE or NULL if va is not mapped and alloc == FALSE.
-pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc);
+pte_t *vm_walk(struct Page_Table *pagetable, size_t va, bool alloc);
 
 /// @brief Return PTE in pagetable which maps the given address va. Optionally
 /// create any required page-table pages.
@@ -191,7 +157,7 @@ pte_t *vm_walk(pagetable_t pagetable, size_t va, bool alloc);
 /// alloc.
 /// @param alloc if true extend page table to map the given address
 /// @return PTE or NULL if va is not mapped and alloc == FALSE.
-pte_t *vm_walk2(pagetable_t pagetable, size_t va, bool *is_super_page,
+pte_t *vm_walk2(struct Page_Table *pagetable, size_t va, bool *is_super_page,
                 bool alloc);
 
 /// @brief Look up the physical address behind a virtual address.
@@ -202,7 +168,7 @@ pte_t *vm_walk2(pagetable_t pagetable, size_t va, bool *is_super_page,
 /// @param va (user) virtual address to look up.
 /// @param is_writeable Optional to pass out if the page can be written to.
 /// @return Physical address or 0 if not mapped.
-size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va,
+size_t uvm_get_physical_addr(struct Page_Table *pagetable, size_t va,
                              bool *is_writeable);
 
 /// @brief Look up the physical address of a page behind a virtual address.
@@ -213,7 +179,7 @@ size_t uvm_get_physical_addr(pagetable_t pagetable, size_t va,
 /// @param va (user) virtual address to look up.
 /// @param is_writeable Optional to pass out if the page can be written to.
 /// @return Physical address or 0 if not mapped.
-size_t uvm_get_physical_paddr(pagetable_t pagetable, size_t va,
+size_t uvm_get_physical_paddr(struct Page_Table *pagetable, size_t va,
                               bool *is_writeable);
 
 /// @brief Copy from kernel to user.
@@ -223,7 +189,7 @@ size_t uvm_get_physical_paddr(pagetable_t pagetable, size_t va,
 /// @param src_pa Source (kernel) physical address.
 /// @param len Bytes to copy
 /// @return 0 on success, -1 on failure.
-int32_t uvm_copy_out(pagetable_t pagetable, size_t dst_va, char *src_pa,
+int32_t uvm_copy_out(struct Page_Table *pagetable, size_t dst_va, char *src_pa,
                      size_t len);
 
 /// @brief Copy from user to kernel.
@@ -232,7 +198,7 @@ int32_t uvm_copy_out(pagetable_t pagetable, size_t dst_va, char *src_pa,
 /// @param src_va Source (user) virtual address.
 /// @param len Bytes to copy
 /// @return 0 on success, -1 on failure.
-int32_t uvm_copy_in(pagetable_t pagetable, char *dst_pa, size_t src_va,
+int32_t uvm_copy_in(struct Page_Table *pagetable, char *dst_pa, size_t src_va,
                     size_t len);
 
 /// @brief Copy a null-terminated string from user to kernel.
@@ -241,8 +207,8 @@ int32_t uvm_copy_in(pagetable_t pagetable, char *dst_pa, size_t src_va,
 /// @param src_va Source (user) virtual address.
 /// @param max Max bytes to copy (unless '\0' was found before)
 /// @return 0 on success, -1 on failure.
-int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
-                        size_t max);
+int32_t uvm_copy_in_str(struct Page_Table *pagetable, char *dst_pa,
+                        size_t src_va, size_t max);
 
 /// @brief Trim unused page table pages from the pagetable. E.g. after a leave
 /// was removed from the last level of the pagetable, the second last level
@@ -251,25 +217,36 @@ int32_t uvm_copy_in_str(pagetable_t pagetable, char *dst_pa, size_t src_va,
 /// @param va_start Optional address where a page was unmapped to limit trim
 /// search to the path to that va.
 /// @return true if any page of the table page was freed.
-bool vm_trim_pagetable(pagetable_t pagetable, size_t va_removed);
+bool vm_trim_pagetable(struct Page_Table *pagetable, size_t va_removed);
+
+/// @brief Each MMIO region is indivigually remapped. This functions returns an
+/// available remapping offset.
+/// @param new_mmio_start_pa Physical address of the start of the new MMIO
+/// region to remap.
+/// @param new_mmio_size Size of the new MMIO region to remap in bytes.
+/// @return Available remapping offset.
+size_t vm_get_mmio_offset(size_t new_mmio_start_pa, size_t new_mmio_size);
 
 #if defined(DEBUG)
+
+void debug_vm_print_pgtable(pagetable_t pgtable);
+
 /// @brief Debug print of the pagetable.
 /// @param pagetable Table to print.
-void debug_vm_print_page_table(pagetable_t pagetable);
+void debug_vm_print_page_table(struct Page_Table *pagetable);
 
 /// @brief Get the size of the pagetable in pages.
 /// @param pagetable The page table.
 /// @return Number of allocations, size in byte = return value * PAGE_SIZE
-size_t debug_vm_get_size(pagetable_t pagetable);
+size_t debug_vm_get_size(pagetable_t pgtable);
 
 /// @brief Prints the flags from the PTE
 /// @param flags ARCH specific flags or a full PTE (addr will be ignored)
 void debug_vm_print_pte_flags(size_t flags);
 
 #else
-static inline void debug_vm_print_page_table(pagetable_t pagetable) {}
-static inline size_t debug_vm_get_size(pagetable_t pagetable) { return 0; }
+static inline void debug_vm_print_page_table(struct Page_Table *pagetable) {}
+static inline size_t debug_vm_get_size(pagetable_t pgtable) { return 0; }
 static inline void debug_vm_print_pte_flags(size_t flags) {}
 #endif  // DEBUG
 

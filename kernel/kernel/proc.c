@@ -15,6 +15,7 @@
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
 #include <kernel/major.h>
+#include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/process.h>
 #include <kernel/signal.h>
@@ -49,7 +50,7 @@ struct spinlock g_wait_lock;
 
 /// @brief Returns the virtual address for a kernel stack.
 /// @return 0 on failure
-size_t proc_get_kernel_stack()
+size_t proc_get_free_kernel_stack_va()
 {
     spin_lock(&g_process_list.kernel_stack_lock);
     ssize_t idx =
@@ -61,7 +62,6 @@ size_t proc_get_kernel_stack()
     }
     set_bit(idx, g_process_list.kernel_stack_in_use);
     spin_unlock(&g_process_list.kernel_stack_lock);
-    // printk("alloc kstack va 0x%zd\n", KSTACK_VA_FROM_INDEX(idx));
     return KSTACK_VA_FROM_INDEX(idx);
 }
 
@@ -104,47 +104,43 @@ struct process *get_current()
 
 /// Create a user page table for a given process, with no user memory,
 /// but with trampoline and trapframe pages.
-pagetable_t proc_pagetable(struct process *proc)
+struct Page_Table *proc_pagetable(struct process *proc)
 {
     // An empty page table.
-    pagetable_t pagetable = (pagetable_t)alloc_page(ALLOC_FLAG_ZERO_MEMORY);
-    if (pagetable == INVALID_PAGETABLE_T)
+    struct Page_Table *pagetable = page_table_alloc_init();
+    if (pagetable == NULL)
     {
-        return INVALID_PAGETABLE_T;
+        return NULL;
     }
 
-    // map the trampoline code (for system call return)
-    // at the highest user virtual address.
-    // only the supervisor uses it, on the way
-    // to/from user space, so not PTE_U.
-    if (vm_map(pagetable, TRAMPOLINE, (size_t)trampoline, PAGE_SIZE,
-               PTE_RO_TEXT, false) < 0)
+    struct MM_Region *trampoline_region =
+        mm_region_alloc_init(virt_to_phys((size_t)trampoline), TRAMPOLINE,
+                             PAGE_SIZE, MM_REGION_USER_TRAMPOLINE);
+    if (trampoline_region == NULL)
     {
-        uvm_free_pagetable(pagetable);
-        return INVALID_PAGETABLE_T;
+        page_table_free(pagetable);
+        return NULL;
+    }
+    memory_map_add_single_region(&pagetable->memory_map, trampoline_region);
+
+    struct MM_Region *trapframe_region =
+        mm_region_alloc_init(virt_to_phys((size_t)proc->trapframe), TRAPFRAME,
+                             PAGE_SIZE, MM_REGION_USER_TRAPFRAME);
+    if (trapframe_region == NULL)
+    {
+        page_table_free(pagetable);
+        return NULL;
+    }
+    memory_map_add_single_region(&pagetable->memory_map, trapframe_region);
+
+    if (page_table_apply_mapping(pagetable) < 0)
+    {
+        page_table_free(pagetable);
+        return NULL;
     }
 
-    // map the trapframe page just below the trampoline page, for
-    // u_mode_trap_vector.S.
-    if (vm_map(pagetable, TRAPFRAME, (size_t)(proc->trapframe), PAGE_SIZE,
-               PTE_RW_RAM, false) < 0)
-    {
-        uvm_unmap(pagetable, TRAMPOLINE, 1, 0);
-        uvm_free_pagetable(pagetable);
-        return INVALID_PAGETABLE_T;
-    }
-
+    spin_unlock(&pagetable->lock);
     return pagetable;
-}
-
-void proc_free_pagetable(pagetable_t pagetable)
-{
-    // unmap pages not owned by this process
-    uvm_unmap(pagetable, TRAMPOLINE, 1, false);
-    uvm_unmap(pagetable, TRAPFRAME, 1, false);
-
-    // everything left mapped is owned by the process, free everything
-    uvm_free_pagetable(pagetable);
 }
 
 /// Set up first user process.
@@ -183,8 +179,8 @@ int32_t proc_grow_memory(ssize_t n)
     if (n > 0)
     {
         // grow
-        if (uvm_alloc_heap(proc->pagetable, proc->heap_end, n, PTE_USER_RAM) !=
-            n)
+        if (uvm_alloc_heap(proc->pagetable, proc->heap_end, n,
+                           MM_REGION_USER_DATA) != n)
         {
             return -1;
         }
@@ -206,23 +202,16 @@ int32_t proc_grow_memory(ssize_t n)
     return 0;
 }
 
-int32_t proc_copy_memory(struct process *src, struct process *dst)
+syserr_t proc_copy_memory(struct process *src, struct process *dst)
 {
-    // Copy app code and heap
-    if (uvm_copy(src->pagetable, dst->pagetable, USER_TEXT_START,
-                 src->heap_end) < 0)
+    syserr_t err = page_table_copy_on_fork(dst->pagetable, src->pagetable);
+    if (err < 0)
     {
-        return -1;
+        return err;
     }
+
     dst->heap_begin = src->heap_begin;
     dst->heap_end = src->heap_end;
-
-    // Copy user stack
-    if (uvm_copy(src->pagetable, dst->pagetable, src->stack_low,
-                 USER_STACK_HIGH - 1) < 0)
-    {
-        return -1;
-    }
     dst->stack_low = src->stack_low;
 
     return 0;
@@ -240,7 +229,7 @@ syserr_t do_fork()
     struct process *parent = get_current();
 
     // Copy memory
-    if (proc_copy_memory(parent, np) == -1)
+    if (proc_copy_memory(parent, np) < 0)
     {
         spin_unlock(&np->lock);
         proc_put(np);
@@ -731,7 +720,8 @@ void proc_shrink_stack(struct process *proc)
 
     size_t npages = (lowest_stack_page_used - proc->stack_low) / PAGE_SIZE;
 
-    uvm_unmap(proc->pagetable, proc->stack_low, npages, true);
+    page_table_unmap_range(proc->pagetable, proc->stack_low,
+                           npages * PAGE_SIZE);
     proc->stack_low = lowest_stack_page_used;
 }
 
@@ -744,10 +734,6 @@ int either_copyout(bool addr_is_userspace, size_t dst, void *src, size_t len)
     }
     else
     {
-        if (dst > 0x80200000 && dst < 0x81200000)
-        {
-            printk("foo\n");
-        }
         memmove((char *)dst, src, len);
         return 0;
     }
@@ -793,6 +779,12 @@ static inline bool address_is_in_page(size_t addr, size_t page_address)
 void debug_print_call_stack_user(struct process *proc)
 {
     // TODO: only goes over the first stack page!
+    if (spin_trylock(&proc->pagetable->lock) == false)
+    {
+        printk("<could not acquire pagetable lock to print user call stack>\n");
+        return;
+    }
+
     size_t proc_stack_pa =
         uvm_get_physical_addr(proc->pagetable, proc->stack_low, NULL);
 
@@ -804,6 +796,7 @@ void debug_print_call_stack_user(struct process *proc)
     if (proc_stack_pa == 0 || fp_physical == 0)
     {
         printk("<no user stack mapped>\n");
+        spin_unlock(&proc->pagetable->lock);
         return;
     }
 
@@ -811,11 +804,14 @@ void debug_print_call_stack_user(struct process *proc)
     {
         printk("  ra (user): " FORMAT_REG_SIZE "\n", return_address);
 
-        return_address = *((size_t *)(fp_physical - 1 * sizeof(size_t)));
-        frame_pointer = *((size_t *)(fp_physical - 2 * sizeof(size_t)));
+        return_address =
+            *((size_t *)(phys_to_virt(fp_physical) - 1 * sizeof(size_t)));
+        frame_pointer =
+            *((size_t *)(phys_to_virt(fp_physical) - 2 * sizeof(size_t)));
         fp_physical =
             uvm_get_physical_addr(proc->pagetable, frame_pointer, NULL);
     };
+    spin_unlock(&proc->pagetable->lock);
 }
 
 void debug_print_open_files(struct process *proc)

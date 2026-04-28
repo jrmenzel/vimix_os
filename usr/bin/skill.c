@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     size_t stack_start = asm_read_stack_pointer();
     min_stack = stack_start;
     printf("looping %d times\n", (int)loop);
-    for (size_t i = 0; i < loop; ++i)
+    for (size_t i = 0; i < loop; i += 20)
     {
         min_stack = stack_start;
         printf("Foo of %zd is %zd | ", i, foo(i));

@@ -118,21 +118,15 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
         return MKDEV(HTIF_MAJOR, 0);
     }
 
-    if (init_parameters->mem[0].start == 0)
+    if (init_parameters->mem[0].start_pa == 0)
     {
         // kernel defined tohost/fromhost
-        // size_t tohost = phys_to_virt((size_t)&tohost);
-        // size_t fromhost = phys_to_virt((size_t)&fromhost);
-        // htif_tohost = (uint64_t *)tohost;
-        // htif_fromhost = (uint64_t *)fromhost;
-
         htif_tohost = &tohost;
         htif_fromhost = &fromhost;
     }
     else
     {
-        size_t htif_mmio_base =
-            mmio_phys_to_virt(init_parameters->mem[0].start);
+        size_t htif_mmio_base = init_parameters->mem[0].start_va;
         htif_tohost =
             (volatile uint64_t *)(htif_mmio_base + HTIF_REGISTER_TOHOST);
         htif_fromhost =
