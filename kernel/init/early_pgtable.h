@@ -33,13 +33,14 @@
 #include <kernel/pgtable.h>
 #include <mm/memory_map.h>
 
-#define MEM_MAP_MAX_REGIONS 16
+#define EARLY_MEM_MAP_MAX_REGIONS 16
 struct Early_Memory_Map
 {
-    struct MM_Region region[MEM_MAP_MAX_REGIONS];
+    struct MM_Region region[EARLY_MEM_MAP_MAX_REGIONS];
     struct MM_Region ram;     // unsplit copy
     struct MM_Region kernel;  // unsplit copy
     size_t region_count;
+    size_t phys_base;
 };
 
 extern struct Early_Memory_Map g_early_memory_map;
@@ -57,7 +58,7 @@ struct MM_Region *early_memory_map_get_region(struct Early_Memory_Map *map,
 extern char g_early_kernel_page_table[EARLY_PAGE_TABLE_SIZE];
 
 size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
-                          size_t memory_map_paddr);
+                          size_t memory_map_paddr, size_t phys_base);
 
 static inline size_t early_ram_begin()
 {

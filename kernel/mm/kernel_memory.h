@@ -27,6 +27,7 @@ struct kernel_memory
 {
     struct kobject kobj;
     struct spinlock lock;
+    size_t phys_base;
     char *end_of_physical_memory;
 
     struct list_head list_of_free_memory[PAGE_ALLOC_MAX_ORDER + 1];

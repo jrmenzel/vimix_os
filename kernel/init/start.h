@@ -24,6 +24,8 @@ void cpu_set_boot_state();
 
 extern char trampoline[];  // u_mode_trap_vector.S
 
+extern size_t g_phys_base;
+
 //
 // Some const values about the kernel binary provided by the linker.
 //

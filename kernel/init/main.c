@@ -23,6 +23,7 @@
 #include <kernel/scheduler.h>
 #include <kernel/smp.h>
 #include <mm/kalloc.h>
+#include <mm/kernel_memory.h>
 #include <mm/memlayout.h>
 #include <mm/memory_map.h>
 #include <mm/vm.h>
@@ -119,6 +120,7 @@ void init_devices(struct Devices_List *dev_list, void *dtb)
 void init_memory_management(void *dtb)
 {
     printk("init early memory management...\n");
+    g_kernel_memory.phys_base = g_early_memory_map.phys_base;
 
     struct MM_Region *early_ram =
         early_memory_map_get_region(&g_early_memory_map, MM_REGION_EARLY_RAM);

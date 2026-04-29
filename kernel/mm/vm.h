@@ -116,21 +116,9 @@ int32_t uvm_create_stack(struct Page_Table *pagetable, char **argv,
 /// @return now lowest stack address, 0 on failure
 size_t uvm_grow_stack(struct Page_Table *pagetable, size_t stack_low);
 
-/// @brief Given a parent process's page table, copy
-/// its memory into a child's page table.
-/// Copies both the page table and the
-/// physical memory. Copies whole pages.
-/// @param src_page page table to copy from
-/// @param dst_page page table to copy to
-/// @param va_start First address to copy
-/// @param va_end Last address to copy
-/// @return 0 on success, -1 on failure. Frees any allocated pages on failure.
-// int32_t uvm_copy(struct Page_Table *src_page, struct Page_Table *dst_page,
-//                  size_t va_start, size_t va_end);
-
 /// @brief Free page-table pages. Does not care about the content of the page
 /// tables.
-void vm_free_pgtable(pagetable_t pagetable);
+void vm_free_pgtable(pagetable_t pgtable);
 
 /// @brief Remove npages of mappings starting from va. The mappings must exist.
 /// @param pagetable Pagetable for address translation.

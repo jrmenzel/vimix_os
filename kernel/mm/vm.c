@@ -692,8 +692,7 @@ static inline size_t debug_va_sign_extend(size_t va)
     return va;
 }
 
-void debug_print_pt_level(pagetable_t pagetable, ssize_t level,
-                          size_t partial_va)
+void debug_print_pt_level(pagetable_t pgtable, ssize_t level, size_t partial_va)
 {
     if ((level < 0) || (level >= PAGE_TABLE_MAX_LEVELS))
     {
@@ -701,7 +700,7 @@ void debug_print_pt_level(pagetable_t pagetable, ssize_t level,
         return;
     }
 
-    if (pagetable == NULL)
+    if (pgtable == NULL)
     {
         printk("ERROR, null pagetable pointer\n");
         return;
@@ -709,7 +708,7 @@ void debug_print_pt_level(pagetable_t pagetable, ssize_t level,
 
     for (size_t i = 0; i < MAX_PTES_PER_PAGE_TABLE; i++)
     {
-        pte_t pte = pagetable[i];
+        pte_t pte = pgtable[i];
         if (PTE_IS_VALID_NODE(pte))
         {
             for (size_t j = 0; j < PAGE_TABLE_MAX_LEVELS - level; ++j)
@@ -743,10 +742,10 @@ void debug_print_pt_level(pagetable_t pagetable, ssize_t level,
             {
                 printk("\n");
 
-                pagetable_t sub_pagetable_pa = (pagetable_t)PTE_GET_PA(pte);
-                pagetable_t sub_pagetable =
-                    (pagetable_t)phys_to_virt((size_t)sub_pagetable_pa);
-                debug_print_pt_level(sub_pagetable, level - 1, va);
+                pagetable_t sub_pgtable_pa = (pagetable_t)PTE_GET_PA(pte);
+                pagetable_t sub_pgtable =
+                    (pagetable_t)phys_to_virt((size_t)sub_pgtable_pa);
+                debug_print_pt_level(sub_pgtable, level - 1, va);
             }
         }
         else

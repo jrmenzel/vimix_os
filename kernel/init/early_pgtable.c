@@ -5,7 +5,6 @@
 #include <init/start.h>
 #include <kernel/kernel.h>
 #include <kernel/page.h>
-#include <kernel/pgtable.h>
 #include <lib/minmax.h>
 #include <libfdt.h>
 #include <mm/arch_early_pgtable.h>
@@ -40,7 +39,7 @@ void early_memory_map_add_region(struct Early_Memory_Map *map, size_t start_pa,
                                  size_t start_va, size_t size,
                                  enum MM_Region_Type type)
 {
-    if (map->region_count >= MEM_MAP_MAX_REGIONS)
+    if (map->region_count >= EARLY_MEM_MAP_MAX_REGIONS)
     {
         early_panic();
     }
@@ -88,27 +87,27 @@ size_t early_vm_alloc_page(struct early_alloc_state *alloc_state)
     return page;
 }
 
-pagetable_t early_vm_walk(pagetable_t pagetable,
+pagetable_t early_vm_walk(pagetable_t pgtable,
                           struct early_alloc_state *alloc_state, size_t va)
 {
     for (size_t level = (PAGE_TABLE_MAX_LEVELS - 1); level > 0; level--)
     {
         size_t index = PAGE_TABLE_INDEX(level, va);
-        pte_t pte = pagetable[index];
+        pte_t pte = pgtable[index];
 
         if (!PTE_IS_VALID_NODE(pte))
         {
             // the path does not exist, create it
             size_t new_page_pa = early_vm_alloc_page(alloc_state);
-            pagetable[index] = PTE_BUILD(new_page_pa, PTE_V);
+            pgtable[index] = PTE_BUILD(new_page_pa, PTE_V);
         }
-        pagetable = (pagetable_t)PTE_GET_PA(pagetable[index]);
+        pgtable = (pagetable_t)PTE_GET_PA(pgtable[index]);
     }
 
-    return pagetable;
+    return pgtable;
 }
 
-void early_vm_map(pagetable_t pagetable, struct early_alloc_state *alloc_state,
+void early_vm_map(pagetable_t pgtable, struct early_alloc_state *alloc_state,
                   size_t va, size_t pa, size_t size, uint32_t flags)
 {
     flags |= PTE_MAP_DEFAULT_FLAGS;
@@ -122,42 +121,39 @@ void early_vm_map(pagetable_t pagetable, struct early_alloc_state *alloc_state,
     {
         size_t va_offset = va + offset;
         size_t pa_offset = pa + offset;
-        pagetable_t last_level =
-            early_vm_walk(pagetable, alloc_state, va_offset);
+        pagetable_t last_level = early_vm_walk(pgtable, alloc_state, va_offset);
         size_t index = PAGE_TABLE_INDEX(0, va_offset);
         last_level[index] = PTE_BUILD(pa_offset, flags);
     }
 }
 
+#define early_phys_to_virt(pa, base) ((pa) - (base) + PAGE_OFFSET)
+
 size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
-                          size_t memory_map_paddr)
+                          size_t memory_map_paddr, size_t phys_base)
 {
     struct Early_Memory_Map *memory_map =
         (struct Early_Memory_Map *)memory_map_paddr;
     early_memory_map_init(memory_map);
+    memory_map->phys_base = phys_base;
 
-    pagetable_t pagetable = (pagetable_t)(pt_paddr);
+    pagetable_t pgtable = (pagetable_t)(pt_paddr);
 
     struct early_alloc_state alloc_state;
     // first page is implicitly in use as the root page table
     alloc_state.next_free_page = pt_paddr + PAGE_SIZE;
     alloc_state.free_page_count = (EARLY_PT_RESERVED_PAGES)-1;
 
-    // NOTE:
-    // Before relocation, addresses materialized from symbols may resolve near
-    // the current PC (physical load address). Therefore, do not free these
-    // values through virt_to_phys()/phys_to_virt() here.
-    //
-    // Build explicit kernel PA/VA pairs using section offsets from
-    // __start_kernel plus the configured PAGE_OFFSET/PHYS_OFFSET.
-    const size_t kernel_start_any = (size_t)__start_kernel;
-    const size_t kernel_start_pa = virt_to_phys(PAGE_OFFSET + TEXT_OFFSET);
-    const size_t kernel_start_va = phys_to_virt(kernel_start_pa);
+    // Build explicit kernel PA/VA pairs
+    const size_t kernel_start_pa = phys_base + TEXT_OFFSET;
+    const size_t kernel_start_va =
+        early_phys_to_virt(kernel_start_pa, phys_base);
 
-    const size_t rodata_off = (size_t)__start_rodata - kernel_start_any;
-    const size_t data_off = (size_t)__start_data - kernel_start_any;
-    const size_t bss_off = (size_t)__start_bss - kernel_start_any;
-    const size_t kernel_end_off = (size_t)__end_of_kernel - kernel_start_any;
+    const size_t rodata_off = (size_t)__start_rodata - (size_t)__start_kernel;
+    const size_t data_off = (size_t)__start_data - (size_t)__start_kernel;
+    const size_t bss_off = (size_t)__start_bss - (size_t)__start_kernel;
+    const size_t kernel_end_off =
+        (size_t)__end_of_kernel - (size_t)__start_kernel;
 
     const size_t kernel_rodata_va = kernel_start_va + rodata_off;
     const size_t kernel_rodata_pa = kernel_start_pa + rodata_off;
@@ -176,8 +172,16 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     // map first page of kernel text (init code) once with va=pa to be able to
     // fetch instructions after enabling this page table for the jump to the
     // higher VA. Needed till all cores are up.
-    early_memory_map_add_region(memory_map, kernel_start_pa, kernel_start_pa,
-                                PAGE_SIZE, MM_REGION_KERNEL_TEXT_PA);
+    if (kernel_start_pa != kernel_start_va)
+    {
+        // skip when not relocating (on purpose or by chance, e.g. 32-bit RISC-V
+        // qemu has the RAM at the same location we want to map it to) skipping
+        // this mapping avoids overlap with the kernel text mapping below which
+        // messes up the memory map
+        early_memory_map_add_region(memory_map, kernel_start_pa,
+                                    kernel_start_pa, PAGE_SIZE,
+                                    MM_REGION_KERNEL_TEXT_PA);
+    }
 
     early_memory_map_add_region(memory_map, kernel_start_pa, kernel_start_va,
                                 PAGE_ROUND_UP((size_t)__size_of_text),
@@ -202,7 +206,7 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     ram_end_pa = min(ram_end_pa, phy_ram_base + phy_ram_size);
 
     early_memory_map_add_region(memory_map, ram_start_pa,
-                                phys_to_virt(ram_start_pa),
+                                early_phys_to_virt(ram_start_pa, phys_base),
                                 ram_end_pa - ram_start_pa, MM_REGION_EARLY_RAM);
 
     // map DTB
@@ -215,7 +219,8 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     }
     dtb_size = PAGE_ROUND_UP(dtb_size);
 
-    early_memory_map_add_region(memory_map, dtb_page, phys_to_virt(dtb_page),
+    early_memory_map_add_region(memory_map, dtb_page,
+                                early_phys_to_virt(dtb_page, phys_base),
                                 dtb_size, MM_REGION_DTB);
 
     for (size_t i = 0; i < memory_map->region_count; ++i)
@@ -230,8 +235,8 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
         {
             continue;
         }
-        early_vm_map(pagetable, &alloc_state, region->start_va,
-                     region->start_pa, region->size, flags);
+        early_vm_map(pgtable, &alloc_state, region->start_va, region->start_pa,
+                     region->size, flags);
         region->mapped = true;
     }
 

@@ -2,6 +2,7 @@
 #pragma once
 
 #include <kernel/page.h>
+#include <mm/kernel_memory.h>
 
 #if defined(__ARCH_32BIT)
 // 32 bit
@@ -42,12 +43,12 @@
 
 #define PTE_BUILD(physical_address, flags) (PA2PTE(physical_address) | flags)
 
-#define virt_to_phys(va) ((va) - PAGE_OFFSET + PHYS_OFFSET)
+#define virt_to_phys(va) ((va) - PAGE_OFFSET + g_kernel_memory.phys_base)
 
-#define phys_to_virt(pa) ((pa) - PHYS_OFFSET + PAGE_OFFSET)
+#define phys_to_virt(pa) ((pa) - g_kernel_memory.phys_base + PAGE_OFFSET)
 
 #if defined(__ARCH_32BIT)
 #define MMIO_BASE 0xE0000000
 #else
-#define MMIO_BASE 0xFFFFFFF000000000
+#define MMIO_BASE 0xFFFFFFE000000000
 #endif

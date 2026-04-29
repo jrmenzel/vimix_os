@@ -17,3 +17,5 @@ __attribute__((
 volatile size_t g_kernel_init_status = KERNEL_INIT_EARLY;
 
 size_t g_boot_hart = 0;
+
+size_t g_phys_base = 0;

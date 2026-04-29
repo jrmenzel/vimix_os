@@ -9,7 +9,6 @@
 
 #include <asm/pgtable-bits.h>
 #include <asm/registers.h>
-//#include <init/early_pgtable.h>
 #include <kernel/page.h>
 #include <kernel/param.h>
 #include <arch/riscv/asm/shared_asm.S>
@@ -17,6 +16,10 @@
 #
 # Macros for kernel relocation
 #
+
+# save some relevant values in registers that will survive calling C code:
+#define dtb s1
+#define PHYS_BASE s2
 
 # start and end must be size_t aligned
 # (end-start) must be multiple of size_t and > 0
@@ -35,7 +38,8 @@
 # expects the satp register value in a0
 .macro ENABLE_PAGETABLE_AND_RELOCATE
     lla   t0, 1f
-    li    t1, (PAGE_OFFSET - PHYS_OFFSET)
+    sub   t0, t0, PHYS_BASE
+    li    t1, PAGE_OFFSET
     add   t0, t0, t1            # t0 = new VA of label 1
 
     csrw  satp, a0              # enable paging
@@ -77,7 +81,6 @@ _behind_header:
 
     # store hart ID in tp for smp_processor_id() to work
     mv tp, a0
-    #define dtb s1
     mv dtb, a1 # store dtb in a saved register
 
     # CPU ID >= MAX_CPU -> infinite loop for you
@@ -98,14 +101,27 @@ _behind_header:
     # prepare for C
     CREATE_STACK g_kernel_cpu_stack, KERNEL_STACK_SIZE
 
+    # get phys_base
+.global phys_base_init
+phys_base_init:
+    auipc   PHYS_BASE, 0
+    lla     t0, phys_base_init
+    lla     t1, _entry
+    sub     t0, t0, t1
+    sub     PHYS_BASE, PHYS_BASE, t0
+    li      t0, TEXT_OFFSET
+    sub     PHYS_BASE, PHYS_BASE, t0
+
     # build early page table in C
     lla a0, g_early_kernel_page_table
     mv a1, dtb
     lla a2, g_early_memory_map
+    mv a3, PHYS_BASE
     jal early_pgtable_init
     # return value is in a0 = satp register value
-    # update dtb pointer: dtb = dtb - PHYS_OFFSET + PAGE_OFFSET
-    li t0, (PAGE_OFFSET - PHYS_OFFSET)
+    # update dtb pointer: dtb = dtb - PHYS_BASE + PAGE_OFFSET
+    sub dtb, dtb, PHYS_BASE
+    li t0, PAGE_OFFSET
     add dtb, dtb, t0
 
 #ifdef CONFIG_RISCV_BOOT_M_MODE
