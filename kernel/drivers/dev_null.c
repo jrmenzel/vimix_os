@@ -5,6 +5,8 @@
 #include <kernel/major.h>
 #include <kernel/proc.h>
 
+REGISTER_VIRTUAL_DRIVER("/dev/null", dev_null_init);
+
 struct
 {
     struct Character_Device cdev;  ///< derived from a character device

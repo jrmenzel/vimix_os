@@ -36,8 +36,8 @@
 .endm
 
 # expects the satp register value in a0
-.macro ENABLE_PAGETABLE_AND_RELOCATE
-    lla   t0, 1f
+.macro ENABLE_PAGETABLE_AND_RELOCATE target_label
+    lla   t0, \target_label
     sub   t0, t0, PHYS_BASE
     li    t1, PAGE_OFFSET
     add   t0, t0, t1            # t0 = new VA of label 1
@@ -46,8 +46,6 @@
     sfence.vma zero, zero       # flush TLB
     fence.i                     # instruction fence
     jalr  zero, t0, 0           # jump to label in new VA space
-
-1:
 .endm
 
 #
@@ -88,6 +86,17 @@ _behind_header:
     li t0, MAX_CPUS
     bge tp, t0, infinite_loop
 
+    # get phys_base
+.global phys_base_init
+phys_base_init:
+    auipc   PHYS_BASE, 0
+    lla     t0, phys_base_init
+    lla     t1, _entry
+    sub     t0, t0, t1
+    sub     PHYS_BASE, PHYS_BASE, t0
+    li      t0, TEXT_OFFSET
+    sub     PHYS_BASE, PHYS_BASE, t0
+
 #ifdef CONFIG_RISCV_BOOT_M_MODE
     # M-Mode runs with all cores, perform a boot lottery:
     PERFORM_BOOT_LOTTERY g_early_pt_hart, wait_for_early_page_table
@@ -100,17 +109,6 @@ _behind_header:
 
     # prepare for C
     CREATE_STACK g_kernel_cpu_stack, KERNEL_STACK_SIZE
-
-    # get phys_base
-.global phys_base_init
-phys_base_init:
-    auipc   PHYS_BASE, 0
-    lla     t0, phys_base_init
-    lla     t1, _entry
-    sub     t0, t0, t1
-    sub     PHYS_BASE, PHYS_BASE, t0
-    li      t0, TEXT_OFFSET
-    sub     PHYS_BASE, PHYS_BASE, t0
 
     # build early page table in C
     lla a0, g_early_kernel_page_table
@@ -130,12 +128,12 @@ phys_base_init:
     fence rw, w
     sw zero, 0(t0)
 
-    ENABLE_PAGETABLE_AND_RELOCATE
-    j all_harts_mmode
+    ENABLE_PAGETABLE_AND_RELOCATE _entry_m_mode
+    #j all_harts_mmode
 #else
 
-    ENABLE_PAGETABLE_AND_RELOCATE
-    j _entry_s_mode_boot_hart
+    ENABLE_PAGETABLE_AND_RELOCATE _entry_s_mode_boot_hart
+    #j _entry_s_mode_boot_hart
 #endif
 
 #ifdef CONFIG_RISCV_BOOT_M_MODE
@@ -148,10 +146,10 @@ wait_for_early_page_table:
 
     # finished waiting:
     fence r, rw
-    ENABLE_PAGETABLE_AND_RELOCATE
+    ENABLE_PAGETABLE_AND_RELOCATE _entry_m_mode
 
-all_harts_mmode:
-    j _entry_m_mode # detour before calling _entry_s_mode_boot_hart in S Mode
+#all_harts_mmode:
+#    j _entry_m_mode # detour before calling _entry_s_mode_boot_hart in S Mode
 #endif
 
 .global _entry_s_mode_boot_hart
@@ -175,9 +173,21 @@ _entry_s_mode:
     // dtb is set by SBI to a1 -> save
     mv dtb, a1
 
+    # also get phys_base
+.global phys_base_init_secondary_harts
+phys_base_init_secondary_harts:
+    auipc   PHYS_BASE, 0
+    lla     t0, phys_base_init_secondary_harts
+    lla     t1, _entry
+    sub     t0, t0, t1
+    sub     PHYS_BASE, PHYS_BASE, t0
+    li      t0, TEXT_OFFSET
+    sub     PHYS_BASE, PHYS_BASE, t0
+
     lla t0, g_kernel_pagetable_register_value
     LOAD_SIZET(a0, t0) # load the address of the kernel page table into a0
-    ENABLE_PAGETABLE_AND_RELOCATE
+    ENABLE_PAGETABLE_AND_RELOCATE post_relocation
+post_relocation:
 
     # set up a stack for C.
     # g_kernel_cpu_stack is declared in start.c with at least one page per CPU

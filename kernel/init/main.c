@@ -6,6 +6,7 @@
 #include <arch/trap.h>
 #include <drivers/console.h>
 #include <drivers/devices_list.h>
+#include <drivers/driver_list.h>
 #include <drivers/ramdisk.h>
 #include <drivers/virtio_disk.h>
 #include <init/dtb.h>
@@ -58,12 +59,26 @@ void print_timer_source(void *dtb)
 
 void add_ramdisks_to_dev_list(void *dtb, struct Devices_List *dev_list)
 {
+    struct Driver *ramdisk_driver = NULL;
+    for_each_driver(driver)
+    {
+        if (strcmp(driver->dtb_name, "ramdisk") == 0)
+        {
+            ramdisk_driver = driver;
+            break;
+        }
+    }
+    if (ramdisk_driver == NULL)
+    {
+        return;
+    }
+
 #if defined(__CONFIG_RAMDISK_EMBEDDED)
     struct Device_Init_Parameters init_params;
     clear_init_parameters(&init_params);
     init_params.mem[0].start_pa = virt_to_phys((size_t)ramdisk_fs);
     init_params.mem[0].size = (size_t)ramdisk_fs_size;
-    dev_list_add_with_parameters(dev_list, &g_ramdisk_driver, init_params);
+    dev_list_add_with_parameters(dev_list, ramdisk_driver, init_params);
 #endif
 
     // get initrd / ramdisk if present
@@ -76,19 +91,22 @@ void add_ramdisks_to_dev_list(void *dtb, struct Devices_List *dev_list)
         clear_init_parameters(&init_params);
         init_params.mem[0].start_pa = initrd_base;
         init_params.mem[0].size = initrd_size;
-        dev_list_add_with_parameters(dev_list, &g_ramdisk_driver, init_params);
+        dev_list_add_with_parameters(dev_list, ramdisk_driver, init_params);
     }
 }
 
-void init_devices(struct Devices_List *dev_list, void *dtb)
+void init_devices(void *dtb)
 {
     printk("init devices list...\n");
+
+    struct Devices_List *dev_list = get_devices_list();
+    driver_list_init();
+    dev_list_add_virtual_devices(dev_list);
+
     // Collect all found devices in this list for later init:
-    dtb_add_devices_to_dev_list(dtb, get_generell_drivers(), dev_list);
+    dtb_add_devices_to_dev_list(dtb, dev_list);
     // add ramdisk if present:
     add_ramdisks_to_dev_list(dtb, dev_list);
-    // sort for predictable device numbers:
-    dev_list_sort(dev_list, "virtio,mmio");
 
     // map devices
     memory_map_add_device_mmio(&g_kernel_pagetable->memory_map, dev_list);
@@ -97,12 +115,14 @@ void init_devices(struct Devices_List *dev_list, void *dtb)
     spin_unlock(&g_kernel_pagetable->lock);
 
     // init a way to print, starts uart:
-    ssize_t con_idx = dtb_find_boot_console_in_dev_list(dtb, dev_list);
-    if (con_idx >= 0)
+    struct Found_Device *console_dev =
+        dtb_find_boot_console_in_dev_list(dtb, dev_list);
+    if (console_dev != NULL)
     {
-        printk("init console: %s\n", dev_list->dev[con_idx].driver->dtb_name);
-        dev_t con_dev = console_init(&(dev_list->dev[con_idx].init_parameters),
-                                     dev_list->dev[con_idx].driver->dtb_name);
+        printk("init console: %s\n", console_dev->driver->dtb_name);
+        dev_t con_dev = console_init(&(console_dev->init_parameters),
+                                     console_dev->driver->dtb_name);
+
         if (con_dev == INVALID_DEVICE)
         {
             panic("not a valid console");
@@ -171,7 +191,7 @@ void init_memory_management(void *dtb)
     }
 }
 
-void init_filesystem(struct Devices_List *dev_list)
+void init_filesystem()
 {
     // init filesystem:
     printk("init filesystem...\n");
@@ -179,19 +199,21 @@ void init_filesystem(struct Devices_List *dev_list)
     init_virtual_file_system();
     file_init();  // file table
 
+    struct Devices_List *dev_list = get_devices_list();
+
     // find the device with the root file system:
-    size_t device_of_root_fs = 0;
-    ssize_t ramdisk_index =
-        dev_list_get_first_device_index(dev_list, "ramdisk");
-    ssize_t disk_index_0 =
-        dev_list_get_first_device_index(dev_list, "virtio,mmio");
-    if (ramdisk_index >= 0)
+    struct Found_Device *device_of_root_fs = NULL;
+    struct Found_Device *ramdisk_dev =
+        dev_list_get_first_device(dev_list, "ramdisk");
+    struct Found_Device *disk_dev =
+        dev_list_get_first_device(dev_list, "virtio,mmio");
+    if (ramdisk_dev != NULL)
     {
-        device_of_root_fs = ramdisk_index;
+        device_of_root_fs = ramdisk_dev;
     }
-    else if (disk_index_0 >= 0)
+    else if (disk_dev != NULL)
     {
-        device_of_root_fs = disk_index_0;
+        device_of_root_fs = disk_dev;
     }
     else
     {
@@ -199,10 +221,10 @@ void init_filesystem(struct Devices_List *dev_list)
     }
 
     // store the device number of root:
-    ROOT_DEVICE_NUMBER = dev_list->dev[device_of_root_fs].dev_num;
+    ROOT_DEVICE_NUMBER = device_of_root_fs->dev_num;
     printk("found root file system on device: %s (%d,%d)\n",
-           dev_list->dev[device_of_root_fs].driver->dtb_name,
-           MAJOR(ROOT_DEVICE_NUMBER), MINOR(ROOT_DEVICE_NUMBER));
+           device_of_root_fs->driver->dtb_name, MAJOR(ROOT_DEVICE_NUMBER),
+           MINOR(ROOT_DEVICE_NUMBER));
 }
 
 void main(void *dtb, bool is_boot_hart)
@@ -239,10 +261,9 @@ void main(void *dtb, bool is_boot_hart)
         init_memory_management(dtb);
 
         // after early device init printk() should definitely work
-        struct Devices_List *dev_list = get_devices_list();
-        init_devices(dev_list, dtb);
+        init_devices(dtb);
 
-        init_filesystem(dev_list);
+        init_filesystem();
 
         init_userspace();  // including first user process
 

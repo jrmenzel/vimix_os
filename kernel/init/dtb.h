@@ -18,8 +18,7 @@ typedef int64_t __attribute__((__aligned__(4))) dtb_aligned_int64_t;
 
 /// @brief Updates dev_list, sets found flag and updates memory map
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
-void dtb_add_devices_to_dev_list(void *dtb, struct Device_Driver *driver_list,
-                                 struct Devices_List *dev_list);
+void dtb_add_devices_to_dev_list(void *dtb, struct Devices_List *dev_list);
 
 /// @brief Query the RAM size.
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
@@ -40,8 +39,8 @@ uint64_t dtb_get_timebase(void *dtb);
 
 int dtb_find_boot_console_index(void *dtb);
 
-ssize_t dtb_find_boot_console_in_dev_list(void *dtb,
-                                          struct Devices_List *dev_list);
+struct Found_Device *dtb_find_boot_console_in_dev_list(
+    void *dtb, struct Devices_List *dev_list);
 
 int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
                                     const char *name, int32_t fallback);

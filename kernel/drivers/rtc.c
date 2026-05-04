@@ -7,6 +7,8 @@
 #include <kernel/major.h>
 #include <kernel/pgtable.h>
 
+REGISTER_DRIVER("google,goldfish-rtc", rtc_init);
+
 struct Device_Init_Parameters goldfish_mapping = {0};
 bool rtc_is_initialized = false;
 

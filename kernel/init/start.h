@@ -37,8 +37,11 @@ extern char __start_rodata[];
 extern char __start_bss[];
 extern char __end_bss[];
 extern char __end_of_kernel[];
+extern char __start_driver_list[];
+extern char __end_driver_list[];
 
 extern char __size_of_text[];
 extern char __size_of_rodata[];
 extern char __size_of_data[];
 extern char __size_of_bss[];
+extern char __size_driver_list[];

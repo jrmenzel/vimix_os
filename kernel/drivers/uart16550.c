@@ -59,6 +59,9 @@
 // baudrate prescaler devision
 #define PSD 5
 
+REGISTER_DRIVER("ns16550a", uart_init);
+REGISTER_DRIVER("snps,dw-apb-uart", uart_init);
+
 int32_t read_register(struct uart_16550 *uart, size_t reg)
 {
     if (uart->reg_io_width == 1)

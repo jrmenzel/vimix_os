@@ -7,6 +7,8 @@
 #include <kernel/reset.h>
 #include <libfdt.h>
 
+REGISTER_DRIVER("syscon", syscon_init);
+
 struct syscon
 {
     bool is_initialized;

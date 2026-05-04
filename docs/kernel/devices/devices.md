@@ -60,6 +60,10 @@ Character devices have read / write functions for variable length of strings.
 - jh7110_temp - a temperature sensor on the [VisionFive2](../../development/run_on_visionfive2.md).
 
 
+### Adding a new Device Driver
+
+Add a new driver to `kernel/drivers`. To make the driver available to the kernel, add `REGISTER_DRIVER("<name>", <init_func>);` to the c file. This macro creates a struct in a special data section. As all driver structs are placed there, it forms an array which the kernel uses during boot to init drivers. Drivers registered with `REGISTER_VIRTUAL_DRIVER("<name>", <init_func>);` will always get initialized (e.g. [/dev/null](../../userspace/dev/null.md)). All others only if the `<name>` was found in the [device tree](../../misc/device_tree.md).
+
 ---
 **Overview:** [kernel](../kernel.md)
 

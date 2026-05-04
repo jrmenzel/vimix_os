@@ -383,9 +383,10 @@ void memory_map_add_device_mmio(struct Memory_Map *map,
 {
     DEBUG_ASSERT_CPU_HOLDS_LOCK(map->parent_lock);
     // map all found MMIO devices
-    for (size_t i = 0; i < dev_list->dev_array_length; ++i)
+    struct list_head *pos;
+    list_for_each(pos, &dev_list->devices)
     {
-        struct Found_Device *dev = &(dev_list->dev[i]);
+        struct Found_Device *dev = found_device_from_devices_list(pos);
         if (dev->init_parameters.mmu_map_memory)
         {
             for (size_t i = 0; i < DEVICE_MAX_MEM_MAPS; ++i)

@@ -9,6 +9,9 @@
 #include <kernel/smp.h>
 #include <libfdt.h>
 
+REGISTER_DRIVER("riscv,plic0", plic_init);
+REGISTER_DRIVER("sifive,plic-1.0.0", plic_init);
+
 //
 // the riscv Platform Level Interrupt Controller (PLIC).
 //

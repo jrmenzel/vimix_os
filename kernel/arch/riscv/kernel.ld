@@ -50,7 +50,16 @@ SECTIONS
     tohost = .;
     fromhost = .;
 
-    PROVIDE(__end_data = .);
+    /*PROVIDE(__end_data = .);*/
+  } :data
+
+  .driver_list : AT(ADDR(.driver_list) - PAGE_OFFSET + PHYS_OFFSET) {
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    PROVIDE(__start_driver_list = .);
+    KEEP(*(SORT_BY_NAME(.driver_list*)))
+
+    PROVIDE(__end_driver_list = .);
+    PROVIDE(__end_data = .); /* to map the device list with the data section */
   } :data
 
   .bss : AT(ADDR(.bss) - PAGE_OFFSET + PHYS_OFFSET) {
@@ -69,4 +78,5 @@ SECTIONS
   PROVIDE(__size_of_rodata = SIZEOF(.rodata));
   PROVIDE(__size_of_data = SIZEOF(.data));
   PROVIDE(__size_of_bss = SIZEOF(.bss));
+  PROVIDE(__size_driver_list = SIZEOF(.driver_list));
 }

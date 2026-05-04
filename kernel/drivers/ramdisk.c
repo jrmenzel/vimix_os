@@ -11,6 +11,8 @@
 #include <kernel/string.h>
 #include <mm/kalloc.h>
 
+REGISTER_DRIVER("ramdisk", ramdisk_init);
+
 struct ramdisk
 {
     struct Generic_Disc disk;  ///< derived from a generic disk

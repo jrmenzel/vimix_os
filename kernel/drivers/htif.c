@@ -6,6 +6,8 @@
 #include <kernel/pgtable.h>
 #include <kernel/reset.h>
 
+REGISTER_DRIVER("ucb,htif0", htif_init);
+
 bool htif_is_initialized = false;
 
 /// HTIF is a simple debug interface to emulators and (rarely) hardware.

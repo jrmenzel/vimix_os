@@ -7,6 +7,8 @@
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 
+REGISTER_VIRTUAL_DRIVER("/dev/random", dev_random_init);
+
 struct
 {
     struct Character_Device cdev;  ///< derived from a character device

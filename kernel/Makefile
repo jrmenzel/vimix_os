@@ -24,6 +24,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/dev_random.o \
 	drivers/dev_zero.o \
 	drivers/devices_list.o \
+	drivers/driver_list.o \
 	drivers/htif.o \
 	drivers/ramdisk.o \
 	drivers/rtc.o \

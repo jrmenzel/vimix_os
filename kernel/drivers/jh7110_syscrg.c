@@ -7,6 +7,8 @@
 #include <kernel/pgtable.h>
 #include <libfdt.h>
 
+REGISTER_DRIVER("starfive,jh7110-syscrg", jh7110_syscrg_init);
+
 /// register fields
 #define CLK_ENABLE (1 << 31)
 

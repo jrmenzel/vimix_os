@@ -19,6 +19,8 @@
 #include <kernel/string.h>
 #include <mm/kalloc.h>
 
+REGISTER_DRIVER("virtio,mmio", virtio_disk_init);
+
 atomic_size_t g_virtio_next_minor = 0;
 
 void virtio_block_device_read(struct Block_Device *bd, struct buf *b);

@@ -9,6 +9,8 @@
 #include <kernel/pgtable.h>
 #include <kernel/proc.h>
 
+REGISTER_DRIVER("starfive,jh7110-temp", jh7110_temp_init);
+
 #define SFCTEMP_RSTN (1 << 0)  // 0: reset,    1: de-assert
 #define SFCTEMP_PD (1 << 1)    // 0: power up, 1: power down
 #define SFCTEMP_RUN (1 << 2)   // 0: disable,  1: enable

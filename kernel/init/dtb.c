@@ -2,6 +2,7 @@
 
 #include <arch/platform.h>
 #include <drivers/device.h>
+#include <drivers/driver_list.h>
 #include <init/dtb.h>
 #include <init/start.h>
 #include <kernel/pgtable.h>
@@ -27,18 +28,18 @@ bool is_compatible_device(const char *dtb_dev, const char *dev)
 
 ssize_t dtb_add_driver_if_compatible(void *dtb, const char *device_name,
                                      int device_offset,
-                                     struct Device_Driver *driver,
                                      struct Devices_List *dev_list)
 {
-    for (; driver->dtb_name != NULL; driver++)
+    for_each_driver(driver)
     {
-        // find a compatible driver from the list
-        if (is_compatible_device(device_name, driver->dtb_name))
+        if ((driver->type == PHYSICAL) &&
+            (is_compatible_device(device_name, driver->dtb_name)))
         {
             return dev_list_add_from_dtb(dev_list, dtb, device_name,
                                          device_offset, driver);
         }
     }
+
     return -1;
 }
 
@@ -47,8 +48,7 @@ ssize_t dtb_add_driver_if_compatible(void *dtb, const char *device_name,
 /// @param driver_list Known, supported drivers to look for in the DTB
 /// @param dev_list Output list of found devices with init parameters read from
 /// the DTB
-void dtb_add_devices_to_dev_list(void *dtb, struct Device_Driver *driver_list,
-                                 struct Devices_List *dev_list)
+void dtb_add_devices_to_dev_list(void *dtb, struct Devices_List *dev_list)
 {
     if (fdt_magic(dtb) != FDT_MAGIC)
     {
@@ -62,7 +62,7 @@ void dtb_add_devices_to_dev_list(void *dtb, struct Device_Driver *driver_list,
         const char *value = fdt_getprop(dtb, off, "compatible", NULL);
         if (value == NULL) continue;
 
-        dtb_add_driver_if_compatible(dtb, value, off, driver_list, dev_list);
+        dtb_add_driver_if_compatible(dtb, value, off, dev_list);
     }
 }
 
@@ -352,27 +352,28 @@ int dtb_find_boot_console_index(void *dtb)
     return fdt_path_offset(dtb, name);
 }
 
-ssize_t dtb_find_boot_console_in_dev_list(void *dtb,
-                                          struct Devices_List *dev_list)
+struct Found_Device *dtb_find_boot_console_in_dev_list(
+    void *dtb, struct Devices_List *dev_list)
 {
     int console_offset = dtb_find_boot_console_index(dtb);
-    if (console_offset < 0)
-        return console_offset;  // contains a negative error code
+    if (console_offset < 0) return NULL;  // contains a negative error code
 
     // see what it is compatible with...
     const char *value = fdt_getprop(dtb, console_offset, "compatible", NULL);
-    if (value == NULL) return -1;
+    if (value == NULL) return NULL;
 
     // find the device:
-    for (size_t i = 0; i < dev_list->dev_array_length; ++i)
+    struct list_head *pos;
+    list_for_each(pos, &dev_list->devices)
     {
-        if (strcmp(value, dev_list->dev[i].driver->dtb_name) == 0)
+        struct Found_Device *dev = found_device_from_devices_list(pos);
+        if (strcmp(value, dev->driver->dtb_name) == 0)
         {
-            return i;
+            return dev;
         }
     }
 
-    return -1;
+    return NULL;
 }
 
 int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
