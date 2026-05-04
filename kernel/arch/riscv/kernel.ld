@@ -1,6 +1,13 @@
 OUTPUT_ARCH( "riscv" )
 ENTRY( _entry )
 
+PHDRS
+{
+  text PT_LOAD FLAGS(5);   /* R + X */
+  rodata PT_LOAD FLAGS(4); /* R */
+  data PT_LOAD FLAGS(6);   /* R + W */
+}
+
 SECTIONS
 {
   . = PAGE_OFFSET + TEXT_OFFSET;
@@ -11,7 +18,7 @@ SECTIONS
   .text.start : AT(ADDR(.text.start) - PAGE_OFFSET + PHYS_OFFSET) {
     PROVIDE(__start_kernel = .);
     *entry.o( .text )
-  }
+  } :text
 
   .text : AT(ADDR(.text) - PAGE_OFFSET + PHYS_OFFSET) {
     *(.text .text.*)
@@ -21,7 +28,7 @@ SECTIONS
     . = ALIGN(CONSTANT(MAXPAGESIZE));
     ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page");
     PROVIDE(__end_text = .);
-  }
+  } :text
 
   .rodata : AT(ADDR(.rodata) - PAGE_OFFSET + PHYS_OFFSET) {
     . = ALIGN(CONSTANT(MAXPAGESIZE));
@@ -29,7 +36,7 @@ SECTIONS
     *(.srodata .srodata.*) /* do not need to distinguish this from .rodata */
     . = ALIGN(16);
     *(.rodata .rodata.*)
-  }
+  } :rodata
 
   .data : AT(ADDR(.data) - PAGE_OFFSET + PHYS_OFFSET) {
     . = ALIGN(CONSTANT(MAXPAGESIZE));
@@ -44,7 +51,7 @@ SECTIONS
     fromhost = .;
 
     PROVIDE(__end_data = .);
-  }
+  } :data
 
   .bss : AT(ADDR(.bss) - PAGE_OFFSET + PHYS_OFFSET) {
     . = ALIGN(CONSTANT(MAXPAGESIZE));
@@ -54,7 +61,7 @@ SECTIONS
     *(.bss .bss.*)
     . = ALIGN(8); /* keep __size_of_bss a multiple of 64 bit sizeof(size_t) */
     PROVIDE(__end_bss = .);
-  }
+  } :data
 
   PROVIDE(__end_of_kernel = .);
 

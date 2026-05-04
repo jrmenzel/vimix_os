@@ -42,6 +42,7 @@
 
 void print_timer_source(void *dtb)
 {
+#ifdef __ARCH_riscv
     CPU_Features features = dtb_get_cpu_features(dtb, smp_processor_id());
 
     if (features & RV_EXT_SSTC)
@@ -52,6 +53,7 @@ void print_timer_source(void *dtb)
     {
         printk("Timer source: SBI\n");
     }
+#endif
 }
 
 void add_ramdisks_to_dev_list(void *dtb, struct Devices_List *dev_list)
@@ -59,7 +61,7 @@ void add_ramdisks_to_dev_list(void *dtb, struct Devices_List *dev_list)
 #if defined(__CONFIG_RAMDISK_EMBEDDED)
     struct Device_Init_Parameters init_params;
     clear_init_parameters(&init_params);
-    init_params.mem[0].start = virt_to_phys((size_t)ramdisk_fs);
+    init_params.mem[0].start_pa = virt_to_phys((size_t)ramdisk_fs);
     init_params.mem[0].size = (size_t)ramdisk_fs_size;
     dev_list_add_with_parameters(dev_list, &g_ramdisk_driver, init_params);
 #endif
@@ -88,15 +90,14 @@ void init_devices(struct Devices_List *dev_list, void *dtb)
     // sort for predictable device numbers:
     dev_list_sort(dev_list, "virtio,mmio");
 
-    // init a way to print, starts uart:
-    ssize_t con_idx = dtb_find_boot_console_in_dev_list(dtb, dev_list);
-
     // map devices
     memory_map_add_device_mmio(&g_kernel_pagetable->memory_map, dev_list);
     kvm_apply_mapping(g_kernel_pagetable);
     // now we are done with the page table: unlock
     spin_unlock(&g_kernel_pagetable->lock);
 
+    // init a way to print, starts uart:
+    ssize_t con_idx = dtb_find_boot_console_in_dev_list(dtb, dev_list);
     if (con_idx >= 0)
     {
         printk("init console: %s\n", dev_list->dev[con_idx].driver->dtb_name);
@@ -161,6 +162,13 @@ void init_memory_management(void *dtb)
 
     // make all additional memory available for kmalloc()
     kalloc_init_memory(&g_kernel_pagetable->memory_map, MM_REGION_USABLE_RAM);
+
+    if (memory_map_has_late_ram(&g_kernel_pagetable->memory_map))
+    {
+        memory_map_enable_late_ram(&g_kernel_pagetable->memory_map);
+        kvm_apply_mapping(g_kernel_pagetable);
+        kalloc_init_memory(&g_kernel_pagetable->memory_map, MM_REGION_LATE_RAM);
+    }
 }
 
 void init_filesystem(struct Devices_List *dev_list)

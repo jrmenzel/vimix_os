@@ -4,9 +4,6 @@
 ROOT := ../../..
 include ../../MakefileCommonUser.mk
 
-# for all libs:
-LIB_BUILD_DIR := $(ROOT)/$(BUILD_DIR)/usr/lib
-
 # for lomlc17:
 TOML17_BUILD_DIR := $(LIB_BUILD_DIR)/tomlc17
 

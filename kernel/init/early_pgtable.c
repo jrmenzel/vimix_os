@@ -99,7 +99,8 @@ pagetable_t early_vm_walk(pagetable_t pgtable,
         {
             // the path does not exist, create it
             size_t new_page_pa = early_vm_alloc_page(alloc_state);
-            pgtable[index] = PTE_BUILD(new_page_pa, PTE_V);
+            pgtable[index] = PTE_BUILD(new_page_pa, 0);
+            PTE_MAKE_VALID_TABLE(pgtable[index]);
         }
         pgtable = (pagetable_t)PTE_GET_PA(pgtable[index]);
     }
@@ -155,6 +156,11 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     const size_t kernel_end_off =
         (size_t)__end_of_kernel - (size_t)__start_kernel;
 
+    const size_t text_size = (size_t)__start_rodata - (size_t)__start_kernel;
+    const size_t rodata_size = (size_t)__start_data - (size_t)__start_rodata;
+    const size_t data_size = (size_t)__start_bss - (size_t)__start_data;
+    const size_t bss_size = (size_t)__end_bss - (size_t)__start_bss;
+
     const size_t kernel_rodata_va = kernel_start_va + rodata_off;
     const size_t kernel_rodata_pa = kernel_start_pa + rodata_off;
     const size_t kernel_data_va = kernel_start_va + data_off;
@@ -184,17 +190,16 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     }
 
     early_memory_map_add_region(memory_map, kernel_start_pa, kernel_start_va,
-                                PAGE_ROUND_UP((size_t)__size_of_text),
+                                PAGE_ROUND_UP(text_size),
                                 MM_REGION_KERNEL_TEXT);
     early_memory_map_add_region(memory_map, kernel_rodata_pa, kernel_rodata_va,
-                                PAGE_ROUND_UP((size_t)__size_of_rodata),
+                                PAGE_ROUND_UP(rodata_size),
                                 MM_REGION_KERNEL_RO_DATA);
     early_memory_map_add_region(memory_map, kernel_data_pa, kernel_data_va,
-                                PAGE_ROUND_UP((size_t)__size_of_data),
+                                PAGE_ROUND_UP(data_size),
                                 MM_REGION_KERNEL_DATA);
     early_memory_map_add_region(memory_map, kernel_bss_pa, kernel_bss_va,
-                                PAGE_ROUND_UP((size_t)__size_of_bss),
-                                MM_REGION_KERNEL_BSS);
+                                PAGE_ROUND_UP(bss_size), MM_REGION_KERNEL_BSS);
 
     // early RAM
     size_t ram_start_pa = PAGE_ROUND_UP(kernel_end_pa);

@@ -22,16 +22,17 @@ include $(ROOT_DIR_MK_COMMON)kernel/arch/$(ARCH)/MakefileArch.mk
 # So if this gets changed, the Makefiles should be fine, but externel
 # configs and scripts might need to be updated.
 # (e.g. launch.json).
-ifdef BUILD_PREFIX
-BUILD_PREFIX_2 := $(BUILD_PREFIX)/
+ifeq ($(BUILD_TYPE), debug)
+BUILD_TYPE_SHORT := _d
 endif
 
 ifeq ($(TARGET), host)
-BUILD_DIR := $(BUILD_PREFIX_2)build_host
+BUILD_DIR := build_host
 else
-BUILD_DIR := $(BUILD_PREFIX_2)build
+BUILD_DIR := build
+TARGET_SUFFIX := _$(ARCH)_$(BITWIDTH)$(BUILD_TYPE_SHORT)
 endif
-BUILD_DIR_HOST := $(BUILD_PREFIX_2)build_host
+BUILD_DIR_HOST := build_host
 
 
 KERNEL_NAME := kernel-vimix

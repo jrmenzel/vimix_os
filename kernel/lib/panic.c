@@ -4,6 +4,7 @@
 // panic handling.
 //
 
+#include <arch/stack.h>
 #include <fs/fs_lookup.h>
 #include <init/start.h>
 #include <kernel/ipi.h>
@@ -56,7 +57,6 @@ void panic(char *error_message)
         ipi_send_interrupt(mask, IPI_KERNEL_PANIC, NULL);
     }
 
-#if defined(__ARCH_riscv)
     printk("kernel call stack:\n");
     debug_print_call_stack_kernel_fp((size_t)__builtin_frame_address(0));
 
@@ -76,7 +76,6 @@ void panic(char *error_message)
         printk(" Call stack:\n");
         debug_print_call_stack_user(proc);
     }
-#endif
 
 #if defined(_SHUTDOWN_ON_PANIC)
     machine_power_off();
@@ -124,7 +123,7 @@ void debug_print_call_stack_kernel_fp(size_t frame_pointer)
     while (depth-- != 0)
     {
         if (frame_pointer == 0) break;
-        size_t ra_address = frame_pointer - 1 * sizeof(size_t);
+        size_t ra_address = return_address_from_frame_pointer(frame_pointer);
         // check if g_kernel_pagetable is set, kernel panics could happen before
         // that
         if (g_kernel_pagetable->root && kvm_get_physical_paddr(ra_address) == 0)
@@ -133,7 +132,9 @@ void debug_print_call_stack_kernel_fp(size_t frame_pointer)
             break;
         }
         size_t ra = *((size_t *)(ra_address));
-        size_t next_frame_pointer_address = frame_pointer - 2 * sizeof(size_t);
+        size_t next_frame_pointer_address =
+            next_fp_addr_from_frame_pointer(frame_pointer);
+
         if (g_kernel_pagetable->root &&
             kvm_get_physical_paddr(next_frame_pointer_address) == 0)
         {
@@ -141,7 +142,12 @@ void debug_print_call_stack_kernel_fp(size_t frame_pointer)
                    next_frame_pointer_address);
             break;
         }
-        frame_pointer = *((size_t *)(next_frame_pointer_address));
+        size_t tmp = *((size_t *)(next_frame_pointer_address));
+        if (tmp <= frame_pointer)
+        {
+            break;
+        }
+        frame_pointer = tmp;
         printk("  ");
         debug_print_ra(ra);
         if (ADDR_IS_TRAMPOLINE(ra))

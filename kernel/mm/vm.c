@@ -16,6 +16,11 @@
 #include <mm/page_table.h>
 #include <mm/vm.h>
 
+size_t mmu_make_page_table_reg(size_t addr_of_first_block, uint32_t asid)
+{
+    return mmu_make_page_table_reg_pa(virt_to_phys(addr_of_first_block), asid);
+}
+
 size_t mmu_set_page_table(pagetable_t pgtable, uint32_t asid)
 {
     size_t reg_value = mmu_make_page_table_reg((size_t)pgtable, asid);
@@ -58,7 +63,7 @@ static inline bool vm_is_valid_page_pointer_kva(size_t kva)
 pte_t *vm_walk2(struct Page_Table *pagetable, size_t va, bool *is_super_page,
                 bool alloc)
 {
-    DEBUG_ASSERT_CPU_HOLDS_LOCK(&pagetable->lock);
+    // DEBUG_ASSERT_CPU_HOLDS_LOCK(&pagetable->lock); // can fail in panic()
     if (!VA_IS_IN_RANGE(va))
     {
         printk("vm_walk: virtual address 0x%zx is not supported\n", va);

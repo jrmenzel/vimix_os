@@ -60,9 +60,9 @@ UPROGS := $(foreach a, $(UPROGS_NAME), $(B_DEPLOY_DIR)/$a)
 # keep intermediate .o files
 .PRECIOUS: $(B_BUILD_DIR)/%.o 
 
-.PHONY: all directories clean usertests mkfs
+.PHONY: all directories clean libs usertests mkfs
 
-all: directories $(UPROGS) usertests mkfs 
+all: directories libs $(UPROGS) usertests mkfs 
 
 ###########################################################
 # compiling apps for VIMIX
@@ -80,7 +80,11 @@ directories: # make temp build directories
 	@mkdir -p $(B_BUILD_DIR)
 	@mkdir -p $(B_DEPLOY_DIR)
 
+libs:
+	@$(MAKE) TARGET=$(TARGET) -C ../lib all;
+
 clean: # delete build dir
+	@$(MAKE) TARGET=$(TARGET) -C ../lib clean;
 	@$(MAKE) -C usertests clean;
 	-@rm -rf $(B_BUILD_DIR)
 	-@rm -rf $(B_DEPLOY_DIR)

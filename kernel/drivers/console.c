@@ -416,7 +416,8 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
             device_putc_sync = htif_putc;
             g_console_poll_callback = htif_console_poll_input;
         }
-        else
+        else if (strcmp(name, "ns16550a") == 0 ||
+                 strcmp(name, "snps,dw-apb-uart") == 0)
         {
             // ns16550a or snps,dw-apb-uart
             device_putc = uart_putc;
@@ -426,23 +427,11 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
                         uart_interrupt_handler);
         }
     }
-    else
+    if (device_putc == NULL)
     {
-#ifdef __ARCH_riscv
-        if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) > 0)
-        {
-            // SBI console fallback
-            device_putc = sbi_console_putchar;
-            device_putc_sync = sbi_console_putchar;
-            g_console_poll_callback = sbi_console_poll_input;
-        }
-        else
-#endif
-        {
-            // run with no input/output:
-            device_putc = console_putc_noop;
-            device_putc_sync = console_putc_noop;
-        }
+        // run with no input/output:
+        device_putc = console_putc_noop;
+        device_putc_sync = console_putc_noop;
     }
 
     register_device(&g_console.cdev.dev);

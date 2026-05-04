@@ -78,9 +78,6 @@ void scheduler()
             {
                 struct cpu *this_cpu = get_cpu();
 
-                if (proc->trapframe == NULL) panic("NULL");
-                if (proc->context.ra == 0) panic("0");
-
                 proc_shrink_stack(proc);
 
                 // Switch to chosen process.  It is the process's job

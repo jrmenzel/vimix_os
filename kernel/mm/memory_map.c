@@ -24,6 +24,10 @@ struct MM_Region_Attributes g_region_attributes[] = {
                               .pte_flags = PTE_RW_RAM,
                               .free_pages = false,
                               .copy_on_fork = false},
+    [MM_REGION_LATE_RAM] = {.description = "late RAM",
+                            .pte_flags = PTE_RW_RAM,
+                            .free_pages = true,
+                            .copy_on_fork = false},
     [MM_REGION_KERNEL] = {.description = "kernel",
                           .pte_flags = 0,
                           .free_pages = false,
@@ -105,7 +109,8 @@ void mm_region_init(struct MM_Region *region, size_t start_pa, size_t start_va,
     region->size = size;
     region->type = type;
     region->mapped =
-        ((type == MM_REGION_RESERVED) || (type == MM_REGION_KERNEL))
+        ((type == MM_REGION_RESERVED) || (type == MM_REGION_KERNEL) ||
+         (type == MM_REGION_LATE_RAM))
             ? MM_REGION_NEVER_MAP
             : MM_REGION_MARKED_FOR_MAPPING;
     region->free_on_unmap = g_region_attributes[type].free_pages;
@@ -134,8 +139,9 @@ bool mm_regions_can_be_merged(struct MM_Region *a, struct MM_Region *b)
 {
     if (a->type != b->type) return false;
 
-    // keep MMIO separate for easier debugging
-    if (a->type == MM_REGION_MMIO) return false;
+    // keep MMIO and late RAM separate for easier debugging
+    if ((a->type == MM_REGION_MMIO) || (a->type == MM_REGION_LATE_RAM))
+        return false;
 
     if (a->mapped != b->mapped) return false;
 
@@ -183,9 +189,27 @@ void memory_map_set_ram(struct Memory_Map *map, size_t start_pa,
                         size_t start_va, size_t size)
 {
     DEBUG_ASSERT_CPU_HOLDS_LOCK(map->parent_lock);
+
     mm_region_init(&map->ram, start_pa, start_va, size, MM_REGION_USABLE_RAM);
-    memory_map_add_region_and_split(map, start_pa, start_va, size,
-                                    MM_REGION_USABLE_RAM);
+
+    // during early boot, the small initial memory pool for malloc can run out
+    // if the system has too much RAM to map. Split this to map in multiple
+    // steps.
+    const size_t MAX_RAM_REGION_SIZE = (512 * 1024 * 1024);  // 512 MiB
+    enum MM_Region_Type type = MM_REGION_USABLE_RAM;
+
+    while (size > 0)
+    {
+        size_t region_size = min(size, MAX_RAM_REGION_SIZE);
+
+        memory_map_add_region_and_split(map, start_pa, start_va, region_size,
+                                        type);
+
+        start_pa += region_size;
+        start_va += region_size;
+        size -= region_size;
+        type = MM_REGION_LATE_RAM;
+    }
 }
 
 void memory_map_copy_from_early_memory_map(struct Memory_Map *map,
@@ -296,7 +320,7 @@ void memory_map_add_single_region_and_split(struct Memory_Map *map,
 
         // new region fits inside of region -> add new and split old region
         if ((new_region->start_va > region->start_va) &&
-            (new_region_end < region_end))
+            (new_region_end <= region_end))
         {
             // inserted behind region:
             struct MM_Region *split_region =
@@ -480,6 +504,37 @@ void memory_map_remove_regions(struct Memory_Map *map, size_t start_va,
             panic(
                 "memory_map_remove_regions: cannot handle splitting a region, "
                 "not implemented");
+        }
+    }
+}
+
+bool memory_map_has_late_ram(struct Memory_Map *map)
+{
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(map->parent_lock);
+
+    struct list_head *pos;
+    list_for_each(pos, &map->region_list)
+    {
+        struct MM_Region *region = region_from_list(pos);
+        if (region->type == MM_REGION_LATE_RAM)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void memory_map_enable_late_ram(struct Memory_Map *map)
+{
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(map->parent_lock);
+
+    struct list_head *pos;
+    list_for_each(pos, &map->region_list)
+    {
+        struct MM_Region *region = region_from_list(pos);
+        if (region->type == MM_REGION_LATE_RAM)
+        {
+            region->mapped = MM_REGION_MARKED_FOR_MAPPING;
         }
     }
 }

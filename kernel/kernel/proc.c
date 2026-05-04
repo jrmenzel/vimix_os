@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/cpu.h>
+#include <arch/stack.h>
 #include <arch/trap.h>
 #include <arch/trapframe.h>
 #include <fs/dentry_cache.h>
@@ -764,9 +765,10 @@ void debug_print_call_stack_kernel(struct process *proc)
     {
         debug_print_ra(return_address);
 
-        return_address = *((size_t *)(frame_pointer - 1 * sizeof(size_t)));
-        // stack_pointer = frame_pointer;
-        frame_pointer = *((size_t *)(frame_pointer - 2 * sizeof(size_t)));
+        return_address =
+            *((size_t *)(return_address_from_frame_pointer(frame_pointer)));
+        frame_pointer =
+            *((size_t *)(next_fp_addr_from_frame_pointer(frame_pointer)));
     } while ((frame_pointer <= proc_stack + PAGE_SIZE) &&
              (frame_pointer > proc_stack));
 }
@@ -804,10 +806,10 @@ void debug_print_call_stack_user(struct process *proc)
     {
         printk("  ra (user): " FORMAT_REG_SIZE "\n", return_address);
 
-        return_address =
-            *((size_t *)(phys_to_virt(fp_physical) - 1 * sizeof(size_t)));
-        frame_pointer =
-            *((size_t *)(phys_to_virt(fp_physical) - 2 * sizeof(size_t)));
+        return_address = *((size_t *)(return_address_from_frame_pointer(
+            phys_to_virt(fp_physical))));
+        frame_pointer = *((size_t *)(next_fp_addr_from_frame_pointer(
+            phys_to_virt(fp_physical))));
         fp_physical =
             uvm_get_physical_addr(proc->pagetable, frame_pointer, NULL);
     };

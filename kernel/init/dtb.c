@@ -449,6 +449,7 @@ CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id)
 {
     CPU_Features featues = 0;
 
+#ifdef __ARCH_riscv
     int offset = dtb_get_cpu_offset(dtb, cpu_id, true);
     if (offset < 0) return 0;
 
@@ -523,6 +524,7 @@ CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id)
             if (riscv_isa_ext[0] == 0) break;
         }
     }
+#endif
 
     return featues;
 }

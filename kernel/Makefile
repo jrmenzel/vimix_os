@@ -3,7 +3,7 @@
 #
 include ../MakefileCommon.mk
 include lib/libfdt/Makefile.libfdt
-K_BUILD_DIR := ../$(BUILD_DIR)/kernel
+K_BUILD_DIR := ../$(BUILD_DIR)/kernel_$(PLATFORM)$(BUILD_TYPE_SHORT)
 KERNEL_PATH := ../$(KERNEL_FILE)
 ARCH_DIR    := arch/$(ARCH)
 INIT_BUILD_DIR := $(K_BUILD_DIR)/$(ARCH_DIR)/asm
@@ -14,7 +14,6 @@ INIT_BUILD_DIR := $(K_BUILD_DIR)/$(ARCH_DIR)/asm
 #
 OBJS := $(OBJS_ARCH)
 OBJS +=	$(ARCH_DIR)/context.o \
-	$(ARCH_DIR)/mm/arch_early_pgtable.o \
 	$(ARCH_DIR)/mm/arch_vm.o \
 	$(ARCH_DIR)/start.o \
 	$(ARCH_DIR)/trap.o \

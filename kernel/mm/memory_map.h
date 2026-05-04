@@ -12,6 +12,7 @@ enum MM_Region_Type
     MM_REGION_RESERVED = 0,
     MM_REGION_EARLY_RAM,
     MM_REGION_USABLE_RAM,
+    MM_REGION_LATE_RAM,
     MM_REGION_KERNEL,
     MM_REGION_KERNEL_TEXT,
     MM_REGION_KERNEL_TEXT_PA,
@@ -153,6 +154,10 @@ void memory_map_add_device_mmio(struct Memory_Map *map,
 /// to be page-aligned).
 void memory_map_remove_regions(struct Memory_Map *map, size_t start_va,
                                size_t size);
+
+bool memory_map_has_late_ram(struct Memory_Map *map);
+
+void memory_map_enable_late_ram(struct Memory_Map *map);
 
 /// @brief Debug dump.
 /// @param map Memory map to print.

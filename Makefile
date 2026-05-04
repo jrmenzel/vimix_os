@@ -44,6 +44,8 @@ boot_dir: kernel $(BUILD_DIR)/filesystem.img boot/boot.cmd
 
 # filesystem in a file containing userspace as initrd (kernel is set manually)
 $(BUILD_DIR)/filesystem.img: host userspace 
+	@rm -f $(BUILD_DIR)/root
+	@ln -s root$(TARGET_SUFFIX) $(BUILD_DIR)/root
 	@printf "$(TASK_COLOR)Create file system: $(@)\n$(NO_COLOR)"
 	@./tools/make_filesystem.sh $(BUILD_DIR) $(BUILD_DIR_HOST)
 

@@ -35,13 +35,6 @@ docker buildx build \
   -f tools/docker/ubuntu2604 \
   --push .
 
-echo "building and pushing images for Ubuntu 25.04"
-docker buildx build \
-  --platform $PLATFORMS \
-  -t $GITLAB_PATH/ci-image:25.04 \
-  -f tools/docker/ubuntu2504 \
-  --push .
-
 echo "building and pushing images for Ubuntu 24.04"
 docker buildx build \
   --platform $PLATFORMS \

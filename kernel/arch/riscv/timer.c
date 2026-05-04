@@ -34,7 +34,7 @@ void sstc_schedule_interrupt(uint64_t) { panic("sstc unsupported"); }
 
 void timer_init(void *dtb, CPU_Features features)
 {
-    if (g_boot_time == 0) g_boot_time = rv_get_time();
+    g_boot_time = rv_get_time();
 
     if (features & RV_EXT_SSTC)
     {

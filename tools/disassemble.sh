@@ -21,11 +21,11 @@ function disasm_addr {
     STOP=$(( $1 + $2 ))
     # start must hits a valid instruction (with C extension, we mix 2 and 4 byte instructions)
     # so we can't just start at "given address - some range"
-    $OBJDUMP -d --start-address=$1 --stop-address=$STOP $OBJDUMP_PARAM $BINARY
+    "$OBJDUMP" -d --start-address=$1 --stop-address=$STOP $OBJDUMP_PARAM "$BINARY"
 }
 
 function disasm_func {
-    $OBJDUMP --disassemble=$1 $OBJDUMP_PARAM $BINARY
+    "$OBJDUMP" --disassemble=$1 $OBJDUMP_PARAM "$BINARY"
 }
 
 function main {
@@ -44,7 +44,7 @@ function main {
     # set optional binary, defaults to the kernel
     if [ "$3" != "" ]
     then
-        if [ -f $3 ] 
+        if [ -f "$3" ] 
         then
             BINARY=$3
         elif [ -f $BINARY_SEARCH_PATH"/"$3 ] 

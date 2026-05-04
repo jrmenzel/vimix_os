@@ -238,7 +238,12 @@ ssize_t dev_list_add_with_parameters(
 {
     ssize_t idx = 0;
     struct Found_Device *dev = dev_list_get_free_device(dev_list, &idx);
-    if (dev == NULL) return -1;
+    if (dev == NULL)
+    {
+        printk("dev_list_add_with_parameters: no space left for device %s\n",
+               driver->dtb_name);
+        return -1;
+    }
 
     dev->init_parameters = init_parameters;
     dev->driver = driver;
