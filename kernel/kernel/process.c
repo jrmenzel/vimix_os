@@ -75,28 +75,6 @@ struct process *process_alloc_init()
     spin_lock_init(&proc->lock, "proc");
     spin_lock(&proc->lock);
 
-    // kernel stack
-    proc->kstack = proc_get_free_kernel_stack_va();
-    if (proc->kstack == 0)
-    {
-        proc_put(proc);
-        return NULL;
-    }
-
-    bool pagetable_updated =
-        proc_init_kernel_stack(g_kernel_pagetable, proc, proc->kstack);
-    if (pagetable_updated == false)
-    {
-        // a bit special case: free_proc() expects the kernel stack to be set in
-        // the pagetable if proc->kstack != 0 is set. So free the kernel stack
-        // part that is not the pagetable manually here. proc_put() will call
-        // free_proc().
-        proc_free_kernel_stack(proc->kstack);
-        proc->kstack = 0;
-        proc_put(proc);
-        return NULL;
-    }
-
     // Allocate a trapframe page (full page as it gets it's own memory mapping
     // to a compile time known location).
     _Static_assert(sizeof(struct trapframe) <= PAGE_SIZE,
@@ -108,8 +86,9 @@ struct process *process_alloc_init()
         return NULL;
     }
 
-    // A mostly empty user page table.
-    proc->pagetable = proc_pagetable(proc);
+    // A user page table with kernel stack, trapframe, etc. but no program code
+    // or data yet.
+    proc->pagetable = proc_pagetable(proc, true);
     if (proc->pagetable == NULL)
     {
         proc_put(proc);
@@ -133,6 +112,7 @@ struct process *process_alloc_init()
     context_set_stack_pointer(&proc->context, proc->kstack + KERNEL_STACK_SIZE);
 
     DEBUG_ASSERT_CPU_HOLDS_LOCK(&proc->lock);
+
     return proc;
 }
 
@@ -157,12 +137,12 @@ void process_free(struct process *proc)
     {
         spin_lock(&g_kernel_pagetable->lock);
         // remove from memory map
-        page_table_unmap_range(g_kernel_pagetable, proc->kstack,
-                               KERNEL_STACK_PAGES * PAGE_SIZE);
+        page_table_unmap_remove_range(g_kernel_pagetable, proc->kstack,
+                                      KERNEL_STACK_PAGES * PAGE_SIZE);
 
         vm_trim_pagetable(g_kernel_pagetable, proc->kstack);
         // update pagetable, flush cache:
-        mmu_set_kernel_page_table(g_kernel_pagetable);
+        mmu_set_kernel_page_table(g_kernel_pagetable->root);
         spin_unlock(&g_kernel_pagetable->lock);
 
         // tell other cores also to reload the kernel page table
@@ -190,7 +170,8 @@ void process_free(struct process *proc)
 }
 
 bool proc_init_kernel_stack(struct Page_Table *kpage_table,
-                            struct process *proc, size_t kstack_va)
+                            struct process *proc,
+                            struct Page_Table *proc_pagetable)
 {
     // init per process kernel stack, so modify kernels page table
 
@@ -207,7 +188,7 @@ bool proc_init_kernel_stack(struct Page_Table *kpage_table,
         size_t page_pa = virt_to_phys((size_t)page_va);
 
         struct MM_Region *region =
-            mm_region_alloc_init(page_pa, kstack_va + (i * PAGE_SIZE),
+            mm_region_alloc_init(page_pa, proc->kstack + (i * PAGE_SIZE),
                                  PAGE_SIZE, MM_REGION_USER_KSTACK);
         if (region == NULL)
         {
@@ -216,20 +197,47 @@ bool proc_init_kernel_stack(struct Page_Table *kpage_table,
             break;
         }
         memory_map_add_single_region(&kpage_table->memory_map, region);
+
+#if defined(MAP_KERNEL_STACK_TO_USER_PT)
+        struct MM_Region *region_user =
+            mm_region_alloc_init(page_pa, proc->kstack + (i * PAGE_SIZE),
+                                 PAGE_SIZE, MM_REGION_USER_KSTACK_MAP);
+        if (region_user == NULL)
+        {
+            failure = true;
+            break;
+        }
+
+        memory_map_add_single_region(&proc_pagetable->memory_map, region_user);
+#endif
     }
+
     if (failure)
     {
         page_table_unmap_partial_mappings(kpage_table);
         spin_unlock(&kpage_table->lock);
         return false;
     }
+
+#if defined(MAP_KERNEL_STACK_TO_USER_PT)
+    // Update new page table first, if applying the kernel page below fails,
+    // the user page table gets deleted anyways. This makes
+    // roll back of the kernel page table in case of failure easier.
+    if (page_table_apply_mapping(proc_pagetable) < 0)
+    {
+        page_table_unmap_partial_mappings(kpage_table);
+        spin_unlock(&kpage_table->lock);
+        return false;
+    }
+#endif
     if (page_table_apply_mapping(kpage_table) < 0)
     {
         spin_unlock(&kpage_table->lock);
         return false;
     }
-    // update pagetable, flush cache:
-    mmu_set_kernel_page_table(kpage_table);
+
+    // update kernel pagetable, flush cache:
+    mmu_set_kernel_page_table(kpage_table->root);
 
     spin_unlock(&kpage_table->lock);
 

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/irq.h>
 #include <drivers/character_device.h>
 #include <drivers/dev_null.h>
 #include <kernel/major.h>

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/rtc.h>
+#include <drivers/goldfish_rtc.h>
 #include <fs/dentry.h>
 #include <fs/dentry_cache.h>
 #include <fs/vfs.h>

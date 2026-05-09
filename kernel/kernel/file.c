@@ -6,7 +6,7 @@
 
 #include <drivers/block_device.h>
 #include <drivers/character_device.h>
-#include <drivers/rtc.h>
+#include <drivers/goldfish_rtc.h>
 #include <fs/fs_lookup.h>
 #include <ipc/pipe.h>
 #include <kernel/errno.h>

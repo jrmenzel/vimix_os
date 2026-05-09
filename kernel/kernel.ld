@@ -1,4 +1,4 @@
-OUTPUT_ARCH( "riscv" )
+/* set architecture when calling the linker with -m ARCH */
 ENTRY( _entry )
 
 PHDRS
@@ -23,10 +23,10 @@ SECTIONS
   .text : AT(ADDR(.text) - PAGE_OFFSET + PHYS_OFFSET) {
     *(.text .text.*)
     . = ALIGN(CONSTANT(MAXPAGESIZE));
-    _trampoline = .;
+    PROVIDE(__start_trampoline = .);
     *(trampsec)
     . = ALIGN(CONSTANT(MAXPAGESIZE));
-    ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page");
+    ASSERT(. - __start_trampoline == 0x1000, "error: trampoline larger than one page");
     PROVIDE(__end_text = .);
   } :text
 
@@ -73,6 +73,7 @@ SECTIONS
   } :data
 
   PROVIDE(__end_of_kernel = .);
+  PROVIDE(__kernel_image_size = __end_of_kernel - __start_kernel);
 
   PROVIDE(__size_of_text = SIZEOF(.text));
   PROVIDE(__size_of_rodata = SIZEOF(.rodata));

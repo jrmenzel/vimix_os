@@ -9,9 +9,11 @@
 
 /// Interrupts and exceptions go here via trap vectors
 /// on whatever the current kernel stack is.
-void kernel_mode_interrupt_handler(size_t *stack);
+void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2);
 
-void user_mode_interrupt_handler(size_t *stack);
+void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2);
+
+void handle_device_interrupt();
 
 //
 // the following functions are implemented per ARCH:
@@ -21,8 +23,6 @@ void user_mode_interrupt_handler(size_t *stack);
 void return_to_user_mode();
 
 void handle_timer_interrupt();
-
-void handle_device_interrupt();
 
 /// @brief Handle an Inter Processor Interrupt
 /// @return true if the current process (if there is one) should yield

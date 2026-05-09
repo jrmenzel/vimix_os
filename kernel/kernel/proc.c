@@ -7,6 +7,7 @@
 #include <fs/dentry_cache.h>
 #include <fs/fs_lookup.h>
 #include <fs/vimixfs/vimixfs.h>
+#include <init/start.h>
 #include <kernel/cpu.h>
 #include <kernel/errno.h>
 #include <kernel/exec.h>
@@ -40,8 +41,6 @@ struct process_list g_process_list;
 struct process *g_initial_user_process;
 
 void wakeup_holding_plist_lock(void *chan);
-
-extern char trampoline[];  // u_mode_trap_vector.S
 
 /// helps ensure that wakeups of wait()ing
 /// parents are not lost. helps obey the
@@ -104,8 +103,9 @@ struct process *get_current()
 }
 
 /// Create a user page table for a given process, with no user memory,
-/// but with trampoline and trapframe pages.
-struct Page_Table *proc_pagetable(struct process *proc)
+/// but with trampoline, trapframe and kernel stack.
+struct Page_Table *proc_pagetable(struct process *proc,
+                                  bool create_kernel_stack)
 {
     // An empty page table.
     struct Page_Table *pagetable = page_table_alloc_init();
@@ -114,16 +114,17 @@ struct Page_Table *proc_pagetable(struct process *proc)
         return NULL;
     }
 
-    struct MM_Region *trampoline_region =
-        mm_region_alloc_init(virt_to_phys((size_t)trampoline), TRAMPOLINE,
-                             PAGE_SIZE, MM_REGION_USER_TRAMPOLINE);
-    if (trampoline_region == NULL)
+#if defined(MAP_TRAP_VECTOR_TO_USER_PT)
+    if (memory_map_copy_regions(&pagetable->memory_map,
+                                &g_kernel_pagetable->memory_map,
+                                MM_REGION_TRAMPOLINE) < 0)
     {
         page_table_free(pagetable);
         return NULL;
     }
-    memory_map_add_single_region(&pagetable->memory_map, trampoline_region);
+#endif
 
+    // map trapframe page to a static location
     struct MM_Region *trapframe_region =
         mm_region_alloc_init(virt_to_phys((size_t)proc->trapframe), TRAPFRAME,
                              PAGE_SIZE, MM_REGION_USER_TRAPFRAME);
@@ -134,6 +135,39 @@ struct Page_Table *proc_pagetable(struct process *proc)
     }
     memory_map_add_single_region(&pagetable->memory_map, trapframe_region);
 
+    if (create_kernel_stack)
+    {
+        // create new kernel stack (via fork or initial process setup)
+        proc->kstack = proc_get_free_kernel_stack_va();
+        if (proc->kstack == 0)
+        {
+            page_table_free(pagetable);
+            return NULL;
+        }
+
+        bool pagetable_updated =
+            proc_init_kernel_stack(g_kernel_pagetable, proc, pagetable);
+        if (pagetable_updated == false)
+        {
+            // clean up stack
+            proc_free_kernel_stack(proc->kstack);
+            proc->kstack = 0;
+            page_table_free(pagetable);
+            return NULL;
+        }
+    }
+    else
+    {
+        // copy from proc (via execv)
+        if (memory_map_copy_kernel_stack(&pagetable->memory_map,
+                                         &proc->pagetable->memory_map) < 0)
+        {
+            page_table_free(pagetable);
+            return NULL;
+        }
+    }
+
+    // create actual page table
     if (page_table_apply_mapping(pagetable) < 0)
     {
         page_table_free(pagetable);
@@ -153,8 +187,11 @@ void init_userspace()
 
     g_initial_user_process = process_alloc_init();
     if (g_initial_user_process == NULL)
-        panic("init_userspace() already out of memory");
+        panic(
+            "init_userspace() cannot allocate process, already out of memory");
     g_initial_user_process->cred.groups = groups_alloc(0);
+    if (g_initial_user_process->cred.groups == NULL)
+        panic("init_userspace() cannot allocate groups, already out of memory");
     g_initial_user_process->state = RUNNABLE;
 
     // add to kobject tree
@@ -363,7 +400,7 @@ void do_exit(int32_t status)
     spin_unlock(&g_wait_lock);
 
     // Jump into the scheduler, never to return.
-    sched();
+    context_switch_to_scheduler();
     panic("zombie exit");
 }
 
@@ -423,6 +460,7 @@ syserr_t do_wait(int32_t *wstatus)
                 spin_unlock(&pp->lock);
             }
         }
+
         rwspin_write_unlock(&g_process_list.lock);
 
         // No point waiting if we don't have any children.
@@ -444,7 +482,7 @@ syserr_t do_wait(int32_t *wstatus)
 /// not this CPU. It should be proc->disable_dev_int_stack_original_state and
 /// proc->disable_dev_int_stack_depth, but that would break in the few places
 /// where a lock is held but there's no process.
-void sched()
+void context_switch_to_scheduler()
 {
     struct process *proc = get_current();
     DEBUG_ASSERT_CPU_HOLDS_LOCK(&proc->lock);
@@ -455,17 +493,18 @@ void sched()
             "ERROR: CPU %zd disable_dev_int_stack_depth "
             "is %d instead of 1\n",
             smp_processor_id(), get_cpu()->disable_dev_int_stack_depth);
-        panic("sched invalid disable_dev_int_stack_depth");
+        panic(
+            "context_switch_to_scheduler invalid disable_dev_int_stack_depth");
     }
 
     if (proc->state == RUNNING)
     {
-        panic("sched process is already running");
+        panic("context_switch_to_scheduler process is already running");
     }
 
     if (cpu_is_interrupts_enabled())
     {
-        panic("sched interruptible");
+        panic("context_switch_to_scheduler interruptible");
     }
 
     bool state_before_switch = get_cpu()->disable_dev_int_stack_original_state;
@@ -479,7 +518,7 @@ void yield()
     struct process *proc = get_current();
     spin_lock(&proc->lock);
     proc->state = RUNNABLE;
-    sched();
+    context_switch_to_scheduler();
     spin_unlock(&proc->lock);
 }
 
@@ -553,7 +592,7 @@ void sleep(void *channel, struct spinlock *lk)
     struct process *proc = get_current();
 
     // Must acquire p->lock in order to
-    // change p->state and then call sched.
+    // change p->state and then call context_switch_to_scheduler.
     // Once we hold p->lock, we can be
     // guaranteed that we won't miss any wakeup
     // (wakeup locks p->lock),
@@ -569,7 +608,7 @@ void sleep(void *channel, struct spinlock *lk)
     proc->chan = channel;
     proc->state = SLEEPING;
 
-    sched();
+    context_switch_to_scheduler();
 
     // Tidy up.
     proc->chan = NULL;
@@ -721,8 +760,8 @@ void proc_shrink_stack(struct process *proc)
 
     size_t npages = (lowest_stack_page_used - proc->stack_low) / PAGE_SIZE;
 
-    page_table_unmap_range(proc->pagetable, proc->stack_low,
-                           npages * PAGE_SIZE);
+    page_table_unmap_remove_range(proc->pagetable, proc->stack_low,
+                                  npages * PAGE_SIZE);
     proc->stack_low = lowest_stack_page_used;
 }
 

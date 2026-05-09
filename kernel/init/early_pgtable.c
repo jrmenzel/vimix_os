@@ -130,6 +130,11 @@ void early_vm_map(pagetable_t pgtable, struct early_alloc_state *alloc_state,
 
 #define early_phys_to_virt(pa, base) ((pa) - (base) + PAGE_OFFSET)
 
+bool ranges_intersect(size_t start1, size_t size1, size_t start2, size_t size2)
+{
+    return (start1 < (start2 + size2)) && ((start1 + size1) > start2);
+}
+
 size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
                           size_t memory_map_paddr, size_t phys_base)
 {
@@ -175,9 +180,8 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     memory_map->kernel.type = MM_REGION_KERNEL;
     memory_map->kernel.mapped = false;
 
-    // map first page of kernel text (init code) once with va=pa to be able to
-    // fetch instructions after enabling this page table for the jump to the
-    // higher VA. Needed till all cores are up.
+    // map kernel text at va=pa so physical-entry execution remains available
+    // for bring-up paths that start secondary cores at physical addresses.
     if (kernel_start_pa != kernel_start_va)
     {
         // skip when not relocating (on purpose or by chance, e.g. 32-bit RISC-V
@@ -185,7 +189,7 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
         // this mapping avoids overlap with the kernel text mapping below which
         // messes up the memory map
         early_memory_map_add_region(memory_map, kernel_start_pa,
-                                    kernel_start_pa, PAGE_SIZE,
+                                    kernel_start_pa, PAGE_ROUND_UP(text_size),
                                     MM_REGION_KERNEL_TEXT_PA);
     }
 
@@ -201,19 +205,6 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     early_memory_map_add_region(memory_map, kernel_bss_pa, kernel_bss_va,
                                 PAGE_ROUND_UP(bss_size), MM_REGION_KERNEL_BSS);
 
-    // early RAM
-    size_t ram_start_pa = PAGE_ROUND_UP(kernel_end_pa);
-    size_t ram_end_pa = MEGA_PAGE_ROUND_UP(kernel_end_pa) + MEGA_PAGE_SIZE;
-
-    size_t phy_ram_base;
-    size_t phy_ram_size;
-    dtb_get_memory((void *)dtb_paddr, &phy_ram_base, &phy_ram_size);
-    ram_end_pa = min(ram_end_pa, phy_ram_base + phy_ram_size);
-
-    early_memory_map_add_region(memory_map, ram_start_pa,
-                                early_phys_to_virt(ram_start_pa, phys_base),
-                                ram_end_pa - ram_start_pa, MM_REGION_EARLY_RAM);
-
     // map DTB
     size_t dtb_page = PAGE_ROUND_DOWN(dtb_paddr);
     size_t dtb_size = fdt_totalsize(dtb_paddr);
@@ -224,9 +215,45 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     }
     dtb_size = PAGE_ROUND_UP(dtb_size);
 
-    early_memory_map_add_region(memory_map, dtb_page,
-                                early_phys_to_virt(dtb_page, phys_base),
-                                dtb_size, MM_REGION_DTB);
+    // If DTB is embedded in the kernel image, it is already covered by kernel
+    // text/rodata/data/bss mappings. Adding a separate RO DTB mapping here can
+    // downgrade a shared page (e.g. kernel .data) to read-only.
+    if (!ranges_intersect(dtb_page, dtb_size, kernel_start_pa,
+                          PAGE_ROUND_UP(kernel_end_off)))
+    {
+        early_memory_map_add_region(memory_map, dtb_page,
+                                    early_phys_to_virt(dtb_page, phys_base),
+                                    dtb_size, MM_REGION_DTB);
+    }
+
+    // early RAM
+    // size_t ram_start_pa = PAGE_ROUND_UP(kernel_end_pa);
+    // size_t ram_end_pa = MEGA_PAGE_ROUND_UP(kernel_end_pa) + MEGA_PAGE_SIZE;
+
+    size_t phy_ram_base;
+    size_t phy_ram_size;
+    dtb_get_memory((void *)dtb_paddr, &phy_ram_base, &phy_ram_size);
+    // ram_end_pa = min(ram_end_pa, phy_ram_base + phy_ram_size);
+
+    size_t initrd_base;
+    size_t initrd_size;
+    dtb_get_initrd((void *)dtb_paddr, &initrd_base, &initrd_size);
+
+    size_t early_ram_start_pa = MEGA_PAGE_ROUND_UP(kernel_end_pa);
+    while (ranges_intersect(early_ram_start_pa, MEGA_PAGE_SIZE, initrd_base,
+                            initrd_size) ||
+           ranges_intersect(early_ram_start_pa, MEGA_PAGE_SIZE, dtb_paddr,
+                            dtb_size))
+    {
+        early_ram_start_pa += MEGA_PAGE_SIZE;
+    }
+    size_t early_ram_end_pa =
+        min(early_ram_start_pa + MEGA_PAGE_SIZE, phy_ram_base + phy_ram_size);
+
+    early_memory_map_add_region(
+        memory_map, early_ram_start_pa,
+        early_phys_to_virt(early_ram_start_pa, phys_base),
+        early_ram_end_pa - early_ram_start_pa, MM_REGION_EARLY_RAM);
 
     for (size_t i = 0; i < memory_map->region_count; ++i)
     {
@@ -250,5 +277,5 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
 
 void enable_early_pgtable(size_t pt_paddr)
 {
-    mmu_set_page_table_reg_value(mmu_make_page_table_reg_pa(pt_paddr, 0));
+    mmu_set_kernel_pgtable_reg_value(mmu_make_page_table_reg_pa(pt_paddr, 0));
 }

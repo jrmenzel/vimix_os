@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <drivers/goldfish_rtc.h>
 #include <drivers/mmio_access.h>
-#include <drivers/rtc.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
 #include <kernel/major.h>

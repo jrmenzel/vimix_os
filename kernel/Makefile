@@ -15,8 +15,9 @@ INIT_BUILD_DIR := $(K_BUILD_DIR)/$(ARCH_DIR)/asm
 OBJS := $(OBJS_ARCH)
 OBJS +=	$(ARCH_DIR)/context.o \
 	$(ARCH_DIR)/mm/arch_vm.o \
-	$(ARCH_DIR)/start.o \
-	$(ARCH_DIR)/trap.o \
+	$(ARCH_DIR)/arch_start.o \
+	$(ARCH_DIR)/arch_timer.o \
+	$(ARCH_DIR)/arch_trap.o \
 	drivers/device.o \
 	drivers/console.o \
 	drivers/uart16550.o \
@@ -27,7 +28,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/driver_list.o \
 	drivers/htif.o \
 	drivers/ramdisk.o \
-	drivers/rtc.o \
+	drivers/goldfish_rtc.o \
 	drivers/syscon.o \
 	drivers/virtio_disk.o \
 	fs/dentry.o \
@@ -52,6 +53,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	init/start.o \
 	ipc/pipe.o \
 	kernel/cpu.o \
+	kernel/interrupt_controller.o \
 	kernel/ipi.o \
 	kernel/kobject.o \
 	kernel/proc.o \
@@ -64,6 +66,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/process.o \
 	kernel/reset.o \
 	kernel/scheduler.o \
+	kernel/timer.o \
 	kernel/trap.o \
 	kernel/kticks.o \
 	mm/cache.o \
@@ -129,6 +132,7 @@ SUB_DIRS := \
   syscalls \
   $(ARCH_DIR) \
   $(ARCH_DIR)/arch \
+  $(ARCH_DIR)/drivers \
   $(ARCH_DIR)/mm \
   $(ARCH_DIR)/asm
 
@@ -178,6 +182,7 @@ all: directories $(KERNEL_PATH) # build all
 directories: # create temp build directories
 	@mkdir -p ../$(BUILD_DIR)/boot
 	@mkdir -p $(SUB_DIRS_TO_MAKE)
+	@mkdir -p $(K_BUILD_DIR)
 
 # compile assembly
 $(K_BUILD_DIR)/%.o: %.S
@@ -197,6 +202,7 @@ endif
 ifeq ($(RAMDISK_EMBEDDED), yes)
 $(K_BUILD_DIR)/ramdisk_fs.h:
 	@printf "$(TASK_COLOR)Creating ramdisk_fs.h\n$(NO_COLOR)"
+	@mkdir -p $(K_BUILD_DIR)
 	@echo "#pragma once" > $(K_BUILD_DIR)/ramdisk_fs.h
 	@echo "#include <kernel/kernel.h>" >> $(K_BUILD_DIR)/ramdisk_fs.h
 	@echo "extern unsigned char ramdisk_fs[];" >> $(K_BUILD_DIR)/ramdisk_fs.h
@@ -205,6 +211,7 @@ $(K_BUILD_DIR)/ramdisk_fs.h:
 
 $(K_BUILD_DIR)/ramdisk_fs.c:
 	@printf "$(TASK_COLOR)Creating ramdisk_fs.c\n$(NO_COLOR)"
+	@mkdir -p $(K_BUILD_DIR)
 	@echo "#include \"ramdisk_fs.h\"" > $(K_BUILD_DIR)/ramdisk_fs.c
 	@echo "unsigned char ramdisk_fs[] = {" >> $(K_BUILD_DIR)/ramdisk_fs.c
 	@xxd -i < ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.c
@@ -248,12 +255,11 @@ $(K_BUILD_DIR)/dtb_embedded.h:
 endif
 
 KERNEL_LD_FLAGS := --defsym=TEXT_OFFSET=$(TEXT_OFFSET) --defsym=PHYS_OFFSET=$(PHYS_OFFSET) --defsym=PAGE_OFFSET=$(PAGE_OFFSET)
+KERNEL_LD_FLAGS += -m $(LD_ARCH_STRING)
 
-#KERNEL_LD_FLAGS += -M
-
-$(KERNEL_PATH): $(K_BUILD_DIR)/ramdisk_fs.h $(K_BUILD_DIR)/dtb_embedded.h $(OBJECT_FILES) $(ARCH_DIR)/kernel.ld # build kernel
+$(KERNEL_PATH): $(K_BUILD_DIR)/ramdisk_fs.h $(K_BUILD_DIR)/dtb_embedded.h $(OBJECT_FILES) ./kernel.ld # build kernel
 	@printf "$(TASK_COLOR)Link kernel: $(@)\n$(NO_COLOR)"
-	@$(LD) $(LDFLAGS) $(KERNEL_LD_FLAGS) $(ARCH_LD_FLAGS) -T $(ARCH_DIR)/kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
+	@$(LD) $(LDFLAGS) $(KERNEL_LD_FLAGS) $(ARCH_LD_FLAGS) -T ./kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
 ifeq ($(CREATE_ASSEMBLY), yes)
 	@printf "$(TASK_COLOR)Disassemble kernel: $(K_BUILD_DIR)/$(KERNEL_NAME).asm\n$(NO_COLOR)"
 	@$(OBJDUMP) -S $(KERNEL_PATH) > $(K_BUILD_DIR)/$(KERNEL_NAME).asm

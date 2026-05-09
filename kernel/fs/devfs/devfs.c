@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <drivers/device.h>
-#include <drivers/rtc.h>
+#include <drivers/goldfish_rtc.h>
 #include <fs/devfs/devfs.h>
 #include <kernel/errno.h>
 #include <kernel/file.h>

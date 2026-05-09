@@ -29,8 +29,9 @@ enum MM_Region_Type
     MM_REGION_USER_BSS,
     MM_REGION_USER_STACK,
     MM_REGION_USER_KSTACK,
+    MM_REGION_USER_KSTACK_MAP,
     MM_REGION_USER_TRAPFRAME,
-    MM_REGION_USER_TRAMPOLINE
+    MM_REGION_TRAMPOLINE
 };
 
 struct MM_Region_Attributes
@@ -158,6 +159,13 @@ void memory_map_remove_regions(struct Memory_Map *map, size_t start_va,
 bool memory_map_has_late_ram(struct Memory_Map *map);
 
 void memory_map_enable_late_ram(struct Memory_Map *map);
+
+syserr_t memory_map_copy_kernel_stack(struct Memory_Map *dest_map,
+                                      struct Memory_Map *src_map);
+
+syserr_t memory_map_copy_regions(struct Memory_Map *dest_map,
+                                 struct Memory_Map *src_map,
+                                 enum MM_Region_Type type);
 
 /// @brief Debug dump.
 /// @param map Memory map to print.

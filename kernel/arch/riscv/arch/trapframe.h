@@ -4,6 +4,11 @@
 #include <arch/riscv/riscv.h>
 #include <kernel/kernel.h>
 
+// On RISC V the per process kernel stack must be mapped
+// in the user pagetable. This way after switching the kernel
+// stack can be used to save temps.
+#define MAP_KERNEL_STACK_TO_USER_PT (1)
+
 /// per-process data for the trap handling code in u_mode_trap_vector.S.
 /// sits in a page by itself just under the trampoline page in the
 /// user page table. not specially mapped in the kernel page table.
@@ -17,12 +22,8 @@
 /// return_to_user_mode() doesn't return through the entire kernel call stack.
 struct trapframe
 {
-    size_t kernel_page_table;  // kernel page table (satp value, not pointer)
-    size_t kernel_sp;          // top of process's kernel stack
-    size_t kernel_trap;        // user_mode_interrupt_handler()
-    size_t epc;                // saved user program counter
-    size_t kernel_hartid;      // saved kernel tp
-    size_t ra;                 // first register to save, index 5
+    // start with the registers to save, so their indices are known.
+    size_t ra;
     size_t sp;
     size_t gp;
     size_t tp;
@@ -53,6 +54,12 @@ struct trapframe
     size_t t4;
     size_t t5;
     size_t t6;
+
+    size_t kernel_page_table;  // kernel page table (satp value, not pointer)
+    size_t kernel_sp;          // top of process's kernel stack
+    size_t kernel_trap;        // user_mode_interrupt_handler()
+    size_t epc;                // saved user program counter
+    size_t kernel_hartid;      // saved kernel tp
 };
 
 // register_index 0 = register a0 etc
@@ -77,6 +84,11 @@ static inline void trapframe_set_stack_pointer(struct trapframe *frame,
                                                size_t sp)
 {
     frame->sp = sp;
+}
+
+static inline size_t trapframe_get_stack_pointer(struct trapframe *frame)
+{
+    return frame->sp;
 }
 
 static inline void trapframe_set_return_register(struct trapframe *frame,

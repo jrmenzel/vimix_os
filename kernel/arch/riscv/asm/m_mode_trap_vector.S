@@ -3,9 +3,6 @@
 #include <arch/riscv/asm/registers.h>
 #include <arch/riscv/asm/m_mode.h>
 
-#define SAVE_REG_TO_STACK(REGISTER, OFFSET) SAVE_REG_TO_ARRAY(REGISTER, OFFSET, sp)
-#define LOAD_REG_FROM_STACK(REGISTER, OFFSET) LOAD_REG_FROM_ARRAY(REGISTER, OFFSET, sp)
-
 #
 # machine-mode timer interrupt.
 #

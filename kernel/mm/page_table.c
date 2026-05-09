@@ -7,7 +7,7 @@
 #include <mm/vm.h>
 
 struct Page_Table *g_kernel_pagetable = NULL;
-size_t g_kernel_pagetable_register_value;
+size_t g_kernel_pgtable_reg_value;
 
 syserr_t page_table_copy_from_region(struct Page_Table *dst_pagetable,
                                      struct Page_Table *src_pagetable,
@@ -123,8 +123,7 @@ syserr_t page_table_unmap_partial_mappings(struct Page_Table *pagetable)
         struct MM_Region *region = region_from_list(pos);
         if (region->mapped == MM_REGION_PARTIAL_MAPPED)
         {
-            page_table_unmap_region(pagetable, region);
-            mm_region_remove(region);
+            page_table_unmap_remove_region(pagetable, region);
         }
         else if (region->mapped == MM_REGION_MARKED_FOR_MAPPING)
         {
@@ -134,8 +133,8 @@ syserr_t page_table_unmap_partial_mappings(struct Page_Table *pagetable)
     return 0;
 }
 
-syserr_t page_table_unmap_range(struct Page_Table *pagetable, size_t start_va,
-                                size_t size)
+syserr_t page_table_unmap_remove_range(struct Page_Table *pagetable,
+                                       size_t start_va, size_t size)
 {
     DEBUG_ASSERT_CPU_HOLDS_LOCK(&pagetable->lock);
 
@@ -146,8 +145,8 @@ syserr_t page_table_unmap_range(struct Page_Table *pagetable, size_t start_va,
     return 0;
 }
 
-syserr_t page_table_unmap_region(struct Page_Table *pagetable,
-                                 struct MM_Region *region)
+syserr_t page_table_unmap_remove_region(struct Page_Table *pagetable,
+                                        struct MM_Region *region)
 {
     DEBUG_ASSERT_CPU_HOLDS_LOCK(&pagetable->lock);
 

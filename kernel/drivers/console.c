@@ -5,8 +5,8 @@
 // Reads are line at a time.
 //
 
+#include <arch/irq.h>
 #include <arch/riscv/sbi.h>
-#include <arch/timer.h>
 #include <drivers/character_device.h>
 #include <drivers/console.h>
 #include <drivers/htif.h>
@@ -25,6 +25,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <kernel/termios.h>
+#include <kernel/timer.h>
 
 #define BACKSPACE 0x100
 #define DELETE_KEY '\x7f'

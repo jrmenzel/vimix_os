@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <arch/timer.h>
 #include <arch/trap.h>
 #include <kernel/exec.h>
 #include <kernel/kernel.h>
@@ -9,6 +8,7 @@
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
+#include <kernel/timer.h>
 #include <mm/kalloc.h>
 #include <syscalls/syscall.h>
 

@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/irq.h>
 #include <drivers/character_device.h>
 #include <drivers/dev_random.h>
-#include <drivers/rtc.h>
+#include <drivers/goldfish_rtc.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>

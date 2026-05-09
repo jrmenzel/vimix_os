@@ -27,6 +27,10 @@ atomic_size_t g_kernel_panicked = 0;
 
 struct debug_info *g_kernel_debug_info = NULL;
 
+#define ADDR_IS_TRAMPOLINE(va)             \
+    ((va) >= (size_t)__start_trampoline && \
+     (va) < ((size_t)__start_trampoline + PAGE_SIZE))
+
 void panic(char *error_message)
 {
     printk_disable_locking();

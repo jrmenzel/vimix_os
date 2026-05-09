@@ -22,6 +22,8 @@ extractdbg:
 # the kernel itself depends on userspace for the embedded ram disk only
 ifeq ($(RAMDISK_EMBEDDED), yes)
 KERNEL_REQS := directories userspace $(BUILD_DIR)/filesystem.img
+else
+KERNEL_REQS := directories 
 endif
 kernel: extractdbg $(KERNEL_REQS) # the kernel itself
 	@$(MAKE) -C kernel all;
@@ -53,7 +55,13 @@ $(BUILD_DIR)/filesystem.img: host userspace
 # qemu
 GDB_PORT := 26000
 
-QEMU_OPTS := $(QEMU_OPTS_ARCH) -kernel $(KERNEL_FILE) -m $(MEMORY_SIZE)M -smp $(CPUS) -nographic
+QEMU_OPTS := $(QEMU_OPTS_ARCH) -m $(MEMORY_SIZE)M -smp $(CPUS) -nographic
+
+ifeq ($(KERNEL_FORMAT), elf)
+QEMU_OPTS += -kernel $(KERNEL_FILE)
+else
+QEMU_OPTS += -kernel $(KERNEL_FILE).bin
+endif
 
 ifeq ($(VIRTIO_DISK), yes)
 QEMU_OPTS += -drive file=$(BUILD_DIR)/filesystem.img,if=none,format=raw,id=x0
@@ -68,6 +76,9 @@ endif
 
 ifeq ($(RAMDISK_BOOTLOADER), yes)
 QEMU_OPTS += -initrd $(BUILD_DIR)/filesystem.img
+endif
+ifdef RAMDISK_LOAD_ADDR
+QEMU_OPTS += -device loader,file=$(BUILD_DIR)/filesystem.img,addr=$(RAMDISK_LOAD_ADDR)
 endif
 
 #

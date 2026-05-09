@@ -21,7 +21,7 @@ extern struct Page_Table *g_kernel_pagetable;
 
 /// @brief Cacche of the last set MMU register value for additional cores to set
 /// the page table ASAP.
-extern size_t g_kernel_pagetable_register_value;
+extern size_t g_kernel_pgtable_reg_value;
 
 /// @brief Allocates and initializes a new page table. The returned page table
 /// will have no mappings but one page for the pgtable root allocated.
@@ -53,15 +53,15 @@ syserr_t page_table_unmap_partial_mappings(struct Page_Table *pagetable);
 /// @param start_va Starting virtual address of the range to unmap.
 /// @param size Size of the range to unmap in bytes.
 /// @return 0 on success, or a negative error code on failure.
-syserr_t page_table_unmap_range(struct Page_Table *pagetable, size_t start_va,
-                                size_t size);
+syserr_t page_table_unmap_remove_range(struct Page_Table *pagetable,
+                                       size_t start_va, size_t size);
 
 /// @brief Unmaps a region and removes it from the memory map.
 /// @param pagetable Page table to unmap from.
 /// @param region Region to unmap.
 /// @return 0 on success, or a negative error code on failure.
-syserr_t page_table_unmap_region(struct Page_Table *pagetable,
-                                 struct MM_Region *region);
+syserr_t page_table_unmap_remove_region(struct Page_Table *pagetable,
+                                        struct MM_Region *region);
 
 /// @brief Helper for fork: copy all mapped regions from src to dst which have
 /// the copy_on_fork attribute, and apply the mapping.

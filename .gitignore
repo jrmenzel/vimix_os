@@ -20,6 +20,7 @@ build_host/*
 
 # 3rd party tools
 .obsidian
+.github
 
 spike/*
 

@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
-#include "scause.h"
-
 #include <arch/cpu.h>
+#include <arch/riscv/scause.h>
 #include <kernel/kernel.h>
 
 const char *scause_exception_code_to_string(xlen_t scause)

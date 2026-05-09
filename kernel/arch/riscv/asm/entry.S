@@ -184,7 +184,7 @@ phys_base_init_secondary_harts:
     li      t0, TEXT_OFFSET
     sub     PHYS_BASE, PHYS_BASE, t0
 
-    lla t0, g_kernel_pagetable_register_value
+    lla t0, g_kernel_pgtable_reg_value
     LOAD_SIZET(a0, t0) # load the address of the kernel page table into a0
     ENABLE_PAGETABLE_AND_RELOCATE post_relocation
 post_relocation:

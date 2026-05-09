@@ -22,8 +22,6 @@ extern size_t g_boot_hart;
 
 void cpu_set_boot_state();
 
-extern char trampoline[];  // u_mode_trap_vector.S
-
 extern size_t g_phys_base;
 
 //
@@ -39,9 +37,12 @@ extern char __end_bss[];
 extern char __end_of_kernel[];
 extern char __start_driver_list[];
 extern char __end_driver_list[];
+extern char __start_trampoline[];
 
 extern char __size_of_text[];
 extern char __size_of_rodata[];
 extern char __size_of_data[];
 extern char __size_of_bss[];
 extern char __size_driver_list[];
+
+extern char return_to_user_mode_asm[];

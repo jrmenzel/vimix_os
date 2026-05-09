@@ -1,13 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <arch/cpu.h>
-#include <arch/start.h>
-#include <init/dtb.h>
-#include <init/main.h>
 #include <init/start.h>
-#include <kernel/kticks.h>
-#include <kernel/string.h>
-#include <mm/vm.h>
+#include <kernel/kernel.h>
+#include <kernel/param.h>
 
 /// entry.S needs one kernel stack per CPU (one page of 4KB each)
 /// As long as the kernel stack is fixed at 4K, recursion can be deadly.

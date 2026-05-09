@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/riscv/drivers/plic.h>
+#include <arch/riscv/riscv.h>
+#include <arch/riscv/sbi.h>
 #include <drivers/console.h>
 #include <init/dtb.h>
 #include <kernel/ipi.h>
@@ -8,9 +11,6 @@
 #include <kernel/proc.h>
 #include <kernel/reset.h>
 #include <kernel/smp.h>
-#include <plic.h>
-#include <riscv.h>
-#include <sbi.h>
 
 void _entry_s_mode();
 

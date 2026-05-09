@@ -1,4 +1,4 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#include <kernel/kernel.h>
+#define INVALID_IRQ_NUMBER (0)

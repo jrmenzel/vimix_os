@@ -21,11 +21,11 @@ size_t mmu_make_page_table_reg(size_t addr_of_first_block, uint32_t asid)
     return mmu_make_page_table_reg_pa(virt_to_phys(addr_of_first_block), asid);
 }
 
-size_t mmu_set_page_table(pagetable_t pgtable, uint32_t asid)
+void mmu_set_kernel_page_table(pagetable_t pgtable)
 {
-    size_t reg_value = mmu_make_page_table_reg((size_t)pgtable, asid);
-    mmu_set_page_table_reg_value(reg_value);
-    return reg_value;
+    uint32_t asid = 0;
+    g_kernel_pgtable_reg_value = mmu_make_page_table_reg((size_t)pgtable, asid);
+    mmu_set_kernel_pgtable_reg_value(g_kernel_pgtable_reg_value);
 }
 
 syserr_t kvm_apply_mapping(struct Page_Table *kpagetable)
@@ -33,7 +33,7 @@ syserr_t kvm_apply_mapping(struct Page_Table *kpagetable)
     syserr_t err = page_table_apply_mapping(kpagetable);
     if (err < 0) return err;
 
-    mmu_set_kernel_page_table(kpagetable);
+    mmu_set_kernel_page_table(kpagetable->root);
 
     return 0;
 }
@@ -354,7 +354,8 @@ size_t uvm_dealloc_heap(struct Page_Table *pagetable, size_t end_va,
     if (npages > 0)
     {
         spin_lock(&pagetable->lock);
-        page_table_unmap_range(pagetable, start_dealloc_va, npages * PAGE_SIZE);
+        page_table_unmap_remove_range(pagetable, start_dealloc_va,
+                                      npages * PAGE_SIZE);
         spin_unlock(&pagetable->lock);
     }
 

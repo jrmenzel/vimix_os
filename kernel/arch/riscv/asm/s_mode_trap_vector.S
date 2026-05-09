@@ -12,9 +12,6 @@
 
 #include <arch/riscv/asm/registers.h>
 
-#define SAVE_REG_TO_STACK(REGISTER, OFFSET) SAVE_REG_TO_ARRAY(REGISTER, OFFSET, sp)
-#define LOAD_REG_FROM_STACK(REGISTER, OFFSET) LOAD_REG_FROM_ARRAY(REGISTER, OFFSET, sp)
-
 .globl s_mode_trap_vector
 # the address of this function must be 4 byte aligned because the lowest 
 # 2 bits of the stvec register are reserved for a mode.
@@ -46,6 +43,8 @@ s_mode_trap_vector:
     # call the C interrupt handler in trap.c with the stack pointer as the parameter
     # note that s0-s11 and sp are saved/restored by the called function 
     mv a0, sp
+    mv a1, zero
+    mv a2, zero
     call kernel_mode_interrupt_handler
 
     # restore registers.

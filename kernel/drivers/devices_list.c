@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/irq.h>
 #include <drivers/device.h>
 #include <init/dtb.h>
 #include <kernel/major.h>
@@ -93,7 +94,8 @@ dev_t init_device(struct Devices_List *dev_list, struct Found_Device *dev)
     {
         // init required other drivers first:
         int32_t parent_int_ctl = dev->init_parameters.interrupt_parent_phandle;
-        if (parent_int_ctl != 0)
+        if ((parent_int_ctl != 0) &&
+            (parent_int_ctl != (int32_t)dev->init_parameters.phandle))
         {
             // make sure the interrupt controller is initialized:
             init_device_by_phandle(dev_list, parent_int_ctl);
@@ -182,6 +184,87 @@ void dev_list_init_all_devices(struct Devices_List *dev_list)
     }
 }
 
+static int32_t dtb_get_device_interrupt(void *dtb, int device_offset,
+                                        uint32_t interrupt_parent_phandle,
+                                        int32_t fallback)
+{
+    int len = 0;
+    const uint32_t *interrupts =
+        fdt_getprop(dtb, device_offset, "interrupts", &len);
+    if (interrupts == NULL || len < (int)sizeof(uint32_t))
+    {
+        return fallback;
+    }
+
+    int interrupt_cells = 1;
+    if (interrupt_parent_phandle != 0)
+    {
+        int parent_offset =
+            fdt_node_offset_by_phandle(dtb, interrupt_parent_phandle);
+        if (parent_offset >= 0)
+        {
+            int parent_cells = dtb_getprop32_with_fallback(
+                dtb, parent_offset, "#interrupt-cells", 1);
+            if (parent_cells > 0)
+            {
+                interrupt_cells = parent_cells;
+            }
+        }
+    }
+
+    // Need one complete interrupt specifier.
+    if (len < (int)(sizeof(uint32_t) * interrupt_cells))
+    {
+        return fallback;
+    }
+
+    // Default: single-cell controllers where the first cell is the IRQ ID.
+    int32_t irq = (int32_t)fdt32_to_cpu(interrupts[0]);
+
+    // GIC style: <type number flags>
+    // type 0 = SPI (ID = 32 + number), type 1 = PPI (ID = 16 + number).
+    if (interrupt_cells >= 3)
+    {
+        uint32_t type = fdt32_to_cpu(interrupts[0]);
+        uint32_t number = fdt32_to_cpu(interrupts[1]);
+        if (type == 0)
+        {
+            irq = (int32_t)(32 + number);
+        }
+        else if (type == 1)
+        {
+            irq = (int32_t)(16 + number);
+        }
+        else if (type == 2)
+        {
+            // SGI numbering is already 0..15.
+            irq = (int32_t)number;
+        }
+    }
+
+    return irq;
+}
+
+static uint32_t dtb_get_effective_interrupt_parent_phandle(void *dtb,
+                                                           int node_offset)
+{
+    int cur = node_offset;
+    while (cur >= 0)
+    {
+        int len = 0;
+        const uint32_t *int_parent =
+            fdt_getprop(dtb, cur, "interrupt-parent", &len);
+        if (int_parent != NULL && len >= (int)sizeof(uint32_t))
+        {
+            return fdt32_to_cpu(int_parent[0]);
+        }
+
+        cur = fdt_parent_offset(dtb, cur);
+    }
+
+    return 0;
+}
+
 ssize_t dev_list_add_with_parameters(
     struct Devices_List *dev_list, struct Driver *driver,
     struct Device_Init_Parameters init_parameters)
@@ -235,7 +318,7 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
     params.phandle = fdt_get_phandle(dtb, device_offset);
 
     params.interrupt_parent_phandle =
-        dtb_getprop32_with_fallback(dtb, device_offset, "interrupt-parent", 0);
+        dtb_get_effective_interrupt_parent_phandle(dtb, device_offset);
 
     // 0 = no parameter, one int per clock; 1 = + parameter = 2 ints
     size_t clock_cells =
@@ -255,10 +338,9 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
         }
     }
 
-    // assumes a single interrupt, when parsing a list also parse
-    // #interrupt-cells
-    params.interrupt = dtb_getprop32_with_fallback(
-        dtb, device_offset, "interrupts", params.interrupt);
+    // Parse the first interrupt specifier and convert to a controller IRQ ID.
+    params.interrupt = dtb_get_device_interrupt(
+        dtb, device_offset, params.interrupt_parent_phandle, params.interrupt);
 
     return dev_list_add_with_parameters(dev_list, driver, params);
 }

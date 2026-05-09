@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <arch/interrupts.h>
+#include <arch/irq.h>
 #include <drivers/block_device.h>
 #include <drivers/character_device.h>
 #include <drivers/device.h>
 #include <kernel/bio.h>
+#include <kernel/interrupt_controller.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
 
@@ -78,7 +79,11 @@ void register_device(struct Device *dev)
     // hook up interrupts:
     if (dev->irq_number != INVALID_IRQ_NUMBER)
     {
-        interrupt_controller_set_interrupt_priority(dev->irq_number, 1);
+        if (g_int_con.set_priority != NULL)
+        {
+            // if the interrupt controller is already initialized
+            g_int_con.set_priority(dev->irq_number, 1);
+        }
     }
 
 #pragma GCC diagnostic push

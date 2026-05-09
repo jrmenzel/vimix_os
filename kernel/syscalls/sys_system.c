@@ -5,7 +5,7 @@
 //
 
 #include <arch/trap.h>
-#include <drivers/rtc.h>
+#include <drivers/goldfish_rtc.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
 #include <kernel/proc.h>

@@ -145,7 +145,7 @@ syserr_t do_execv(char *path, char **argv)
         return -ENOEXEC;
     }
 
-    struct Page_Table *pagetable = proc_pagetable(proc);
+    struct Page_Table *pagetable = proc_pagetable(proc, false);
     if (pagetable == NULL)
     {
         inode_unlock_put(ip);

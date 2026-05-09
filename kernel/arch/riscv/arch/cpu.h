@@ -2,7 +2,9 @@
 #pragma once
 
 #include <arch/riscv/riscv.h>
+#include <init/start.h>
 #include <kernel/kernel.h>
+#include <mm/memlayout.h>
 
 typedef uint32_t CPU_Features;
 #define RV_SV32_SUPPORTED 0x01
@@ -48,10 +50,42 @@ static inline bool cpu_is_interrupts_enabled()
 }
 
 /// Set the Supervisor-mode trap vector (interrupt handler) function
-static inline void cpu_set_trap_vector(void *supervisor_trap_vector)
+static inline void cpu_set_trap_vector(size_t supervisor_trap_vector)
 {
     rv_write_csr_stvec((xlen_t)supervisor_trap_vector);
 }
 
 /// @brief let the CPU sleep until the next interrupt occurs
 static inline void wait_for_interrupt() { asm volatile("wfi"); }
+
+extern char u_mode_trap_vector[];
+static inline void cpu_prepare_return_to_user_mode()
+{
+    // set S Previous Privilege mode to User.
+    xlen_t x = rv_read_csr_sstatus();
+    x &= ~SSTATUS_SPP;  // clear SPP to 0 for user mode
+    x |= SSTATUS_SPIE;  // enable interrupts in user mode
+    rv_write_csr_sstatus(x);
+
+    // send syscalls, interrupts, and exceptions to u_mode_trap_vector in
+    // u_mode_trap_vector.S
+    size_t trampoline_u_mode_trap_vector = (size_t)u_mode_trap_vector;
+
+    cpu_set_trap_vector(trampoline_u_mode_trap_vector);
+}
+
+static inline void cpu_set_exception_return_address(size_t addr)
+{
+    rv_write_csr_sepc(addr);
+}
+
+static inline void cpu_set_user_stack_pointer(size_t sp)
+{
+    asm volatile("csrw sscratch, %0" : : "r"(sp) : "memory");
+}
+
+static inline size_t cpu_get_next_inst_after_syscall(size_t syscall_pc)
+{
+    // RISC-V ecall is 4 bytes, so the next instruction is always 4 bytes after.
+    return syscall_pc + 4;
+}

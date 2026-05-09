@@ -42,7 +42,7 @@ QEMU_MACHINE := virt
 else ifeq ($(PLATFORM), qemu32)
 # test config
 BITWIDTH := 32
-BOOT_MODE := BOOT_M_MODE
+BOOT_MODE := BOOT_S_MODE
 RELOC_KERNEL := yes
 RAMDISK_BOOTLOADER := yes
 #RAMDISK_EMBEDDED := yes
@@ -68,6 +68,8 @@ RAMDISK_BOOTLOADER := yes
 else
 $(error PLATFORM not set)
 endif
+
+KERNEL_FORMAT := elf
 
 ifeq ($(BOOT_MODE), BOOT_M_MODE)
 TEXT_OFFSET := 0
@@ -140,11 +142,13 @@ ifeq ($(RV_ENABLE_EXT_SSTC), yes)
 EXT_DEFINES += -D__RISCV_EXT_SSTC
 endif
 
-# calling convention
+# calling convention and linker architecture:
 ifeq ($(BITWIDTH), 32)
 MABI := ilp32
+LD_ARCH_STRING := elf32lriscv
 else
 MABI := lp64
+LD_ARCH_STRING := elf64lriscv
 endif
 
 ARCH_LFLAGS := -melf$(BITWIDTH)lriscv
@@ -171,8 +175,7 @@ OBJS_ARCH := arch/riscv/asm/entry.o \
 	arch/riscv/asm/u_mode_trap_vector.o \
 	arch/riscv/asm/context_switch.o \
 	arch/riscv/asm/shared_asm.o \
-	arch/riscv/plic.o \
-	arch/riscv/timer.o \
+	arch/riscv/drivers/plic.o \
 	arch/riscv/scause.o \
 	arch/riscv/sbi.o \
 	drivers/jh7110_temp.o \

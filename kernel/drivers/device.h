@@ -53,7 +53,6 @@ struct Device *dev_by_device_number(dev_t device_number);
 
 struct Device *dev_by_irq_number(int32_t irq_number);
 
-#define INVALID_IRQ_NUMBER (-1)
 /// @brief Initialize the device, called from the character and block device
 /// init functions.
 /// @param dev Device to init

@@ -79,8 +79,11 @@ static inline void let_init_free_children(size_t expected_proc_count)
     uint64_t end_time = get_time_ms();
     const uint64_t max_wait_ms = 60000;
 
-    printf("procs: %zu (expecting %zu), waited %lums\n", procs,
-           expected_proc_count, (long)(end_time - start_time));
+    if (procs > expected_proc_count)
+    {
+        printf("procs: %zu (expecting %zu), waited %lums\n", procs,
+               expected_proc_count, (long)(end_time - start_time));
+    }
 
     while (procs != expected_proc_count)
     {

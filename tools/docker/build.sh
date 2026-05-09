@@ -5,6 +5,7 @@ GITLAB_PATH=pandora:5050/robert/vimixos
 #PLATFORMS="linux/amd64,linux/arm64"
 PLATFORMS="linux/amd64"
 CA_CERT=~/.config/gitlab_ssl/ca.crt
+IMAGE_BASE_NAME=ci-ubuntu2
 
 echo "Building CI images for platforms: $PLATFORMS"
 
@@ -31,14 +32,14 @@ docker restart buildx_buildkit_mybuilder0
 echo "building and pushing images for Ubuntu 26.04"
 docker buildx build \
   --platform $PLATFORMS \
-  -t $GITLAB_PATH/ci-image:26.04 \
+  -t $GITLAB_PATH/$IMAGE_BASE_NAME:26.04 \
   -f tools/docker/ubuntu2604 \
   --push .
 
 echo "building and pushing images for Ubuntu 24.04"
 docker buildx build \
   --platform $PLATFORMS \
-  -t $GITLAB_PATH/ci-image:24.04 \
+  -t $GITLAB_PATH/$IMAGE_BASE_NAME:24.04 \
   -f tools/docker/ubuntu2404 \
   --push .
 

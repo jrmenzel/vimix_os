@@ -393,7 +393,7 @@ void iter(size_t number_of_forks, int max_iterations)
         }
     }
 
-    printf("\ngrind passed\n");
+    printf("\ngrind passed\ngrind passed\n");
     exit(EXIT_SUCCESS);
 }
 

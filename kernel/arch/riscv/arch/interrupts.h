@@ -2,25 +2,13 @@
 #pragma once
 
 #include <arch/riscv/asm/m_mode.h>
+#include <arch/riscv/drivers/plic.h>
+#include <arch/riscv/riscv.h>
+#include <arch/riscv/sbi.h>
+#include <arch/riscv/scause.h>
 #include <kernel/proc.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
-#include "plic.h"
-#include "riscv.h"
-#include "sbi.h"
-#include "scause.h"
-
-/// init once per CPU after one CPU called init_interrupt_controller()
-static inline void init_interrupt_controller_per_hart() { plic_init_per_cpu(); }
-
-/// @brief Enables an interrupt if priority > 0.
-/// @param irq The IRQ to enable.
-/// @param priority 0 disables the interrupt.
-static inline void interrupt_controller_set_interrupt_priority(
-    uint32_t irq, uint32_t priority)
-{
-    plic_set_interrupt_priority(irq, priority);
-}
 
 struct Interrupt_Context
 {
@@ -30,7 +18,8 @@ struct Interrupt_Context
     size_t stval;
 };
 
-static inline void int_ctx_create(struct Interrupt_Context *ctx)
+static inline void int_ctx_create(struct Interrupt_Context *ctx, size_t ctx_1,
+                                  size_t ctx_2)
 {
     ctx->sepc = rv_read_csr_sepc();
     ctx->sstatus = rv_read_csr_sstatus();
@@ -91,4 +80,4 @@ static inline void int_acknowledge_timer() { rv_clear_csr_sip(SIP_STIP); }
 
 /// @brief acknowledge the software interrupt by clearing
 /// the S-Mode Software Interrupt pending bit in sip
-static inline void int_acknowledge_software() { rv_clear_csr_sip(SIP_SSIP); }
+static inline void int_acknowledge_ipi() { rv_clear_csr_sip(SIP_SSIP); }

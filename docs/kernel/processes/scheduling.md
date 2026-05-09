@@ -12,7 +12,7 @@ From the processes perspective: [life_cycle_user_application](../overview/life_c
 
 **Note:**
 - Tasks can switch CPUs. 
-- Tasks can switch CPUs while in Supervisor Mode
+- Tasks can switch CPUs while in kernel mode
 
 ## Scheduling Algorithm
 

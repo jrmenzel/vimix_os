@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#include <drivers/devices_list.h>
+#include <drivers/driver_list.h>
 #include <kernel/kernel.h>
 
 /// @brief Set the memory map

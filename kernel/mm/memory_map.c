@@ -92,14 +92,19 @@ struct MM_Region_Attributes g_region_attributes[] = {
                                .pte_flags = PTE_KERNEL_STACK,
                                .free_pages = true,
                                .copy_on_fork = false},
+    [MM_REGION_USER_KSTACK_MAP] = {.description =
+                                       "user kernel stack additional mapping",
+                                   .pte_flags = PTE_KERNEL_STACK,
+                                   .free_pages = false,
+                                   .copy_on_fork = false},
     [MM_REGION_USER_TRAPFRAME] = {.description = "user trapframe",
                                   .pte_flags = PTE_RW_RAM,
                                   .free_pages = false,
                                   .copy_on_fork = false},
-    [MM_REGION_USER_TRAMPOLINE] = {.description = "user trampoline",
-                                   .pte_flags = PTE_RO_TEXT,
-                                   .free_pages = false,
-                                   .copy_on_fork = false}};
+    [MM_REGION_TRAMPOLINE] = {.description = "trampoline",
+                              .pte_flags = PTE_RO_TEXT,
+                              .free_pages = false,
+                              .copy_on_fork = false}};
 
 void mm_region_init(struct MM_Region *region, size_t start_pa, size_t start_va,
                     size_t size, enum MM_Region_Type type)
@@ -538,6 +543,52 @@ void memory_map_enable_late_ram(struct Memory_Map *map)
             region->mapped = MM_REGION_MARKED_FOR_MAPPING;
         }
     }
+}
+
+syserr_t memory_map_copy_kernel_stack(struct Memory_Map *dest_map,
+                                      struct Memory_Map *src_map)
+{
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(dest_map->parent_lock);
+
+    struct list_head *pos;
+    list_for_each(pos, &src_map->region_list)
+    {
+        struct MM_Region *region = region_from_list(pos);
+        if (region->type == MM_REGION_USER_KSTACK_MAP)
+        {
+            struct MM_Region *new_region = mm_region_alloc_init(
+                region->start_pa, region->start_va, region->size, region->type);
+            if (new_region == NULL)
+            {
+                return -ENOMEM;
+            }
+            memory_map_add_single_region(dest_map, new_region);
+        }
+    }
+    return 0;
+}
+
+syserr_t memory_map_copy_regions(struct Memory_Map *dest_map,
+                                 struct Memory_Map *src_map,
+                                 enum MM_Region_Type type)
+{
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(dest_map->parent_lock);
+    struct list_head *pos;
+    list_for_each(pos, &src_map->region_list)
+    {
+        struct MM_Region *region = region_from_list(pos);
+        if (region->type == type)
+        {
+            struct MM_Region *new_region = mm_region_alloc_init(
+                region->start_pa, region->start_va, region->size, region->type);
+            if (new_region == NULL)
+            {
+                return -ENOMEM;
+            }
+            memory_map_add_single_region(dest_map, new_region);
+        }
+    }
+    return 0;
 }
 
 void debug_print_mm_region(struct MM_Region *region)

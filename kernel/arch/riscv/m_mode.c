@@ -3,11 +3,11 @@
 #include <arch/riscv/asm/m_mode.h>
 #include <arch/riscv/asm/registers.h>
 #include <arch/riscv/sbi_defs.h>
-#include <arch/timer.h>
 #include <kernel/cpu.h>
 #include <kernel/page.h>
 #include <kernel/param.h>
 #include <kernel/smp.h>
+#include <kernel/timer.h>
 
 __attribute__((aligned(
     M_MODE_STACK_SIZE))) char g_m_mode_cpu_stack[MAX_CPUS * M_MODE_STACK_SIZE];

@@ -60,7 +60,8 @@ syserr_t do_fork();
 /// @return 0 on success, -1 on failure.
 int32_t proc_grow_memory(ssize_t n);
 
-struct Page_Table *proc_pagetable(struct process *proc);
+struct Page_Table *proc_pagetable(struct process *proc,
+                                  bool create_kernel_stack);
 
 /// @brief Sends a signal to a process, basically kill syscall
 /// @param pid The PID of the process
@@ -88,7 +89,7 @@ struct process *get_current();
 /// initialize the process table.
 void proc_init();
 
-void sched();
+void context_switch_to_scheduler();
 
 /// @brief Atomically release lock (if not NULL) and sleep on chan.
 /// Reacquires lock (if not NULL) when awakened.

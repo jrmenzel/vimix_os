@@ -2,7 +2,6 @@
 
 #include <arch/interrupts.h>
 #include <arch/platform.h>
-#include <arch/timer.h>
 #include <arch/trap.h>
 #include <drivers/console.h>
 #include <drivers/devices_list.h>
@@ -17,12 +16,14 @@
 #include <kernel/cpu.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
+#include <kernel/interrupt_controller.h>
 #include <kernel/kobject.h>
 #include <kernel/kticks.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
 #include <kernel/smp.h>
+#include <kernel/timer.h>
 #include <mm/kalloc.h>
 #include <mm/kernel_memory.h>
 #include <mm/memlayout.h>
@@ -163,9 +164,10 @@ void init_memory_management(void *dtb)
     memory_map_copy_from_early_memory_map(&g_kernel_pagetable->memory_map,
                                           &g_early_memory_map);
 
-    memory_map_add_region_and_split(
-        &g_kernel_pagetable->memory_map, virt_to_phys((size_t)trampoline),
-        TRAMPOLINE, PAGE_SIZE, MM_REGION_KERNEL_TEXT);
+    memory_map_add_region_and_split(&g_kernel_pagetable->memory_map,
+                                    virt_to_phys((size_t)__start_trampoline),
+                                    (size_t)__start_trampoline, PAGE_SIZE,
+                                    MM_REGION_TRAMPOLINE);
 
     // get initrd / ramdisk if present
     size_t initrd_base;
@@ -279,7 +281,7 @@ void main(void *dtb, bool is_boot_hart)
     size_t cpu_id = smp_processor_id();
     g_cpus[cpu_id].features = dtb_get_cpu_features(dtb, cpu_id);
     timer_init(dtb, g_cpus[cpu_id].features);
-    init_interrupt_controller_per_hart();
+    g_int_con.init_per_cpu();
 
     g_cpus[cpu_id].state = CPU_STARTED;
 

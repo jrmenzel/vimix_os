@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/irq.h>
 #include <drivers/generic_disc.h>
 #include <drivers/ramdisk.h>
 #include <kernel/container_of.h>

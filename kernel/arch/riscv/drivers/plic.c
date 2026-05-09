@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <arch/riscv/plic.h>
+#include <arch/irq.h>
+#include <arch/riscv/drivers/plic.h>
 #include <drivers/device.h>
 #include <drivers/mmio_access.h>
 #include <init/dtb.h>
+#include <kernel/interrupt_controller.h>
 #include <kernel/kernel.h>
 #include <kernel/pgtable.h>
 #include <kernel/smp.h>
@@ -167,6 +169,11 @@ dev_t plic_init(struct Device_Init_Parameters *init_parameters,
 
     plic_init_hart_context_lookup(init_parameters->dtb,
                                   init_parameters->dev_offset);
+
+    g_int_con.claim = plic_claim;
+    g_int_con.complete = plic_complete;
+    g_int_con.set_priority = plic_set_interrupt_priority;
+    g_int_con.init_per_cpu = plic_init_per_cpu;
 
     g_plic.plic_is_initialized = true;
     return MKDEV(PLIC_MAJOR, 0);

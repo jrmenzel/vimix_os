@@ -2,11 +2,16 @@
 
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
+#include <arch/irq.h>
 #include <arch/trap.h>
 #include <arch/trapframe.h>
+#include <drivers/device.h>
 #include <fs/sysfs/sys_kernel.h>
+#include <init/start.h>
+#include <kernel/interrupt_controller.h>
 #include <kernel/proc.h>
 #include <kernel/trap.h>
+#include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
 void dump_exception_cause_and_kill_proc(struct process *proc,
@@ -46,11 +51,11 @@ bool source_is_software_timer(struct Interrupt_Context *ctx)
 /// Handle an interrupt, exception, or system call from user space.
 /// called from u_mode_trap_vector.S, first C function after storing the
 /// CPU state / registers in assembly.
-void user_mode_interrupt_handler(size_t *stack)
+void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
 {
     // exception / interrupt cause
     struct Interrupt_Context ctx;
-    int_ctx_create(&ctx);
+    int_ctx_create(&ctx, ctx_1, ctx_2);
 
     if (int_ctx_call_from_supervisor(&ctx))
     {
@@ -73,9 +78,9 @@ void user_mode_interrupt_handler(size_t *stack)
         // system call
         if (proc_is_killed(proc)) do_exit(-1);
 
-        // sepc points to the ecall instruction,
-        // but we want to return to the next instruction.
-        proc->trapframe->epc += 4;
+        size_t return_addr = trapframe_get_program_counter(proc->trapframe);
+        return_addr = cpu_get_next_inst_after_syscall(return_addr);
+        trapframe_set_program_counter(proc->trapframe, return_addr);
 
         // an interrupt will change sepc, scause, and sstatus,
         // so enable only now that we're done with those registers.
@@ -89,13 +94,9 @@ void user_mode_interrupt_handler(size_t *stack)
         handle_timer_interrupt();
         yield_process = true;
     }
-    else if (int_ctx_source_is_device(&ctx))
-    {
-        handle_device_interrupt();
-    }
     else if (int_ctx_source_is_ipi(&ctx))
     {
-        int_acknowledge_software();
+        int_acknowledge_ipi();
         yield_process = handle_ipi_interrupt();
 
         if (source_is_software_timer(&ctx))
@@ -104,9 +105,13 @@ void user_mode_interrupt_handler(size_t *stack)
             yield_process = true;
         }
     }
+    else if (int_ctx_source_is_device(&ctx))
+    {
+        handle_device_interrupt();
+    }
     else if (int_ctx_source_is_page_fault(&ctx))
     {
-        size_t sp = proc->trapframe->sp;
+        size_t sp = trapframe_get_stack_pointer(proc->trapframe);
         size_t fault_addr = int_ctx_get_addr(&ctx);
 
         // If the app tried to write between the stack pointer and its stack
@@ -147,10 +152,53 @@ void user_mode_interrupt_handler(size_t *stack)
     return_to_user_mode();
 }
 
-void kernel_mode_interrupt_handler(size_t *stack)
+extern char return_to_user_mode_asm[];
+void return_to_user_mode()
+{
+    // we're about to switch the destination of traps from
+    // kernel_mode_interrupt_handler() to user_mode_interrupt_handler(), so turn
+    // off interrupts until we're back in user space, where
+    // user_mode_interrupt_handler() is correct.
+    cpu_disable_interrupts();
+
+    struct process *proc = get_current();
+
+    // set up trapframe values that u_mode_trap_vector will need when
+    // the process next traps into the kernel.
+    proc->trapframe->kernel_page_table =
+        mmu_get_page_table_reg_value();  // kernel page table
+    proc->trapframe->kernel_sp =
+        proc->kstack + KERNEL_STACK_SIZE;  // process's kernel stack
+    proc->trapframe->kernel_trap = (size_t)user_mode_interrupt_handler;
+    proc->trapframe->kernel_hartid = smp_processor_id();
+
+    // set up the registers that u_mode_trap_vector.S's sret will use
+    // to get to user space.
+
+    // next environment return will switch to user mode.
+    cpu_prepare_return_to_user_mode();
+
+    cpu_set_user_stack_pointer(trapframe_get_stack_pointer(proc->trapframe));
+
+    // set S Exception Program Counter to the saved user pc.
+    cpu_set_exception_return_address(
+        trapframe_get_program_counter(proc->trapframe));
+
+    // tell u_mode_trap_vector.S the user page table to switch to.
+    size_t mmu_reg_value =
+        mmu_make_page_table_reg((size_t)proc->pagetable->root, 0);
+
+    size_t kernel_stack = proc->kstack + KERNEL_STACK_SIZE;
+
+    // jump to return_to_user_mode_asm in u_mode_trap_vector.S
+    ((void (*)(size_t, size_t, size_t))return_to_user_mode_asm)(
+        mmu_reg_value, 0, kernel_stack);
+}
+
+void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
 {
     struct Interrupt_Context ctx;
-    int_ctx_create(&ctx);
+    int_ctx_create(&ctx, ctx_1, ctx_2);
 
     if (!int_ctx_call_from_supervisor(&ctx))
     {
@@ -170,25 +218,20 @@ void kernel_mode_interrupt_handler(size_t *stack)
         handle_timer_interrupt();
         yield_process = true;
     }
-    else if (int_ctx_source_is_device(&ctx))
-    {
-        handle_device_interrupt();
-    }
     else if (int_ctx_source_is_ipi(&ctx))
     {
-        int_acknowledge_software();
+        int_acknowledge_ipi();
         yield_process = handle_ipi_interrupt();
 
         if (source_is_software_timer(&ctx))
         {
-            // if (yield_process)
-            //{
-            //     printk("Yes, IPI + timer actually happened cat the same time.
-            //     Good we cchecked for this.\n");
-            // }
             handle_timer_interrupt();
             yield_process = true;
         }
+    }
+    else if (int_ctx_source_is_device(&ctx))
+    {
+        handle_device_interrupt();
     }
     else
     {
@@ -216,6 +259,42 @@ void kernel_mode_interrupt_handler(size_t *stack)
     int_ctx_restore(&ctx);
 }
 
+void handle_device_interrupt()
+{
+    // this is a supervisor external interrupt, via PLIC.
+
+    // irq indicates which device interrupted.
+    int irq = g_int_con.claim();
+
+    if (irq == INVALID_IRQ_NUMBER)
+    {
+        // no device claimed the interrupt
+        return;
+    }
+
+    bool irq_handled = false;
+
+    struct Device *dev = dev_by_irq_number(irq);
+    if (dev)
+    {
+        DEBUG_EXTRA_PANIC((dev->dev_ops.interrupt_handler != NULL),
+                          "Device has no interrupt handler\n");
+
+        dev->dev_ops.interrupt_handler(dev->device_number);
+        irq_handled = true;
+    }
+
+    if (irq_handled == false)
+    {
+        printk("unexpected interrupt irq=%d\n", irq);
+    }
+
+    // the PLIC allows each device to raise at most one
+    // interrupt at a time; tell the PLIC the device is
+    // now allowed to interrupt again.
+    g_int_con.complete(irq);
+}
+
 bool handle_ipi_interrupt()
 {
     bool yield_process = false;
@@ -238,7 +317,7 @@ bool handle_ipi_interrupt()
             {
                 // a process changed the kernels page table, reload it to
                 // flush TLBs
-                mmu_set_kernel_page_table(g_kernel_pagetable);
+                mmu_set_kernel_page_table(g_kernel_pagetable->root);
                 break;
             }
             case IPI_KERNEL_PANIC:
