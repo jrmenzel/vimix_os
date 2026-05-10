@@ -38,10 +38,6 @@
 #define str_from_define(s) str(s)
 #define str(s) #s
 
-#ifdef __ARCH_riscv
-#define FEATURE_STRING "(RISC V)"
-#endif
-
 void print_timer_source(void *dtb)
 {
 #ifdef __ARCH_riscv
@@ -111,7 +107,7 @@ void init_devices(void *dtb)
 
     // map devices
     memory_map_add_device_mmio(&g_kernel_pagetable->memory_map, dev_list);
-    kvm_apply_mapping(g_kernel_pagetable);
+    kvm_apply_kernel_mapping(g_kernel_pagetable);
     // now we are done with the page table: unlock
     spin_unlock(&g_kernel_pagetable->lock);
 
@@ -180,7 +176,7 @@ void init_memory_management(void *dtb)
                                         initrd_size, MM_REGION_INITRD);
     }
 
-    kvm_apply_mapping(g_kernel_pagetable);
+    kvm_apply_kernel_mapping(g_kernel_pagetable);
 
     // make all additional memory available for kmalloc()
     kalloc_init_memory(&g_kernel_pagetable->memory_map, MM_REGION_USABLE_RAM);
@@ -188,7 +184,7 @@ void init_memory_management(void *dtb)
     if (memory_map_has_late_ram(&g_kernel_pagetable->memory_map))
     {
         memory_map_enable_late_ram(&g_kernel_pagetable->memory_map);
-        kvm_apply_mapping(g_kernel_pagetable);
+        kvm_apply_kernel_mapping(g_kernel_pagetable);
         kalloc_init_memory(&g_kernel_pagetable->memory_map, MM_REGION_LATE_RAM);
     }
 }
@@ -251,8 +247,8 @@ void main(void *dtb, bool is_boot_hart)
                         // loaded!
 
         printk("\n");
-        printk("VIMIX OS " __ARCH_bits_string " bit " FEATURE_STRING
-               " kernel version " str_from_define(GIT_HASH) " is booting\n");
+        printk("VIMIX OS " __ARCH_bits_string " bit (" ARCH_NAME_STRING
+               ") kernel version " str_from_define(GIT_HASH) " is booting\n");
         print_timer_source(dtb);
 
         init_kobject_root();

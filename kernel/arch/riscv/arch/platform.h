@@ -4,6 +4,8 @@
 #include <kernel/kernel.h>
 #include <sbi.h>
 
+#define ARCH_NAME_STRING "RISC V"
+
 static inline void init_platform() { init_sbi(); }
 static inline void platform_boot_other_cpus(void *dtb)
 {

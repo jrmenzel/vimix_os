@@ -11,6 +11,7 @@
 #include <kernel/interrupt_controller.h>
 #include <kernel/proc.h>
 #include <kernel/trap.h>
+#include <mm/arch_vm.h>
 #include <mm/memlayout.h>
 #include <syscalls/syscall.h>
 
@@ -59,6 +60,11 @@ void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
 
     if (int_ctx_call_from_supervisor(&ctx))
     {
+        printk(
+            "User mode interrupt handler called from kernel mode. This should "
+            "never "
+            "happen.\n");
+        dump_exception_cause_and_kill_proc(get_current(), &ctx);
         panic("user_mode_interrupt_handler was *not* called from user mode");
     }
 
@@ -152,8 +158,9 @@ void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
     return_to_user_mode();
 }
 
-extern char return_to_user_mode_asm[];
-void return_to_user_mode()
+void return_to_user_mode_asm(size_t kernel_stack);
+
+CAN_BE_CALLED_ON_USER_PAGE_TABLE void return_to_user_mode()
 {
     // we're about to switch the destination of traps from
     // kernel_mode_interrupt_handler() to user_mode_interrupt_handler(), so turn
@@ -184,15 +191,12 @@ void return_to_user_mode()
     cpu_set_exception_return_address(
         trapframe_get_program_counter(proc->trapframe));
 
-    // tell u_mode_trap_vector.S the user page table to switch to.
-    size_t mmu_reg_value =
-        mmu_make_page_table_reg((size_t)proc->pagetable->root, 0);
-
     size_t kernel_stack = proc->kstack + KERNEL_STACK_SIZE;
 
-    // jump to return_to_user_mode_asm in u_mode_trap_vector.S
-    ((void (*)(size_t, size_t, size_t))return_to_user_mode_asm)(
-        mmu_reg_value, 0, kernel_stack);
+    // switch to user page table, works as this function is mapped to trampsec
+    mmu_set_user_pgtable(proc->pagetable->root, 0);
+
+    return_to_user_mode_asm(kernel_stack);
 }
 
 void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
@@ -317,7 +321,7 @@ bool handle_ipi_interrupt()
             {
                 // a process changed the kernels page table, reload it to
                 // flush TLBs
-                mmu_set_kernel_page_table(g_kernel_pagetable->root);
+                mmu_set_kernel_pgtable(g_kernel_pagetable->root);
                 break;
             }
             case IPI_KERNEL_PANIC:

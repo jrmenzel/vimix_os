@@ -21,19 +21,36 @@ size_t mmu_make_page_table_reg(size_t addr_of_first_block, uint32_t asid)
     return mmu_make_page_table_reg_pa(virt_to_phys(addr_of_first_block), asid);
 }
 
-void mmu_set_kernel_page_table(pagetable_t pgtable)
+CAN_BE_CALLED_ON_USER_PAGE_TABLE void mmu_set_kernel_pgtable_val(
+    size_t reg_value)
+{
+    mmu_set_kernel_pgtable_reg(reg_value);
+    mmu_flush_instruction_cache();
+    mmu_flush_tlb_asid(0);
+}
+
+void mmu_set_kernel_pgtable(pagetable_t pgtable)
 {
     uint32_t asid = 0;
     g_kernel_pgtable_reg_value = mmu_make_page_table_reg((size_t)pgtable, asid);
-    mmu_set_kernel_pgtable_reg_value(g_kernel_pgtable_reg_value);
+    mmu_set_kernel_pgtable_val(g_kernel_pgtable_reg_value);
 }
 
-syserr_t kvm_apply_mapping(struct Page_Table *kpagetable)
+CAN_BE_CALLED_ON_USER_PAGE_TABLE void mmu_set_user_pgtable(pagetable_t pgtable,
+                                                           size_t asid)
+{
+    g_kernel_pgtable_reg_value = mmu_make_page_table_reg((size_t)pgtable, asid);
+    mmu_set_user_pgtable_reg(g_kernel_pgtable_reg_value);
+    mmu_flush_instruction_cache();
+    mmu_flush_tlb_asid(asid);
+}
+
+syserr_t kvm_apply_kernel_mapping(struct Page_Table *kpagetable)
 {
     syserr_t err = page_table_apply_mapping(kpagetable);
     if (err < 0) return err;
 
-    mmu_set_kernel_page_table(kpagetable->root);
+    mmu_set_kernel_pgtable(kpagetable->root);
 
     return 0;
 }

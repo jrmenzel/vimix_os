@@ -2,7 +2,6 @@
 #pragma once
 
 #ifndef __ASSEMBLY__
-#include <arch/fence.h>
 #include <arch/riscv/asm/satp.h>
 #include <kernel/kernel.h>
 

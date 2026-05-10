@@ -226,14 +226,9 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
                                     dtb_size, MM_REGION_DTB);
     }
 
-    // early RAM
-    // size_t ram_start_pa = PAGE_ROUND_UP(kernel_end_pa);
-    // size_t ram_end_pa = MEGA_PAGE_ROUND_UP(kernel_end_pa) + MEGA_PAGE_SIZE;
-
     size_t phy_ram_base;
     size_t phy_ram_size;
     dtb_get_memory((void *)dtb_paddr, &phy_ram_base, &phy_ram_size);
-    // ram_end_pa = min(ram_end_pa, phy_ram_base + phy_ram_size);
 
     size_t initrd_base;
     size_t initrd_size;
@@ -273,9 +268,4 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
     }
 
     return mmu_make_page_table_reg_pa(pt_paddr, 0);
-}
-
-void enable_early_pgtable(size_t pt_paddr)
-{
-    mmu_set_kernel_pgtable_reg_value(mmu_make_page_table_reg_pa(pt_paddr, 0));
 }

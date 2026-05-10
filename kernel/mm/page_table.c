@@ -2,6 +2,7 @@
 
 #include <kernel/pgtable.h>
 #include <kernel/string.h>
+#include <mm/arch_vm.h>
 #include <mm/kalloc.h>
 #include <mm/page_table.h>
 #include <mm/vm.h>

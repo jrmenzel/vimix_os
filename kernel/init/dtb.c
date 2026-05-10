@@ -434,9 +434,8 @@ bool extension_is_supported(const char *riscv_isa, const char *ext)
 
 int dtb_get_cpu_offset(void *dtb, size_t cpu_id, bool print_errors)
 {
-    const size_t PATH_LEN = 16;
-    char path_name[PATH_LEN];
-    snprintf(path_name, PATH_LEN, "/cpus/cpu@%zd", cpu_id);
+    char path_name[32];
+    snprintf(path_name, sizeof(path_name), "/cpus/cpu@%zu", cpu_id);
 
     int offset = fdt_path_offset(dtb, path_name);
     if (offset < 0 && print_errors)

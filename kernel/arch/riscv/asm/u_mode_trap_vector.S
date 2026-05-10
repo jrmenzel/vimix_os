@@ -97,69 +97,24 @@ u_mode_trap_vector:
     LOAD_REG_FROM_TRAP_FRAME(s1, IDX_TRAPFRAME_KERNEL_TRAP)
 
     # fetch the kernel page table register value, from p->trapframe->kernel_page_table.
-    # mmu_set_kernel_pgtable_reg_value(p->trapframe->kernel_page_table)
     LOAD_REG_FROM_TRAP_FRAME(a0, IDX_TRAPFRAME_KERNEL_PAGE_TABLE)
     mv a1, zero
-    jal mmu_set_kernel_pgtable_reg_value
+    jal ra, mmu_set_kernel_pgtable_val
 
+    # jump to user_mode_interrupt_handler( sp ), which does not return
     mv a0, sp
-
-    # jump to user_mode_interrupt_handler(), which does not return
     jr s1
-
-# Sets satp register including all required barriers.
-# Implemented in assembly to share code with the other kernel code.
-# param a0 = size_t satp register value to set.
-.globl mmu_set_kernel_pgtable_reg_value
-.type mmu_set_kernel_pgtable_reg_value, @function
-mmu_set_kernel_pgtable_reg_value:
-    # install the page table
-    csrw satp, a0
-
-    # flush the instruction cache now that the code changed by updating the page table
-    fence.i
-
-    # flush now-stale entries from the TLB
-    sfence.vma zero, zero
-    ret
-
-# Sets satp register including all required barriers.
-# Implemented in assembly to share code with the other kernel code.
-# param a0 = size_t satp register value to set.
-# param a1 = ASID
-.globl mmu_set_user_pgtable_reg_value
-.type mmu_set_user_pgtable_reg_value, @function
-mmu_set_user_pgtable_reg_value:
-    li t0, SATP_ASID_MASK
-    and a1, a1, t0
-    li t0, SATP_ASID_POS
-    srl a1, a1, t0
-    # a1 is now the ASID
-
-    # install the page table
-    csrw satp, a0
-
-    # flush the instruction cache now that the code changed by updating the page table
-    fence.i
-
-    # flush now-stale entries from the TLB
-    sfence.vma zero, a1
-    ret
 
 .globl return_to_user_mode_asm
 .type return_to_user_mode_asm, @function
 return_to_user_mode_asm:
-    # return_to_user_mode_asm(pagetable, ASID, stack)
+    # return_to_user_mode_asm(stack)
     # called by return_to_user_mode() in trap.c to
     # switch from kernel to user.
 
     # store kernel stack of process in sscratch, switch stack to user stack
-    mv sp, a2
+    mv sp, a0
     csrrw sp, sscratch, sp
-
-    # a0: user page table, for satp.
-    # a1: ASID
-    jal mmu_set_user_pgtable_reg_value
 
     # restore all but a0 and sp from TRAPFRAME
     li a0, TRAPFRAME

@@ -142,7 +142,7 @@ void process_free(struct process *proc)
 
         vm_trim_pagetable(g_kernel_pagetable, proc->kstack);
         // update pagetable, flush cache:
-        mmu_set_kernel_page_table(g_kernel_pagetable->root);
+        mmu_set_kernel_pgtable(g_kernel_pagetable->root);
         spin_unlock(&g_kernel_pagetable->lock);
 
         // tell other cores also to reload the kernel page table
@@ -237,7 +237,7 @@ bool proc_init_kernel_stack(struct Page_Table *kpage_table,
     }
 
     // update kernel pagetable, flush cache:
-    mmu_set_kernel_page_table(kpage_table->root);
+    mmu_set_kernel_pgtable(kpage_table->root);
 
     spin_unlock(&kpage_table->lock);
 

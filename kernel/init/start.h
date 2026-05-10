@@ -44,5 +44,3 @@ extern char __size_of_rodata[];
 extern char __size_of_data[];
 extern char __size_of_bss[];
 extern char __size_driver_list[];
-
-extern char return_to_user_mode_asm[];

@@ -129,11 +129,9 @@ phys_base_init:
     sw zero, 0(t0)
 
     ENABLE_PAGETABLE_AND_RELOCATE _entry_m_mode
-    #j all_harts_mmode
 #else
 
     ENABLE_PAGETABLE_AND_RELOCATE _entry_s_mode_boot_hart
-    #j _entry_s_mode_boot_hart
 #endif
 
 #ifdef CONFIG_RISCV_BOOT_M_MODE
@@ -147,9 +145,6 @@ wait_for_early_page_table:
     # finished waiting:
     fence r, rw
     ENABLE_PAGETABLE_AND_RELOCATE _entry_m_mode
-
-#all_harts_mmode:
-#    j _entry_m_mode # detour before calling _entry_s_mode_boot_hart in S Mode
 #endif
 
 .global _entry_s_mode_boot_hart
@@ -209,7 +204,6 @@ infinite_loop:
 _entry_setup_hartid_dtb:
 #ifdef CONFIG_RISCV_BOOT_M_MODE
     csrr a0, mhartid
-    // dtb is already set in a1
 #else
 #if defined(__PLATFORM_VISIONFIVE2)
     li a0, 1  # starfive,boot-hart-id in device tree

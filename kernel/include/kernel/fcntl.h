@@ -20,3 +20,5 @@
 /// WARNING: not supported yet
 #define O_APPEND 0x800
 #define O_EXEC 0x1000
+
+#define O_ACCMODE 0x003

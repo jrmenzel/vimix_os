@@ -8,15 +8,17 @@
 #include <mm/pte.h>
 #include <mm/vm.h>
 
-/// @brief Enables paging with the page table pointed to and sets the ASID.
+/// @brief Enables paging with the page table pointed to and sets the ASID to 0.
 /// @param pagetable Page table to use.
-void mmu_set_kernel_page_table(pagetable_t pgtable);
+void mmu_set_kernel_pgtable(pagetable_t pgtable);
+
+void mmu_set_user_pgtable(pagetable_t pgtable, size_t asid);
 
 /// @brief Construct the page table enable register value. It encodes the page
 /// table address, the ASID and flags. The format is ARCH specific.
 /// @param phys_addr_of_first_block Physical address of page table.
 /// @param asid ASID to use.
-/// @return The register value for mmu_set_kernel_pgtable_reg_value()
+/// @return The register value for the MMU register
 size_t mmu_make_page_table_reg_pa(size_t phys_addr_of_first_block,
                                   uint32_t asid);
 
@@ -24,18 +26,11 @@ size_t mmu_make_page_table_reg_pa(size_t phys_addr_of_first_block,
 /// table address, the ASID and flags. The format is ARCH specific.
 /// @param addr_of_first_block Pointer to page table.
 /// @param asid ASID to use.
-/// @return The register value for mmu_set_kernel_pgtable_reg_value()
+/// @return The register value for the MMU register
 size_t mmu_make_page_table_reg(size_t addr_of_first_block, uint32_t asid);
 
-/// @brief Sets paging register including all required barriers.
-/// Implemented in assembly to share code with the user mode trap vector.
-/// @param reg_value Register value to set.
-void mmu_set_kernel_pgtable_reg_value(size_t reg_value);
-
-void mmu_set_user_pgtable_reg_value(size_t reg_value, size_t asid);
-
 /// @brief Returns the current page table settings.
-/// @return The register value for a future mmu_set_kernel_pgtable_reg_value()
+/// @return The register value from the MMU
 size_t mmu_get_page_table_reg_value();
 
 /// @brief Extracts the pointer value to the page table.
@@ -49,7 +44,7 @@ size_t mmu_get_page_table_address(size_t reg_value);
 size_t mmu_get_page_table_asid(size_t reg_value);
 
 /// Initialize the given page table with its memory map
-syserr_t kvm_apply_mapping(struct Page_Table *kpagetable);
+syserr_t kvm_apply_kernel_mapping(struct Page_Table *kpagetable);
 
 /// @brief Look up the physical address of a page behind a virtual address.
 ///        Can only be used to look up kernel pages.
