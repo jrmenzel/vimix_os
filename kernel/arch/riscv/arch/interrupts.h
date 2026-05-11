@@ -55,7 +55,8 @@ static inline bool int_ctx_source_is_device(struct Interrupt_Context *ctx)
 
 static inline bool int_ctx_source_is_page_fault(struct Interrupt_Context *ctx)
 {
-    return (ctx->scause == SCAUSE_STORE_AMO_PAGE_FAULT);
+    return (ctx->scause == SCAUSE_LOAD_PAGE_FAULT) ||
+           (ctx->scause == SCAUSE_STORE_AMO_PAGE_FAULT);
 }
 
 static inline bool int_ctx_source_is_ipi(struct Interrupt_Context *ctx)

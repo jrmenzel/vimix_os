@@ -10,13 +10,9 @@
 #include <mm/mm.h>
 
 #if defined(__ARCH_32BIT)
-#define HIGHEST_USER_PAGE (0x7FFFF000)
 #define KSTACK_VA_END (0xFFFFF000)
-
 #else
-#define HIGHEST_USER_PAGE (USER_VA_END - PAGE_SIZE)
 #define KSTACK_VA_END (0xFFFFFFFFFFFFF000UL)
-
 #endif
 
 /// map kernel stacks beneath the trampoline,
@@ -36,7 +32,7 @@
 ///   stack
 ///   TRAPFRAME (p->trapframe, used by the trampoline)
 ///   TRAMPOLINE (mapped somewhere in the higher half)
-#define TRAPFRAME (HIGHEST_USER_PAGE)
+#define TRAPFRAME (USER_VA_END - PAGE_SIZE)
 
 /// Highest address of the user stack.
 /// Could be placed anywhere. The highest position possible is just below the

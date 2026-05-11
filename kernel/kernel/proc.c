@@ -24,6 +24,7 @@
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
+#include <kernel/trap.h>
 #include <lib/panic.h>
 #include <mm/kalloc.h>
 #include <mm/memlayout.h>
@@ -760,8 +761,10 @@ void proc_shrink_stack(struct process *proc)
 
     size_t npages = (lowest_stack_page_used - proc->stack_low) / PAGE_SIZE;
 
+    spin_lock(&proc->pagetable->lock);
     page_table_unmap_remove_range(proc->pagetable, proc->stack_low,
                                   npages * PAGE_SIZE);
+    spin_unlock(&proc->pagetable->lock);
     proc->stack_low = lowest_stack_page_used;
 }
 

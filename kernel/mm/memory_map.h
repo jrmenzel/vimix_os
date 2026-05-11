@@ -147,6 +147,12 @@ struct Devices_List;
 void memory_map_add_device_mmio(struct Memory_Map *map,
                                 struct Devices_List *dev_list);
 
+struct MM_Region *memory_map_get_region_at_addr(struct Memory_Map *map,
+                                                size_t va);
+
+struct MM_Region *memory_map_get_region_at_paddr(struct Memory_Map *map,
+                                                 size_t pa);
+
 /// @brief Remove all memory regions in a given address range. Might resize
 /// existing ones.
 /// @param map Memory map to remove regions from.

@@ -81,7 +81,7 @@ void kobject_del(struct kobject *kobj);
 /// @param kobj The kobject.
 static inline void kobject_get(struct kobject *kobj)
 {
-    DEBUG_EXTRA_ASSERT(kobj != NULL, "kobject_get() on NULL");
+    DEBUG_EXTRA_PANIC(kobj != NULL, "kobject_get() on NULL");
     kref_get(&kobj->ref_count);
 }
 

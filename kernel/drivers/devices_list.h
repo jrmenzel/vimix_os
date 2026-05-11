@@ -40,6 +40,12 @@ struct Devices_List *get_devices_list();
 /// @param dev_list Device list to which the virtual devices will be added.
 void dev_list_add_virtual_devices(struct Devices_List *dev_list);
 
+/// @brief Init one individual device.
+/// @param dev_list devices list (to also find dependencies)
+/// @param dev pointer to the device info to initialize
+/// @return valid device number if the device was initialized
+dev_t init_device(struct Devices_List *dev_list, struct Found_Device *dev);
+
 /// @brief Init one individual device with a certain name. Used by devices to
 /// init dependencies that are not found in the device tree.
 /// @param dev_list devices list (to also find dependencies)

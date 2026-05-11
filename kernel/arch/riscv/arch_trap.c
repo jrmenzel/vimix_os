@@ -92,17 +92,3 @@ void dump_exception_cause(struct Interrupt_Context *ctx)
         }
     }
 }
-
-void handle_timer_interrupt()
-{
-    uint64_t timer_interrupt_interval =
-        g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
-    uint64_t now = rv_get_time();
-    timer_schedule_interrupt(now, timer_interrupt_interval);
-
-    // will only update on the CPU that booted first
-    if (smp_processor_id() == g_boot_hart)
-    {
-        kticks_inc_ticks();
-    }
-}

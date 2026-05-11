@@ -1,13 +1,26 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/riscv/asm/satp.h>
+#include <arch/riscv/riscv.h>
 #include <kernel/pgtable.h>
 #include <kernel/proc.h>
-#include <mm/arch_early_pgtable.h>
 #include <mm/vm.h>
-#include "asm/satp.h"
-#include "riscv.h"
 
-size_t mmu_get_page_table_reg_value() { return rv_read_csr_satp(); }
+static inline size_t satp_make_reg_value(size_t addr_of_first_block,
+                                         uint32_t asid)
+{
+    xlen_t satp = 0;
+    if (addr_of_first_block != 0)
+    {
+        satp = (addr_of_first_block >> PAGE_SHIFT) & SATP_PPN_MASK;
+        satp = satp | SATP_MODE;
+        satp = satp | (((xlen_t)asid << SATP_ASID_POS) & SATP_ASID_MASK);
+    }
+
+    return satp;
+}
+
+size_t mmu_get_kernel_pgtable_reg_value() { return rv_read_csr_satp(); }
 
 size_t mmu_make_page_table_reg_pa(size_t phys_addr_of_first_block,
                                   uint32_t asid)

@@ -47,7 +47,7 @@ syserr_t check_file_permission(struct process *proc, struct file *f,
 {
     bool needs_write_access = (mask & MAY_WRITE) || (mask & MAY_APPEND);
     bool needs_read_access = (mask & MAY_READ);
-    int32_t access_mode = f->flags & 0x3;  // O_ACCMODE
+    int32_t access_mode = f->flags & O_ACCMODE;
 
     // note that root does not skip file open mode checks
 

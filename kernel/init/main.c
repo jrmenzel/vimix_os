@@ -117,8 +117,7 @@ void init_devices(void *dtb)
     if (console_dev != NULL)
     {
         printk("init console: %s\n", console_dev->driver->dtb_name);
-        dev_t con_dev = console_init(&(console_dev->init_parameters),
-                                     console_dev->driver->dtb_name);
+        dev_t con_dev = console_init(console_dev);
 
         if (con_dev == INVALID_DEVICE)
         {
@@ -225,6 +224,8 @@ void init_filesystem()
            MINOR(ROOT_DEVICE_NUMBER));
 }
 
+void *g_dtb = NULL;
+
 void main(void *dtb, bool is_boot_hart)
 {
     cpu_set_boot_state();
@@ -235,7 +236,11 @@ void main(void *dtb, bool is_boot_hart)
     // print e.g. page faults
     set_supervisor_trap_vector();
 
-    if (fdt_magic(dtb) != FDT_MAGIC)
+    if (dtb == NULL)
+    {
+        dtb = g_dtb;  // for secondary cores
+    }
+    if ((dtb == NULL) || (fdt_magic(dtb) != FDT_MAGIC))
     {
         panic("No valid device tree found");
     }
@@ -243,6 +248,7 @@ void main(void *dtb, bool is_boot_hart)
     if (is_boot_hart)
     {
         g_boot_hart = smp_processor_id();
+        g_dtb = dtb;
         printk_init();  // printk might not print until a console driver is
                         // loaded!
 
@@ -273,8 +279,10 @@ void main(void *dtb, bool is_boot_hart)
         atomic_thread_fence(memory_order_seq_cst);
         platform_boot_other_cpus(dtb);
     }
+    ipi_init_per_cpu();
 
     size_t cpu_id = smp_processor_id();
+
     g_cpus[cpu_id].features = dtb_get_cpu_features(dtb, cpu_id);
     timer_init(dtb, g_cpus[cpu_id].features);
     g_int_con.init_per_cpu();

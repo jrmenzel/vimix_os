@@ -202,7 +202,6 @@ static int collect_compilation_units(Dwarf *dbg, Dwarf_Addr bias,
                                      uint64_t *highest_out)
 {
     Dwarf_Off cu_offset = 0;
-    size_t cu_index = 0;
     uint64_t lowest = UINT64_MAX;
     uint64_t highest = 0;
     int have_addresses = 0;
@@ -241,7 +240,6 @@ static int collect_compilation_units(Dwarf *dbg, Dwarf_Addr bias,
         if (dwarf_getsrclines(&cu_die, &lines, &nlines) != 0)
         {
             cu_offset = next_cu_offset;
-            ++cu_index;
             continue;
         }
 
@@ -258,7 +256,6 @@ static int collect_compilation_units(Dwarf *dbg, Dwarf_Addr bias,
         }
 
         cu_offset = next_cu_offset;
-        ++cu_index;
     }
 
     if (!have_addresses)

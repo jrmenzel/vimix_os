@@ -3,7 +3,6 @@
 
 #include <asm/pgtable-bits.h>
 #include <kernel/kernel.h>
-#include <kernel/page.h>
 
 static inline pte_t pte_set_executable(pte_t pte) { return pte | PTE_X; };
 static inline pte_t pte_unset_executable(pte_t pte) { return pte & ~PTE_X; }
@@ -38,7 +37,7 @@ static inline pte_t pte_clear_user_access(pte_t pte) { return pte & ~PTE_U; }
     (PTE_IS_VALID_NODE(pte) && PTE_IS_USER_ACCESSIBLE(pte))
 
 // One of RWX flags -> PTE is a leaf node
-#define PTE_IS_LEAF(pte) (pte & (PTE_RW | PTE_X))
+#define PTE_IS_LEAF(pte) (pte & (PTE_R | PTE_W | PTE_X))
 
 #define PTE_MAKE_VALID_LEAF(pte) (pte = pte | PTE_V);
 

@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <drivers/device.h>
-#include <drivers/goldfish_rtc.h>
 #include <fs/devfs/devfs.h>
 #include <kernel/errno.h>
 #include <kernel/file.h>
 #include <kernel/param.h>
 #include <kernel/proc.h>
+#include <kernel/rtc.h>
 #include <kernel/string.h>
 
 struct file_system_type devfs_file_system_type;

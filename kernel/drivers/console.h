@@ -7,7 +7,7 @@
 extern void (*g_console_poll_callback)();
 
 /// init console and console hardware (e.g. UART)
-dev_t console_init(struct Device_Init_Parameters *init_param, const char *name);
+dev_t console_init(struct Found_Device *console_dev);
 
 /// @brief Called by the interrupt when new input is available
 /// @param c input key

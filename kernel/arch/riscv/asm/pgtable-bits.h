@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-// flags per page
+// RISC V PTE flags:
 #define PTE_V (1L << 0)  ///< valid
 #define PTE_R (1L << 1)  ///< readable
 #define PTE_W (1L << 2)  ///< writeable
@@ -15,25 +15,8 @@
     (1L << 7)  ///< page has been written to since last time this bit
                ///< was cleared
 
-#define PTE_RW (PTE_R | PTE_W)
-
 /// how to map MMIO devices: R/W for the kernel
-#define PTE_MMIO_FLAGS (PTE_RW)
-
-/// how to map the kernel code: read only
-#define PTE_RO_TEXT (PTE_R | PTE_X)
-
-// how to map the kernel stack of the processes
-#define PTE_KERNEL_STACK (PTE_R | PTE_W)
-
-/// how to map kernel data and all RAM
-#define PTE_RW_RAM (PTE_RW)
-
-// how to map the user space init code: RWX
-#define PTE_INITCODE (PTE_W | PTE_R | PTE_X | PTE_U)
-
-/// how to map non-code for the user (heap & stack)
-#define PTE_USER_RAM (PTE_R | PTE_W | PTE_U)
+#define PTE_MMIO_FLAGS (PTE_R | PTE_W)
 
 /// all mapped paged are ORed with this
 #define PTE_MAP_DEFAULT_FLAGS (PTE_V | PTE_A | PTE_D)
@@ -53,3 +36,21 @@
 #define PAGE_TABLE_MAX_LEVELS 3
 
 #endif
+
+/// how to map all RAM
+#define PTE_RW_RAM (PTE_G | PTE_R | PTE_W)
+
+#define PTE_KERNEL_RO_TEXT (PTE_G | PTE_R | PTE_X)
+// #define PTE_KERNEL_RW_TEXT
+#define PTE_KERNEL_RO_DATA (PTE_G | PTE_R)
+#define PTE_KERNEL_RW_DATA (PTE_G | PTE_R | PTE_W)
+
+// how to map the kernel stack of the processes
+#define PTE_KERNEL_STACK (PTE_R | PTE_W)
+
+#define PTE_USER_RO_TEXT (PTE_U | PTE_R | PTE_X)
+#define PTE_USER_RW_TEXT (PTE_U | PTE_R | PTE_W | PTE_X)
+#define PTE_USER_RO_DATA (PTE_U | PTE_R)
+#define PTE_USER_RW_DATA (PTE_U | PTE_R | PTE_W)
+
+#define PTE_TRAPFRAME (PTE_R | PTE_W)

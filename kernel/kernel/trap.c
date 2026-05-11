@@ -9,7 +9,9 @@
 #include <fs/sysfs/sys_kernel.h>
 #include <init/start.h>
 #include <kernel/interrupt_controller.h>
+#include <kernel/kticks.h>
 #include <kernel/proc.h>
+#include <kernel/timer.h>
 #include <kernel/trap.h>
 #include <mm/arch_vm.h>
 #include <mm/memlayout.h>
@@ -91,7 +93,6 @@ void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
         // an interrupt will change sepc, scause, and sstatus,
         // so enable only now that we're done with those registers.
         cpu_enable_interrupts();
-
         syscall(proc);
     }
     else if (int_ctx_source_is_timer(&ctx))
@@ -117,14 +118,12 @@ void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
     }
     else if (int_ctx_source_is_page_fault(&ctx))
     {
-        size_t sp = trapframe_get_stack_pointer(proc->trapframe);
         size_t fault_addr = int_ctx_get_addr(&ctx);
 
-        // If the app tried to write between the stack pointer and its stack
-        // -> stack overflow. Also test if the sp isn't more than one page away
-        // from the current stack as we will provide only one additional page.
-        if ((sp <= fault_addr && fault_addr < proc->stack_low) &&
-            (sp >= (proc->stack_low - PAGE_SIZE)))
+        // If the app tried to write between a bit beyond its stack
+        // -> stack overflow.
+        if ((fault_addr < proc->stack_low) &&
+            (fault_addr >= (proc->stack_low - PAGE_SIZE)))
         {
             if (!proc_grow_stack(proc))
             {
@@ -140,7 +139,7 @@ void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
     }
     else
     {
-        // some other scause
+        // some other cause
         dump_exception_cause_and_kill_proc(proc, &ctx);
     }
 
@@ -173,7 +172,7 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE void return_to_user_mode()
     // set up trapframe values that u_mode_trap_vector will need when
     // the process next traps into the kernel.
     proc->trapframe->kernel_page_table =
-        mmu_get_page_table_reg_value();  // kernel page table
+        mmu_get_kernel_pgtable_reg_value();  // kernel page table
     proc->trapframe->kernel_sp =
         proc->kstack + KERNEL_STACK_SIZE;  // process's kernel stack
     proc->trapframe->kernel_trap = (size_t)user_mode_interrupt_handler;
@@ -346,4 +345,18 @@ bool handle_ipi_interrupt()
     spin_unlock(&g_cpus_ipi_lock);
 
     return yield_process;
+}
+
+void handle_timer_interrupt()
+{
+    uint64_t timer_interrupt_interval =
+        g_timebase_frequency / TIMER_INTERRUPTS_PER_SECOND;
+    uint64_t now = get_time();
+    timer_schedule_interrupt(now, timer_interrupt_interval);
+
+    // Keep system time monotonic from the boot CPU as on other architectures.
+    if (smp_processor_id() == g_boot_hart)
+    {
+        kticks_inc_ticks();
+    }
 }

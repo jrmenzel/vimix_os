@@ -6,7 +6,6 @@
 
 #include <drivers/block_device.h>
 #include <drivers/character_device.h>
-#include <drivers/goldfish_rtc.h>
 #include <fs/fs_lookup.h>
 #include <ipc/pipe.h>
 #include <kernel/errno.h>
@@ -17,6 +16,7 @@
 #include <kernel/major.h>
 #include <kernel/permission.h>
 #include <kernel/proc.h>
+#include <kernel/rtc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/stat.h>

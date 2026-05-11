@@ -31,7 +31,7 @@
 #define DELETE_KEY '\x7f'
 #define CONTROL_KEY(x) ((x) - '@')  // Control-x
 
-// pointers for the put chat function of either a UART driver or the SBI
+// pointers for the put char function of either a UART driver or the SBI
 // fallback
 void (*device_putc)(int32_t ch) = NULL;
 void (*device_putc_sync)(int32_t ch) = NULL;
@@ -376,7 +376,7 @@ void console_interrupt_handler(int32_t c)
 
 void console_putc_noop(int32_t ch) {}
 
-dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
+dev_t console_init(struct Found_Device *console_dev)
 {
     // already initialized with another device
     if (device_putc != NULL)
@@ -384,14 +384,11 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
         return INVALID_DEVICE;
     }
 
-    if (init_param && name)
+    struct Devices_List *dev_list = get_devices_list();
+    dev_t uart_dev = init_device(dev_list, console_dev);
+    if (uart_dev == INVALID_DEVICE)
     {
-        struct Devices_List *dev_list = get_devices_list();
-        dev_t uart_dev = init_device_by_name(dev_list, name);
-        if (uart_dev == INVALID_DEVICE)
-        {
-            return INVALID_DEVICE;
-        }
+        return INVALID_DEVICE;
     }
 
     spin_lock_init(&g_console.lock, "cons");
@@ -409,24 +406,22 @@ dev_t console_init(struct Device_Init_Parameters *init_param, const char *name)
     g_console.termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
     g_console.termios.c_cc[VTIME] = 0;  // no timeout in read()
 
-    if (init_param != NULL)
+    const char *name = console_dev->driver->dtb_name;
+    if (strcmp(name, "ucb,htif0") == 0)
     {
-        if (strcmp(name, "ucb,htif0") == 0)
-        {
-            device_putc = htif_putc;
-            device_putc_sync = htif_putc;
-            g_console_poll_callback = htif_console_poll_input;
-        }
-        else if (strcmp(name, "ns16550a") == 0 ||
-                 strcmp(name, "snps,dw-apb-uart") == 0)
-        {
-            // ns16550a or snps,dw-apb-uart
-            device_putc = uart_putc;
-            device_putc_sync = uart_putc_sync;
+        device_putc = htif_putc;
+        device_putc_sync = htif_putc;
+        g_console_poll_callback = htif_console_poll_input;
+    }
+    else if (strcmp(name, "ns16550a") == 0 ||
+             strcmp(name, "snps,dw-apb-uart") == 0)
+    {
+        // ns16550a or snps,dw-apb-uart
+        device_putc = uart_putc;
+        device_putc_sync = uart_putc_sync;
 
-            dev_set_irq(&g_console.cdev.dev, init_param->interrupt,
-                        uart_interrupt_handler);
-        }
+        dev_set_irq(&g_console.cdev.dev, console_dev->init_parameters.interrupt,
+                    uart_interrupt_handler);
     }
     if (device_putc == NULL)
     {

@@ -65,6 +65,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	kernel/permission.o \
 	kernel/process.o \
 	kernel/reset.o \
+	kernel/rtc.o \
 	kernel/scheduler.o \
 	kernel/timer.o \
 	kernel/trap.o \

@@ -2589,11 +2589,14 @@ void dirfile(char *s)
         printf("%s: could not open . for reading!\n", s);
         exit(1);
     }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-access-mode-mismatch"
     if (write(fd, "x", 1) > 0)
     {
         printf("%s: write into . succeeded!\n", s);
         exit(1);
     }
+#pragma GCC diagnostic pop
     close(fd);
 }
 
@@ -3189,7 +3192,7 @@ void stack_overflow(char *s)
     if (pid == 0)
     {
         char *sp = (char *)asm_read_stack_pointer();
-        sp -= page_size;
+        sp -= page_size * 2;
         // the *sp should cause a trap.
         printf("%s: stack_overflow: read below stack %c\n", s, *sp);
         exit(1);

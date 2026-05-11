@@ -24,6 +24,8 @@ enum ipi_type
 /// @brief Call from boot CPU.
 void ipi_init();
 
+void ipi_init_per_cpu();
+
 /// @brief Return a mask with all booted CPUs set
 /// @return The mask.
 cpu_mask ipi_cpu_mask_all();

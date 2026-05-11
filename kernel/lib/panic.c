@@ -111,8 +111,6 @@ void debug_print_ra(size_t ra)
         // try to find calling instruction,
         // can be 2 bytes or 4 bytes before return address
         const struct instruction *instr;
-        // instr = debug_info_lookup_instruction(g_kernel_debug_info, ra);
-        // debug_info_print_instruction(g_kernel_debug_info, instr);
         printk(" caller: ");
         instr = debug_info_lookup_caller(g_kernel_debug_info, ra);
         debug_info_print_instruction(g_kernel_debug_info, instr);

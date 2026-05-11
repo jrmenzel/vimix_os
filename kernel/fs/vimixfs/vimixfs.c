@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/goldfish_rtc.h>
 #include <fs/dentry.h>
 #include <fs/dentry_cache.h>
 #include <fs/vfs.h>
@@ -16,6 +15,7 @@
 #include <kernel/file.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
+#include <kernel/rtc.h>
 #include <kernel/statvfs.h>
 #include <kernel/string.h>
 #include <kernel/vimixfs.h>

@@ -9,8 +9,6 @@ void driver_list_init()
 {
     g_driver_list.driver = (struct Driver *)__start_driver_list;
     g_driver_list.driver_end = (struct Driver *)__end_driver_list;
-
-    // debug_print_driver_list();
 }
 
 void debug_print_driver_list()

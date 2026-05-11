@@ -33,31 +33,31 @@ struct MM_Region_Attributes g_region_attributes[] = {
                           .free_pages = false,
                           .copy_on_fork = false},
     [MM_REGION_KERNEL_TEXT] = {.description = "kernel text",
-                               .pte_flags = PTE_RO_TEXT,
+                               .pte_flags = PTE_KERNEL_RO_TEXT,
                                .free_pages = false,
                                .copy_on_fork = false},
     [MM_REGION_KERNEL_TEXT_PA] = {.description = "kernel entry at PA",
-                                  .pte_flags = PTE_RO_TEXT,
+                                  .pte_flags = PTE_KERNEL_RO_TEXT,
                                   .free_pages = false,
                                   .copy_on_fork = false},
     [MM_REGION_KERNEL_RO_DATA] = {.description = "kernel RO data",
-                                  .pte_flags = PTE_R,
+                                  .pte_flags = PTE_KERNEL_RO_DATA,
                                   .free_pages = false,
                                   .copy_on_fork = false},
     [MM_REGION_KERNEL_DATA] = {.description = "kernel data",
-                               .pte_flags = PTE_RW_RAM,
+                               .pte_flags = PTE_KERNEL_RW_DATA,
                                .free_pages = false,
                                .copy_on_fork = false},
     [MM_REGION_KERNEL_BSS] = {.description = "kernel BSS",
-                              .pte_flags = PTE_RW_RAM,
+                              .pte_flags = PTE_KERNEL_RW_DATA,
                               .free_pages = false,
                               .copy_on_fork = false},
     [MM_REGION_DTB] = {.description = "device tree blob",
-                       .pte_flags = PTE_R,
+                       .pte_flags = PTE_KERNEL_RO_DATA,
                        .free_pages = false,
                        .copy_on_fork = false},
     [MM_REGION_INITRD] = {.description = "initial RAM disk",
-                          .pte_flags = PTE_RW_RAM,
+                          .pte_flags = PTE_KERNEL_RW_DATA,
                           .free_pages = false,
                           .copy_on_fork = false},
     [MM_REGION_MMIO] = {.description = "memory-mapped I/O",
@@ -65,27 +65,27 @@ struct MM_Region_Attributes g_region_attributes[] = {
                         .free_pages = false,
                         .copy_on_fork = false},
     [MM_REGION_USER_TEXT] = {.description = "user text",
-                             .pte_flags = PTE_RO_TEXT | PTE_U,
+                             .pte_flags = PTE_USER_RO_TEXT,
                              .free_pages = true,
                              .copy_on_fork = true},
     [MM_REGION_USER_RW_TEXT] = {.description = "user read-write text",
-                                .pte_flags = PTE_RO_TEXT | PTE_RW | PTE_U,
+                                .pte_flags = PTE_USER_RW_TEXT,
                                 .free_pages = true,
                                 .copy_on_fork = true},
     [MM_REGION_USER_RO_DATA] = {.description = "user read-only data",
-                                .pte_flags = PTE_R | PTE_U,
+                                .pte_flags = PTE_USER_RO_DATA,
                                 .free_pages = true,
                                 .copy_on_fork = true},
     [MM_REGION_USER_DATA] = {.description = "user data",
-                             .pte_flags = PTE_USER_RAM,
+                             .pte_flags = PTE_USER_RW_DATA,
                              .free_pages = true,
                              .copy_on_fork = true},
     [MM_REGION_USER_BSS] = {.description = "user BSS",
-                            .pte_flags = PTE_USER_RAM,
+                            .pte_flags = PTE_USER_RW_DATA,
                             .free_pages = true,
                             .copy_on_fork = true},
     [MM_REGION_USER_STACK] = {.description = "user stack",
-                              .pte_flags = PTE_USER_RAM,
+                              .pte_flags = PTE_USER_RW_DATA,
                               .free_pages = true,
                               .copy_on_fork = true},
     [MM_REGION_USER_KSTACK] = {.description = "user kernel stack",
@@ -98,11 +98,11 @@ struct MM_Region_Attributes g_region_attributes[] = {
                                    .free_pages = false,
                                    .copy_on_fork = false},
     [MM_REGION_USER_TRAPFRAME] = {.description = "user trapframe",
-                                  .pte_flags = PTE_RW_RAM,
+                                  .pte_flags = PTE_TRAPFRAME,
                                   .free_pages = false,
                                   .copy_on_fork = false},
     [MM_REGION_TRAMPOLINE] = {.description = "trampoline",
-                              .pte_flags = PTE_RO_TEXT,
+                              .pte_flags = PTE_KERNEL_RO_TEXT,
                               .free_pages = false,
                               .copy_on_fork = false}};
 
@@ -406,22 +406,70 @@ void memory_map_add_device_mmio(struct Memory_Map *map,
                                   dev->init_parameters.mem[i].size);
                 size_t map_size = map_end_pa - map_start_pa;
 
-                size_t offset = vm_get_mmio_offset(map_start_pa, map_size);
-                dev->init_parameters.mem[i].start_va =
-                    dev->init_parameters.mem[i].start_pa + offset;
-
+                // re-use existing mappings if possible
                 struct MM_Region *region =
-                    mm_region_alloc_init(map_start_pa, map_start_pa + offset,
-                                         map_size, MM_REGION_MMIO);
-                if (region == NULL)
+                    memory_map_get_region_at_paddr(map, map_start_pa);
+                if ((region != NULL) && (region->type == MM_REGION_MMIO) &&
+                    (region->size == map_size))
                 {
-                    panic("memory_map_add_device_mmio: out of memory");
+                    // reuse
+                    size_t offset =
+                        dev->init_parameters.mem[i].start_pa - region->start_pa;
+                    dev->init_parameters.mem[i].start_va =
+                        region->start_va + offset;
                 }
+                else
+                {
+                    size_t offset = vm_get_mmio_offset(map_start_pa, map_size);
+                    dev->init_parameters.mem[i].start_va =
+                        dev->init_parameters.mem[i].start_pa + offset;
 
-                memory_map_add_single_region(map, region);
+                    region = mm_region_alloc_init(map_start_pa,
+                                                  map_start_pa + offset,
+                                                  map_size, MM_REGION_MMIO);
+                    if (region == NULL)
+                    {
+                        panic("memory_map_add_device_mmio: out of memory");
+                    }
+
+                    memory_map_add_single_region(map, region);
+                }
             }
         }
     }
+}
+
+struct MM_Region *memory_map_get_region_at_addr(struct Memory_Map *map,
+                                                size_t va)
+{
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(map->parent_lock);
+
+    struct list_head *pos;
+    list_for_each(pos, &map->region_list)
+    {
+        struct MM_Region *region = region_from_list(pos);
+        if ((va >= region->start_va) && (va < region->start_va + region->size))
+        {
+            return region;
+        }
+    }
+    return NULL;
+}
+
+struct MM_Region *memory_map_get_region_at_paddr(struct Memory_Map *map,
+                                                 size_t pa)
+{
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(map->parent_lock);
+    struct list_head *pos;
+    list_for_each(pos, &map->region_list)
+    {
+        struct MM_Region *region = region_from_list(pos);
+        if ((pa >= region->start_pa) && (pa < region->start_pa + region->size))
+        {
+            return region;
+        }
+    }
+    return NULL;
 }
 
 void mm_region_remove(struct MM_Region *region)

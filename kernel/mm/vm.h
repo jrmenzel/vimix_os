@@ -31,15 +31,15 @@ size_t mmu_make_page_table_reg(size_t addr_of_first_block, uint32_t asid);
 
 /// @brief Returns the current page table settings.
 /// @return The register value from the MMU
-size_t mmu_get_page_table_reg_value();
+size_t mmu_get_kernel_pgtable_reg_value();
 
 /// @brief Extracts the pointer value to the page table.
-/// @param reg_value from mmu_get_page_table_reg_value()
+/// @param reg_value from mmu_get_kernel_pgtable_reg_value()
 /// @return Address of page table
 size_t mmu_get_page_table_address(size_t reg_value);
 
 /// @brief Extracts the ASID.
-/// @param reg_value from mmu_get_page_table_reg_value()
+/// @param reg_value from mmu_get_kernel_pgtable_reg_value()
 /// @return ASID
 size_t mmu_get_page_table_asid(size_t reg_value);
 

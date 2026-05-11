@@ -274,6 +274,8 @@ void sbi_start_harts(size_t opaque)
     }
 }
 
+void ipi_init_per_cpu() {}
+
 void ipi_send_interrupt(cpu_mask mask, enum ipi_type type, void *data)
 {
     spin_lock(&g_cpus_ipi_lock);

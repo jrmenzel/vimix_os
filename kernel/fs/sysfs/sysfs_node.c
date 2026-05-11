@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/goldfish_rtc.h>
 #include <fs/sysfs/sysfs_node.h>
+#include <kernel/rtc.h>
 #include <kernel/string.h>
 #include <mm/kalloc.h>
 

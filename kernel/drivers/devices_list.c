@@ -64,12 +64,6 @@ void dev_list_add_virtual_devices(struct Devices_List *dev_list)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wanalyzer-infinite-recursion"
 
-/// @brief Init one individual device.
-/// @param dev_list devices list (to also find dependencies)
-/// @param dev pointer to the device info to initialize
-/// @return valid device number if the device was initialized
-dev_t init_device(struct Devices_List *dev_list, struct Found_Device *dev);
-
 dev_t init_device_by_phandle(struct Devices_List *dev_list, int phandle)
 {
     struct list_head *pos;
@@ -89,44 +83,41 @@ dev_t init_device(struct Devices_List *dev_list, struct Found_Device *dev)
     // already initialized:
     if (dev->dev_num != INVALID_DEVICE) return dev->dev_num;
 
-    // found, double check pointer
-    if (dev->driver->init_func != NULL)
-    {
-        // init required other drivers first:
-        int32_t parent_int_ctl = dev->init_parameters.interrupt_parent_phandle;
-        if ((parent_int_ctl != 0) &&
-            (parent_int_ctl != (int32_t)dev->init_parameters.phandle))
-        {
-            // make sure the interrupt controller is initialized:
-            init_device_by_phandle(dev_list, parent_int_ctl);
-        }
-        // init clocks:
-        for (size_t i = 0; i < DEVICE_MAX_CLOCKS; ++i)
-        {
-            uint32_t clock_phandle = dev->init_parameters.clock_phandles[i];
-            if (clock_phandle != 0)
-            {
-                init_device_by_phandle(dev_list, clock_phandle);
-            }
-        }
+    // found, double check init func pointer
+    if (dev->driver->init_func == NULL) return INVALID_DEVICE;
 
-        dev_t dev_num = dev->driver->init_func(&(dev->init_parameters),
-                                               dev->driver->dtb_name);
-        dev->dev_num = dev_num;
-        if (dev_num == 0)
+    // init required other drivers first:
+    int32_t parent_int_ctl = dev->init_parameters.interrupt_parent_phandle;
+    if ((parent_int_ctl != 0) &&
+        (parent_int_ctl != (int32_t)dev->init_parameters.phandle))
+    {
+        // make sure the interrupt controller is initialized:
+        init_device_by_phandle(dev_list, parent_int_ctl);
+    }
+
+    // init clocks:
+    for (size_t i = 0; i < DEVICE_MAX_CLOCKS; ++i)
+    {
+        uint32_t clock_phandle = dev->init_parameters.clock_phandles[i];
+        if (clock_phandle != 0)
         {
-            // silently fail, some devices are optional like qemus virtio
-            // devices
-            return INVALID_DEVICE;
-        }
-        else
-        {
-            printk("init device %s... OK (%d,%d)\n", dev->driver->dtb_name,
-                   MAJOR(dev_num), MINOR(dev_num));
-            return dev_num;
+            init_device_by_phandle(dev_list, clock_phandle);
         }
     }
-    return INVALID_DEVICE;
+
+    // driver init function
+    dev_t dev_num =
+        dev->driver->init_func(&(dev->init_parameters), dev->driver->dtb_name);
+    dev->dev_num = dev_num;
+
+    if (dev_num != INVALID_DEVICE)
+    {
+        printk("init device %s... OK (%d,%d)\n", dev->driver->dtb_name,
+               MAJOR(dev_num), MINOR(dev_num));
+        return dev_num;
+    }
+
+    return dev_num;
 }
 
 dev_t init_device_by_name(struct Devices_List *dev_list, const char *dtb_name)

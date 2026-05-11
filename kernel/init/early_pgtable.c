@@ -7,7 +7,6 @@
 #include <kernel/page.h>
 #include <lib/minmax.h>
 #include <libfdt.h>
-#include <mm/arch_early_pgtable.h>
 #include <mm/memory_map.h>
 #include <mm/vm.h>
 

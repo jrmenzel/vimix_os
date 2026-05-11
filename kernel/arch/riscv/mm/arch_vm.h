@@ -10,9 +10,6 @@
 /// Mark these to link them into the trampsec page.
 #define CAN_BE_CALLED_ON_USER_PAGE_TABLE __attribute__((section("trampsec")))
 
-#define DEBUG_VM_PRINT_ARCH_PTE_FLAGS(pte) \
-    printk("%c", PTE_IS_DIRTY(flags) ? 'd' : '_');
-
 CAN_BE_CALLED_ON_USER_PAGE_TABLE static inline void mmu_set_kernel_pgtable_reg(
     size_t reg_value)
 {

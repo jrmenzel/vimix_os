@@ -16,6 +16,12 @@
 #include <mm/page_table.h>
 #include <mm/vm.h>
 
+#if defined(__ARCH_32BIT)
+const size_t MAX_PTES_PER_PAGE_TABLE = 1024;
+#else
+const size_t MAX_PTES_PER_PAGE_TABLE = 512;
+#endif
+
 size_t mmu_make_page_table_reg(size_t addr_of_first_block, uint32_t asid)
 {
     return mmu_make_page_table_reg_pa(virt_to_phys(addr_of_first_block), asid);
@@ -26,7 +32,7 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE void mmu_set_kernel_pgtable_val(
 {
     mmu_set_kernel_pgtable_reg(reg_value);
     mmu_flush_instruction_cache();
-    mmu_flush_tlb_asid(0);
+    mmu_flush_tlb();
 }
 
 void mmu_set_kernel_pgtable(pagetable_t pgtable)
@@ -54,12 +60,6 @@ syserr_t kvm_apply_kernel_mapping(struct Page_Table *kpagetable)
 
     return 0;
 }
-
-#if defined(__ARCH_32BIT)
-const size_t MAX_PTES_PER_PAGE_TABLE = 1024;
-#else
-const size_t MAX_PTES_PER_PAGE_TABLE = 512;
-#endif
 
 static inline bool vm_is_valid_page_pointer_pa(size_t pa)
 {
@@ -836,7 +836,7 @@ void debug_vm_print_pte_flags(size_t flags)
     printk("%c", PTE_WAS_ACCESSED(flags) ? 'a' : '_');
     printk("%c", PTE_IS_GLOBAL(flags) ? 'g' : '_');
     printk("-");
-    DEBUG_VM_PRINT_ARCH_PTE_FLAGS(flags);
+    printk("%c", PTE_IS_DIRTY(flags) ? 'd' : '_');
 }
 
 #endif  // DEBUG

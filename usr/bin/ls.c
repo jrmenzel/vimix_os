@@ -295,6 +295,8 @@ int print_dir(const char *path_name, struct Parameters *parameters)
             free(tmp);
         }
 
+        closedir(dir);
+
         return S_SERIOUS_ERROR;
     }
 
@@ -309,10 +311,20 @@ int print_dir(const char *path_name, struct Parameters *parameters)
         qsort(entry_array, entry_count, sizeof(struct entry_node *),
               entry_node_cmp);
     }
-    for (size_t i = 0; i < entry_count; ++i)
+    // for (size_t i = 0; i < entry_count; ++i)
+    //{
+    //     entry_node_print(entry_array[i], parameters);
+    //     free(entry_array[i]);
+    // }
+    free(entry_array);
+
+    // free the linked list of entries:
+    current = entry_list_head;
+    while (current != NULL)
     {
-        entry_node_print(entry_array[i], parameters);
-        free(entry_array[i]);
+        struct entry_node *tmp = current;
+        current = current->next;
+        free(tmp);
     }
 
     closedir(dir);
