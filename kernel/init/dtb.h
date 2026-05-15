@@ -43,8 +43,8 @@ int dtb_find_boot_console_index(const void *dtb);
 struct Found_Device *dtb_find_boot_console_in_dev_list(
     const void *dtb, struct Devices_List *dev_list);
 
-int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
-                                    const char *name, int32_t fallback);
+int32_t dtb_read_prop_u32_with_fallback(const void *dtb, int node_offset,
+                                        const char *name, int32_t fallback);
 
 struct Device_Init_Parameters;
 
@@ -56,3 +56,16 @@ bool dtb_get_reg(const void *dtb, int offset, size_t *base, size_t *size);
 int dtb_get_cpu_offset(const void *dtb, size_t cpu_id, bool print_errors);
 
 CPU_Features dtb_get_cpu_features(const void *dtb, size_t cpu_id);
+
+const char *dtb_cpus_enable_method(const void *dtb);
+bool dtb_read_u64_prop(const void *dtb, int node_offset, const char *name,
+                       uint64_t *value_out);
+
+bool parse_dtb_node(const void *dtb, const char *node_name,
+                    const char *expected_comp_str, uint32_t *value_out,
+                    size_t *offset_out);
+
+const char *dtb_get_nonempty_string_property(const void *dtb, int node_offset,
+                                             const char *name, int *lenp_out);
+
+bool dtb_is_str_in_str_list(const char *str_list, const char *str);

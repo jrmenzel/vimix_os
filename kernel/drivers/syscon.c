@@ -22,46 +22,6 @@ struct syscon
 void syscon_machine_power_off();
 void syscon_machine_restart();
 
-bool parse_dtb_node(const void *dtb, const char *node_name,
-                    const char *expected_comp_str, uint32_t *value_out,
-                    size_t *offset_out)
-{
-    int offset = fdt_path_offset(dtb, node_name);
-    if (offset < 0)
-    {
-        return false;
-    }
-    const char *comp_str = fdt_getprop(dtb, offset, "compatible", NULL);
-    if (comp_str == NULL) return false;
-
-    if (strcmp(comp_str, expected_comp_str) != 0)
-    {
-        return false;
-    }
-
-    // it's compatible, from now on complain if the dtb has unexpected data
-
-    const uint32_t *value_dtb = fdt_getprop(dtb, offset, "value", NULL);
-    if (value_dtb == NULL)
-    {
-        printk("dtb error parsing %s\n", node_name);
-        return false;
-    }
-    uint32_t value = fdt32_to_cpu(value_dtb[0]);
-    *value_out = value;
-
-    const uint32_t *offset_dtb = fdt_getprop(dtb, offset, "offset", NULL);
-    if (offset_dtb == NULL)
-    {
-        printk("dtb error parsing %s\n", node_name);
-        return false;
-    }
-    uint32_t register_offset = fdt32_to_cpu(offset_dtb[0]);
-    *offset_out = (size_t)register_offset;
-
-    return true;
-}
-
 bool parse_dtb_poweroff_node(const void *dtb)
 {
     return parse_dtb_node(dtb, "/poweroff", "syscon-poweroff",

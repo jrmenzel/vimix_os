@@ -194,7 +194,7 @@ static int32_t dtb_get_device_interrupt(const void *dtb, int device_offset,
             fdt_node_offset_by_phandle(dtb, interrupt_parent_phandle);
         if (parent_offset >= 0)
         {
-            int parent_cells = dtb_getprop32_with_fallback(
+            int parent_cells = dtb_read_prop_u32_with_fallback(
                 dtb, parent_offset, "#interrupt-cells", 1);
             if (parent_cells > 0)
             {
@@ -313,7 +313,7 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, const void *dtb,
 
     // 0 = no parameter, one int per clock; 1 = + parameter = 2 ints
     size_t clock_cells =
-        dtb_getprop32_with_fallback(dtb, device_offset, "#clock-cells", 1);
+        dtb_read_prop_u32_with_fallback(dtb, device_offset, "#clock-cells", 1);
     clock_cells++;  // actual int count
     int clocks_len;
     const uint32_t *clocks =

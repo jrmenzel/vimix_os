@@ -231,7 +231,7 @@ size_t early_pgtable_init(size_t pt_paddr, size_t dtb_paddr,
 
     size_t initrd_base;
     size_t initrd_size;
-    dtb_get_initrd((void *)dtb_paddr, &initrd_base, &initrd_size);
+    dtb_get_initrd((const void *)dtb_paddr, &initrd_base, &initrd_size);
 
     size_t early_ram_start_pa = MEGA_PAGE_ROUND_UP(kernel_end_pa);
     while (ranges_intersect(early_ram_start_pa, MEGA_PAGE_SIZE, initrd_base,

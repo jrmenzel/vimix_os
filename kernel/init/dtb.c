@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <arch/platform.h>
 #include <drivers/device.h>
 #include <drivers/driver_list.h>
 #include <init/dtb.h>
@@ -9,19 +8,154 @@
 #include <lib/minmax.h>
 #include <libfdt.h>
 
-bool is_compatible_device(const char *dtb_dev, const char *dev)
+static bool dtb_read_prop_u32(const void *dtb, int node_offset,
+                              const char *name, uint32_t *value_out)
 {
-    size_t size_of_dev_str = strlen(dev) + 1;
+    int len = 0;
+    const uint32_t *value = fdt_getprop(dtb, node_offset, name, &len);
+    if (value == NULL || len < (int)sizeof(uint32_t))
+    {
+        return false;
+    }
 
-    // dtb_dev is a list of nul-terminated strings of compatible devices
+    *value_out = fdt32_to_cpu(value[0]);
+    return true;
+}
+
+int32_t dtb_read_prop_u32_with_fallback(const void *dtb, int node_offset,
+                                        const char *name, int32_t fallback)
+{
+    uint32_t value = 0;
+    if (dtb_read_prop_u32(dtb, node_offset, name, &value))
+    {
+        return (int32_t)value;
+    }
+
+    return fallback;
+}
+
+static bool dtb_read_prop_u64_or_u32(const void *dtb, int node_offset,
+                                     const char *name, uint64_t *value_out)
+{
+    int len = 0;
+    const void *prop = fdt_getprop(dtb, node_offset, name, &len);
+    if (prop == NULL)
+    {
+        return false;
+    }
+
+    if (len >= (int)sizeof(uint64_t))
+    {
+        *value_out = fdt64_to_cpu(*(const dtb_aligned_uint64_t *)prop);
+        return true;
+    }
+
+    if (len >= (int)sizeof(uint32_t))
+    {
+        *value_out = (uint64_t)fdt32_to_cpu(*(const uint32_t *)prop);
+        return true;
+    }
+
+    return false;
+}
+
+bool dtb_read_u64_prop(const void *dtb, int node_offset, const char *name,
+                       uint64_t *value_out)
+{
+    return dtb_read_prop_u64_or_u32(dtb, node_offset, name, value_out);
+}
+
+uint64_t dtb_read_prop_u64_with_fallback(const void *dtb, int node_offset,
+                                         const char *name, uint64_t fallback)
+{
+    uint64_t value = 0;
+    if (dtb_read_u64_prop(dtb, node_offset, name, &value))
+    {
+        return (uint64_t)value;
+    }
+
+    return fallback;
+}
+
+const char *dtb_get_nonempty_string_property(const void *dtb, int node_offset,
+                                             const char *name, int *lenp_out)
+{
+    int len = 0;
+    const char *value = fdt_getprop(dtb, node_offset, name, &len);
+    if (value == NULL || len <= 0)
+    {
+        return NULL;
+    }
+
+    if (lenp_out != NULL)
+    {
+        *lenp_out = len;
+    }
+    return value;
+}
+
+static bool dtb_get_addr_size_cells(const void *dtb, int node_offset,
+                                    int *addr_cells_out, int *size_cells_out)
+{
+    int parent_offset = fdt_parent_offset(dtb, node_offset);
+    int addr_cells = fdt_address_cells(dtb, parent_offset);
+    int size_cells = fdt_size_cells(dtb, parent_offset);
+
+    if (addr_cells < 0 || size_cells < 0)
+    {
+        return false;
+    }
+
+    if (addr_cells > 2 || size_cells > 2)
+    {
+        return false;
+    }
+
+    *addr_cells_out = addr_cells;
+    *size_cells_out = size_cells;
+    return true;
+}
+
+static bool dtb_validate_cell_tuples_size(int byte_len, int tuple_cells)
+{
+    if (tuple_cells <= 0)
+    {
+        return false;
+    }
+
+    if (byte_len <= 0 || (byte_len % (int)sizeof(uint32_t)) != 0)
+    {
+        return false;
+    }
+
+    int total_cells = byte_len / (int)sizeof(uint32_t);
+    return (total_cells % tuple_cells) == 0;
+}
+
+uint32_t *dtb_parse_cell(int cells_per_value, uint32_t *cells,
+                         size_t *value_out);
+
+static void dtb_parse_reg_tuple(uint32_t **cells, int addr_cells,
+                                int size_cells, size_t *addr_out,
+                                size_t *size_out)
+{
+    *cells = dtb_parse_cell(addr_cells, *cells, addr_out);
+    *cells = dtb_parse_cell(size_cells, *cells, size_out);
+}
+
+bool dtb_is_str_in_str_list(const char *str_list, const char *str)
+{
+    size_t size_of_dev_str = strlen(str) + 1;
+
+    // str_list is a list of nul-terminated strings
     while (true)
     {
-        if (strncmp(dtb_dev, dev, size_of_dev_str) == 0)
+        if (strncmp(str_list, str, size_of_dev_str) == 0)
         {
             return true;
         }
-        dtb_dev += strlen(dtb_dev) + 1;
-        if (dtb_dev[0] == 0) break;
+        str_list += strlen(str_list) + 1;
+        if (str_list[0] == 0) break;
     }
     return false;
 }
@@ -33,7 +167,7 @@ ssize_t dtb_add_driver_if_compatible(const void *dtb, const char *device_name,
     for_each_driver(driver)
     {
         if ((driver->type == PHYSICAL) &&
-            (is_compatible_device(device_name, driver->dtb_name)))
+            (dtb_is_str_in_str_list(device_name, driver->dtb_name)))
         {
             return dev_list_add_from_dtb(dev_list, dtb, device_name,
                                          device_offset, driver);
@@ -68,45 +202,22 @@ void dtb_add_devices_to_dev_list(const void *dtb, struct Devices_List *dev_list)
 
 void dtb_get_initrd(const void *dtb, size_t *base, size_t *size)
 {
-    size_t initrd_begin = 0;
-    size_t initrd_end = 0;
+    uint64_t initrd_begin = 0;
+    uint64_t initrd_end = 0;
     int offset = fdt_path_offset(dtb, "/chosen");
     if (offset >= 0)
     {
-        // initrd-start / initrd-end can be stored as 64 or 32 bit (even on a 64
-        // bit system). Assume both have the same size:
-        int lenp = 0;
-        const void *startp =
-            fdt_getprop(dtb, offset, "linux,initrd-start", &lenp);
-        const void *endp = fdt_getprop(dtb, offset, "linux,initrd-end", &lenp);
-
-        if (startp && endp && lenp == 4)
-        {
-            // 32 bit values
-            initrd_begin = (size_t)fdt32_to_cpu(*(const uint32_t *)startp);
-            initrd_end = (size_t)fdt32_to_cpu(*(const uint32_t *)endp);
-        }
-        else if (startp && endp && lenp == 8)
-        {
-            // 64 bit values
-            initrd_begin =
-                (size_t)fdt64_to_cpu(*(const dtb_aligned_uint64_t *)startp);
-            initrd_end =
-                (size_t)fdt64_to_cpu(*(const dtb_aligned_uint64_t *)endp);
-        }
+        dtb_read_prop_u64_or_u32(dtb, offset, "linux,initrd-start",
+                                 &initrd_begin);
+        dtb_read_prop_u64_or_u32(dtb, offset, "linux,initrd-end", &initrd_end);
     }
 
-    *base = initrd_begin;
-    *size = initrd_end - initrd_begin;
+    *base = (size_t)initrd_begin;
+    *size = (size_t)(initrd_end - initrd_begin);
 }
 
 void dtb_get_memory(const void *dtb, size_t *base, size_t *size)
 {
-    if (fdt_magic(dtb) != FDT_MAGIC)
-    {
-        return;
-    }
-
     int offset = fdt_path_offset(dtb, "/memory");
     if (offset < 0)
     {
@@ -125,6 +236,11 @@ void dtb_get_memory(const void *dtb, size_t *base, size_t *size)
 uint32_t *dtb_parse_cell(int cells_per_value, uint32_t *cells,
                          size_t *value_out)
 {
+    if (cells_per_value != 0 && cells_per_value != 1 && cells_per_value != 2)
+    {
+        panic("dtb_parse_cell: invalid cells_per_value");
+    }
+
     if (cells_per_value == 0)
     {
         *value_out = 0;
@@ -155,7 +271,7 @@ struct Address_Range
     size_t child_size;
 };
 
-#define MAX_ADDRESS_RAGES (8)
+#define MAX_ADDRESS_RANGES (8)
 
 size_t get_address_ranges(const void *dtb, int parent_offset, int addr_cells,
                           int size_cells, struct Address_Range *range,
@@ -175,6 +291,25 @@ size_t get_address_ranges(const void *dtb, int parent_offset, int addr_cells,
         int child_addr_cells = addr_cells;
         int parent_addr_cells = fdt_address_cells(dtb, p_parent_offset);
         int child_size_cells = size_cells;
+
+        if (child_addr_cells < 0 || parent_addr_cells < 0 ||
+            child_size_cells < 0)
+        {
+            return 0;
+        }
+
+        if (child_addr_cells > 2 || parent_addr_cells > 2 ||
+            child_size_cells > 2)
+        {
+            return 0;
+        }
+
+        int range_tuple_cells =
+            child_addr_cells + parent_addr_cells + child_size_cells;
+        if (!dtb_validate_cell_tuples_size(ranges_len, range_tuple_cells))
+        {
+            return 0;
+        }
 
         uint32_t *range_index = (uint32_t *)ranges;
         uint32_t *range_end = range_index + (ranges_len / sizeof(uint32_t));
@@ -197,8 +332,8 @@ size_t map_mmio_address(size_t addr, struct Address_Range *range, size_t ranges)
 {
     for (size_t i = 0; i < ranges; ++i)
     {
-        if (addr > range[i].child_addr &&
-            addr < (range[i].child_addr + range[i].child_size))
+        if (addr >= range[i].child_addr &&
+            (addr - range[i].child_addr) < range[i].child_size)
         {
             // addr falls within this address range
             // the mapping maps child_addr to parent_addr
@@ -215,18 +350,32 @@ bool dtb_get_regs(const void *dtb, int offset,
 {
     int len;
     const char *regs_raw = fdt_getprop(dtb, offset, "reg", &len);
-    if (regs_raw == NULL) return false;
+    if (regs_raw == NULL)
+    {
+        return false;
+    }
 
     int len_names;
     const char *reg_names = fdt_getprop(dtb, offset, "reg-names", &len_names);
 
-    int parent_offset = fdt_parent_offset(dtb, offset);
-    int addr_cells = fdt_address_cells(dtb, parent_offset);
-    int size_cells = fdt_size_cells(dtb, parent_offset);
+    int addr_cells = 0;
+    int size_cells = 0;
+    if (!dtb_get_addr_size_cells(dtb, offset, &addr_cells, &size_cells))
+    {
+        return false;
+    }
 
-    struct Address_Range range[MAX_ADDRESS_RAGES];
+    int reg_tuple_cells = addr_cells + size_cells;
+    if (!dtb_validate_cell_tuples_size(len, reg_tuple_cells))
+    {
+        return false;
+    }
+
+    int parent_offset = fdt_parent_offset(dtb, offset);
+
+    struct Address_Range range[MAX_ADDRESS_RANGES];
     size_t range_count = get_address_ranges(
-        dtb, parent_offset, addr_cells, size_cells, range, MAX_ADDRESS_RAGES);
+        dtb, parent_offset, addr_cells, size_cells, range, MAX_ADDRESS_RANGES);
 
     uint32_t *reg_index = (uint32_t *)regs_raw;
     uint32_t *reg_end = reg_index + (len / sizeof(uint32_t));
@@ -235,10 +384,9 @@ bool dtb_get_regs(const void *dtb, int offset,
     while ((reg_index != reg_end) && (map_idx < DEVICE_MAX_MEM_MAPS))
     {
         // get address and size:
-        reg_index = dtb_parse_cell(addr_cells, reg_index,
-                                   &(params->mem[map_idx].start_pa));
-        reg_index =
-            dtb_parse_cell(size_cells, reg_index, &(params->mem[map_idx].size));
+        dtb_parse_reg_tuple(&reg_index, addr_cells, size_cells,
+                            &(params->mem[map_idx].start_pa),
+                            &(params->mem[map_idx].size));
 
         if (range_count > 0)
         {
@@ -255,13 +403,21 @@ bool dtb_get_regs(const void *dtb, int offset,
 
             // reg_names is a list of len_names 0-terminated strings,
             // find the next one:
-            do
+            while (len_names > 0 && *reg_names != 0)
             {
                 reg_names++;
                 len_names--;
-            } while (*reg_names != 0);
-            reg_names++;
-            len_names--;
+            }
+
+            if (len_names > 0)
+            {
+                reg_names++;
+                len_names--;
+            }
+            else
+            {
+                reg_names = NULL;
+            }
         }
 
         map_idx++;
@@ -270,20 +426,24 @@ bool dtb_get_regs(const void *dtb, int offset,
     params->mmu_map_memory = true;
 
     // might also have reg-shift
-    params->reg_io_width = dtb_getprop32_with_fallback(
+    params->reg_io_width = dtb_read_prop_u32_with_fallback(
         dtb, offset, "reg-io-width", params->reg_io_width);
 
-    params->reg_shift = dtb_getprop32_with_fallback(dtb, offset, "reg-shift",
-                                                    params->reg_shift);
+    params->reg_shift = dtb_read_prop_u32_with_fallback(
+        dtb, offset, "reg-shift", params->reg_shift);
 
     return true;
 }
 
 bool dtb_get_reg(const void *dtb, int offset, size_t *base, size_t *size)
 {
-    int parent_offset = fdt_parent_offset(dtb, offset);
-    uint32_t address_cells = fdt_address_cells(dtb, parent_offset);
-    uint32_t size_cells = fdt_size_cells(dtb, parent_offset);
+    int address_cells = 0;
+    int size_cells = 0;
+    if (!dtb_get_addr_size_cells(dtb, offset, &address_cells, &size_cells))
+    {
+        printk("dtb error: invalid or unsupported cells\n");
+        return false;
+    }
 
     int len;
     const uint32_t *regs = fdt_getprop(dtb, offset, "reg", &len);
@@ -292,9 +452,15 @@ bool dtb_get_reg(const void *dtb, int offset, size_t *base, size_t *size)
         printk("dtb error\n");
         return false;
     }
+
+    if (!dtb_validate_cell_tuples_size(len, address_cells + size_cells))
+    {
+        printk("dtb error: malformed reg\n");
+        return false;
+    }
+
     uint32_t *reg_index = (uint32_t *)regs;
-    reg_index = dtb_parse_cell(address_cells, reg_index, base);
-    reg_index = dtb_parse_cell(size_cells, reg_index, size);
+    dtb_parse_reg_tuple(&reg_index, address_cells, size_cells, base, size);
 
     return true;
 }
@@ -314,15 +480,9 @@ uint64_t dtb_get_timebase(const void *dtb)
     {
         return fallback;
     }
-    const uint32_t *value =
-        fdt_getprop(dtb, offset, "timebase-frequency", NULL);
-    if (value == NULL)
-    {
-        return fallback;
-    }
-    uint64_t timebase = fdt32_to_cpu(value[0]);
 
-    return timebase;
+    return (uint64_t)dtb_read_prop_u32_with_fallback(
+        dtb, offset, "timebase-frequency", fallback);
 }
 
 int dtb_find_boot_console_index(const void *dtb)
@@ -332,12 +492,23 @@ int dtb_find_boot_console_index(const void *dtb)
     if (offset < 0) return offset;  // contains a negative error code
 
     int lenp = 0;  // string length incl. 0-terminator
-    const void *console = fdt_getprop(dtb, offset, "stdout-path", &lenp);
+    const char *console =
+        dtb_get_nonempty_string_property(dtb, offset, "stdout-path", &lenp);
     if (console == NULL) return -1;
 
 #define MAX_NAME_LEN 64
     char name[MAX_NAME_LEN];
-    strncpy(name, console, MAX_NAME_LEN);
+    if (lenp <= 0)
+    {
+        return -1;
+    }
+    size_t copy_len = (size_t)lenp;
+    if (copy_len >= MAX_NAME_LEN)
+    {
+        copy_len = MAX_NAME_LEN - 1;
+    }
+    memcpy(name, console, copy_len);
+    name[copy_len] = 0;
 
     // remove the baud rate if present:
     // e.g. "/soc/serial@10000000:115200" -> "/soc/serial@10000000"
@@ -360,7 +531,8 @@ struct Found_Device *dtb_find_boot_console_in_dev_list(
     if (console_offset < 0) return NULL;  // contains a negative error code
 
     // see what it is compatible with...
-    const char *value = fdt_getprop(dtb, console_offset, "compatible", NULL);
+    const char *value = dtb_get_nonempty_string_property(dtb, console_offset,
+                                                         "compatible", NULL);
     if (value == NULL) return NULL;
 
     // find the device:
@@ -368,69 +540,13 @@ struct Found_Device *dtb_find_boot_console_in_dev_list(
     list_for_each(pos, &dev_list->devices)
     {
         struct Found_Device *dev = found_device_from_devices_list(pos);
-        if (strcmp(value, dev->driver->dtb_name) == 0)
+        if (dtb_is_str_in_str_list(value, dev->driver->dtb_name))
         {
             return dev;
         }
     }
 
     return NULL;
-}
-
-int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
-                                    const char *name, int32_t fallback)
-{
-    const int32_t *intp = (int32_t *)fdt_getprop(dtb, node_offset, name, NULL);
-    if (intp != NULL)
-    {
-        int32_t value = fdt32_to_cpu(*intp);
-        return value;
-    }
-
-    return fallback;
-}
-
-/// @brief Checks if an extension is part of the riscv_isa string
-/// @param riscv_isa E.g. "rv64imafdc_zicsr_sstc"
-/// @param ext
-/// @return
-bool extension_is_supported(const char *riscv_isa, const char *ext)
-{
-    riscv_isa += 4;  // first 4 chars are "rv32" or "rv64"
-    // one char extensions are combined in the begining of the string:
-    size_t ext_len = strlen(ext);
-    if (ext_len == 1)
-    {
-        while (*riscv_isa != '_' && *riscv_isa != 0)
-        {
-            if (*riscv_isa == ext[0])
-            {
-                return true;
-            }
-            riscv_isa++;
-        }
-    }
-    else
-    {
-        char *pos;
-        while ((pos = strstr(riscv_isa, ext)) != NULL)
-        {
-            // potential match
-            pos -= 1;  // move pointer back (there is always a valid char as
-                       // riscv_isa was moved forward before)
-
-            // found location does not have a '_' before it: found a match
-            // inside of another ext ("ext" in "rv64imac_newext_foo")
-            if (*pos != '_') continue;
-
-            // also check end of _ext_ substring: can be '_' or end of
-            // string!
-            if (pos[ext_len + 1] != '_' && pos[ext_len + 2] != 0) continue;
-
-            return true;
-        }
-    }
-    return false;
 }
 
 int dtb_get_cpu_offset(const void *dtb, size_t cpu_id, bool print_errors)
@@ -446,86 +562,53 @@ int dtb_get_cpu_offset(const void *dtb, size_t cpu_id, bool print_errors)
     return offset;
 }
 
-CPU_Features dtb_get_cpu_features(const void *dtb, size_t cpu_id)
+const char *dtb_cpus_enable_method(const void *dtb)
 {
-    CPU_Features featues = 0;
-
-#ifdef __ARCH_riscv
-    int offset = dtb_get_cpu_offset(dtb, cpu_id, true);
-    if (offset < 0) return 0;
-
-    // parse MMU support
-    int mmu_type_len;
-    const char *mmu_type = fdt_getprop(dtb, offset, "mmu-type", &mmu_type_len);
-    if (mmu_type != NULL)
+    int cpus_offset = fdt_path_offset(dtb, "/cpus");
+    if (cpus_offset < 0)
     {
-        if (strcmp(mmu_type, "riscv,sv32") == 0)
-        {
-            featues |= RV_SV32_SUPPORTED;
-        }
-        else if (strcmp(mmu_type, "riscv,sv39") == 0)
-        {
-            featues |= RV_SV39_SUPPORTED;
-        }
-        else if (strcmp(mmu_type, "riscv,sv48") == 0)
-        {
-            featues |= RV_SV48_SUPPORTED;
-        }
-        else if (strcmp(mmu_type, "riscv,sv57") == 0)
-        {
-            featues |= RV_SV57_SUPPORTED;
-        }
+        return NULL;
     }
 
-    // potentially relevant extensions
-    int riscv_isa_len;
-    const char *riscv_isa =
-        fdt_getprop(dtb, offset, "riscv,isa", &riscv_isa_len);
-    if (riscv_isa != NULL)
+    return dtb_get_nonempty_string_property(dtb, cpus_offset, "enable-method",
+                                            NULL);
+}
+
+bool parse_dtb_node(const void *dtb, const char *node_name,
+                    const char *expected_comp_str, uint32_t *value_out,
+                    size_t *offset_out)
+{
+    int offset = fdt_path_offset(dtb, node_name);
+    if (offset < 0)
     {
-#if defined(__RISCV_EXT_SSTC)
-        if (extension_is_supported(riscv_isa, "sstc"))
-        {
-            featues |= RV_EXT_SSTC;
-        }
-#endif
-        if (extension_is_supported(riscv_isa, "f"))
-        {
-            featues |= RV_EXT_FLOAT;
-        }
-        if (extension_is_supported(riscv_isa, "d"))
-        {
-            featues |= RV_EXT_DOUBLE;
-        }
+        return false;
+    }
+    const char *comp_str =
+        dtb_get_nonempty_string_property(dtb, offset, "compatible", NULL);
+    if (comp_str == NULL) return false;
+
+    if (strcmp(comp_str, expected_comp_str) != 0)
+    {
+        return false;
     }
 
-    int riscv_isa_ext_len;
-    const char *riscv_isa_ext =
-        fdt_getprop(dtb, offset, "riscv,isa-extensions", &riscv_isa_ext_len);
-    if (riscv_isa_ext != NULL)
+    // it's compatible, from now on complain if the dtb has unexpected data
+
+    uint32_t value = 0;
+    if (!dtb_read_prop_u32(dtb, offset, "value", &value))
     {
-        while (true)
-        {
-#if defined(__RISCV_EXT_SSTC)
-            if (strcmp(riscv_isa_ext, "sstc"))
-            {
-                featues |= RV_EXT_SSTC;
-            }
-#endif
-            if (strcmp(riscv_isa_ext, "f"))
-            {
-                featues |= RV_EXT_FLOAT;
-            }
-            if (strcmp(riscv_isa_ext, "d"))
-            {
-                featues |= RV_EXT_DOUBLE;
-            }
-
-            riscv_isa_ext += strlen(riscv_isa_ext) + 1;
-            if (riscv_isa_ext[0] == 0) break;
-        }
+        printk("dtb error parsing %s\n", node_name);
+        return false;
     }
-#endif
+    *value_out = value;
 
-    return featues;
+    uint32_t register_offset = 0;
+    if (!dtb_read_prop_u32(dtb, offset, "offset", &register_offset))
+    {
+        printk("dtb error parsing %s\n", node_name);
+        return false;
+    }
+    *offset_out = (size_t)register_offset;
+
+    return true;
 }
