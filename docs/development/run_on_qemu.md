@@ -6,7 +6,7 @@
 
 
 Run 
-> make qemu64
+> make qemu
 
 Or run manually:
 > qemu-system-riscv64 -machine virt -bios none -kernel build/boot/kernel-vimix -m 128M -smp 4 -nographic -global virtio-mmio.force-legacy=false -drive file=build/filesystem.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
@@ -30,6 +30,7 @@ In `VSCode`, a `launch.json` is provided with various settings:
 - 32-bit vs 64-bit must be selected matching the compile target.
 - Either [user space](userspace/userspace.md) applications or the [kernel](kernel/kernel.md) can be debugged, but not both at the same time (read: no stepping through a [syscall](kernel/syscalls/syscalls.md) into the kernel).
 - Adjust the presets for user space apps that don't have one.
+- If the debugger was not found, set `"miDebuggerPath": "<path on your distro>",`, `gdb-multiarch` can be used on any target if available.
 
 
 ### gdb

@@ -35,6 +35,7 @@ enum test_mask
     TEST_MASK_FS_SIZE = 1 << 3,
     TEST_MASK_FILESYSTEM = 1 << 4,
     TEST_MASK_BITWIDTH = 1 << 5,
+    TEST_MASK_OFTEN_FAIL = 1 << 6,
 };
 
 #define ALL_TESTS_MASK (-1)

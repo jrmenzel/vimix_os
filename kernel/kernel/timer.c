@@ -7,7 +7,7 @@ timer_schedule_interrupt_p *timer_schedule_interrupt = NULL;
 /// read from the device tree
 uint64_t g_timebase_frequency = 0;
 
-void timer_init(void *dtb, CPU_Features features)
+void timer_init(const void *dtb, CPU_Features features)
 {
     g_boot_time = get_time();
 

@@ -48,12 +48,14 @@ RAMDISK_BOOTLOADER := yes
 #RAMDISK_EMBEDDED := yes
 QEMU_MACHINE := virt
 else ifeq ($(PLATFORM), spike32)
+ARCH_KERNEL_CFLAGS += -D__PLATFORM_SPIKE
 BITWIDTH := 32
 BOOT_MODE := BOOT_M_MODE
 RELOC_KERNEL := no
 #RAMDISK_EMBEDDED := yes
 RAMDISK_BOOTLOADER := yes
 else ifeq ($(PLATFORM), spike64)
+ARCH_KERNEL_CFLAGS += -D__PLATFORM_SPIKE
 BITWIDTH := 64
 BOOT_MODE := BOOT_M_MODE
 RELOC_KERNEL := no
@@ -77,11 +79,7 @@ else
 TEXT_OFFSET := 0x200000
 endif
 
-ifeq ($(PLATFORM), visionfive2)
-PHYS_OFFSET := 0x40000000
-else
 PHYS_OFFSET := 0x80000000
-endif
 
 # relocation address should be on a 2MB boundry (32 bit) or 
 # 4MB boundry (64 bit) to maximize the size of the kernel that 
@@ -156,16 +154,6 @@ ARCH_CFLAGS := -march=$(MARCH) -mabi=$(MABI) $(EXT_DEFINES)
 ARCH_CFLAGS += -mcmodel=medany -mno-relax
 
 ARCH_KERNEL_CFLAGS += -DCONFIG_RISCV_$(BOOT_MODE)
-
-ifeq ($(PLATFORM), visionfive2)
-ARCH_KERNEL_CFLAGS += -D__PLATFORM_VISIONFIVE2
-endif
-ifeq ($(PLATFORM), spike32)
-ARCH_KERNEL_CFLAGS += -D__PLATFORM_SPIKE
-endif
-ifeq ($(PLATFORM), spike64)
-ARCH_KERNEL_CFLAGS += -D__PLATFORM_SPIKE
-endif
 
 #
 # Arch specific files

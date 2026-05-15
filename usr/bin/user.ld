@@ -1,6 +1,6 @@
-OUTPUT_ARCH( riscv )
+/* SPDX-License-Identifier: MIT */
+/* set architecture when calling the linker with -m ARCH */
 ENTRY( _start )
-
 
 SECTIONS
 {

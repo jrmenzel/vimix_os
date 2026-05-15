@@ -38,23 +38,7 @@
 #define str_from_define(s) str(s)
 #define str(s) #s
 
-void print_timer_source(void *dtb)
-{
-#ifdef __ARCH_riscv
-    CPU_Features features = dtb_get_cpu_features(dtb, smp_processor_id());
-
-    if (features & RV_EXT_SSTC)
-    {
-        printk("Timer source: sstc extension\n");
-    }
-    else
-    {
-        printk("Timer source: SBI\n");
-    }
-#endif
-}
-
-void add_ramdisks_to_dev_list(void *dtb, struct Devices_List *dev_list)
+void add_ramdisks_to_dev_list(const void *dtb, struct Devices_List *dev_list)
 {
     struct Driver *ramdisk_driver = NULL;
     for_each_driver(driver)
@@ -92,7 +76,7 @@ void add_ramdisks_to_dev_list(void *dtb, struct Devices_List *dev_list)
     }
 }
 
-void init_devices(void *dtb)
+void init_devices(const void *dtb)
 {
     printk("init devices list...\n");
 
@@ -134,7 +118,7 @@ void init_devices(void *dtb)
     dev_list_init_all_devices(dev_list);
 }
 
-void init_memory_management(void *dtb)
+void init_memory_management(const void *dtb)
 {
     printk("init early memory management...\n");
     g_kernel_memory.phys_base = g_early_memory_map.phys_base;
@@ -172,7 +156,8 @@ void init_memory_management(void *dtb)
     {
         memory_map_add_region_and_split(&g_kernel_pagetable->memory_map,
                                         initrd_base, phys_to_virt(initrd_base),
-                                        initrd_size, MM_REGION_INITRD);
+                                        PAGE_ROUND_UP(initrd_size),
+                                        MM_REGION_INITRD);
     }
 
     kvm_apply_kernel_mapping(g_kernel_pagetable);
@@ -224,9 +209,9 @@ void init_filesystem()
            MINOR(ROOT_DEVICE_NUMBER));
 }
 
-void *g_dtb = NULL;
+const void *g_dtb = NULL;
 
-void main(void *dtb, bool is_boot_hart)
+void main(const void *dtb, bool is_boot_hart)
 {
     cpu_set_boot_state();
     // define what interrupts should arrive, DOES NOT enable interrupts
@@ -255,7 +240,6 @@ void main(void *dtb, bool is_boot_hart)
         printk("\n");
         printk("VIMIX OS " __ARCH_bits_string " bit (" ARCH_NAME_STRING
                ") kernel version " str_from_define(GIT_HASH) " is booting\n");
-        print_timer_source(dtb);
 
         init_kobject_root();
         kticks_init();

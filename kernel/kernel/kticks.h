@@ -17,3 +17,4 @@ void kticks_inc_ticks();
 static inline size_t kticks_get_ticks() { return atomic_load(&g_ticks); }
 
 size_t seconds_since_boot();
+size_t msec_since_boot();

@@ -18,39 +18,41 @@ typedef int64_t __attribute__((__aligned__(4))) dtb_aligned_int64_t;
 
 /// @brief Updates dev_list, sets found flag and updates memory map
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
-void dtb_add_devices_to_dev_list(void *dtb, struct Devices_List *dev_list);
+void dtb_add_devices_to_dev_list(const void *dtb,
+                                 struct Devices_List *dev_list);
 
 /// @brief Query the RAM size.
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
 /// @param base Output parameter for the physical base address of usable RAM.
 /// @param size Output parameter for the size of usable RAM in bytes.
-void dtb_get_memory(void *dtb, size_t *base, size_t *size);
+void dtb_get_memory(const void *dtb, size_t *base, size_t *size);
 
 /// @brief Query the initrd location and size.
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
 /// @param base Output parameter for the physical base address of the initrd.
 /// @param size Output parameter for the size of the initrd in bytes.
-void dtb_get_initrd(void *dtb, size_t *base, size_t *size);
+void dtb_get_initrd(const void *dtb, size_t *base, size_t *size);
 
 /// @brief Returns the timebase frequency used by the timer.
 /// @param dtb Device Tree Binary pointer (provided by the boot loader)
 /// @return dtb based timebase frequency (or fallback on error) in Hz.
-uint64_t dtb_get_timebase(void *dtb);
+uint64_t dtb_get_timebase(const void *dtb);
 
-int dtb_find_boot_console_index(void *dtb);
+int dtb_find_boot_console_index(const void *dtb);
 
 struct Found_Device *dtb_find_boot_console_in_dev_list(
-    void *dtb, struct Devices_List *dev_list);
+    const void *dtb, struct Devices_List *dev_list);
 
 int32_t dtb_getprop32_with_fallback(const void *dtb, int node_offset,
                                     const char *name, int32_t fallback);
 
 struct Device_Init_Parameters;
 
-bool dtb_get_regs(void *dtb, int offset, struct Device_Init_Parameters *params);
+bool dtb_get_regs(const void *dtb, int offset,
+                  struct Device_Init_Parameters *params);
 
-bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size);
+bool dtb_get_reg(const void *dtb, int offset, size_t *base, size_t *size);
 
-int dtb_get_cpu_offset(void *dtb, size_t cpu_id, bool print_errors);
+int dtb_get_cpu_offset(const void *dtb, size_t cpu_id, bool print_errors);
 
-CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id);
+CPU_Features dtb_get_cpu_features(const void *dtb, size_t cpu_id);

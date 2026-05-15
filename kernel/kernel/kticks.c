@@ -33,3 +33,10 @@ size_t seconds_since_boot()
     uint64_t delta = now - g_boot_time;
     return delta / g_timebase_frequency;
 }
+
+size_t msec_since_boot()
+{
+    uint64_t now = get_time();
+    uint64_t delta = now - g_boot_time;
+    return delta / (g_timebase_frequency / 1000);
+}

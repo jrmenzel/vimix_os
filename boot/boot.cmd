@@ -10,28 +10,32 @@ echo ""
 echo "/boot/boot.scr loaded from ${devtype} ${devnum}"
 echo ""
 
-setenv device_tree "0x41000000"
-echo "load device tree to ${device_tree}"
-load ${devtype} ${devnum} ${device_tree} "boot/dtb/jh7110-starfive-visionfive-2-v1.3b.dtb"
+setenv kernel_load_addr  ${loadaddr}
+setenv fdt_addr ${fdtcontroladdr}
 
-echo "set fdt address to ${device_tree}"
-fdt addr ${device_tree}
+if test "${board}" = "x1"; 
+then 
+    echo "stopping Banana Pi RV2 watchdog"
+    wdt dev watchdog@D4080000
+    wdt stop
+fi
 
-setenv ram_disk "0x42000000"
+setexpr ramdisk_load_addr ${kernel_load_addr} + 0x100000
+
+fdt addr ${fdt_addr}
+
 echo "load ram disk"
-load ${devtype} ${devnum} ${ram_disk} "boot/filesystem.img"
-fdt resize
-# begin + end
-echo "add ram disk to device tree"
-fdt chosen 0x42000000 0x423FFFFF
+load ${devtype} ${devnum} ${ramdisk_load_addr} "boot/filesystem.img"
+setenv ram_disk_size ${filesize}
+fdt resize 0x1000
 
-# make bootelf run the kernel
+# make booti run the kernel
 setenv autostart yes
 
 echo "load kernel to memory"
-load ${devtype} ${devnum} ${loadaddr} boot/kernel-vimix
-echo "boot kernel"
-bootelf ${loadaddr}
+load ${devtype} ${devnum} ${kernel_load_addr} boot/kernel-vimix.bin
+echo "boot kernel with DTB from ${fdt_addr}"
+booti ${kernel_load_addr} ${ramdisk_load_addr}:${ram_disk_size} ${fdt_addr}
 
 echo ""
 echo "something went wrong"

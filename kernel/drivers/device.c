@@ -128,8 +128,9 @@ ssize_t block_device_rw(struct Block_Device *bdev, size_t addr_u, size_t offset,
                         size_t n, bool do_read)
 {
     if (offset >= bdev->size) return 0;
+    if (n == 0) return 0;
 
-    if (offset + n > bdev->size)
+    if (n > (bdev->size - offset))
     {
         n = bdev->size - offset;
     }
@@ -154,7 +155,7 @@ ssize_t block_device_rw(struct Block_Device *bdev, size_t addr_u, size_t offset,
 
         if (do_read)
         {
-            if (uvm_copy_out(proc->pagetable, addr_u + rel_start,
+            if (uvm_copy_out(proc->pagetable, addr_u + copied,
                              (char *)(bp->data + rel_start), to_copy) == -1)
             {
                 return -1;
@@ -163,7 +164,7 @@ ssize_t block_device_rw(struct Block_Device *bdev, size_t addr_u, size_t offset,
         else
         {
             if (uvm_copy_in(proc->pagetable, (char *)(bp->data + rel_start),
-                            addr_u + rel_start, n) == -1)
+                            addr_u + copied, to_copy) == -1)
             {
                 return -1;
             }

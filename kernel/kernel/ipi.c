@@ -10,7 +10,7 @@ cpu_mask ipi_cpu_mask_all()
     cpu_mask mask = 0;
     for (size_t i = 0; i < MAX_CPUS; ++i)
     {
-        if (g_cpus[i].state != CPU_UNUSED)
+        if (g_cpus[i].state == CPU_STARTED)
         {
             mask |= (1 << i);
         }

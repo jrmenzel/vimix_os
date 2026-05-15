@@ -1,10 +1,9 @@
 stages:
-  - initial_checks
   - build
   - usertests
 
 default:
-  image: pandora:5050/robert/vimixos/ci-ubuntu2:24.04
+  image: pandora:5050/robert/vimixos/ci-ubuntu3:26.04
   tags: ["docker"]
 
 variables:
@@ -37,22 +36,19 @@ variables:
 #  - echo starting
 
 # needs clang 20 or newer, so requires Ubuntu 25.04 or newer
-format:
-  image: pandora:5050/robert/vimixos/ci-ubuntu2:26.04
+clang_format_check:
   allow_failure: true
-  stage: initial_checks
+  stage: build
   script:
     - tools/tests/check_formatting.sh
 
 # build with GCC analyzer on a recent Ubuntu
-build_analyze_2604:
-  image: pandora:5050/robert/vimixos/ci-ubuntu2:26.04
-  extends: .with_build_artifacts
-  stage: initial_checks
+gcc_15_analyze_riscv:
+  extends: .build_job
   script:
     - eval "make $BUILD_PARAMS ANALYZE=1"
 
-# Build all platforms on GCC 13
+# Build all platforms on GCC 15
 build_qemu32_deb:
   extends: .build_job
   script:
@@ -114,7 +110,6 @@ usertests_release:
     - ./tools/tests/run_test.sh usertests.sh qemu64 "ALL TESTS PASSED"
 
 usertests_release_32:
-  image: pandora:5050/robert/vimixos/ci-ubuntu2:26.04
   extends: .usertest_job
   needs:
     - job: build_qemu32_rel
@@ -150,6 +145,17 @@ usertests_concurrent:
     - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 2 32
     - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 3 32
     - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 8 32
+
+usertests_failing_rel:
+  extends: .usertest_job
+  needs:
+    - job: build_qemu64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests_fail.sh qemu64 "ALL TESTS PASSED" 1 64
+    - ./tools/tests/run_test.sh usertests_fail.sh qemu64 "ALL TESTS PASSED" 2 64
+    - ./tools/tests/run_test.sh usertests_fail.sh qemu64 "ALL TESTS PASSED" 5 64
+    - ./tools/tests/run_test.sh usertests_fail.sh qemu64 "ALL TESTS PASSED" 8 64
 
 fork_test:
   extends: .usertest_job

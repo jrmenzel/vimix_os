@@ -9,9 +9,9 @@ The test pipeline is defined in `.gitlab-ci.yml`. As it references custom Docker
 
 - Assert correct code formatting.
 - Compile with GCCs static analyzer to find potential issues.
-- Build and run on Ubuntu 24.04 LTS.
+- Build and run on Ubuntu 26.04 LTS.
 - Build all supported [platforms/architectures](../misc/architectures.md).
-- Run various tests on [qemu](run_on_qemu.md).
+- Run various tests on [qemu](run_on_qemu.md) and [spike](run_on_spike.md).
 
 See [getting_started](getting_started.md) on how tests/scripts can run automatically after boot on VIMIX.
 

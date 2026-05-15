@@ -2,10 +2,10 @@
 
 #include <drivers/mmio_access.h>
 #include <drivers/syscon.h>
+#include <init/dtb.h>
 #include <kernel/major.h>
 #include <kernel/pgtable.h>
 #include <kernel/reset.h>
-#include <libfdt.h>
 
 REGISTER_DRIVER("syscon", syscon_init);
 
@@ -22,7 +22,7 @@ struct syscon
 void syscon_machine_power_off();
 void syscon_machine_restart();
 
-bool parse_dtb_node(void *dtb, const char *node_name,
+bool parse_dtb_node(const void *dtb, const char *node_name,
                     const char *expected_comp_str, uint32_t *value_out,
                     size_t *offset_out)
 {
@@ -62,13 +62,13 @@ bool parse_dtb_node(void *dtb, const char *node_name,
     return true;
 }
 
-bool parse_dtb_poweroff_node(void *dtb)
+bool parse_dtb_poweroff_node(const void *dtb)
 {
     return parse_dtb_node(dtb, "/poweroff", "syscon-poweroff",
                           &g_syscon.poweroff_value, &g_syscon.poweroff_offset);
 }
 
-bool parse_dtb_reboot_node(void *dtb)
+bool parse_dtb_reboot_node(const void *dtb)
 {
     return parse_dtb_node(dtb, "/reboot", "syscon-reboot",
                           &g_syscon.reboot_value, &g_syscon.reboot_offset);

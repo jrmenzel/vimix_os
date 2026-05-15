@@ -46,7 +46,7 @@ struct
 // the riscv Platform Level Interrupt Controller (PLIC).
 //
 
-bool get_hart_int_controller_phandles(void *dtb,
+bool get_hart_int_controller_phandles(const void *dtb,
                                       uint32_t *hart_int_controller_phandle,
                                       size_t max_handles)
 {
@@ -83,7 +83,7 @@ bool get_hart_int_controller_phandles(void *dtb,
 }
 
 #define MAX_CONTEXTS (MAX_CPUS * 2)
-void plic_init_hart_context_lookup(void *dtb, size_t plic_offset)
+void plic_init_hart_context_lookup(const void *dtb, size_t plic_offset)
 {
     // invalid dtb
     if ((fdt_check_header(dtb) < 0) && plic_offset == 0) return;

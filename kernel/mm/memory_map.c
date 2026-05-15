@@ -120,9 +120,12 @@ void mm_region_init(struct MM_Region *region, size_t start_pa, size_t start_va,
             : MM_REGION_MARKED_FOR_MAPPING;
     region->free_on_unmap = g_region_attributes[type].free_pages;
 
-    DEBUG_EXTRA_PANIC(region->start_pa % PAGE_SIZE == 0, "unaligned region");
-    DEBUG_EXTRA_PANIC(region->start_va % PAGE_SIZE == 0, "unaligned region");
-    DEBUG_EXTRA_PANIC(region->size % PAGE_SIZE == 0, "unaligned size");
+    DEBUG_EXTRA_PANIC(region->start_pa % PAGE_SIZE == 0,
+                      "mm_region_init unaligned region");
+    DEBUG_EXTRA_PANIC(region->start_va % PAGE_SIZE == 0,
+                      "mm_region_init unaligned region");
+    DEBUG_EXTRA_PANIC(region->size % PAGE_SIZE == 0,
+                      "mm_region_init unaligned size");
 
     list_init(&region->list);
 }
@@ -240,10 +243,11 @@ void memory_map_add_single_region(struct Memory_Map *map,
 {
     DEBUG_ASSERT_CPU_HOLDS_LOCK(map->parent_lock);
     DEBUG_EXTRA_PANIC(new_region->start_pa % PAGE_SIZE == 0,
-                      "unaligned region");
+                      "memory_map_add_single_region unaligned region");
     DEBUG_EXTRA_PANIC(new_region->start_va % PAGE_SIZE == 0,
-                      "unaligned region");
-    DEBUG_EXTRA_PANIC(new_region->size % PAGE_SIZE == 0, "unaligned size");
+                      "memory_map_add_single_region unaligned region");
+    DEBUG_EXTRA_PANIC(new_region->size % PAGE_SIZE == 0,
+                      "memory_map_add_single_region unaligned size");
 
     struct list_head *pos;
     list_for_each(pos, &map->region_list)
@@ -271,11 +275,14 @@ void memory_map_add_single_region_and_split(struct Memory_Map *map,
                                             struct MM_Region *new_region)
 {
     DEBUG_ASSERT_CPU_HOLDS_LOCK(map->parent_lock);
-    DEBUG_EXTRA_PANIC(new_region->start_pa % PAGE_SIZE == 0,
-                      "unaligned region");
-    DEBUG_EXTRA_PANIC(new_region->start_va % PAGE_SIZE == 0,
-                      "unaligned region");
-    DEBUG_EXTRA_PANIC(new_region->size % PAGE_SIZE == 0, "unaligned size");
+    DEBUG_EXTRA_PANIC(
+        new_region->start_pa % PAGE_SIZE == 0,
+        "memory_map_add_single_region_and_split unaligned region");
+    DEBUG_EXTRA_PANIC(
+        new_region->start_va % PAGE_SIZE == 0,
+        "memory_map_add_single_region_and_split unaligned region");
+    DEBUG_EXTRA_PANIC(new_region->size % PAGE_SIZE == 0,
+                      "memory_map_add_single_region_and_split unaligned size");
 
     struct list_head *pos;
     list_for_each(pos, &map->region_list)
@@ -338,7 +345,9 @@ void memory_map_add_single_region_and_split(struct Memory_Map *map,
 
             // resize old region:
             region->size = new_region->start_va - region->start_va;
-            DEBUG_EXTRA_PANIC(region->size % PAGE_SIZE == 0, "unaligned size");
+            DEBUG_EXTRA_PANIC(region->size % PAGE_SIZE == 0,
+                              "memory_map_add_single_region_and_split: "
+                              "unaligned size inner loop");
 
             // add new region:
             list_add(&new_region->list, pos);
@@ -520,8 +529,10 @@ void memory_map_remove_regions(struct Memory_Map *map, size_t start_va,
                                size_t size)
 {
     DEBUG_ASSERT_CPU_HOLDS_LOCK(map->parent_lock);
-    DEBUG_EXTRA_PANIC(start_va % PAGE_SIZE == 0, "unaligned start_va");
-    DEBUG_EXTRA_PANIC(size % PAGE_SIZE == 0, "unaligned size");
+    DEBUG_EXTRA_PANIC(start_va % PAGE_SIZE == 0,
+                      "memory_map_remove_regions unaligned start_va");
+    DEBUG_EXTRA_PANIC(size % PAGE_SIZE == 0,
+                      "memory_map_remove_regions unaligned size");
 
     size_t end_va = start_va + size - 1;
     struct list_head *pos, *tmp;

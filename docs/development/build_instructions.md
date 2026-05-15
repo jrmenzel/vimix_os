@@ -6,18 +6,12 @@ Requirements:
 - [RISC V](riscv/RISCV.md) gcc toolchain (version 13 or later)
 - clang-format version 20 or later
 
-on Arch Linux install:
+On Arch Linux install:
 ```bash
 sudo pacman -S qemu-system-riscv qemu-system-riscv-firmware riscv64-elf-binutils riscv64-elf-gcc riscv64-elf-gdb riscv64-elf-newlib xxd uboot-tools
 ```
 
-on Ubuntu install:
-```bash
-sudo apt update
-sudo apt install build-essential make git gcc clang clang-format gcc-riscv64-linux-gnu qemu-system-riscv64 gdb-multiarch xxd u-boot-tools libelf-dev libdw-dev
-```
-
-on Ubuntu 26.04 and later: install `qemu-system-riscv` instead of `qemu-system-riscv64`.
+On Ubuntu 26.04 install the packages listed in the Dockerfile  `tools/docker/ubuntu2604`.
 
 Build all:
 > make

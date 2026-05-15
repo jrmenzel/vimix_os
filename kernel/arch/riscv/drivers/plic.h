@@ -1,6 +1,11 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+//
+// PLIC (Platform-Level Interrupt Controller) driver for RISC-V.
+// This is the only supported interrupt controller for RISC-V.
+//
+
 #include <drivers/driver_list.h>
 #include <kernel/kernel.h>
 

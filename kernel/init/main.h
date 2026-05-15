@@ -5,4 +5,4 @@
 
 ///
 /// first function called in supervisor mode for each hart
-void main(void *dtb, bool is_boot_hart) __attribute__((noreturn));
+void main(const void *dtb, bool is_boot_hart) __attribute__((noreturn));

@@ -26,7 +26,7 @@ bool is_compatible_device(const char *dtb_dev, const char *dev)
     return false;
 }
 
-ssize_t dtb_add_driver_if_compatible(void *dtb, const char *device_name,
+ssize_t dtb_add_driver_if_compatible(const void *dtb, const char *device_name,
                                      int device_offset,
                                      struct Devices_List *dev_list)
 {
@@ -48,7 +48,7 @@ ssize_t dtb_add_driver_if_compatible(void *dtb, const char *device_name,
 /// @param driver_list Known, supported drivers to look for in the DTB
 /// @param dev_list Output list of found devices with init parameters read from
 /// the DTB
-void dtb_add_devices_to_dev_list(void *dtb, struct Devices_List *dev_list)
+void dtb_add_devices_to_dev_list(const void *dtb, struct Devices_List *dev_list)
 {
     if (fdt_magic(dtb) != FDT_MAGIC)
     {
@@ -66,7 +66,7 @@ void dtb_add_devices_to_dev_list(void *dtb, struct Devices_List *dev_list)
     }
 }
 
-void dtb_get_initrd(void *dtb, size_t *base, size_t *size)
+void dtb_get_initrd(const void *dtb, size_t *base, size_t *size)
 {
     size_t initrd_begin = 0;
     size_t initrd_end = 0;
@@ -100,7 +100,7 @@ void dtb_get_initrd(void *dtb, size_t *base, size_t *size)
     *size = initrd_end - initrd_begin;
 }
 
-void dtb_get_memory(void *dtb, size_t *base, size_t *size)
+void dtb_get_memory(const void *dtb, size_t *base, size_t *size)
 {
     if (fdt_magic(dtb) != FDT_MAGIC)
     {
@@ -157,7 +157,7 @@ struct Address_Range
 
 #define MAX_ADDRESS_RAGES (8)
 
-size_t get_address_ranges(void *dtb, int parent_offset, int addr_cells,
+size_t get_address_ranges(const void *dtb, int parent_offset, int addr_cells,
                           int size_cells, struct Address_Range *range,
                           size_t range_array_size)
 
@@ -210,7 +210,8 @@ size_t map_mmio_address(size_t addr, struct Address_Range *range, size_t ranges)
     return addr;
 }
 
-bool dtb_get_regs(void *dtb, int offset, struct Device_Init_Parameters *params)
+bool dtb_get_regs(const void *dtb, int offset,
+                  struct Device_Init_Parameters *params)
 {
     int len;
     const char *regs_raw = fdt_getprop(dtb, offset, "reg", &len);
@@ -278,7 +279,7 @@ bool dtb_get_regs(void *dtb, int offset, struct Device_Init_Parameters *params)
     return true;
 }
 
-bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size)
+bool dtb_get_reg(const void *dtb, int offset, size_t *base, size_t *size)
 {
     int parent_offset = fdt_parent_offset(dtb, offset);
     uint32_t address_cells = fdt_address_cells(dtb, parent_offset);
@@ -299,7 +300,7 @@ bool dtb_get_reg(void *dtb, int offset, size_t *base, size_t *size)
 }
 
 // note: gets called too early for printk...
-uint64_t dtb_get_timebase(void *dtb)
+uint64_t dtb_get_timebase(const void *dtb)
 {
     uint64_t fallback = 10000000ull;  // from qemu
 
@@ -324,7 +325,7 @@ uint64_t dtb_get_timebase(void *dtb)
     return timebase;
 }
 
-int dtb_find_boot_console_index(void *dtb)
+int dtb_find_boot_console_index(const void *dtb)
 {
     // find /chosen/stdout-path
     int offset = fdt_path_offset(dtb, "/chosen");
@@ -353,7 +354,7 @@ int dtb_find_boot_console_index(void *dtb)
 }
 
 struct Found_Device *dtb_find_boot_console_in_dev_list(
-    void *dtb, struct Devices_List *dev_list)
+    const void *dtb, struct Devices_List *dev_list)
 {
     int console_offset = dtb_find_boot_console_index(dtb);
     if (console_offset < 0) return NULL;  // contains a negative error code
@@ -432,7 +433,7 @@ bool extension_is_supported(const char *riscv_isa, const char *ext)
     return false;
 }
 
-int dtb_get_cpu_offset(void *dtb, size_t cpu_id, bool print_errors)
+int dtb_get_cpu_offset(const void *dtb, size_t cpu_id, bool print_errors)
 {
     char path_name[32];
     snprintf(path_name, sizeof(path_name), "/cpus/cpu@%zu", cpu_id);
@@ -445,7 +446,7 @@ int dtb_get_cpu_offset(void *dtb, size_t cpu_id, bool print_errors)
     return offset;
 }
 
-CPU_Features dtb_get_cpu_features(void *dtb, size_t cpu_id)
+CPU_Features dtb_get_cpu_features(const void *dtb, size_t cpu_id)
 {
     CPU_Features featues = 0;
 

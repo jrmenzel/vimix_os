@@ -83,7 +83,7 @@ ssize_t dev_list_add_with_parameters(
 /// @param device_offset Offset of the device in the device tree.
 /// @param driver Device driver struct which holds the name, init func etc.
 /// @return Index or -1 on error.
-ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
+ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, const void *dtb,
                               const char *device_name, int device_offset,
                               struct Driver *driver);
 

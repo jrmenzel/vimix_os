@@ -20,7 +20,7 @@ struct Device_Init_Parameters
     int32_t reg_io_width;
     int32_t reg_shift;
     int32_t interrupt;
-    void *dtb;         ///< device tree pointer
+    const void *dtb;   ///< device tree pointer
     int dev_offset;    ///< in the dtb file
     uint32_t phandle;  ///< 0 if device has no phandle in the device tree
     uint32_t interrupt_parent_phandle;  ///< or 0 if not present

@@ -1,6 +1,14 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+//
+// On RISC-V, the SBI (Supervisor Binary Interface) is used to call firmware
+// functions, e.g. to power off the machine or start additional harts.
+//
+// An SBI firmware is not required for a RISC-V system, but required by VIMIX.
+// (Targets without SBI can be compiled with a minimal SBI shim in m-mode).
+//
+
 #include <arch/riscv/sbi_defs.h>
 #include <kernel/kernel.h>
 

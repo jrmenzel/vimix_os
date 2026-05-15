@@ -27,7 +27,7 @@ USER_SPACE_INC += /usr/include
 else
 USER_SPACE_INC += $(ROOT)/usr/include
 LDFLAGS += --defsym=USER_TEXT_START=$(USER_TEXT_START)
-LDFLAGS += -T $(ROOT)/usr/bin/user-$(ARCH).ld
+LDFLAGS += -T $(ROOT)/usr/bin/user.ld -m $(LD_ARCH_STRING)
 COMMON_LIBS += $(LIB_BUILD_DIR)/stdlib.a
 endif
 

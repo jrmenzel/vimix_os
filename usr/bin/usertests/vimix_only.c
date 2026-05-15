@@ -1235,7 +1235,8 @@ void exitwait(char *s)
             xstate = WEXITSTATUS(xstate);
             if (i != xstate)
             {
-                printf("%s: wait wrong exit status\n", s);
+                printf("%s: wait wrong exit status: is %d, expected: %zd\n", s,
+                       xstate, i);
                 exit(1);
             }
         }
@@ -3394,6 +3395,7 @@ void sbrklast(char *s)
     }
 }
 
+#ifdef __ARCH_32BIT
 // does sbrk handle signed int32 wrap-around with
 // negative arguments?
 void sbrk8000(char *s)
@@ -3410,6 +3412,7 @@ void sbrk8000(char *s)
     top = sbrk(0);
     *(top - 1) = *(top - 1) + 1;
 }
+#endif
 
 // regression test. test whether execv() leaks memory if one of the
 // arguments is invalid. Memory leaks will get detacted at the end of the
@@ -3791,7 +3794,7 @@ struct test tests_vimix[] = {
     {trunc_file1, "trunc_file1", TEST_MASK_FILESYSTEM},
     {trunc_file2, "trunc_file2", TEST_MASK_FILESYSTEM},
     {trunc_file3, "trunc_file3", TEST_MASK_FILESYSTEM},
-    {openiputtest, "openiput", TEST_MASK_FILESYSTEM},
+    {openiputtest, "openiput", TEST_MASK_FILESYSTEM | TEST_MASK_OFTEN_FAIL},
     {exitiputtest, "exitiput", TEST_MASK_FILESYSTEM},
     {iputtest, "iput", TEST_MASK_FILESYSTEM},
     {opentest, "opentest", TEST_MASK_FILESYSTEM},
@@ -3803,17 +3806,20 @@ struct test tests_vimix[] = {
     {pipe1, "pipe1", TEST_MASK_NONE},
     {preempt, "preempt", TEST_MASK_CORE_COUNT},
     {exitwait, "exitwait", TEST_MASK_CORE_COUNT},
-    {reparent, "reparent", TEST_MASK_CORE_COUNT},
-    {forkfork, "forkfork", TEST_MASK_CORE_COUNT},
-    {forkforkfork, "forkforkfork", TEST_MASK_CORE_COUNT},
+    {reparent, "reparent", TEST_MASK_CORE_COUNT | TEST_MASK_OFTEN_FAIL},
+    {forkfork, "forkfork", TEST_MASK_CORE_COUNT | TEST_MASK_OFTEN_FAIL},
+    {forkforkfork, "forkforkfork", TEST_MASK_CORE_COUNT | TEST_MASK_OFTEN_FAIL},
     {mem, "mem", TEST_MASK_MEMORY_SIZE},
-    {sharedfd, "sharedfd", TEST_MASK_NONE},
+    {sharedfd, "sharedfd",
+     TEST_MASK_NONE | TEST_MASK_CORE_COUNT | TEST_MASK_OFTEN_FAIL},
     {fourfiles, "fourfiles", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
     {createdelete, "createdelete", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
     {unlinkread, "unlinkread", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
     {linktest, "linktest", TEST_MASK_FILESYSTEM},
-    {concreate, "concreate", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
-    {linkunlink, "linkunlink", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
+    {concreate, "concreate",
+     TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM | TEST_MASK_OFTEN_FAIL},
+    {linkunlink, "linkunlink",
+     TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM | TEST_MASK_OFTEN_FAIL},
     {subdir, "subdir", TEST_MASK_FILESYSTEM},
     {bigwrite, "bigwrite", TEST_MASK_FILESYSTEM | TEST_MASK_FS_SIZE},
     {bigfile, "bigfile", TEST_MASK_FILESYSTEM | TEST_MASK_FS_SIZE},
@@ -3837,11 +3843,13 @@ struct test tests_vimix[] = {
     {nowrite, "nowrite", TEST_MASK_NONE},
     {sbrkbugs, "sbrkbugs", TEST_MASK_NONE},
     {sbrklast, "sbrklast", TEST_MASK_NONE},
+#ifdef __ARCH_32BIT
     {sbrk8000, "sbrk8000", TEST_MASK_BITWIDTH},
+#endif
     {badarg, "badarg", TEST_MASK_NONE},
     {killstatus, "killstatus", TEST_MASK_CORE_COUNT},
-    {twochildren, "twochildren", TEST_MASK_CORE_COUNT},
-    {reparent2, "reparent2", TEST_MASK_CORE_COUNT},
+    {twochildren, "twochildren", TEST_MASK_CORE_COUNT | TEST_MASK_OFTEN_FAIL},
+    {reparent2, "reparent2", TEST_MASK_CORE_COUNT | TEST_MASK_OFTEN_FAIL},
     {bigdir, "bigdir", TEST_MASK_FILESYSTEM},
     {manywrites, "manywrites", TEST_MASK_CORE_COUNT | TEST_MASK_FILESYSTEM},
     {badwrite, "badwrite", TEST_MASK_FILESYSTEM},

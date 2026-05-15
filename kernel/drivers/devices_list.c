@@ -175,7 +175,7 @@ void dev_list_init_all_devices(struct Devices_List *dev_list)
     }
 }
 
-static int32_t dtb_get_device_interrupt(void *dtb, int device_offset,
+static int32_t dtb_get_device_interrupt(const void *dtb, int device_offset,
                                         uint32_t interrupt_parent_phandle,
                                         int32_t fallback)
 {
@@ -236,7 +236,7 @@ static int32_t dtb_get_device_interrupt(void *dtb, int device_offset,
     return irq;
 }
 
-static uint32_t dtb_get_effective_interrupt_parent_phandle(void *dtb,
+static uint32_t dtb_get_effective_interrupt_parent_phandle(const void *dtb,
                                                            int node_offset)
 {
     int cur = node_offset;
@@ -292,7 +292,7 @@ ssize_t dev_list_add_with_parameters(
     return 0;
 }
 
-ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, void *dtb,
+ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, const void *dtb,
                               const char *device_name, int device_offset,
                               struct Driver *driver)
 {

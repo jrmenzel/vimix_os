@@ -17,7 +17,7 @@ extern timer_schedule_interrupt_p *timer_schedule_interrupt;
 
 /// @brief Called from start() and sets timer_schedule_interrupt() pointer
 /// depending on the configured timer.
-void timer_init(void *dtb, CPU_Features features);
+void timer_init(const void *dtb, CPU_Features features);
 
 /// @brief To be implemented by architecture
 /// @param features CPU features

@@ -204,12 +204,6 @@ infinite_loop:
 _entry_setup_hartid_dtb:
 #ifdef CONFIG_RISCV_BOOT_M_MODE
     csrr a0, mhartid
-#else
-#if defined(__PLATFORM_VISIONFIVE2)
-    li a0, 1  # starfive,boot-hart-id in device tree
-    #li a1, 0xfffc6080 # in firmware device tree
-    li a1, 0x41000000 # set in boot.cmd: dtb was explicitly loaded to that location
-#endif // vision five2
 #endif // m mode or s mode
 #if defined(__CONFIG_DTB_EMBEDDED)
     lla a1, dtb_embedded
