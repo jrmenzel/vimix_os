@@ -91,6 +91,26 @@ bool g_uart_16550_initialized = false;
 
 void uart_send_buffer();
 
+static inline uint8_t uart_get_interrupt_enable()
+{
+    return (uint8_t)read_register(&g_uart_16550, IER);
+}
+
+static inline void uart_set_interrupt_enable(uint8_t ier)
+{
+    write_register(&g_uart_16550, IER, ier);
+}
+
+static inline void uart_enable_tx_interrupt()
+{
+    uart_set_interrupt_enable(uart_get_interrupt_enable() | IER_TX_ENABLE);
+}
+
+static inline void uart_disable_tx_interrupt()
+{
+    uart_set_interrupt_enable(uart_get_interrupt_enable() & ~IER_TX_ENABLE);
+}
+
 dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name)
 {
     DEBUG_EXTRA_ASSERT(
@@ -112,14 +132,10 @@ dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name)
     // reset and enable FIFOs.
     write_register(&g_uart_16550, FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
-    //  enable receive/send interrupts
-#ifdef __PLATFORM_SPIKE
-    // somehow TX interrupts break Vimix on Spike: the interrupt does not get
-    // cleared
-    write_register(&g_uart_16550, IER, IER_RX_ENABLE);
-#else
-    write_register(&g_uart_16550, IER, IER_RX_ENABLE | IER_TX_ENABLE);
-#endif
+    // enable receive interrupt; TX interrupt gets enabled only while
+    // transmit queue has pending bytes.
+    uint32_t interrupt_enable = IER_RX_ENABLE;
+    write_register(&g_uart_16550, IER, interrupt_enable);
 
     // init uart_16550 object
     spin_lock_init(&g_uart_16550.uart_tx_lock, "uart");
@@ -174,6 +190,10 @@ void uart_putc(int32_t c)
     }
     g_uart_16550.uart_tx_buf[g_uart_16550.uart_tx_w % UART_TX_BUF_SIZE] = c;
     g_uart_16550.uart_tx_w += 1;
+
+    // Keep TX-empty interrupts enabled while there is buffered output.
+    uart_enable_tx_interrupt();
+
     uart_send_buffer();
     spin_unlock(&g_uart_16550.uart_tx_lock);
 }
@@ -203,6 +223,7 @@ void uart_send_buffer()
         if (g_uart_16550.uart_tx_w == g_uart_16550.uart_tx_r)
         {
             // transmit buffer is empty.
+            uart_disable_tx_interrupt();
             return;
         }
 
@@ -260,7 +281,8 @@ void uart_handle_input()
 void uart_interrupt_handler(dev_t dev)
 {
     spin_lock(&g_uart_16550.uart_tx_lock);
-    // reading the register clears the interrupt source
+    // Read ISR to identify source; persistent TX-empty condition must be
+    // controlled by masking/unmasking TX interrupts.
     uint8_t int_status = read_register(&g_uart_16550, ISR);
     uint8_t interrupt = int_status & 0x0F;
 

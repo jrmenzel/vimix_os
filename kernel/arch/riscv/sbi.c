@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/ipi.h>
 #include <arch/riscv/drivers/plic.h>
 #include <arch/riscv/riscv.h>
 #include <arch/riscv/sbi.h>
+#include <arch/riscv/sbi_defs.h>
 #include <drivers/console.h>
 #include <init/dtb.h>
 #include <kernel/ipi.h>
@@ -184,11 +186,34 @@ void sbi_machine_restart()
     sbi_system_reset(SBI_SRST_TYPE_WARM_REBOOT, SBI_SRST_REASON_NONE);
 }
 
-struct sbiret sbi_send_ipi(unsigned long hart_mask,
-                           unsigned long hart_mask_base)
+struct sbiret sbi_send_ipi_based(unsigned long hart_mask,
+                                 unsigned long hart_mask_base)
 {
+    // Ensure queued IPI data is globally visible
+    atomic_thread_fence(memory_order_seq_cst);
+
     return sbi_ecall(SBI_EXT_ID_IPI, SBI_IPI_SEND_IPI, hart_mask,
                      hart_mask_base, 0, 0, 0, 0);
+}
+
+void sbi_send_ipi(uint64_t mask)
+{
+    struct sbiret ret;
+
+#if (__riscv_xlen == 32)
+    unsigned long mask0 = (unsigned long)(mask & 0xFFFFFFFF);
+    unsigned long mask1 = (unsigned long)(mask >> 32);
+    ret = sbi_send_ipi_based(mask0, 0);
+    if ((ret.error == SBI_SUCCESS) && (mask1 != 0))
+        ret = sbi_send_ipi_based(mask1, 31);
+#else
+    ret = sbi_send_ipi_based((unsigned long)mask, 0);
+#endif
+
+    if (ret.error)
+    {
+        printk("SBI IPI send failed: %ld\n", ret.error);
+    }
 }
 
 void init_sbi()
@@ -235,108 +260,38 @@ void init_sbi()
     }
 }
 
-void sbi_start_harts(size_t opaque)
+__attribute__((noinline)) static size_t sbi_virt_to_phys_runtime(size_t va)
+{
+    return va - PAGE_OFFSET + g_kernel_memory.phys_base;
+}
+
+syserr_t sbi_start_hart(size_t hartid, size_t opaque)
 {
     if (sbi_probe_extension(SBI_EXT_ID_HSM) <= 0)
     {
         printk("SBI HSM extension not present, staying single core\n");
-        return;
+        return -EOTHER;
     }
 
-    size_t this_hart = smp_processor_id();
-    size_t hartid = 0;
-    while (hartid < MAX_CPUS)
+    if (plic_get_hart_s_context(hartid) != -1)
     {
-        if (hartid != this_hart)
+        // CPU exists in device tree and supports s mode interrupts
+        size_t entry_va = (size_t)_entry_s_mode;
+        size_t entry_addr = sbi_virt_to_phys_runtime(entry_va);
+        long ret = sbi_hart_start(hartid, entry_addr, opaque);
+        if (ret != SBI_SUCCESS)
         {
-            if (plic_get_hart_s_context(hartid) != -1)
-            {
-                //  CPU exists in device tree and supports s mode interrupts
-                size_t entry_addr = virt_to_phys((size_t)_entry_s_mode);
-                long ret = sbi_hart_start(hartid, entry_addr, opaque);
-                if (ret != SBI_SUCCESS)
-                {
-                    printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
-                }
-
-                // busy wait for the core to have started before requesting the
-                // next one, but don't wait forever. Without this not all cores
-                // on Orange Pi RV2 start completely (they get stuck in
-                // SBI_HSM_HART_START_PENDING).
-                for (size_t loop = 0; loop < 1024; ++loop)
-                {
-                    struct sbiret sret = sbi_hart_get_status(hartid);
-                    if (sret.value == SBI_HSM_HART_STARTED) break;
-                }
-            }
+            printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
+            return -EOTHER;
         }
-        hartid++;
     }
+    return 0;
+}
+
+bool sbi_did_hart_start(size_t hartid)
+{
+    struct sbiret sret = sbi_hart_get_status(hartid);
+    return (sret.value == SBI_HSM_HART_STARTED);
 }
 
 void ipi_init_per_cpu() {}
-
-void ipi_send_interrupt(cpu_mask mask, enum ipi_type type, void *data)
-{
-    spin_lock(&g_cpus_ipi_lock);
-    for (size_t i = 0; i < MAX_CPUS; ++i)
-    {
-        if (mask & (1 << i))
-        {
-            struct cpu *c = &g_cpus[i];
-
-            // error check
-            if (c->state == CPU_UNUSED)
-            {
-                printk("IPI: CPU %zd not started, cannot send IPI %d\n", i,
-                       type);
-                continue;
-            }
-
-            // find pending IPI count
-            size_t pending_count = 0;
-            while ((pending_count < MAX_IPI_PENDING) &&
-                   (c->ipi[pending_count].pending != IPI_NONE))
-            {
-                pending_count++;
-            }
-
-            // if exactly the same IPI is already pending, don't add
-            // another one
-            if ((pending_count != 0) &&
-                (c->ipi[pending_count - 1].pending == type) &&
-                (c->ipi[pending_count - 1].data == data))
-            {
-                continue;
-            }
-
-            if (pending_count == MAX_IPI_PENDING)
-            {
-                printk("IPI queue full on CPU %zd, dropping IPI %d\n", i, type);
-            }
-            else
-            {
-                c->ipi[pending_count].pending = type;
-                c->ipi[pending_count].data = data;
-            }
-        }
-    }
-    spin_unlock(&g_cpus_ipi_lock);
-
-    struct sbiret ret;
-
-#if (__riscv_xlen == 32)
-    unsigned long mask0 = (unsigned long)(mask & 0xFFFFFFFF);
-    unsigned long mask1 = (unsigned long)(mask >> 32);
-    ret = sbi_send_ipi(mask0, 0);
-    if ((ret.error == SBI_SUCCESS) && (mask1 != 0))
-        ret = sbi_send_ipi(mask1, 31);
-#else
-    ret = sbi_send_ipi((unsigned long)mask, 0);
-#endif
-
-    if (ret.error)
-    {
-        printk("SBI IPI send failed: %ld\n", ret.error);
-    }
-}

@@ -6,6 +6,7 @@
 
 #ifdef __ARCH_riscv
 #include <arch/riscv/sbi.h>
+#include <arch/riscv/sbi_defs.h>
 #endif
 
 #include <drivers/console.h>

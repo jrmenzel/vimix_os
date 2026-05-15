@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <kernel/kticks.h>
 #include <kernel/timer.h>
 
 timer_schedule_interrupt_p *timer_schedule_interrupt = NULL;
@@ -7,10 +8,17 @@ timer_schedule_interrupt_p *timer_schedule_interrupt = NULL;
 /// read from the device tree
 uint64_t g_timebase_frequency = 0;
 
-void timer_init(const void *dtb, CPU_Features features)
+void timer_init(const void *dtb)
 {
-    g_boot_time = get_time();
+    kticks_init();
+    g_timebase_frequency = get_timebase_frequency(dtb);
+    DEBUG_EXTRA_PANIC(g_timebase_frequency != 0, "invalid timebase frequency");
 
+    g_boot_time = get_time();
+}
+
+void timer_init_per_cpu(CPU_Features features)
+{
     timer_schedule_interrupt = arch_timer_interrupt_func(features);
     if (timer_schedule_interrupt == NULL)
     {

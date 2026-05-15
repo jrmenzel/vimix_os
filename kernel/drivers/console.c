@@ -5,6 +5,11 @@
 // Reads are line at a time.
 //
 
+#ifdef __ARCH_riscv
+#include <arch/riscv/sbi.h>
+#include <arch/riscv/sbi_defs.h>
+#endif
+
 #include <arch/irq.h>
 #include <arch/riscv/sbi.h>
 #include <drivers/character_device.h>
@@ -384,11 +389,14 @@ dev_t console_init(struct Found_Device *console_dev)
         return INVALID_DEVICE;
     }
 
-    struct Devices_List *dev_list = get_devices_list();
-    dev_t uart_dev = init_device(dev_list, console_dev);
-    if (uart_dev == INVALID_DEVICE)
+    if (console_dev != NULL)
     {
-        return INVALID_DEVICE;
+        struct Devices_List *dev_list = get_devices_list();
+        dev_t uart_dev = init_device(dev_list, console_dev);
+        if (uart_dev == INVALID_DEVICE)
+        {
+            return INVALID_DEVICE;
+        }
     }
 
     spin_lock_init(&g_console.lock, "cons");
@@ -406,23 +414,41 @@ dev_t console_init(struct Found_Device *console_dev)
     g_console.termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
     g_console.termios.c_cc[VTIME] = 0;  // no timeout in read()
 
-    const char *name = console_dev->driver->dtb_name;
-    if (strcmp(name, "ucb,htif0") == 0)
+    if (console_dev != NULL)
     {
-        device_putc = htif_putc;
-        device_putc_sync = htif_putc;
-        g_console_poll_callback = htif_console_poll_input;
-    }
-    else if (strcmp(name, "ns16550a") == 0 ||
-             strcmp(name, "snps,dw-apb-uart") == 0)
-    {
-        // ns16550a or snps,dw-apb-uart
-        device_putc = uart_putc;
-        device_putc_sync = uart_putc_sync;
+        const char *name = console_dev->driver->dtb_name;
+        if (strcmp(name, "ucb,htif0") == 0)
+        {
+            device_putc = htif_putc;
+            device_putc_sync = htif_putc;
+            g_console_poll_callback = htif_console_poll_input;
+        }
+        else if (strcmp(name, "ns16550a") == 0 ||
+                 strcmp(name, "snps,dw-apb-uart") == 0)
+        {
+            // ns16550a or snps,dw-apb-uart
+            device_putc = uart_putc;
+            device_putc_sync = uart_putc_sync;
 
-        dev_set_irq(&g_console.cdev.dev, console_dev->init_parameters.interrupt,
-                    uart_interrupt_handler);
+            dev_set_irq(&g_console.cdev.dev,
+                        console_dev->init_parameters.interrupt,
+                        uart_interrupt_handler);
+        }
     }
+    else
+    {
+#ifdef __ARCH_riscv
+        if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) > 0)
+        {
+            // SBI console fallback
+            device_putc = sbi_console_putchar;
+            device_putc_sync = sbi_console_putchar;
+            g_console_poll_callback = sbi_console_poll_input;
+            printk("Console fallback: SBI\n");
+        }
+#endif
+    }
+
     if (device_putc == NULL)
     {
         // run with no input/output:

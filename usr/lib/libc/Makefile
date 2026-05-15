@@ -45,7 +45,7 @@ $(LIBC_BUILD_DIR)/%.o: %.c
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 # automatically generated
-$(LIBC_BUILD_DIR)/usys.S : directories usys.pl
+$(LIBC_BUILD_DIR)/usys.S : usys.pl | directories
 	@printf "$(TASK_COLOR)Generate $(@) from libc/usys.pl\n$(NO_COLOR)"
 	@perl usys.pl -$(ARCH) > $(LIBC_BUILD_DIR)/usys.S
 

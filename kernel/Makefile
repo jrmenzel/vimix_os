@@ -49,8 +49,10 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	fs/vimixfs/vimixfs_sysfs.o \
 	init/dtb.o \
 	init/early_pgtable.o \
+	init/embedded_dtbs.o \
 	init/main.o \
 	init/start.o \
+	init/system.o \
 	ipc/pipe.o \
 	kernel/cpu.o \
 	kernel/interrupt_controller.o \
@@ -185,11 +187,11 @@ directories: # create temp build directories
 	@mkdir -p $(K_BUILD_DIR)
 
 # compile assembly
-$(K_BUILD_DIR)/%.o: %.S directories
+$(K_BUILD_DIR)/%.o: %.S | directories
 	@$(CC) $(KBUILD_AFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 # compile C, also create assembly listing
-$(K_BUILD_DIR)/%.o: %.c directories
+$(K_BUILD_DIR)/%.o: %.c | directories
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
 	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 ifeq ($(CREATE_ASSEMBLY), yes)

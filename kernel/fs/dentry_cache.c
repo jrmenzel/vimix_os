@@ -56,6 +56,8 @@ struct dentry *dentry_cache_get_root()
 
 void dentry_cache_drain_lru(struct dentry_cache *cache, size_t target)
 {
+    if (cache == NULL) panic("dentry_cache_drain_lru: cache is NULL");
+
     enum
     {
         DRAIN_BATCH_SIZE = 32

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/riscv/sbi.h>
+#include <arch/riscv/sbi_defs.h>
 #include <kernel/smp.h>
 #include <kernel/timer.h>
 

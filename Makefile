@@ -6,9 +6,9 @@
 #
 include MakefileCommon.mk
 
-.PHONY: all directories extractdbg kernel userspace_lib userspace host
+.PHONY: all directories extractdbg kernel userspace host
 
-all: directories extractdbg userspace_lib userspace host $(BUILD_DIR)/filesystem.img kernel boot_dir
+all: directories extractdbg userspace host $(BUILD_DIR)/filesystem.img kernel boot_dir
 
 # make build output directory
 directories:
@@ -21,7 +21,7 @@ extractdbg:
 
 # the kernel itself depends on userspace for the embedded ram disk only
 ifeq ($(RAMDISK_EMBEDDED), yes)
-KERNEL_REQS := directories userspace $(BUILD_DIR)/filesystem.img
+KERNEL_REQS := directories $(BUILD_DIR)/filesystem.img
 else
 KERNEL_REQS := directories 
 endif
@@ -45,7 +45,7 @@ boot_dir: kernel $(BUILD_DIR)/filesystem.img boot/boot.cmd
 	@cp $(BUILD_DIR)/filesystem.img $(BUILD_DIR)/boot
 
 # filesystem in a file containing userspace as initrd (kernel is set manually)
-$(BUILD_DIR)/filesystem.img: host userspace 
+$(BUILD_DIR)/filesystem.img: host userspace | directories
 	@rm -f $(BUILD_DIR)/root
 	@ln -s root$(TARGET_SUFFIX) $(BUILD_DIR)/root
 	@printf "$(TASK_COLOR)Create file system: $(@)\n$(NO_COLOR)"

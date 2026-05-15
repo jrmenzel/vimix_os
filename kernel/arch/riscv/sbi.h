@@ -9,7 +9,6 @@
 // (Targets without SBI can be compiled with a minimal SBI shim in m-mode).
 //
 
-#include <arch/riscv/sbi_defs.h>
 #include <kernel/kernel.h>
 
 /// @brief Looks for required SBI extensions, starts additional harts.
@@ -44,5 +43,15 @@ long sbi_probe_extension(int32_t extid);
 
 /// @brief Boots additional harts (other than boot hart) with the given
 /// parameter
+/// @param hartid Hart ID of the hart to boot
 /// @param opaque E.g. used to pass the device tree
-void sbi_start_harts(size_t opaque);
+syserr_t sbi_start_hart(size_t hartid, size_t opaque);
+
+/// @brief Check if a hart has started after calling sbi_start_hart
+/// @param hartid Hart ID of the hart to check
+/// @return true if the hart has started, false otherwise
+bool sbi_did_hart_start(size_t hartid);
+
+/// @brief Trigger a software interrupt in other CPUs.
+/// @param mask 64-bit CPU mask (even on 32-bit systems)
+void sbi_send_ipi(uint64_t mask);

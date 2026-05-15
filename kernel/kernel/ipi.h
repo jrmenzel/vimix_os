@@ -3,6 +3,7 @@
 
 // Inter-Processor Interrupts
 
+#include <arch/ipi.h>
 #include <kernel/kernel.h>
 #include <kernel/param.h>
 #include <kernel/smp.h>

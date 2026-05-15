@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/interrupts.h>
-#include <arch/platform.h>
+#include <arch/system.h>
 #include <arch/trap.h>
 #include <drivers/console.h>
 #include <drivers/devices_list.h>
@@ -12,13 +12,13 @@
 #include <init/early_pgtable.h>
 #include <init/main.h>
 #include <init/start.h>
+#include <init/system.h>
 #include <kernel/bio.h>
 #include <kernel/cpu.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/interrupt_controller.h>
 #include <kernel/kobject.h>
-#include <kernel/kticks.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
@@ -87,7 +87,7 @@ void init_devices(const void *dtb)
     // Collect all found devices in this list for later init:
     dtb_add_devices_to_dev_list(dtb, dev_list);
     // add ramdisk if present:
-    add_ramdisks_to_dev_list(dtb, dev_list);
+    add_ramdisks_to_dev_list(g_system.boot_dtb, dev_list);
 
     // map devices
     memory_map_add_device_mmio(&g_kernel_pagetable->memory_map, dev_list);
@@ -98,21 +98,16 @@ void init_devices(const void *dtb)
     // init a way to print, starts uart:
     struct Found_Device *console_dev =
         dtb_find_boot_console_in_dev_list(dtb, dev_list);
-    if (console_dev != NULL)
-    {
-        printk("init console: %s\n", console_dev->driver->dtb_name);
-        dev_t con_dev = console_init(console_dev);
 
-        if (con_dev == INVALID_DEVICE)
-        {
-            panic("not a valid console");
-        }
-        printk_redirect_to_console();
-    }
-    else
+    printk("init console: %s\n",
+           console_dev != NULL ? console_dev->driver->dtb_name : "fallback");
+    dev_t con_dev = console_init(console_dev);  // try fallback on NULL
+
+    if (con_dev == INVALID_DEVICE)
     {
-        panic("no console found");
+        panic("not a valid console");
     }
+    printk_redirect_to_console();
 
     printk("init remaining devices...\n");
     dev_list_init_all_devices(dev_list);
@@ -148,10 +143,10 @@ void init_memory_management(const void *dtb)
                                     (size_t)__start_trampoline, PAGE_SIZE,
                                     MM_REGION_TRAMPOLINE);
 
-    // get initrd / ramdisk if present
+    // get initrd / ramdisk if present from the boot loader provided DTB!
     size_t initrd_base;
     size_t initrd_size;
-    dtb_get_initrd(dtb, &initrd_base, &initrd_size);
+    dtb_get_initrd(g_system.boot_dtb, &initrd_base, &initrd_size);
     if (initrd_base != 0 && initrd_size != 0)
     {
         memory_map_add_region_and_split(&g_kernel_pagetable->memory_map,
@@ -209,8 +204,6 @@ void init_filesystem()
            MINOR(ROOT_DEVICE_NUMBER));
 }
 
-const void *g_dtb = NULL;
-
 void main(const void *dtb, bool is_boot_hart)
 {
     cpu_set_boot_state();
@@ -223,7 +216,7 @@ void main(const void *dtb, bool is_boot_hart)
 
     if (dtb == NULL)
     {
-        dtb = g_dtb;  // for secondary cores
+        dtb = g_system.dtb;  // for secondary cores
     }
     if ((dtb == NULL) || (fdt_magic(dtb) != FDT_MAGIC))
     {
@@ -233,7 +226,6 @@ void main(const void *dtb, bool is_boot_hart)
     if (is_boot_hart)
     {
         g_boot_hart = smp_processor_id();
-        g_dtb = dtb;
         printk_init();  // printk might not print until a console driver is
                         // loaded!
 
@@ -241,9 +233,11 @@ void main(const void *dtb, bool is_boot_hart)
         printk("VIMIX OS " __ARCH_bits_string " bit (" ARCH_NAME_STRING
                ") kernel version " str_from_define(GIT_HASH) " is booting\n");
 
+        dtb = system_init_from_dtb(dtb);
+        system_print_info();
+
         init_kobject_root();
-        kticks_init();
-        init_platform();
+        timer_init(dtb);
 
         // after this kmalloc() is allowed
         init_memory_management(dtb);
@@ -255,20 +249,17 @@ void main(const void *dtb, bool is_boot_hart)
 
         init_userspace();  // including first user process
 
-        // get the timebase frequency for timer_init():
-        g_timebase_frequency = dtb_get_timebase(dtb);
-
         ipi_init();
         g_kernel_init_status = KERNEL_INIT_FULLY_BOOTED;
         atomic_thread_fence(memory_order_seq_cst);
-        platform_boot_other_cpus(dtb);
+        system_boot_other_cpus(dtb);
     }
     ipi_init_per_cpu();
 
     size_t cpu_id = smp_processor_id();
 
     g_cpus[cpu_id].features = dtb_get_cpu_features(dtb, cpu_id);
-    timer_init(dtb, g_cpus[cpu_id].features);
+    timer_init_per_cpu(g_cpus[cpu_id].features);
     g_int_con.init_per_cpu();
 
     g_cpus[cpu_id].state = CPU_STARTED;

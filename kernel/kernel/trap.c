@@ -320,7 +320,9 @@ bool handle_ipi_interrupt()
             {
                 // a process changed the kernels page table, reload it to
                 // flush TLBs
+                spin_lock(&g_kernel_pagetable->lock);
                 mmu_set_kernel_pgtable(g_kernel_pagetable->root);
+                spin_unlock(&g_kernel_pagetable->lock);
                 break;
             }
             case IPI_KERNEL_PANIC:
@@ -354,7 +356,7 @@ void handle_timer_interrupt()
     uint64_t now = get_time();
     timer_schedule_interrupt(now, timer_interrupt_interval);
 
-    // Keep system time monotonic from the boot CPU as on other architectures.
+    // Keep system time monotonic from the boot CPU
     if (smp_processor_id() == g_boot_hart)
     {
         kticks_inc_ticks();
