@@ -1,6 +1,8 @@
 # VIMIX OS Readme
 
-VIMIX OS is a small Unix like OS which started as a fork of [xv6](https://github.com/mit-pdos/xv6-riscv) (which is a partial re-implementation of Unix version 6 for [RISC V](https://en.wikipedia.org/wiki/RISC-V) 32 and 64-bit).
+VIMIX OS is a small Unix like OS which started as a fork of [xv6](https://github.com/mit-pdos/xv6-riscv) (which is a partial re-implementation of Unix version 6 for 64-bit [RISC V](https://en.wikipedia.org/wiki/RISC-V)).
+
+By now VIMIX runs on 32 and 64-bit [RISC V](https://en.wikipedia.org/wiki/RISC-V).
 
 See [contributors](docs/contributors.md) for original xv6 contributors and authors of other 3rd party components.
 

@@ -20,7 +20,7 @@
 #include "dhry.h"
 
 #ifndef DHRY_ITERS
-#define DHRY_ITERS 100000000
+#define DHRY_ITERS 1000000
 #endif
 
 /* Global Variables: */
@@ -68,7 +68,7 @@ long Begin_Time, End_Time, User_Time;
 
 void Proc_1(REG Rec_Pointer Ptr_Val_Par);
 
-int main()
+int main(int argc, const char *argv[])
 /*****/
 
 /* main program, corresponds to procedures        */
@@ -82,7 +82,13 @@ int main()
     Str_30 Str_1_Loc;
     Str_30 Str_2_Loc;
     REG int Run_Index;
-    REG int Number_Of_Runs;
+    REG int Number_Of_Runs = DHRY_ITERS;
+    if (argc > 1)
+    {
+        Number_Of_Runs = atoi(argv[1]) * DHRY_ITERS;
+        printf("Running Dhrystone with %d million runs\n",
+               Number_Of_Runs / 1000000);
+    }
 
     /* Initializations */
 
@@ -123,17 +129,6 @@ int main()
         printf("Program compiled without 'register' attribute\n");
         printf("\n");
     }
-#ifdef DHRY_ITERS
-    Number_Of_Runs = DHRY_ITERS;
-#else
-    printf("Please give the number of runs through the benchmark: ");
-    {
-        int n;
-        scanf("%d", &n);
-        Number_Of_Runs = n;
-    }
-    printf("\n");
-#endif
 
     printf("Execution starts, %d runs through Dhrystone\n", Number_Of_Runs);
 
