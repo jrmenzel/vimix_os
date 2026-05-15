@@ -311,11 +311,12 @@ int print_dir(const char *path_name, struct Parameters *parameters)
         qsort(entry_array, entry_count, sizeof(struct entry_node *),
               entry_node_cmp);
     }
-    // for (size_t i = 0; i < entry_count; ++i)
-    //{
-    //     entry_node_print(entry_array[i], parameters);
-    //     free(entry_array[i]);
-    // }
+
+    for (size_t i = 0; i < entry_count; ++i)
+    {
+        entry_node_print(entry_array[i], parameters);
+    }
+
     free(entry_array);
 
     // free the linked list of entries:

@@ -636,6 +636,9 @@ syserr_t memory_map_copy_regions(struct Memory_Map *dest_map,
     list_for_each(pos, &src_map->region_list)
     {
         struct MM_Region *region = region_from_list(pos);
+        DEBUG_EXTRA_ASSERT(region != NULL,
+                           "memory_map_copy_regions: region from list is NULL");
+
         if (region->type == type)
         {
             struct MM_Region *new_region = mm_region_alloc_init(

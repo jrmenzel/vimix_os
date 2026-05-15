@@ -185,11 +185,11 @@ directories: # create temp build directories
 	@mkdir -p $(K_BUILD_DIR)
 
 # compile assembly
-$(K_BUILD_DIR)/%.o: %.S
+$(K_BUILD_DIR)/%.o: %.S directories
 	@$(CC) $(KBUILD_AFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 
 # compile C, also create assembly listing
-$(K_BUILD_DIR)/%.o: %.c
+$(K_BUILD_DIR)/%.o: %.c directories
 	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
 	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 ifeq ($(CREATE_ASSEMBLY), yes)
