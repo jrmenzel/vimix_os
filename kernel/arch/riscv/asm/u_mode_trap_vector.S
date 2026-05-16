@@ -96,14 +96,25 @@ u_mode_trap_vector:
     # load the address of user_mode_interrupt_handler(), from p->trapframe->kernel_trap
     LOAD_REG_FROM_TRAP_FRAME(s1, IDX_TRAPFRAME_KERNEL_TRAP)
 
+    # gp is part of user register state and may be arbitrary here.
+    # Restore the kernel global pointer before any call into C code.
+    la gp, __global_pointer$
+
     # fetch the kernel page table register value, from p->trapframe->kernel_page_table.
     LOAD_REG_FROM_TRAP_FRAME(a0, IDX_TRAPFRAME_KERNEL_PAGE_TABLE)
-    mv a1, zero
+    mv a1, zero # updateEpoch = false
     jal ra, mmu_set_kernel_pgtable_val
 
-    # jump to user_mode_interrupt_handler( sp ), which does not return
+    mv a3, a0 # save the kernel page table shootdown epoch in a3 to pass to the kernel trap handler
+    
+    # call user_mode_interrupt_handler(sp, ctx1, ctx2, epoch). It should not
+    # return, but using jalr gives us a defined RA and a deterministic failure
+    # mode if it does.
     mv a0, sp
-    jr s1
+    mv a1, zero
+    mv a2, zero
+    mv a3, a3
+    jalr ra, 0(s1)
 
 .globl return_to_user_mode_asm
 .type return_to_user_mode_asm, @function

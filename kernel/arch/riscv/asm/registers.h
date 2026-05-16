@@ -21,8 +21,10 @@
 #define IDX_T4 15
 #define IDX_T5 16
 #define IDX_T6 17
+#define IDX_S0 18
+#define IDX_S1 19
 
-#define REG_COUNT_TO_SAVE 18
+#define REG_COUNT_TO_SAVE 20
 
 // M Mode interrupt handler saves all registers to enable illegal instruction
 // handlers to save to any register. Order must be in the order the registers

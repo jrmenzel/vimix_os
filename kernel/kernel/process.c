@@ -142,7 +142,7 @@ void process_free(struct process *proc)
 
         vm_trim_pagetable(g_kernel_pagetable, proc->kstack);
         // update pagetable, flush cache:
-        mmu_set_kernel_pgtable(g_kernel_pagetable->root);
+        page_table_apply_mapping(g_kernel_pagetable);
         spin_unlock(&g_kernel_pagetable->lock);
 
         // tell other cores also to reload the kernel page table
@@ -230,20 +230,23 @@ bool proc_init_kernel_stack(struct Page_Table *kpage_table,
         return false;
     }
 #endif
-    if (page_table_apply_mapping(kpage_table) < 0)
+    syserr_t err = kvm_apply_kernel_mapping(kpage_table);
+    spin_unlock(&kpage_table->lock);
+
+    if (err < 0)
     {
-        spin_unlock(&kpage_table->lock);
         return false;
     }
 
-    // update kernel pagetable, flush cache:
-    mmu_set_kernel_pgtable(kpage_table->root);
-
-    spin_unlock(&kpage_table->lock);
-
-    // tell other cores to also to reload the kernel page table
+    // tell other cores also to reload the kernel page table (after we unlocked
+    // it)
     cpu_mask mask = ipi_cpu_mask_all_but_self();
-    ipi_send_interrupt(mask, IPI_KERNEL_PAGETABLE_CHANGED, NULL);
+
+    // test skips the ipi call when no other CPUs are booted
+    if (mask != 0)
+    {
+        ipi_send_interrupt(mask, IPI_KERNEL_PAGETABLE_CHANGED, NULL);
+    }
 
     return true;
 }

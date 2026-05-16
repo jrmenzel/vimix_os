@@ -6,5 +6,36 @@
     "disasexpl.associations": {
         "**/*.c": "${workspaceFolder}/build/${relativeFileDirname}/${fileBasenameNoExtension}.s",
         "**/*.cpp": "${workspaceFolder}/build/${relativeFileDirname}/${fileBasenameNoExtension}.s"
+    },
+    "chat.tools.terminal.autoApprove": {
+        "set": true,
+        "timeout": true,
+        "make": true,
+        "./tools/disassemble.sh": true,
+        "nm": true,
+        "objdump": true,
+        "readelf": true,
+        "command": true,
+        "true": true,
+        "printf": true,
+        "aarch64-linux-gnu-objdump": true,
+        "aarch64-linux-gnu-nm": true,
+        "aarch64-none-elf-objdump": true,
+        "awk": true,
+        "dtc": true,
+        "strings": true,
+        "aarch64-linux-gnu-readelf": true,
+        "qemu-system-aarch64": true,
+        "aarch64-linux-gnu-gdb": true,
+        "mktemp": true,
+        "fdtdump": true,
+        "./tools/tests/run_test.sh": true,
+        "pgrep": true,
+        "riscv64-linux-gnu-objdump": true,
+        "riscv64-unknown-elf-addr2line": true,
+        "riscv64-linux-gnu-addr2line": true,
+        "riscv64-linux-gnu-nm": true,
+        "addr2line": true,
+        "./tools/set_autoexec.sh": true
     }
 }

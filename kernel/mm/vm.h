@@ -3,6 +3,7 @@
 
 #include <kernel/kernel.h>
 #include <kernel/page.h>
+#include <kernel/pgtable.h>
 #include <mm/memory_map.h>
 #include <mm/page_table.h>
 #include <mm/pte.h>
@@ -10,9 +11,9 @@
 
 /// @brief Enables paging with the page table pointed to and sets the ASID to 0.
 /// @param pagetable Page table to use.
-void mmu_set_kernel_pgtable(pagetable_t pgtable);
+void mmu_set_kernel_page_table(struct Page_Table *kpagetable);
 
-void mmu_set_user_pgtable(pagetable_t pgtable, size_t asid);
+void mmu_set_user_page_table(struct Page_Table *upagetable, size_t asid);
 
 /// @brief Construct the page table enable register value. It encodes the page
 /// table address, the ASID and flags. The format is ARCH specific.
@@ -27,7 +28,11 @@ size_t mmu_make_page_table_reg_pa(size_t phys_addr_of_first_block,
 /// @param addr_of_first_block Pointer to page table.
 /// @param asid ASID to use.
 /// @return The register value for the MMU register
-size_t mmu_make_page_table_reg(size_t addr_of_first_block, uint32_t asid);
+static inline size_t mmu_make_page_table_reg(size_t addr_of_first_block,
+                                             uint32_t asid)
+{
+    return mmu_make_page_table_reg_pa(virt_to_phys(addr_of_first_block), asid);
+}
 
 /// @brief Returns the current page table settings.
 /// @return The register value from the MMU

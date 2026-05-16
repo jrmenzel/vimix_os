@@ -274,6 +274,17 @@ void console_debug_print_help()
     printk("Time: %zd ticks\n", kticks_get_ticks());
 }
 
+void print_epochs()
+{
+    for (size_t i = 0; i < MAX_CPUS; i++)
+    {
+        if (g_cpus[i].state == CPU_UNUSED) continue;
+
+        printk("CPU %zd: kernel page table epoch seen: %zu\n", i,
+               g_cpus[i].kernel_pgtable_epoch_seen);
+    }
+}
+
 bool console_handle_control_keys(int32_t c)
 {
     bool processed = true;
@@ -308,6 +319,7 @@ bool console_handle_control_keys(int32_t c)
             break;
         case CONTROL_KEY('Z'):
             debug_print_memory_map(&g_kernel_pagetable->memory_map);
+            print_epochs();
             break;
         case CONTROL_KEY('Y'): debug_print_kobject_tree(); break;
         case CONTROL_KEY('D'): debug_print_dentry_cache(); break;

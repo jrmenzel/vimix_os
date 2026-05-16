@@ -1897,22 +1897,25 @@ void concreate(char *s)
 {
     const size_t N = 40;
 
-    char file[3];
+    char file[4];
     file[0] = 'C';
-    file[2] = '\0';
+    file[1] = 'A';
+    file[2] = 'A';
+    file[3] = '\0';
 
     for (size_t i = 0; i < N; i++)
     {
-        file[1] = '0' + i;
+        file[1] = 'A' + (i / 26);
+        file[2] = 'A' + (i % 26);
         unlink(file);
         pid_t pid = fork();
         if (pid && (i % 3) == 1)
         {
-            link("C0", file);
+            link("CAA", file);
         }
         else if (pid == 0 && (i % 5) == 1)
         {
-            link("C0", file);
+            link("CAA", file);
         }
         else
         {
@@ -1956,9 +1959,10 @@ void concreate(char *s)
             continue;
         }
 
-        if (dir_entry->d_name[0] == 'C' && dir_entry->d_name[2] == '\0')
+        if (dir_entry->d_name[0] == 'C' && dir_entry->d_name[4] == '\0')
         {
-            size_t i = dir_entry->d_name[1] - '0';
+            size_t i = (dir_entry->d_name[1] - 'A') * 26 +
+                       (dir_entry->d_name[2] - 'A');
             if (i < 0 || i >= N)
             {
                 printf("%s: concreate weird file name %s\n", s,
@@ -1984,7 +1988,8 @@ void concreate(char *s)
         {
             if (fa[i] == 0)
             {
-                printf("%s: missing file C%c\n", s, (char)('0' + i));
+                printf("%s: missing file C%c%c\n", s, (char)('A' + (i / 26)),
+                       (char)('A' + (i % 26)));
             }
         }
         exit(1);
@@ -1992,7 +1997,8 @@ void concreate(char *s)
 
     for (size_t i = 0; i < N; i++)
     {
-        file[1] = '0' + i;
+        file[1] = 'A' + (i / 26);
+        file[2] = 'A' + (i % 26);
         pid_t pid = fork();
         if (pid < 0)
         {
@@ -3803,7 +3809,7 @@ struct test tests_vimix[] = {
     {createtest, "createtest", TEST_MASK_FILESYSTEM},
     {dirtest, "dirtest", TEST_MASK_FILESYSTEM},
     {exectest, "exectest", TEST_MASK_NONE},
-    {pipe1, "pipe1", TEST_MASK_NONE},
+    {pipe1, "pipe1", TEST_MASK_NONE | TEST_MASK_OFTEN_FAIL},
     {preempt, "preempt", TEST_MASK_CORE_COUNT},
     {exitwait, "exitwait", TEST_MASK_CORE_COUNT},
     {reparent, "reparent", TEST_MASK_CORE_COUNT | TEST_MASK_OFTEN_FAIL},

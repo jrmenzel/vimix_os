@@ -84,7 +84,7 @@ _behind_header:
     # CPU ID >= MAX_CPU -> infinite loop for you
     # (if this is the boot hart in S-Mode, boot will fail)
     li t0, MAX_CPUS
-    bge tp, t0, infinite_loop
+    bge tp, t0, infinite_loop_asm
 
     # get phys_base
 .global phys_base_init
@@ -193,10 +193,10 @@ post_relocation:
     call main
 
     # start should never return, but also used if there are too many CPUs:
-.global infinite_loop
-infinite_loop:
+.global infinite_loop_asm
+infinite_loop_asm:
     wfi        # wait for interrupt, can save power
-    j infinite_loop
+    j infinite_loop_asm
 
 
 # After calling this, the hart ID is in a0 and the dtb pointer is in a1, for both M and S mode entry.

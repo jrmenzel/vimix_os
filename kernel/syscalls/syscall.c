@@ -131,7 +131,7 @@ int argfd(int n, int *pfd, struct file **pf)
 // clang-format off
 /// An array mapping syscall numbers from syscall.h
 /// to the function that handles the system call.
-static syserr_t (*syscalls[])() = {
+static syserr_t (*const syscalls[])() = {
     [SYS_fork] sys_fork,
     [SYS_exit] sys_exit,
     [SYS_wait] sys_wait,

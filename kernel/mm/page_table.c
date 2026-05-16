@@ -32,6 +32,8 @@ struct Page_Table *page_table_alloc_init()
     spin_lock_init(&pagetable->lock, "pagetable_lock");
     spin_lock(&pagetable->lock);
     memory_map_init(&pagetable->memory_map);
+    atomic_store(&pagetable->epoch, 1);
+    atomic_store(&pagetable->update_epoch_pending, false);
 
 #ifdef CONFIG_DEBUG_SPINLOCK
     // for additional locking tests
@@ -69,6 +71,7 @@ syserr_t page_table_map_region(struct Page_Table *pagetable,
         return -ENOMEM;
     }
     region->mapped = MM_REGION_PARTIAL_MAPPED;
+    region->epoch_enabled = 0;
 
     return 0;
 }
@@ -101,6 +104,7 @@ syserr_t page_table_apply_mapping(struct Page_Table *pagetable)
                 region->mapped = MM_REGION_MAPPED;
             }
         }
+        atomic_store(&pagetable->update_epoch_pending, true);
     }
     else
     {
@@ -110,6 +114,27 @@ syserr_t page_table_apply_mapping(struct Page_Table *pagetable)
     }
 
     return err;
+}
+
+syserr_t page_table_update_region_epoch(struct Page_Table *pagetable)
+{
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(&pagetable->lock);
+
+    struct Memory_Map *memory_map = &pagetable->memory_map;
+
+    size_t epoch = atomic_load(&pagetable->epoch);
+    struct list_head *pos;
+    list_for_each(pos, &memory_map->region_list)
+    {
+        struct MM_Region *region = region_from_list(pos);
+        if ((region->mapped == MM_REGION_MAPPED) &&
+            (region->epoch_enabled == 0))
+        {
+            region->epoch_enabled = epoch;
+        }
+    }
+    atomic_store(&pagetable->update_epoch_pending, false);
+    return 0;
 }
 
 syserr_t page_table_unmap_partial_mappings(struct Page_Table *pagetable)

@@ -17,6 +17,7 @@
 #include <mm/kalloc.h>
 #include <mm/kernel_memory.h>
 #include <mm/kmem_sysfs.h>
+#include <mm/vm.h>
 
 /// @brief central object to manage system memory
 struct kernel_memory g_kernel_memory = {0};

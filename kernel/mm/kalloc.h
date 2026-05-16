@@ -2,10 +2,13 @@
 #pragma once
 
 #include <kernel/kernel.h>
-#include <mm/vm.h>
 
 #define ALLOC_FLAG_NONE 0
 #define ALLOC_FLAG_ZERO_MEMORY 1
+
+struct MM_Region;
+struct Memory_Map;
+enum MM_Region_Type;
 
 /// @brief Allocate a power of two number of pages
 /// @param flags Returns zeroes memory if ALLOC_FLAG_ZERO_MEMORY is set.

@@ -140,6 +140,14 @@ syserr_t do_open(char *pathname, int32_t flags, mode_t mode)
     {
         //  file does not exist -> create it
         dentry_lock(dp);
+        if (dp->parent == NULL)
+        {
+            // parent was unlinked
+            dentry_unlock(dp);
+            dentry_put(dp);
+            file_close(f);
+            return -ENOENT;
+        }
         struct dentry *parent = dentry_get(dp->parent);
         dentry_unlock(dp);
 

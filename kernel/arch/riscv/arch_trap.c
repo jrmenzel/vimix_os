@@ -35,6 +35,8 @@ void dump_pre_int_kthread_state(size_t *stack)
     printk("a5  = " FORMAT_REG_SIZE "\n", stack[IDX_A5]);
     printk("a6  = " FORMAT_REG_SIZE "\n", stack[IDX_A6]);
     printk("a7  = " FORMAT_REG_SIZE "\n", stack[IDX_A7]);
+    printk("s0/fp = " FORMAT_REG_SIZE "\n", stack[IDX_S0]);
+    printk("s1  = " FORMAT_REG_SIZE "\n", stack[IDX_S1]);
 }
 
 void dump_exception_cause(struct Interrupt_Context *ctx)

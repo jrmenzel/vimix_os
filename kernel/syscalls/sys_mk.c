@@ -80,6 +80,13 @@ syserr_t do_mkdir(const char *pathname, mode_t mode)
     }
 
     dentry_lock(dp);
+    if (dp->parent == NULL)
+    {
+        // parent was unlinked
+        dentry_unlock(dp);
+        dentry_put(dp);
+        return -ENOENT;
+    }
     struct dentry *parent_dp = dentry_get(dp->parent);
     struct inode *parent_ip = parent_dp->ip;
     dentry_unlock(dp);

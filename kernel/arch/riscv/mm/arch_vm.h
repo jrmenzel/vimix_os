@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <arch/riscv/asm/satp.h>
+#include <arch/riscv/riscv.h>
 #include <kernel/kernel.h>
 #include <mm/pte.h>
-#include "asm/satp.h"
 
 /// @brief To allow traps from user mode some functions are called when the
 /// kernel is still on the user page table (or again during return to user mode)
@@ -28,6 +29,10 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE static inline void mmu_flush_tlb()
 #if defined(__RISCV_EXT_ZIFENCEI)
     // the zero, zero means flush all TLB entries.
     asm volatile("sfence.vma zero, zero");
+#else
+    _Static_assert(
+        CPUS == 1,
+        "mmu_flush_tlb is not implemented for multi-core without zifencei");
 #endif
 }
 
@@ -38,6 +43,10 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE static inline void mmu_flush_tlb_asid(
 #if defined(__RISCV_EXT_ZIFENCEI)
     // the zero, zero means flush all TLB entries.
     asm volatile("sfence.vma zero, %0" ::"r"(asid));
+#else
+    _Static_assert(
+        CPUS == 1,
+        "mmu_flush_tlb is not implemented for multi-core without zifencei");
 #endif
 }
 

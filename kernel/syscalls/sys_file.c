@@ -156,7 +156,7 @@ syserr_t sys_chdir()
     dentry_lock(dp);
     if (dp->parent == NULL)
     {
-        // might be an unlinked directory ot root, in both cases use the root
+        // might be an unlinked directory or root, in both cases use the root
         proc->cwd_dentry = dentry_cache_get_root();
     }
     else

@@ -256,6 +256,7 @@ void sysfs_unregister_kobject(struct kobject *kobj)
     if (kobj->sysfs_nodes != NULL)
     {
         kfree(kobj->sysfs_nodes);
+        kobj->sysfs_nodes = NULL;
     }
 }
 

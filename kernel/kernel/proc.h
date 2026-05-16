@@ -35,6 +35,9 @@ struct cpu
                                                ///< enabled before
                                                ///< cpu_push_disable_device_interrupt_stack()?
 
+    // Last global kernel page-table shootdown epoch this CPU has applied.
+    size_t kernel_pgtable_epoch_seen;
+
     // Inter Processor Interrupts (IPI) data, access protected by
     // g_cpus_ipi_lock (one lock for all CPUs!).
     struct ipi

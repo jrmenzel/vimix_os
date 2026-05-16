@@ -5,7 +5,7 @@
 BUILD_TYPE := debug
 #BUILD_TYPE := release
 # release builds with debug symbols increase the binary sizes
-#REL_WITH_DEBUG := yes
+REL_WITH_DEBUG := yes
 
 #####
 # target architecture subpath in kernel/
@@ -45,7 +45,11 @@ KERNEL_FILE := $(BUILD_DIR)/boot/$(KERNEL_NAME)
 ifeq ($(BUILD_TYPE), debug)
 CREATE_DEBUG_INFO := yes
 else
+ifeq ($(REL_WITH_DEBUG), yes)
+CREATE_DEBUG_INFO := yes
+else
 CREATE_DEBUG_INFO := no
+endif
 endif
 EXTRACTDGB_TOOL := $(ROOT_DIR_MK_COMMON)/tools/extractdbg/extractdbg
 

@@ -1212,8 +1212,10 @@ syserr_t vimixfs_iops_rmdir(struct inode *parent, struct dentry *dp)
     inode_lock(parent);
     uint32_t off;
     struct inode *ip = vimixfs_lookup(parent, dp->name, &off);
-    if (ip == NULL)
+    if ((ip == NULL) || (ip != dp->ip))
     {
+        // ip != dp->ip can happen if the directory entry got deleted and
+        // re-created with a different inode number in the meantime
         inode_unlock(parent);
         log_end_fs_transaction(sb);
         return -ENOENT;

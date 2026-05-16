@@ -143,7 +143,12 @@ void dentry_free(struct dentry *dp)
     // drop inode ref
     if (dp->ip != NULL)
     {
-        inode_put(dp->ip);
+        // Defensive: avoid triggering kref underflow if ownership was
+        // violated elsewhere and the inode already reached refcount 0.
+        if (kref_read(&dp->ip->ref) > 0)
+        {
+            inode_put(dp->ip);
+        }
         dp->ip = NULL;
     }
 

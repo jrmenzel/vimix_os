@@ -58,10 +58,26 @@ void wakeup_procs_waiting_on_timer()
     }
 }
 
+void refresh_kernel_page_table()
+{
+    size_t epoch = atomic_load(&g_kernel_pagetable->epoch);
+    struct cpu *cpu = get_cpu();
+    if ((cpu->kernel_pgtable_epoch_seen < epoch) ||
+        (atomic_load(&g_kernel_pagetable->update_epoch_pending)))
+    {
+        spin_lock(&g_kernel_pagetable->lock);
+        mmu_set_kernel_page_table(g_kernel_pagetable);
+        spin_unlock(&g_kernel_pagetable->lock);
+    }
+}
+
 void scheduler()
 {
     struct cpu *cpu = get_cpu();
     cpu->proc = NULL;
+    // A CPU entering scheduler for the first time has no older kernel TLB
+    // state to invalidate; baseline to current epoch.
+    cpu->kernel_pgtable_epoch_seen = atomic_load(&g_kernel_pagetable->epoch);
 
     while (true)
     {
@@ -79,6 +95,10 @@ void scheduler()
                 struct cpu *this_cpu = get_cpu();
 
                 proc_shrink_stack(proc);
+
+                // The process relies on a correctly mapped kernel stack.
+                // make sure the latest kernel page table is loaded.
+                refresh_kernel_page_table();
 
                 // Switch to chosen process.  It is the process's job
                 // to release its lock and then reacquire it

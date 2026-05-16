@@ -94,10 +94,10 @@ void sysfs_node_free(struct sysfs_node *node, struct sysfs_sb_private *priv)
 
     // free children first
     struct list_head *pos;
-    for (pos = node->child_list.next; !(pos == (node->child_list.next));)
+    struct list_head *next;
+    list_for_each_safe(pos, next, &node->child_list)
     {
         struct sysfs_node *child_node = sysfs_node_from_child_list(pos);
-        pos = pos->next;  // save next pointer as child_node will be freed
         sysfs_node_free(child_node, priv);
     }
 

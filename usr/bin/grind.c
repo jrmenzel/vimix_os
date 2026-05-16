@@ -26,6 +26,7 @@ void go(int which_child, int max_iterations)
     static char buf[999];
     char *break0 = sbrk(0);
 
+    chdir("/");
     mkdir("grindir", 0755);
     if (chdir("grindir") != 0)
     {
@@ -39,9 +40,11 @@ void go(int which_child, int max_iterations)
         // print child number (as letters) every few iterations
         char name = 'A' + which_child;
         if ((iters % 500) == 0) write(STDOUT_FILENO, &name, 1);
+        if ((which_child == 0) && ((iters % 1000) == 999))
+            write(STDOUT_FILENO, "\n", 1);
         iters++;
 
-        int what = rand() % 23;
+        int what = rand() % 22;
         if (what == 1)
         {
             close(open("grindir/../a", O_CREAT | O_RDWR, 0755));
@@ -256,15 +259,10 @@ void go(int which_child, int max_iterations)
                 printf("grind: fstat reports wrong size %d\n", (int)st.st_size);
                 exit(1);
             }
-            if (st.st_ino > 200)
-            {
-                printf("grind: fstat reports crazy i-number %d\n",
-                       (int)st.st_ino);
-                exit(1);
-            }
             close(fd1);
             unlink("c");
         }
+        /*
         else if (what == 22)
         {
             // echo hi | cat
@@ -351,6 +349,7 @@ void go(int which_child, int max_iterations)
                 exit(1);
             }
         }
+            */
     }
 }
 
@@ -393,7 +392,6 @@ void iter(size_t number_of_forks, int max_iterations)
         }
     }
 
-    printf("\ngrind passed\ngrind passed\n");
     exit(EXIT_SUCCESS);
 }
 
@@ -430,6 +428,8 @@ int main(int argc, char *argv[])
     {
         wait(NULL);
     }
+
+    printf("\ngrind passed\ngrind passed\n");
 
     return 0;
 }

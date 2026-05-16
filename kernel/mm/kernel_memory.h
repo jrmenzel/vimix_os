@@ -9,6 +9,7 @@
 #include <kernel/stdatomic.h>
 #include <mm/cache.h>
 #include <mm/kernel_memory.h>
+#include <mm/memory_map.h>
 
 // The kernel saves free lists for 2^0 to 2^PAGE_ALLOC_MAX_ORDER pages
 // it uses a buddy allocator strategy to merge free buddy blocks of

@@ -4,6 +4,7 @@
 #include <kernel/errno.h>
 #include <kernel/kernel.h>
 #include <kernel/spinlock.h>
+#include <kernel/stdatomic.h>
 #include <mm/memory_map.h>
 
 /// @brief A page table, both the pgtable tree read by the MMU and
@@ -14,6 +15,8 @@ struct Page_Table
     pagetable_t root;
     struct spinlock lock;
     struct Memory_Map memory_map;
+    atomic_size_t epoch;
+    atomic_bool update_epoch_pending;
 };
 
 /// @brief The one global kernel page table shared by all CPUs.
@@ -39,6 +42,8 @@ void page_table_free(struct Page_Table *pagetable);
 /// @param pagetable Page table with new/unmapped regions.
 /// @return 0 on success, or a negative error code on failure.
 syserr_t page_table_apply_mapping(struct Page_Table *pagetable);
+
+syserr_t page_table_update_region_epoch(struct Page_Table *pagetable);
 
 /// @brief Helper in page_table_apply_mapping and used in some
 /// cleanup-after-failure code. Clear out any MM_REGION_PARTIAL_MAPPED mappings

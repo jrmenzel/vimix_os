@@ -54,8 +54,16 @@ bool source_is_software_timer(struct Interrupt_Context *ctx)
 /// Handle an interrupt, exception, or system call from user space.
 /// called from u_mode_trap_vector.S, first C function after storing the
 /// CPU state / registers in assembly.
-void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
+void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2,
+                                 size_t kernel_page_table_epoch)
 {
+    // save epoch
+    if (kernel_page_table_epoch != 0)
+    {
+        g_cpus[smp_processor_id()].kernel_pgtable_epoch_seen =
+            kernel_page_table_epoch;
+    }
+
     // exception / interrupt cause
     struct Interrupt_Context ctx;
     int_ctx_create(&ctx, ctx_1, ctx_2);
@@ -168,13 +176,13 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE void return_to_user_mode()
     cpu_disable_interrupts();
 
     struct process *proc = get_current();
+    size_t kernel_stack = proc->kstack + KERNEL_STACK_SIZE;
 
     // set up trapframe values that u_mode_trap_vector will need when
     // the process next traps into the kernel.
     proc->trapframe->kernel_page_table =
-        mmu_get_kernel_pgtable_reg_value();  // kernel page table
-    proc->trapframe->kernel_sp =
-        proc->kstack + KERNEL_STACK_SIZE;  // process's kernel stack
+        mmu_get_kernel_pgtable_reg_value();     // kernel page table
+    proc->trapframe->kernel_sp = kernel_stack;  // process's kernel stack
     proc->trapframe->kernel_trap = (size_t)user_mode_interrupt_handler;
     proc->trapframe->kernel_hartid = smp_processor_id();
 
@@ -190,10 +198,8 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE void return_to_user_mode()
     cpu_set_exception_return_address(
         trapframe_get_program_counter(proc->trapframe));
 
-    size_t kernel_stack = proc->kstack + KERNEL_STACK_SIZE;
-
     // switch to user page table, works as this function is mapped to trampsec
-    mmu_set_user_pgtable(proc->pagetable->root, 0);
+    mmu_set_user_page_table(proc->pagetable, 0);
 
     return_to_user_mode_asm(kernel_stack);
 }
@@ -321,7 +327,7 @@ bool handle_ipi_interrupt()
                 // a process changed the kernels page table, reload it to
                 // flush TLBs
                 spin_lock(&g_kernel_pagetable->lock);
-                mmu_set_kernel_pgtable(g_kernel_pagetable->root);
+                mmu_set_kernel_page_table(g_kernel_pagetable);
                 spin_unlock(&g_kernel_pagetable->lock);
                 break;
             }

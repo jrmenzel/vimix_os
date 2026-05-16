@@ -23,6 +23,7 @@
 #include <kernel/signal.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
+#include <kernel/stdatomic.h>
 #include <kernel/string.h>
 #include <kernel/trap.h>
 #include <lib/panic.h>
@@ -116,9 +117,12 @@ struct Page_Table *proc_pagetable(struct process *proc,
     }
 
 #if defined(MAP_TRAP_VECTOR_TO_USER_PT)
-    if (memory_map_copy_regions(&pagetable->memory_map,
-                                &g_kernel_pagetable->memory_map,
-                                MM_REGION_TRAMPOLINE) < 0)
+    spin_lock(&g_kernel_pagetable->lock);
+    syserr_t copy_trampoline_err = memory_map_copy_regions(
+        &pagetable->memory_map, &g_kernel_pagetable->memory_map,
+        MM_REGION_TRAMPOLINE);
+    spin_unlock(&g_kernel_pagetable->lock);
+    if (copy_trampoline_err < 0)
     {
         page_table_free(pagetable);
         return NULL;
@@ -160,8 +164,11 @@ struct Page_Table *proc_pagetable(struct process *proc,
     else
     {
         // copy from proc (via execv)
-        if (memory_map_copy_kernel_stack(&pagetable->memory_map,
-                                         &proc->pagetable->memory_map) < 0)
+        spin_lock(&proc->pagetable->lock);
+        syserr_t copy_kstack_err = memory_map_copy_kernel_stack(
+            &pagetable->memory_map, &proc->pagetable->memory_map);
+        spin_unlock(&proc->pagetable->lock);
+        if (copy_kstack_err < 0)
         {
             page_table_free(pagetable);
             return NULL;
@@ -298,8 +305,11 @@ syserr_t do_fork()
         kobject_add(&np->kobj, &g_kobjects_proc, "%d", np->pid);
     if (!added_to_tree)
     {
+        // kobject_add() may fail before or after partial linkage into the
+        // kobject tree. Always detach first, then drop our own reference.
+        // Reversing this order can free np before kobject_del() runs.
+        kobject_del(&np->kobj);  // cleanup partial addition if present
         proc_put(np);
-        kobject_del(&np->kobj);  // cleanup partial addition
         return -ENOMEM;
     }
     proc_put(np);  // drop reference now that the kobject tree holds one
@@ -444,6 +454,20 @@ syserr_t do_wait(int32_t *wstatus)
 
                         rwspin_write_unlock(&g_process_list.lock);
                         return -EFAULT;
+                    }
+
+                    // Defensive: if any child still points to this zombie
+                    // parent (e.g. due to a rare handoff race), move it to
+                    // init before removing the parent from the process list.
+                    struct list_head *cpos;
+                    list_for_each(cpos, &g_process_list.plist)
+                    {
+                        struct process *child = process_from_list(cpos);
+                        if (child->parent == pp)
+                        {
+                            child->parent = g_initial_user_process;
+                            wakeup_holding_plist_lock(g_initial_user_process);
+                        }
                     }
 
                     // remove from process list, lock is already held

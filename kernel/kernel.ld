@@ -42,6 +42,7 @@ SECTIONS
   .data : AT(ADDR(.data) - PAGE_OFFSET + PHYS_OFFSET) {
     . = ALIGN(CONSTANT(MAXPAGESIZE));
     PROVIDE(__start_data = .);
+    PROVIDE(__global_pointer$ = . + 0x800);
     *(.sdata .sdata.*) /* do not need to distinguish this from .data */
     . = ALIGN(16);
     *(.data .data.*)

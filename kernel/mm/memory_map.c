@@ -4,12 +4,14 @@
 #include <drivers/devices_list.h>
 #include <init/early_pgtable.h>
 #include <init/start.h>
+#include <kernel/errno.h>
 #include <kernel/pgtable.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
 #include <mm/kalloc.h>
 #include <mm/memlayout.h>
 #include <mm/memory_map.h>
+#include <mm/vm.h>
 
 struct MM_Region_Attributes g_region_attributes[] = {
     [MM_REGION_RESERVED] = {.description = "reserved",
@@ -119,6 +121,7 @@ void mm_region_init(struct MM_Region *region, size_t start_pa, size_t start_va,
             ? MM_REGION_NEVER_MAP
             : MM_REGION_MARKED_FOR_MAPPING;
     region->free_on_unmap = g_region_attributes[type].free_pages;
+    region->epoch_enabled = 0;
 
     DEBUG_EXTRA_PANIC(region->start_pa % PAGE_SIZE == 0,
                       "mm_region_init unaligned region");
@@ -608,6 +611,7 @@ syserr_t memory_map_copy_kernel_stack(struct Memory_Map *dest_map,
                                       struct Memory_Map *src_map)
 {
     DEBUG_ASSERT_CPU_HOLDS_LOCK(dest_map->parent_lock);
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(src_map->parent_lock);
 
     struct list_head *pos;
     list_for_each(pos, &src_map->region_list)
@@ -632,6 +636,7 @@ syserr_t memory_map_copy_regions(struct Memory_Map *dest_map,
                                  enum MM_Region_Type type)
 {
     DEBUG_ASSERT_CPU_HOLDS_LOCK(dest_map->parent_lock);
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(src_map->parent_lock);
     struct list_head *pos;
     list_for_each(pos, &src_map->region_list)
     {
@@ -672,6 +677,7 @@ void debug_print_mm_region(struct MM_Region *region)
             printk(", marked for unmapping");
             break;
     }
+    printk(" epoch: %zu", region->epoch_enabled);
     printk("\n");
 }
 

@@ -89,7 +89,16 @@ void dentry_cache_drain_lru(struct dentry_cache *cache, size_t target)
             struct dentry *parent = lru_dp->parent;
             if (parent != NULL)
             {
-                list_del(&lru_dp->sibling_list);
+                if (!list_empty(&lru_dp->sibling_list))
+                {
+                    list_del(&lru_dp->sibling_list);
+                }
+                else
+                {
+                    // Defensive: avoid dropping parent ref twice if linkage
+                    // was already detached by a racing path.
+                    parent = NULL;
+                }
                 lru_dp->parent = NULL;
             }
 
@@ -113,7 +122,15 @@ void dentry_cache_drain_lru(struct dentry_cache *cache, size_t target)
             {
                 dentry_put(parents_to_put[i]);
             }
-            dentry_free(to_free[i]);
+
+            // A detached LRU entry can transiently gain references again
+            // before we reach the out-of-lock free below. In that case keep
+            // it alive; once those refs drop, dentry_put() will free it via
+            // the parent==NULL path.
+            if (kref_read(&to_free[i]->ref) == 0)
+            {
+                dentry_free(to_free[i]);
+            }
         }
     }
 }
@@ -212,8 +229,11 @@ void dentry_cache_remove_from_unlinked(struct dentry *dp)
     dcache_write_lock();
     if (dp->parent != NULL)
     {
-        list_del(&dp->sibling_list);
-        parent_to_put = dp->parent;
+        if (!list_empty(&dp->sibling_list))
+        {
+            list_del(&dp->sibling_list);
+            parent_to_put = dp->parent;
+        }
         dp->parent = NULL;
     }
     dcache_write_unlock();

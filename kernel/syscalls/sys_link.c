@@ -167,6 +167,16 @@ syserr_t do_rm(char *path, bool is_rmdir)
     struct dentry *parent = dentry_get(file->parent);
     dcache_read_unlock();
 
+    // The target can be concurrently moved to the internal unlinked tree.
+    // In that case parent->ip is NULL and must not be locked.
+    if (dentry_is_unlinked(file) || file->ip == NULL || parent == NULL ||
+        parent->ip == NULL)
+    {
+        dentry_put(file);
+        dentry_put(parent);
+        return -ENOENT;
+    }
+
     size_t name_len = strlen(path);
     bool cant_unlink = false;
 
@@ -194,7 +204,7 @@ syserr_t do_rm(char *path, bool is_rmdir)
         }
     }
 
-    if (cant_unlink || parent == NULL)
+    if (cant_unlink)
     {
         dentry_put(file);
         dentry_put(parent);
@@ -220,13 +230,32 @@ syserr_t do_rm(char *path, bool is_rmdir)
         return perm_ok;
     }
 
-    inode_lock_exclusive_2(parent->ip, file->ip);
+    // Snapshot inode pointers once and keep using those pointers for
+    // lock/unlock. The dentry cache linkage can change concurrently.
+    struct inode *parent_ip = parent->ip;
+    struct inode *file_ip = file->ip;
+
+    if (parent_ip == NULL || file_ip == NULL)
+    {
+        dentry_put(file);
+        dentry_put(parent);
+        return -ENOENT;
+    }
+
+    // Keep both inodes alive across backend dispatch, independent of dentry
+    // cache rewiring.
+    inode_get(parent_ip);
+    inode_get(file_ip);
+
+    inode_lock_exclusive_2(parent_ip, file_ip);
     dcache_read_lock();
     if (file->parent != parent)
     {
         // file got moved in the meantime -> abort
         dcache_read_unlock();
-        inode_unlock_exclusive_2(parent->ip, file->ip);
+        inode_unlock_exclusive_2(parent_ip, file_ip);
+        inode_put(file_ip);
+        inode_put(parent_ip);
         dentry_put(file);
         dentry_put(parent);
         return -EACCES;
@@ -236,7 +265,9 @@ syserr_t do_rm(char *path, bool is_rmdir)
     struct dentry *new_dentry = dentry_alloc_init_orphan(file->name, NULL);
     if (new_dentry == NULL)
     {
-        inode_unlock_exclusive_2(parent->ip, file->ip);
+        inode_unlock_exclusive_2(parent_ip, file_ip);
+        inode_put(file_ip);
+        inode_put(parent_ip);
         dentry_put(file);
         dentry_put(parent);
         return -ENOMEM;
@@ -244,20 +275,34 @@ syserr_t do_rm(char *path, bool is_rmdir)
 
     // switch the lookup to the new dentry to prevent further access
     dcache_write_lock();
+    // The dentry linkage can still mutate between lock handoff windows.
+    // Treat this as a stale lookup race, not a kernel-fatal condition.
+    if (file->parent != parent || file->ip != file_ip ||
+        parent->ip != parent_ip || new_dentry->parent != NULL ||
+        file_name_cmp(file->name, new_dentry->name) != 0)
+    {
+        dcache_write_unlock();
+        inode_unlock_exclusive_2(parent_ip, file_ip);
+        inode_put(file_ip);
+        inode_put(parent_ip);
+        dentry_put(file);
+        dentry_put(parent);
+        dentry_put(new_dentry);
+        return -ENOENT;
+    }
+
     dentry_unregister_from_parent(file);
     dentry_register_with_parent(g_dentry_cache.unlinked_root, file);
     dentry_register_with_parent(parent, new_dentry);
     dcache_write_unlock();
 
-    syserr_t ret = 0;
-    if (is_rmdir)
-    {
-        ret = VFS_INODE_RMDIR(parent->ip, file);
-    }
-    else
-    {
-        ret = VFS_INODE_UNLINK(parent->ip, file);
-    }
+    syserr_t (*rm_backend)(struct inode *, struct dentry *) =
+        is_rmdir ? parent_ip->i_sb->i_op->iops_rmdir
+                 : parent_ip->i_sb->i_op->iops_unlink;
+    DEBUG_EXTRA_PANIC(rm_backend != NULL,
+                      "do_rm: selected backend rm operation is NULL");
+
+    syserr_t ret = rm_backend(parent_ip, file);
     if (ret < 0)
     {
         // something went wrong, re-add to parent's list
@@ -276,7 +321,9 @@ syserr_t do_rm(char *path, bool is_rmdir)
             dentry_cache_remove_from_unlinked(file);
         }
     }
-    inode_unlock_exclusive_2(parent->ip, file->ip);
+    inode_unlock_exclusive_2(parent_ip, file_ip);
+    inode_put(file_ip);
+    inode_put(parent_ip);
 
     dentry_put(file);
     dentry_put(parent);

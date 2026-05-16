@@ -5,7 +5,6 @@
 #include <kernel/errno.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
-#include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/string.h>
 #include <mm/arch_vm.h>
@@ -22,41 +21,61 @@ const size_t MAX_PTES_PER_PAGE_TABLE = 1024;
 const size_t MAX_PTES_PER_PAGE_TABLE = 512;
 #endif
 
-size_t mmu_make_page_table_reg(size_t addr_of_first_block, uint32_t asid)
-{
-    return mmu_make_page_table_reg_pa(virt_to_phys(addr_of_first_block), asid);
-}
-
-CAN_BE_CALLED_ON_USER_PAGE_TABLE void mmu_set_kernel_pgtable_val(
-    size_t reg_value)
+CAN_BE_CALLED_ON_USER_PAGE_TABLE size_t
+mmu_set_kernel_pgtable_val(size_t reg_value, bool updateEpoch)
 {
     mmu_set_kernel_pgtable_reg(reg_value);
     mmu_flush_instruction_cache();
     mmu_flush_tlb();
+
+    size_t inc = (updateEpoch) ? 1 : 0;
+    return atomic_fetch_add(&g_kernel_pagetable->epoch, inc) + inc;
 }
 
-void mmu_set_kernel_pgtable(pagetable_t pgtable)
+void mmu_set_kernel_page_table(struct Page_Table *kpagetable)
 {
     uint32_t asid = 0;
-    g_kernel_pgtable_reg_value = mmu_make_page_table_reg((size_t)pgtable, asid);
-    mmu_set_kernel_pgtable_val(g_kernel_pgtable_reg_value);
+    bool update_epoch = atomic_load(&kpagetable->update_epoch_pending);
+    g_kernel_pgtable_reg_value =
+        mmu_make_page_table_reg((size_t)kpagetable->root, asid);
+    size_t newEpoch =
+        mmu_set_kernel_pgtable_val(g_kernel_pgtable_reg_value, update_epoch);
+
+    g_cpus[smp_processor_id()].kernel_pgtable_epoch_seen = newEpoch;
+
+    if (update_epoch)
+    {
+        DEBUG_ASSERT_CPU_HOLDS_LOCK(&kpagetable->lock);
+        page_table_update_region_epoch(kpagetable);
+    }
 }
 
-CAN_BE_CALLED_ON_USER_PAGE_TABLE void mmu_set_user_pgtable(pagetable_t pgtable,
-                                                           size_t asid)
+CAN_BE_CALLED_ON_USER_PAGE_TABLE void mmu_set_user_page_table(
+    struct Page_Table *upagetable, size_t asid)
 {
-    g_kernel_pgtable_reg_value = mmu_make_page_table_reg((size_t)pgtable, asid);
-    mmu_set_user_pgtable_reg(g_kernel_pgtable_reg_value);
+    // note: functions outside of the trapsec (and dynamically allocated kernel
+    // memory) can be accessed till setting the user page table.
+    if (upagetable->update_epoch_pending)
+    {
+        atomic_fetch_add(&upagetable->epoch, 1);
+        spin_lock(&upagetable->lock);
+        page_table_update_region_epoch(upagetable);
+        spin_unlock(&upagetable->lock);
+    }
+    size_t reg_value = mmu_make_page_table_reg((size_t)upagetable->root, asid);
+    mmu_set_user_pgtable_reg(reg_value);
     mmu_flush_instruction_cache();
     mmu_flush_tlb_asid(asid);
 }
 
 syserr_t kvm_apply_kernel_mapping(struct Page_Table *kpagetable)
 {
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(&kpagetable->lock);
+
     syserr_t err = page_table_apply_mapping(kpagetable);
     if (err < 0) return err;
 
-    mmu_set_kernel_pgtable(kpagetable->root);
+    mmu_set_kernel_page_table(kpagetable);
 
     return 0;
 }

@@ -62,6 +62,7 @@ struct MM_Region
     enum MM_Region_Type type;
     enum MM_Region_Mapped mapped;
     bool free_on_unmap;
+    size_t epoch_enabled;  // for debugging
 };
 
 #define region_from_list(list_ptr) \

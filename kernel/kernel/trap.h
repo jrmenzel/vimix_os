@@ -11,7 +11,8 @@
 /// on whatever the current kernel stack is.
 void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2);
 
-void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2);
+void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2,
+                                 size_t kernel_page_table_epoch);
 
 void handle_device_interrupt();
 

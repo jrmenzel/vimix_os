@@ -39,6 +39,8 @@ s_mode_trap_vector:
     SAVE_REG_TO_STACK(t4,  IDX_T4 )
     SAVE_REG_TO_STACK(t5,  IDX_T5 )
     SAVE_REG_TO_STACK(t6,  IDX_T6 )
+    SAVE_REG_TO_STACK(s0,  IDX_S0 )
+    SAVE_REG_TO_STACK(s1,  IDX_S1 )
 
     # call the C interrupt handler in trap.c with the stack pointer as the parameter
     # note that s0-s11 and sp are saved/restored by the called function 
@@ -66,6 +68,8 @@ s_mode_trap_vector:
     LOAD_REG_FROM_STACK(t4,  IDX_T4 )
     LOAD_REG_FROM_STACK(t5,  IDX_T5 )
     LOAD_REG_FROM_STACK(t6,  IDX_T6 )
+    LOAD_REG_FROM_STACK(s0,  IDX_S0 )
+    LOAD_REG_FROM_STACK(s1,  IDX_S1 )
 
     addi sp, sp, REG_COUNT_TO_SAVE*SIZE_OF_REG
 
