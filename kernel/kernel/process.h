@@ -9,6 +9,7 @@
 #include <kernel/rwspinlock.h>
 #include <kernel/spinlock.h>
 #include <lib/bitmap.h>
+#include <lib/xdbg/xdbg.h>
 #include <mm/vm.h>
 
 /// State of a process (sleeping, runnable, etc.)
@@ -126,6 +127,7 @@ struct process
     mode_t umask;      ///< File mode creation mask
 
     int32_t debug_log_depth;  // debug
+    struct debug_info *xdbg_info;
 };
 
 extern struct process_list g_process_list;

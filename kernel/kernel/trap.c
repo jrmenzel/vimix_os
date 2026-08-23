@@ -28,7 +28,7 @@ void dump_exception_cause_and_kill_proc(struct process *proc,
             "\nFatal: unexpected exception\n"
             "Killing process %s, pid: %d\n",
             proc->name, proc->pid);
-        dump_exception_cause(ctx);
+        dump_exception_cause(ctx, proc);
 
         if (verbosity > 1)
         {
@@ -247,7 +247,7 @@ void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
         printk(
             "\nFatal: unhandled interrupt in "
             "kernel_mode_interrupt_handler()\n");
-        dump_exception_cause(&ctx);
+        dump_exception_cause(&ctx, get_current());
         dump_pre_int_kthread_state(stack);
         panic("kernel_mode_interrupt_handler");
     }

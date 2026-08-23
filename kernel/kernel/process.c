@@ -166,6 +166,12 @@ void process_free(struct process *proc)
         spin_unlock(&proc->lock);
     }
 
+    if (proc->xdbg_info)
+    {
+        debug_info_free(proc->xdbg_info);
+        proc->xdbg_info = NULL;
+    }
+
     kfree(proc);
 }
 

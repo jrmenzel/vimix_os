@@ -31,19 +31,19 @@ syserr_t debug_info_read(struct debug_info *info, struct dentry *dp)
         VFS_INODE_READ_KERNEL(dp->ip, 0, (size_t)&hdr, sizeof(hdr));
     if (header_read != sizeof(hdr))
     {
-        printk("Failed to read debug info header\n");
+        // printk("Failed to read debug info header\n");
         return -EIO;
     }
 
     if (memcmp(hdr.magic, DEBUG_INFO_MAGIC, sizeof(DEBUG_INFO_MAGIC)) != 0)
     {
-        printk("Failed to read debug info header, bad magic\n");
+        // printk("Failed to read debug info header, bad magic\n");
         return -EIO;
     }
 
     if (hdr.lowest_address > hdr.highest_address)
     {
-        printk("Failed to read debug info header, address error\n");
+        // printk("Failed to read debug info header, address error\n");
         return -EIO;
     }
 
@@ -58,14 +58,14 @@ syserr_t debug_info_read(struct debug_info *info, struct dentry *dp)
     {
         if (info->cu_name_list_size > PAGE_SIZE)
         {
-            printk("CU name list too large\n");
+            // printk("CU name list too large\n");
             return -ENOMEM;
         }
 
         info->cu_name_list = kmalloc(info->cu_name_list_size, ALLOC_FLAG_NONE);
         if (!info->cu_name_list)
         {
-            printk("Failed to allocate CU name list\n");
+            // printk("Failed to allocate CU name list\n");
             return -ENOMEM;
         }
 
@@ -74,7 +74,7 @@ syserr_t debug_info_read(struct debug_info *info, struct dentry *dp)
                                                   info->cu_name_list_size);
         if (read_bytes != info->cu_name_list_size)
         {
-            printk("Failed to read CU names\n");
+            // printk("Failed to read CU names\n");
             return -EIO;
         }
     }
@@ -92,7 +92,7 @@ syserr_t debug_info_read(struct debug_info *info, struct dentry *dp)
         info->instructions = alloc_pages(ALLOC_FLAG_ZERO_MEMORY, alloc_order);
         if (!info->instructions)
         {
-            printk("Failed to allocate instruction table\n");
+            // printk("Failed to allocate instruction table\n");
             return -ENOMEM;
         }
         info->instruction_alloc_order = alloc_order;
@@ -102,7 +102,7 @@ syserr_t debug_info_read(struct debug_info *info, struct dentry *dp)
                                   (size_t)info->instructions, bytes_to_read);
         if (read_bytes != bytes_to_read)
         {
-            printk("Failed to read instruction table\n");
+            // printk("Failed to read instruction table\n");
             return -EIO;
         }
     }
@@ -191,7 +191,7 @@ void debug_info_print_instruction(const struct debug_info *dbg_info,
 {
     if (!instr)
     {
-        printk("<unknown>\n");
+        printk("<unknown>");
         return;
     }
     const char *file_name = debug_info_resolve_cu_name(dbg_info, instr->file);

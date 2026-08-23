@@ -33,7 +33,7 @@ fdt resize 0x1000
 setenv autostart yes
 
 echo "load kernel to memory"
-load ${devtype} ${devnum} ${kernel_load_addr} boot/kernel-vimix.bin
+load ${devtype} ${devnum} ${kernel_load_addr} boot/kernel-vimix.img
 echo "boot kernel with DTB from ${fdt_addr}"
 booti ${kernel_load_addr} ${ramdisk_load_addr}:${ram_disk_size} ${fdt_addr}
 

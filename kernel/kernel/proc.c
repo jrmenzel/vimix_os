@@ -595,7 +595,7 @@ void forkret()
         mount_root(ROOT_DEVICE_NUMBER, VIMIXFS_FS_NAME);
         printk("forkret() mounting /... OK\n");
 
-        panic_load_debug_symbols("/kernel-vimix.xdbg");
+        panic_load_debug_symbols("/kernel-vimix.xdbg", &g_kernel_debug_info);
 
         // We can involve execv() after file system is initialized.
         char *init_path = "/usr/bin/init";
@@ -826,7 +826,7 @@ void debug_print_call_stack_kernel(struct process *proc)
 
     do
     {
-        debug_print_ra(return_address);
+        debug_print_ra(return_address, proc->xdbg_info);
 
         return_address =
             *((size_t *)(return_address_from_frame_pointer(frame_pointer)));
@@ -867,7 +867,7 @@ void debug_print_call_stack_user(struct process *proc)
 
     while (address_is_in_page(fp_physical, proc_stack_pa))
     {
-        printk("  ra (user): " FORMAT_REG_SIZE "\n", return_address);
+        debug_print_ra(return_address, proc->xdbg_info);
 
         return_address = *((size_t *)(return_address_from_frame_pointer(
             phys_to_virt(fp_physical))));

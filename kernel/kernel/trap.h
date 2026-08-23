@@ -33,6 +33,7 @@ bool handle_ipi_interrupt();
 void dump_pre_int_kthread_state(size_t *stack);
 
 struct Interrupt_Context;
+struct process;
 
 /// @brief Prints the scause name and other scause specific info
-void dump_exception_cause(struct Interrupt_Context *ctx);
+void dump_exception_cause(struct Interrupt_Context *ctx, struct process *proc);

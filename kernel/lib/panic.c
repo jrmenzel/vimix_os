@@ -93,31 +93,40 @@ void panic(char *error_message)
     infinite_loop;
 }
 
-void debug_print_pc(size_t pc)
+void debug_print_pc(size_t pc, struct debug_info *debug_info)
 {
-    if (g_kernel_debug_info != NULL)
+    const struct instruction *instr = NULL;
+    if (debug_info != NULL)
     {
-        // try to find calling instruction,
-        // can be 2 bytes or 4 bytes before return address
-        const struct instruction *instr;
-        instr = debug_info_lookup_instruction(g_kernel_debug_info, pc);
-        debug_info_print_instruction(g_kernel_debug_info, instr);
+        // try to find calling instruction
+        instr = debug_info_lookup_instruction(debug_info, pc);
     }
+    if (instr == NULL)
+    {
+        // fallback: kernel xdbg info
+        instr = debug_info_lookup_instruction(g_kernel_debug_info, pc);
+    }
+    debug_info_print_instruction(debug_info, instr);
 }
 
-void debug_print_ra(size_t ra)
+void debug_print_ra(size_t ra, struct debug_info *debug_info)
 {
     printk("ra: " FORMAT_REG_SIZE " ", ra);
 
-    if (g_kernel_debug_info != NULL)
+    const struct instruction *instr = NULL;
+    if (debug_info != NULL)
     {
-        // try to find calling instruction,
-        // can be 2 bytes or 4 bytes before return address
-        const struct instruction *instr;
-        printk(" caller: ");
-        instr = debug_info_lookup_caller(g_kernel_debug_info, ra);
-        debug_info_print_instruction(g_kernel_debug_info, instr);
+        // try to find calling instruction
+        instr = debug_info_lookup_caller(debug_info, ra);
     }
+    if (instr == NULL)
+    {
+        // fallback: kernel xdbg info
+        instr = debug_info_lookup_instruction(g_kernel_debug_info, ra);
+    }
+
+    printk(" caller: ");
+    debug_info_print_instruction(debug_info, instr);
 
     printk("\n");
 }
@@ -154,7 +163,7 @@ void debug_print_call_stack_kernel_fp(size_t frame_pointer)
         }
         frame_pointer = tmp;
         printk("  ");
-        debug_print_ra(ra);
+        debug_print_ra(ra, NULL);
         if (ADDR_IS_TRAMPOLINE(ra))
         {
             // reached trampoline code
@@ -163,7 +172,8 @@ void debug_print_call_stack_kernel_fp(size_t frame_pointer)
     };
 }
 
-syserr_t panic_load_debug_symbols(const char *debug_file_path)
+syserr_t panic_load_debug_symbols(const char *debug_file_path,
+                                  struct debug_info **debug_info_out)
 {
     syserr_t error = 0;
     struct dentry *dp = dentry_from_path(debug_file_path, &error);
@@ -188,18 +198,20 @@ syserr_t panic_load_debug_symbols(const char *debug_file_path)
     syserr_t ret = debug_info_read(xdbg_info, dp);
     if (ret < 0)
     {
-        printk("Loading kernel debug symbols from %s failed.\n",
-               debug_file_path);
+        // printk("Loading debug symbols from %s failed.\n", debug_file_path);
         debug_info_free(xdbg_info);
     }
     else
     {
-        if (g_kernel_debug_info != NULL)
+        if (debug_info_out != NULL)
         {
-            debug_info_free(g_kernel_debug_info);
+            *debug_info_out = xdbg_info;
         }
-        g_kernel_debug_info = xdbg_info;
-        printk("Loaded kernel debug symbols from %s.\n", debug_file_path);
+        else
+        {
+            debug_info_free(xdbg_info);
+        }
+        // printk("Loaded debug symbols from %s.\n", debug_file_path);
     }
     inode_unlock(dp->ip);
     dentry_put(dp);

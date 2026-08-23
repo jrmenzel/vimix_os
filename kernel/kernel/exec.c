@@ -13,6 +13,7 @@
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
+#include <lib/panic.h>
 #include <mm/memory_map.h>
 #include <mm/vm.h>
 
@@ -175,6 +176,28 @@ syserr_t do_execv(char *path, char **argv)
     {
         page_table_free(pagetable);
         return -ENOMEM;
+    }
+
+    // load debug info, ignore if not found or error parsing
+    if (proc->xdbg_info)
+    {
+        debug_info_free(proc->xdbg_info);
+        proc->xdbg_info = NULL;
+    }
+    char debug_file_path[128];
+    snprintf(debug_file_path, sizeof(debug_file_path), "/xdbg%s.xdbg", path);
+    syserr_t dbg_info_err =
+        panic_load_debug_symbols(debug_file_path, &proc->xdbg_info);
+    if (dbg_info_err < 0 &&
+        ((dbg_info_err != -ENOENT) && (dbg_info_err != -EIO)))
+    {
+        if (proc->xdbg_info)
+        {
+            debug_info_free(proc->xdbg_info);
+            proc->xdbg_info = NULL;
+        }
+        page_table_free(pagetable);
+        return dbg_info_err;
     }
 
     // Clear all registers to not spill information from the caller of execv
