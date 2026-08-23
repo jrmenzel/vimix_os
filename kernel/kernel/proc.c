@@ -39,6 +39,8 @@ struct process_list g_process_list;
 /// Created in init_userspace(), the only process not created by fork()
 struct process *g_initial_user_process;
 
+atomic_size_t g_kernel_pgtable_shootdown_epoch = 0;
+
 void wakeup_holding_plist_lock(void *chan);
 
 /// helps ensure that wakeups of wait()ing
@@ -59,7 +61,7 @@ size_t proc_get_free_kernel_stack_va()
         spin_unlock(&g_process_list.kernel_stack_lock);
         return 0;
     }
-    set_bit(idx, g_process_list.kernel_stack_in_use);
+    set_bit(g_process_list.kernel_stack_in_use, idx);
     spin_unlock(&g_process_list.kernel_stack_lock);
     return KSTACK_VA_FROM_INDEX(idx);
 }

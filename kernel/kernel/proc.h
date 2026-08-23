@@ -7,6 +7,8 @@
 #include <kernel/spinlock.h>
 #include <mm/vm.h>
 
+extern atomic_size_t g_kernel_pgtable_shootdown_epoch;
+
 /// @brief Exit process.
 /// @param status Exit code ( return value from main() )
 void do_exit(int32_t status);

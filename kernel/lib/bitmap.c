@@ -36,7 +36,7 @@ ssize_t find_first_bit_of_value(bitmap_t bitmap, size_t nbits, bool value)
         size_t bits_to_check = min(BITS_PER_SIZET, nbits);
         for (size_t bit = 0; bit < bits_to_check; ++bit)
         {
-            if (test_bit(bit, &word) == value)
+            if (test_bit(&word, bit) == value)
                 return (bit + BITS_PER_SIZET * i);
         }
         nbits -= BITS_PER_SIZET;

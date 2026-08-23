@@ -41,6 +41,7 @@ struct kmem_slab *kmem_slab_create(size_t size)
 
 void *kmem_slab_alloc(struct kmem_slab *slab, int32_t flags)
 {
+    DEBUG_EXTRA_PANIC(slab != NULL, "kmem_slab_alloc: slab is NULL");
     if (slab->free_list == NULL) return NULL;
 
     void *object = slab->free_list;

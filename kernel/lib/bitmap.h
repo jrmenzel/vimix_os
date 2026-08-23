@@ -9,6 +9,9 @@
 /// limited to one page = 32k bits.
 typedef size_t *bitmap_t;
 
+/// @brief A bitmap which is limited in size to 32/64 bits.
+typedef size_t limited_bitmap_t;
+
 #define BIT_MASK(nr) (1UL << ((nr) % BITS_PER_SIZET))
 #define BIT_WORD(nr) ((nr) / BITS_PER_SIZET)
 
@@ -22,7 +25,7 @@ bitmap_t bitmap_alloc(unsigned int nbits);
 /// @param bitmap Pointer to bitmap allocated by bitmap_alloc().
 void bitmap_free(const bitmap_t bitmap);
 
-static inline void set_bit(size_t bit, bitmap_t bitmap)
+static inline void set_bit(bitmap_t bitmap, size_t bit)
 {
     size_t mask = BIT_MASK(bit);
     size_t *p = bitmap + BIT_WORD(bit);
@@ -30,7 +33,7 @@ static inline void set_bit(size_t bit, bitmap_t bitmap)
     *p |= mask;
 }
 
-static inline void clear_bit(size_t bit, bitmap_t bitmap)
+static inline void clear_bit(bitmap_t bitmap, size_t bit)
 {
     size_t mask = BIT_MASK(bit);
     size_t *p = bitmap + BIT_WORD(bit);
@@ -38,7 +41,7 @@ static inline void clear_bit(size_t bit, bitmap_t bitmap)
     *p &= ~mask;
 }
 
-static inline void change_bit(size_t bit, bitmap_t bitmap)
+static inline void change_bit(bitmap_t bitmap, size_t bit)
 {
     size_t mask = BIT_MASK(bit);
     size_t *p = bitmap + BIT_WORD(bit);
@@ -46,7 +49,7 @@ static inline void change_bit(size_t bit, bitmap_t bitmap)
     *p ^= mask;
 }
 
-static inline bool test_bit(size_t bit, bitmap_t bitmap)
+static inline bool test_bit(bitmap_t bitmap, size_t bit)
 {
     size_t mask = BIT_MASK(bit);
     size_t *p = bitmap + BIT_WORD(bit);
@@ -65,3 +68,32 @@ static inline ssize_t find_first_bit(bitmap_t bitmap, size_t nbits)
 {
     return find_first_bit_of_value(bitmap, nbits, true);
 }
+
+static inline void lb_set_bit(limited_bitmap_t *bitmap, size_t bit)
+{
+    *bitmap |= BIT_MASK(bit);
+}
+
+static inline void lb_clear_bit(limited_bitmap_t *bitmap, size_t bit)
+{
+    *bitmap &= ~BIT_MASK(bit);
+}
+
+static inline void lb_change_bit(limited_bitmap_t *bitmap, size_t bit)
+{
+    *bitmap ^= BIT_MASK(bit);
+}
+
+static inline bool lb_test_bit(limited_bitmap_t bitmap, size_t bit)
+{
+    return (bitmap & BIT_MASK(bit));
+}
+
+static inline bool lb_test_bit_and_set(limited_bitmap_t *bitmap, size_t bit)
+{
+    size_t previous = *bitmap;
+    *bitmap |= BIT_MASK(bit);
+    return (previous & BIT_MASK(bit)) != 0;
+}
+
+static inline void lb_unset_all_bits(limited_bitmap_t *bitmap) { *bitmap = 0; }

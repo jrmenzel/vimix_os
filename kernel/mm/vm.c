@@ -42,6 +42,7 @@ void mmu_set_kernel_page_table(struct Page_Table *kpagetable)
         mmu_set_kernel_pgtable_val(g_kernel_pgtable_reg_value, update_epoch);
 
     g_cpus[smp_processor_id()].kernel_pgtable_epoch_seen = newEpoch;
+    lb_set_bit(&kpagetable->enabled_by_cpu, smp_processor_id());
 
     if (update_epoch)
     {
@@ -62,10 +63,24 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE void mmu_set_user_page_table(
         page_table_update_region_epoch(upagetable);
         spin_unlock(&upagetable->lock);
     }
+
+    bool first_time_enabled_here =
+        lb_test_bit_and_set(&upagetable->enabled_by_cpu, smp_processor_id()) ==
+        false;
+
+    if (first_time_enabled_here)
+    {
+        spin_lock(&upagetable->lock);
+        page_table_sync_text_with_data(upagetable);
+        spin_unlock(&upagetable->lock);
+    }
+
     size_t reg_value = mmu_make_page_table_reg((size_t)upagetable->root, asid);
     mmu_set_user_pgtable_reg(reg_value);
-    cpu_flush_instruction_cache();
-    mmu_flush_tlb_asid(asid);
+    if (first_time_enabled_here || asid == 0)
+    {
+        mmu_flush_tlb_asid(asid);
+    }
 }
 
 syserr_t kvm_apply_kernel_mapping(struct Page_Table *kpagetable)
@@ -807,6 +822,18 @@ void debug_vm_print_pgtable(pagetable_t pgtable)
 void debug_vm_print_page_table(struct Page_Table *pagetable)
 {
     debug_vm_print_pgtable(pagetable->root);
+
+    printk("was used by CPU: ");
+    for (size_t i = 0; i < MAX_CPUS; ++i)
+    {
+        if (g_cpus[i].state == CPU_UNUSED) continue;
+
+        if (lb_test_bit(pagetable->enabled_by_cpu, i))
+        {
+            printk("%zu ", i);
+        }
+    }
+    printk("\n");
 
     debug_print_memory_map(&pagetable->memory_map);
 }

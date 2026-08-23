@@ -41,7 +41,8 @@ void *kmem_cache_alloc(struct kmem_cache *cache, int32_t flags)
     struct list_head *slab;
     list_for_each(slab, &cache->slab_list)
     {
-        allocation = kmem_slab_alloc((struct kmem_slab *)slab, flags);
+        struct kmem_slab *kslab = kmem_slab_from_list(slab);
+        allocation = kmem_slab_alloc(kslab, flags);
         if (allocation) break;  // found space, break loop
     }
 

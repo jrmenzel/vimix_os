@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <kernel/cpu.h>
 #include <kernel/pgtable.h>
 #include <kernel/string.h>
 #include <mm/arch_vm.h>
@@ -40,6 +41,7 @@ struct Page_Table *page_table_alloc_init()
     pagetable->memory_map.parent_lock = &pagetable->lock;
 #endif
 
+    lb_unset_all_bits(&pagetable->enabled_by_cpu);
     return pagetable;
 }
 
@@ -72,6 +74,7 @@ syserr_t page_table_map_region(struct Page_Table *pagetable,
     }
     region->mapped = MM_REGION_PARTIAL_MAPPED;
     region->epoch_enabled = 0;
+    lb_unset_all_bits(&pagetable->enabled_by_cpu);
 
     return 0;
 }
@@ -273,4 +276,26 @@ syserr_t page_table_copy_from_region(struct Page_Table *dst_pagetable,
     }
 
     return err;
+}
+
+syserr_t page_table_sync_text_with_data(struct Page_Table *pagetable)
+{
+    DEBUG_ASSERT_CPU_HOLDS_LOCK(&pagetable->lock);
+
+    struct Memory_Map *memory_map = &pagetable->memory_map;
+
+    struct list_head *pos;
+    list_for_each(pos, &memory_map->region_list)
+    {
+        struct MM_Region *region = region_from_list(pos);
+        if ((region->type == MM_REGION_KERNEL_TEXT) ||
+            (region->type == MM_REGION_KERNEL_TEXT_PA) ||
+            (region->type == MM_REGION_USER_TEXT) ||
+            (region->type == MM_REGION_USER_RW_TEXT))
+        {
+            cpu_flush_dcache_range(region->start_va, region->size);
+        }
+    }
+    cpu_flush_instruction_cache();
+    return 0;
 }

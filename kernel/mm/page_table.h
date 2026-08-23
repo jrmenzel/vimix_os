@@ -5,6 +5,7 @@
 #include <kernel/kernel.h>
 #include <kernel/spinlock.h>
 #include <kernel/stdatomic.h>
+#include <lib/bitmap.h>
 #include <mm/memory_map.h>
 
 /// @brief A page table, both the pgtable tree read by the MMU and
@@ -17,7 +18,11 @@ struct Page_Table
     struct Memory_Map memory_map;
     atomic_size_t epoch;
     atomic_bool update_epoch_pending;
+    limited_bitmap_t enabled_by_cpu;
 };
+
+_Static_assert(MAX_CPUS <= sizeof(limited_bitmap_t) * 8,
+               "limited_bitmap_t is too small to track enabled_by_cpu");
 
 /// @brief The one global kernel page table shared by all CPUs.
 extern struct Page_Table *g_kernel_pagetable;
@@ -75,3 +80,16 @@ syserr_t page_table_unmap_remove_region(struct Page_Table *pagetable,
 /// @return 0 on success, or a negative error code on failure.
 syserr_t page_table_copy_on_fork(struct Page_Table *dst,
                                  struct Page_Table *src);
+
+/// @brief The first time a user process runs on a CPU, the we must make sure
+/// that no old fragments of code are still in the instruction cache. This is no
+/// issue for switching user processes later as the cache is indexed by physical
+/// address. BUT if process A ends and a new process B (by chance) gets the same
+/// physical pages allocated for (some part) of its text sections, then the
+/// instruction cache can have stale data. This olny happens on architectures
+/// where data and instruction caches must be synced in software, e.g. ARM64. If
+/// the kernel self modifies its code, it must also call this function.
+/// @param pagetable The pagetable from which each region with code will be
+/// synced.
+/// @return 0 on success, or a negative error code on failure.
+syserr_t page_table_sync_text_with_data(struct Page_Table *pagetable);

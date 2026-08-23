@@ -145,10 +145,6 @@ void process_free(struct process *proc)
         page_table_apply_mapping(g_kernel_pagetable);
         spin_unlock(&g_kernel_pagetable->lock);
 
-        // tell other cores also to reload the kernel page table
-        cpu_mask mask = ipi_cpu_mask_all_but_self();
-        ipi_send_interrupt(mask, IPI_KERNEL_PAGETABLE_CHANGED, NULL);
-
         // now allow the re-use of the kernel stack address
         proc_free_kernel_stack(proc->kstack);
 
@@ -261,6 +257,6 @@ void proc_free_kernel_stack(size_t stack_va)
 {
     spin_lock(&g_process_list.kernel_stack_lock);
     size_t idx = KSTACK_INDEX_FROM_VA(stack_va);
-    clear_bit(idx, g_process_list.kernel_stack_in_use);
+    clear_bit(g_process_list.kernel_stack_in_use, idx);
     spin_unlock(&g_process_list.kernel_stack_lock);
 }
