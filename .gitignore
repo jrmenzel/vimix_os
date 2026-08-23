@@ -26,3 +26,6 @@ spike/*
 
 # tools binaries
 tools/extractdbg/extractdbg
+
+# optional temp files and logs
+logs
