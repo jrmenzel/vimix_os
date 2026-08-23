@@ -223,6 +223,7 @@ void main(const void *dtb, bool is_boot_hart)
         panic("No valid device tree found");
     }
 
+    size_t cpu_id = smp_processor_id();
     if (is_boot_hart)
     {
         g_boot_hart = smp_processor_id();
@@ -234,6 +235,7 @@ void main(const void *dtb, bool is_boot_hart)
                ") kernel version " str_from_define(GIT_HASH) " is booting\n");
 
         dtb = system_init_from_dtb(dtb);
+        dtb_get_cpu_features(dtb, cpu_id, &g_cpus[cpu_id].features);
         system_print_info();
 
         init_kobject_root();
@@ -254,15 +256,19 @@ void main(const void *dtb, bool is_boot_hart)
         atomic_thread_fence(memory_order_seq_cst);
         system_boot_other_cpus(dtb);
     }
+    else
+    {
+        dtb_get_cpu_features(dtb, cpu_id, &g_cpus[cpu_id].features);
+    }
     ipi_init_per_cpu();
 
-    size_t cpu_id = smp_processor_id();
+    timer_init_per_cpu();
 
-    g_cpus[cpu_id].features = dtb_get_cpu_features(dtb, cpu_id);
-    timer_init_per_cpu(g_cpus[cpu_id].features);
+    // init the interrupt controller that was found earlier
     g_int_con.init_per_cpu();
 
     g_cpus[cpu_id].state = CPU_STARTED;
+    atomic_thread_fence(memory_order_seq_cst);
 
     printk("CPU %zd entering scheduler %s\n", cpu_id,
            (g_boot_hart == cpu_id ? "(boot CPU)" : ""));

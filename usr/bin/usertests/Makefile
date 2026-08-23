@@ -14,7 +14,7 @@ OBJECTS := \
 	$(B_BUILD_DIR)/usertests.o \
 	$(B_BUILD_DIR)/common_tests.o
 
-ifneq ($(TARGET), host)
+ifneq ($(TARGET_OR_HOST), host)
 OBJECTS += \
 	$(B_BUILD_DIR)/vimix_only.o
 endif

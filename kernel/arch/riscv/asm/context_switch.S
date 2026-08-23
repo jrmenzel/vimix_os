@@ -1,15 +1,15 @@
-# SPDX-License-Identifier: MIT
+/* SPDX-License-Identifier: MIT */
 
 #include <arch/riscv/asm/registers.h>
 
-# Context switch
-#
-#   void context_switch(struct context *old, struct context *new);
-# 
-# Save current registers in old (a0). Load from new (a1).
-#
-# One context is a scheduler context (kernel stack the CPU booted on, kernel page table)
-# The other is a kernel context of a user process (per process kernel stack, kernel page table).
+// Context switch
+//
+//   void context_switch(struct context *old, struct context *new);
+// 
+// Save current registers in old (a0). Load from new (a1).
+//
+// One context is a scheduler context (kernel stack the CPU booted on, kernel page table)
+// The other is a kernel context of a user process (per process kernel stack, kernel page table).
 
 #define SAVE_REG_TO_OLD(REGISTER, OFFSET) SAVE_REG_TO_ARRAY(REGISTER, OFFSET, a0)
 #define LOAD_REG_FROM_NEW(REGISTER, OFFSET) LOAD_REG_FROM_ARRAY(REGISTER, OFFSET, a1)

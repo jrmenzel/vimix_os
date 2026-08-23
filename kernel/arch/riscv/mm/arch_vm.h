@@ -49,10 +49,3 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE static inline void mmu_flush_tlb_asid(
         "mmu_flush_tlb is not implemented for multi-core without zifencei");
 #endif
 }
-
-/// call after changing executable code in memory to flush instruction caches
-CAN_BE_CALLED_ON_USER_PAGE_TABLE static inline void
-mmu_flush_instruction_cache()
-{
-    asm volatile("fence.i");
-}

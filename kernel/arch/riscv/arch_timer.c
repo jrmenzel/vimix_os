@@ -2,6 +2,7 @@
 
 #include <arch/riscv/sbi.h>
 #include <arch/riscv/sbi_defs.h>
+#include <kernel/cpu.h>
 #include <kernel/smp.h>
 #include <kernel/timer.h>
 
@@ -25,8 +26,10 @@ void sstc_schedule_interrupt(uint64_t, uint64_t) { panic("sstc unsupported"); }
 //
 // init one of the supported timers
 
-timer_schedule_interrupt_p *arch_timer_interrupt_func(CPU_Features features)
+timer_schedule_interrupt_p *arch_timer_interrupt_func()
 {
+    CPU_Features features = g_cpus[smp_processor_id()].features;
+
     if (features & RV_EXT_SSTC)
     {
         // preferred: sstc extension

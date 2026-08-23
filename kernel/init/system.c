@@ -57,7 +57,8 @@ const void *system_init_from_dtb(const void *dtb)
     }
 
     g_system.compatible = dtb_get_compatible_from_dtb(dtb);
-    const void *embedded_dtb = get_embedded_dtb(g_system.compatible);
+    const void *embedded_dtb =
+        (const void *)get_embedded_dtb(g_system.compatible);
     if (embedded_dtb != NULL)
     {
         g_system.dtb = embedded_dtb;
@@ -73,13 +74,19 @@ void system_print_info()
     printk("System model: %s\n", g_system.model);
     printk("System compatible: %s\n",
            g_compatible_systems[g_system.compatible].compatible_str);
+
+#ifdef __CONFIG_DTB_FILE_PATH
+    const char *firmware_dtb = "hardcoded embedded";
+#else
+    const char *firmware_dtb = "boot loader provided";
+#endif
     if (g_system.dtb != g_system.boot_dtb)
     {
-        printk("Using embedded DTB\n");
+        printk("Switching from %s DTB to embedded DTB\n", firmware_dtb);
     }
     else
     {
-        printk("Using boot loader provided DTB\n");
+        printk("Using %s DTB\n", firmware_dtb);
     }
 }
 
@@ -94,15 +101,18 @@ void system_boot_other_cpus(const void *dtb)
             syserr_t err = system_boot_cpu(hartid, dtb);
             if (err != 0)
             {
+                printk("Failed to boot CPU %zd, error %zd\n", hartid, err);
                 break;
             }
 
             size_t t0 = msec_since_boot();
             size_t t1 = t0;
-            while (t1 - t0 < 1000)
+            while (t1 - t0 < 5000)
             {
                 if (system_did_cpu_start(hartid)) break;
                 t1 = msec_since_boot();
+                // printk("Waiting for CPU %zd to start... (%zu ms)\n", hartid,
+                //        t1 - t0);
             }
             if (system_did_cpu_start(hartid) == false)
             {

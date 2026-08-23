@@ -6,50 +6,75 @@
 #
 include MakefileCommon.mk
 
-.PHONY: all directories extractdbg kernel userspace host
+# use default EMU settings if a target was set but no explicit EMU setting
+ifndef EMU
+ifdef TARGET
+EMU := $(DEFAULT_EMU)
+$(info EMU set to $(EMU) by default for TARGET=$(TARGET))
+endif
+endif
 
-all: directories extractdbg userspace host $(BUILD_DIR)/filesystem.img kernel boot_dir
+include kernel/arch/riscv/MakefileEmusRISCV.mk
+
+.PHONY: all directories kernel userspace host
+
+FILESYSTEM_IMG_NAME := filesystem_$(TARGET)$(BUILD_TYPE_SHORT).img
+FILESYSTEM_IMG := $(BUILD_DIR)/$(FILESYSTEM_IMG_NAME)
+FILESYSTEM_IMG_DEPLOY := $(BUILD_DIR)/boot/filesystem.img
+DEPLOYED_TARGET_FILE := $(BUILD_DIR)/boot/current_target_$(TARGET)$(BUILD_TYPE_SHORT).txt
+
+all: directories $(EXTRACTDGB_TOOL) $(DEPLOYED_TARGET_FILE)
 
 # make build output directory
 directories:
 	@mkdir -p $(BUILD_DIR);
 	@mkdir -p $(BUILD_DIR)/boot;
 
-# build the extractdbg tool for extracting debug info from ELF files
-extractdbg:
+# Build host-side tool once in the top-level graph so parallel sub-makes
+# (kernel/userspace/host) do not race creating the same binary.
+$(EXTRACTDGB_TOOL): | directories
 	@$(MAKE) -C tools/extractdbg all;
 
 # the kernel itself depends on userspace for the embedded ram disk only
 ifeq ($(RAMDISK_EMBEDDED), yes)
-KERNEL_REQS := directories $(BUILD_DIR)/filesystem.img
+KERNEL_REQS := directories $(EXTRACTDGB_TOOL) $(FILESYSTEM_IMG)
 else
-KERNEL_REQS := directories 
+KERNEL_REQS := directories $(EXTRACTDGB_TOOL)
 endif
-kernel: extractdbg $(KERNEL_REQS) # the kernel itself
+kernel: $(KERNEL_REQS) # the kernel itself
 	@$(MAKE) -C kernel all;
 
-userspace: # user space apps and libs
+userspace: $(EXTRACTDGB_TOOL) # user space apps and libs
 	@$(MAKE) -C usr/lib all;
 	@$(MAKE) -C usr/bin all;
 	@$(MAKE) -C usr/local/bin/dhrystone all;
 
-host: # some user space apps for the host (Linux)
-	@$(MAKE) TARGET=host -C usr/lib all;
-	@$(MAKE) TARGET=host -C usr/bin all;
-	@$(MAKE) TARGET=host -C usr/local/bin/dhrystone all; 
+host: $(EXTRACTDGB_TOOL) # some user space apps for the host (Linux)
+	@$(MAKE) TARGET_OR_HOST=host -C usr/lib all;
+	@$(MAKE) TARGET_OR_HOST=host -C usr/bin all;
+	@$(MAKE) TARGET_OR_HOST=host -C usr/local/bin/dhrystone all; 
+
+$(BUILD_DIR)/boot/boot.scr:
+	@mkdir -p $(BUILD_DIR)/boot/dtb
+	@cp -r boot/dtb/* $(BUILD_DIR)/boot/dtb
+	@mkimage -C none -A riscv -T script -d boot/boot.cmd $(BUILD_DIR)/boot/boot.scr
 
 # boot directory content for deployment
-boot_dir: kernel $(BUILD_DIR)/filesystem.img boot/boot.cmd
-	@cp -r boot/* $(BUILD_DIR)/boot
-	@mkimage -C none -A riscv -T script -d $(BUILD_DIR)/boot/boot.cmd $(BUILD_DIR)/boot/boot.scr
-	@cp $(BUILD_DIR)/filesystem.img $(BUILD_DIR)/boot
+$(DEPLOYED_TARGET_FILE): $(FILESYSTEM_IMG) $(BUILD_DIR)/boot/boot.scr
+	@echo "update deployed target to $(TARGET)$(BUILD_TYPE_SHORT)"
+	@rm -f $(BUILD_DIR)/boot/current_target_*
+	@rm -f $(BUILD_DIR)/boot/kernel*
+	@cp $(FILESYSTEM_IMG) $(FILESYSTEM_IMG_DEPLOY)
+	@$(MAKE) -C kernel deploy;
+	@touch $(DEPLOYED_TARGET_FILE)
+
 
 # filesystem in a file containing userspace as initrd (kernel is set manually)
-$(BUILD_DIR)/filesystem.img: host userspace | directories
+$(FILESYSTEM_IMG): host userspace | directories
 	@rm -f $(BUILD_DIR)/root
 	@ln -s root$(TARGET_SUFFIX) $(BUILD_DIR)/root
 	@printf "$(TASK_COLOR)Create file system: $(@)\n$(NO_COLOR)"
-	@./tools/make_filesystem.sh $(BUILD_DIR) $(BUILD_DIR_HOST)
+	@./tools/make_filesystem.sh $(BUILD_DIR) $(BUILD_DIR_HOST) $(FILESYSTEM_IMG_NAME)
 
 ###
 # qemu
@@ -57,14 +82,14 @@ GDB_PORT := 26000
 
 QEMU_OPTS := $(QEMU_OPTS_ARCH) -m $(MEMORY_SIZE)M -smp $(CPUS) -nographic
 
-ifeq ($(KERNEL_FORMAT), elf)
-QEMU_OPTS += -kernel $(KERNEL_FILE)
+ifneq ("$(wildcard $(KERNEL_FILE).img)","")
+QEMU_OPTS += -kernel $(KERNEL_FILE).img
 else
-QEMU_OPTS += -kernel $(KERNEL_FILE).bin
+QEMU_OPTS += -kernel $(KERNEL_FILE)
 endif
 
 ifeq ($(VIRTIO_DISK), yes)
-QEMU_OPTS += -drive file=$(BUILD_DIR)/filesystem.img,if=none,format=raw,id=x0
+QEMU_OPTS += -drive file=$(FILESYSTEM_IMG_DEPLOY),if=none,format=raw,id=x0
 QEMU_OPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 #QEMU_OPTS += -d int,mmu,in_asm -D qemu_mmu.log
 # add a second file system if it is present
@@ -75,10 +100,10 @@ endif
 endif
 
 ifeq ($(RAMDISK_BOOTLOADER), yes)
-QEMU_OPTS += -initrd $(BUILD_DIR)/filesystem.img
+QEMU_OPTS += -initrd $(FILESYSTEM_IMG_DEPLOY)
 endif
 ifdef RAMDISK_LOAD_ADDR
-QEMU_OPTS += -device loader,file=$(BUILD_DIR)/filesystem.img,addr=$(RAMDISK_LOAD_ADDR)
+QEMU_OPTS += -device loader,file=$(FILESYSTEM_IMG_DEPLOY),addr=$(RAMDISK_LOAD_ADDR)
 endif
 
 #
@@ -88,26 +113,31 @@ endif
 # -s = alias for "-gdb tcp:localhost:1234"
 QEMU_DEBUG_OPTS := -S -gdb tcp:localhost:$(GDB_PORT)
 
-qemu-requirements: directories kernel $(BUILD_DIR)/filesystem.img
+emu-check:
+ifeq ($(filter $(EMU),$(EMUS_RISCV)),)
+	$(error "EMU not set correctly, select one of: $(EMUS_RISCV)")
+endif
 
-qemu: qemu-requirements # run in qemu, rebuilds if needed
+emu-requirements: emu-check $(DEPLOYED_TARGET_FILE)
+
+qemu: emu-requirements # run in qemu, rebuilds if needed
 	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
 	$(QEMU) $(QEMU_OPTS)
 
-qemu-log: qemu-requirements # run in qemu with logging, rebuilds if needed
+qemu-log: emu-requirements # run in qemu with logging, rebuilds if needed
 	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
-	$(QEMU) $(QEMU_OPTS) -d cpu_reset -d int -d in_asm -D log_${PLATFORM}.txt
+	$(QEMU) $(QEMU_OPTS) -d cpu_reset -d int -d in_asm -D log_${TARGET}.txt
 
-qemu-run: # run in qemu without rebuilding, useful for automated tests
+qemu-run: emu-check # run in qemu without rebuilding, useful for automated tests
 	@printf "\n$(YELLOW)DID NOT REBUILD ANYTHING$(NO_COLOR)\n"
 	@printf "\n$(YELLOW)CTRL+A X to close qemu$(NO_COLOR)\n"
 	$(QEMU) --version
 	$(QEMU) $(QEMU_OPTS)
 
 # dump device tree
-qemu-dump-tree: qemu-requirements
-	$(QEMU) $(QEMU_OPTS) -machine dumpdtb=tree_$(PLATFORM).dtb
-	dtc -o tree_$(PLATFORM).dts -O dts -I dtb tree_$(PLATFORM).dtb
+qemu-dump-tree: emu-requirements
+	$(QEMU) $(QEMU_OPTS) -machine dumpdtb=tree_$(EMU).dtb
+	dtc -o tree_$(EMU).dts -O dts -I dtb tree_$(EMU).dtb
 
 .gdbinit: tools/gdbinit Makefile MakefileCommon.mk
 	@cp tools/gdbinit .gdbinit
@@ -125,7 +155,7 @@ qemu-dump-tree: qemu-requirements
 	@sed -i "s~_KERNEL~$(KERNEL_FILE)~g" .gdbinit_vscode
 	@sed -i 's/_ARCHITECTURE/$(GDB_ARCHITECTURE)/g' .gdbinit_vscode
 
-qemu-gdb: qemu-requirements .gdbinit_vscode # run in qemu waiting for a debugger
+qemu-gdb: emu-requirements .gdbinit_vscode # run in qemu waiting for a debugger
 	@printf "\n$(YELLOW)CTRL+A X to close qemu\n"
 	@printf " Now run 'gdb' in another window.\n"
 	@printf " OR attach with VSCode for debugging.$(NO_COLOR)\n"
@@ -133,59 +163,35 @@ qemu-gdb: qemu-requirements .gdbinit_vscode # run in qemu waiting for a debugger
 
 #
 # Spike simulator
-# Note: see docs on how to build VIMIX for Spike
+#
 
-# spike binary, edit to use e.g. a self compiled version
-ifneq ("$(wildcard spike/riscv-isa-sim/build/spike)","")
-SPIKE_BUILD := spike/riscv-isa-sim/build/
-endif
-SPIKE := $(SPIKE_BUILD)spike
-
-ifneq ("$(wildcard spike/opensbi/build/platform/generic/firmware/fw_payload.elf)","")
-SPIKE_SBI_FW=spike/opensbi/build/platform/generic/firmware/fw_payload.elf
-endif
-
-ifeq ($(BITWIDTH), 32)
-SPIKE_ISA := rv32gc
-else
-SPIKE_ISA := rv64gc
-endif
-
-MEMORY_SIZE_BYTES := $(shell echo $$(( $(MEMORY_SIZE) * 1024 * 1024 )))
-SPIKE_OPTIONS := -m0x80000000:$(MEMORY_SIZE_BYTES) -p$(CPUS) --isa=$(SPIKE_ISA) --real-time-clint
 ifeq ($(RAMDISK_BOOTLOADER), yes)
-SPIKE_OPTIONS += --initrd=$(BUILD_DIR)/filesystem.img
-endif
-SPIKE_OPTIONS += --kernel=$(KERNEL_FILE) $(KERNEL_FILE)
-
-ifeq ($(BOOT_MODE), BOOT_S_MODE)
-SPIKE_OPTIONS := $(SPIKE_SBI_FW) $(SPIKE_OPTIONS)
+SPIKE_OPTIONS := --initrd=$(FILESYSTEM_IMG_DEPLOY) $(SPIKE_OPTIONS)
 endif
 
-spike-requirements: kernel $(BUILD_DIR)/filesystem.img
-
-spike: spike-requirements # run in spike, rebuilds if needed
+spike: emu-requirements # run in spike, rebuilds if needed
 	@printf "\n$(YELLOW)CTRL+C q Enter to close Spike$(NO_COLOR)\n"
 	$(SPIKE) $(SPIKE_OPTIONS)
 
-spike-log: spike-requirements # run in spike with logging, rebuilds if needed
-	$(SPIKE) -l --log=log_${PLATFORM}.txt $(SPIKE_OPTIONS) 
+spike-log: emu-requirements # run in spike with logging, rebuilds if needed
+	$(SPIKE) -l --log=log_${TARGET}.txt $(SPIKE_OPTIONS) 
 
 spike-run: # run in spike, without rebuilding, useful for automated tests
 	@printf "\n$(YELLOW)DID NOT REBUILD ANYTHING$(NO_COLOR)\n"
 	@printf "\n$(YELLOW)CTRL+C q Enter to close Spike$(NO_COLOR)\n"
 	$(SPIKE) $(SPIKE_OPTIONS)
 
-spike-gdb: spike-requirements .gdbinit_vscode # run in spike waiting for a debugger, rebuilds if needed
+spike-gdb: emu-requirements .gdbinit_vscode # run in spike waiting for a debugger, rebuilds if needed
 	$(SPIKE) --rbb-port=9824 --halted $(SPIKE_OPTIONS)
 
 # dump device tree
-spike-dump-tree: spike-requirements
-	$(SPIKE) --dump-dts $(SPIKE_OPTIONS) > tree_$(PLATFORM).dts
+spike-dump-tree: emu-requirements
+	$(SPIKE) --dump-dts $(SPIKE_OPTIONS) > tree_$(EMU).dts
 
 clean: # clean up
 	@$(MAKE) -C tools/extractdbg clean;
 	-@rm -rf build/*
+	-@rm -f build/.*.stamp
 	-@rm -rf build_host/*
 	-@rm -f .gdbinit
 	-@rm -f .gdbinit_vscode

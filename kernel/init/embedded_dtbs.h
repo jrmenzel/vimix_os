@@ -4,4 +4,7 @@
 #include <init/system.h>
 #include <kernel/kernel.h>
 
-const char *get_embedded_dtb(enum Compatible_System compatible);
+// This one optionally replaces the firmware provided DTB.
+extern const unsigned char dtb_embedded[];
+
+const unsigned char *get_embedded_dtb(enum Compatible_System compatible);

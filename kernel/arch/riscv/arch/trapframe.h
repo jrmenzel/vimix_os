@@ -97,7 +97,7 @@ static inline void trapframe_set_return_register(struct trapframe *frame,
     frame->a0 = (xlen_t)value;
 }
 
-static inline xlen_t trapframe_get_return_register(struct trapframe *frame)
+static inline size_t trapframe_get_return_register(struct trapframe *frame)
 {
     return frame->a0;
 }
@@ -108,12 +108,12 @@ static inline size_t trapframe_get_sys_call_number(struct trapframe *frame)
     return frame->a7;
 }
 
-static inline xlen_t trapframe_get_frame_pointer(struct trapframe *frame)
+static inline size_t trapframe_get_frame_pointer(struct trapframe *frame)
 {
     return frame->s0;
 }
 
-static inline xlen_t trapframe_get_return_address(struct trapframe *frame)
+static inline size_t trapframe_get_return_address(struct trapframe *frame)
 {
     return frame->ra;
 }

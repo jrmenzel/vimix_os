@@ -32,9 +32,6 @@
 #include <mm/vm.h>
 #include <syscalls/syscall.h>
 
-struct cpu g_cpus[MAX_CPUS] = {0};
-struct spinlock g_cpus_ipi_lock;
-
 /// @brief All user processes
 struct process_list g_process_list;
 

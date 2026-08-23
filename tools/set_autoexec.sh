@@ -10,4 +10,4 @@ then
     exit 1
 fi
 
-$MKFS --fs build/filesystem.img --in $TEST /autoexec.sh --uid 0 --gid 0 --dmode 0755 --fmode 0755
+$MKFS --fs build/boot/filesystem.img --in $TEST /autoexec.sh --uid 0 --gid 0 --dmode 0755 --fmode 0755

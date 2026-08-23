@@ -1,26 +1,26 @@
-# SPDX-License-Identifier: MIT
+/* SPDX-License-Identifier: MIT */
 
-# Interrupts and exceptions while in supervisor
-# mode (used for kernel mode) come here.
-#
-# The current stack is a kernel stack.
-# Push all registers, call kernel_mode_interrupt_handler().
-# When kernel_mode_interrupt_handler() returns, restore registers, return.
+// Interrupts and exceptions while in supervisor
+// mode (used for kernel mode) come here.
+//
+// The current stack is a kernel stack.
+// Push all registers, call kernel_mode_interrupt_handler().
+// When kernel_mode_interrupt_handler() returns, restore registers, return.
 
-# C interrupt vector
+// C interrupt vector
 .globl kernel_mode_interrupt_handler
 
 #include <arch/riscv/asm/registers.h>
 
 .globl s_mode_trap_vector
-# the address of this function must be 4 byte aligned because the lowest 
-# 2 bits of the stvec register are reserved for a mode.
+// the address of this function must be 4 byte aligned because the lowest 
+// 2 bits of the stvec register are reserved for a mode.
 .align 4
 s_mode_trap_vector:
-    # make room to save registers.
+    // make room to save registers.
     addi sp, sp, -REG_COUNT_TO_SAVE*SIZE_OF_REG
 
-    # save the registers.
+    // save the registers.
     SAVE_REG_TO_STACK(ra,  IDX_RA )
     SAVE_REG_TO_STACK(gp,  IDX_GP )
     SAVE_REG_TO_STACK(tp,  IDX_TP )
@@ -42,17 +42,17 @@ s_mode_trap_vector:
     SAVE_REG_TO_STACK(s0,  IDX_S0 )
     SAVE_REG_TO_STACK(s1,  IDX_S1 )
 
-    # call the C interrupt handler in trap.c with the stack pointer as the parameter
-    # note that s0-s11 and sp are saved/restored by the called function 
+    // call the C interrupt handler in trap.c with the stack pointer as the parameter
+    // note that s0-s11 and sp are saved/restored by the called function 
     mv a0, sp
     mv a1, zero
     mv a2, zero
     call kernel_mode_interrupt_handler
 
-    # restore registers.
+    // restore registers.
     LOAD_REG_FROM_STACK(ra,  IDX_RA)
     LOAD_REG_FROM_STACK(gp,  IDX_GP)
-    # not tp (contains hartid), in case we moved CPUs
+    // not tp (contains hartid), in case we moved CPUs
     LOAD_REG_FROM_STACK(t0,  IDX_T0 )
     LOAD_REG_FROM_STACK(t1,  IDX_T1 )
     LOAD_REG_FROM_STACK(t2,  IDX_T2 )
@@ -73,6 +73,6 @@ s_mode_trap_vector:
 
     addi sp, sp, REG_COUNT_TO_SAVE*SIZE_OF_REG
 
-    # return to whatever we were doing in the kernel.
+    // return to whatever we were doing in the kernel.
     sret
 

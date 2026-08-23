@@ -14,7 +14,7 @@
 #include <kernel/reset.h>
 #include <kernel/smp.h>
 
-void _entry_s_mode();
+void _start_secondary();
 
 struct sbiret sbi_ecall(int32_t ext, int32_t fid, xlen_t arg0, xlen_t arg1,
                         xlen_t arg2, xlen_t arg3, xlen_t arg4, xlen_t arg5)
@@ -276,7 +276,7 @@ syserr_t sbi_start_hart(size_t hartid, size_t opaque)
     if (plic_get_hart_s_context(hartid) != -1)
     {
         // CPU exists in device tree and supports s mode interrupts
-        size_t entry_va = (size_t)_entry_s_mode;
+        size_t entry_va = (size_t)_start_secondary;
         size_t entry_addr = sbi_virt_to_phys_runtime(entry_va);
         long ret = sbi_hart_start(hartid, entry_addr, opaque);
         if (ret != SBI_SUCCESS)

@@ -55,7 +55,8 @@ bool dtb_get_reg(const void *dtb, int offset, size_t *base, size_t *size);
 
 int dtb_get_cpu_offset(const void *dtb, size_t cpu_id, bool print_errors);
 
-CPU_Features dtb_get_cpu_features(const void *dtb, size_t cpu_id);
+void dtb_get_cpu_features(const void *dtb, size_t cpu_id,
+                          CPU_Features *features_out);
 
 const char *dtb_cpus_enable_method(const void *dtb);
 bool dtb_read_u64_prop(const void *dtb, int node_offset, const char *name,

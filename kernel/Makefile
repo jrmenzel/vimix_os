@@ -3,8 +3,8 @@
 #
 include ../MakefileCommon.mk
 include lib/libfdt/Makefile.libfdt
-K_BUILD_DIR := ../$(BUILD_DIR)/kernel_$(PLATFORM)$(BUILD_TYPE_SHORT)
-KERNEL_PATH := ../$(KERNEL_FILE)
+K_BUILD_DIR := ../$(BUILD_DIR)/kernel_$(TARGET)$(BUILD_TYPE_SHORT)
+KERNEL_PATH := $(K_BUILD_DIR)/$(KERNEL_NAME)
 ARCH_DIR    := arch/$(ARCH)
 INIT_BUILD_DIR := $(K_BUILD_DIR)/$(ARCH_DIR)/asm
 
@@ -110,10 +110,13 @@ ifeq ($(RAMDISK_EMBEDDED), yes)
 OBJS += ramdisk_fs.o
 RAMDISC_C := $(K_BUILD_DIR)/ramdisk_fs.c
 endif
+ifneq "$(TARGET_GCC_VERSION_AT_LEAST_15)" "1"
+# can't use the C23 embed feature, use fallback:
+OBJS += bcm2711.o jh7110.o orangepi_rv2.o
+ifdef DTB_EMBEDDED
+OBJS += embedded_boot_dtb.o
+endif
 
-ifeq ($(DTB_EMBEDDED), yes)
-OBJS += dtb_embedded.o
-DTB_C := $(K_BUILD_DIR)/dtb_embedded.c
 endif
 
 # add libfdt for Device Tree parsing
@@ -151,9 +154,6 @@ KERNEL_SPACE_INC += ./lib/libfdt   # libfdt
 ifeq ($(RAMDISK_EMBEDDED), yes)
 KERNEL_SPACE_INC += $(K_BUILD_DIR)
 endif
-ifeq ($(DTB_EMBEDDED), yes)
-KERNEL_SPACE_INC += $(K_BUILD_DIR)
-endif
 KERNEL_SPACE_INC_PARAMS = $(foreach d, $(KERNEL_SPACE_INC), -I$d)
 
 KBUILD_CFLAGS := $(CFLAGS)
@@ -164,6 +164,10 @@ KBUILD_CFLAGS += -D__ARCH_$(ARCH)
 KBUILD_CFLAGS += -DTEXT_OFFSET=$(TEXT_OFFSET) -DPAGE_OFFSET=$(PAGE_OFFSET)
 KBUILD_CFLAGS += -fno-omit-frame-pointer
 
+ifeq "$(TARGET_GCC_VERSION_AT_LEAST_15)" "1"
+KBUILD_CFLAGS += --embed-dir=".." # embed relative to project root
+endif
+
 ifeq ($(RELOC_KERNEL), yes)
 KBUILD_CFLAGS += -D__CONFIG_RELOC_KERNEL
 endif
@@ -172,7 +176,7 @@ ifeq ($(RAMDISK_EMBEDDED), yes)
 KBUILD_CFLAGS += -D__CONFIG_RAMDISK_EMBEDDED
 endif
 ifeq ($(DTB_EMBEDDED), yes)
-KBUILD_CFLAGS += -D__CONFIG_DTB_EMBEDDED
+KBUILD_CFLAGS += -D__CONFIG_DTB_FILE_PATH=\"$(DTB_FILE)\"
 endif
 
 # assembler flags
@@ -185,6 +189,10 @@ directories: # create temp build directories
 	@mkdir -p ../$(BUILD_DIR)/boot
 	@mkdir -p $(SUB_DIRS_TO_MAKE)
 	@mkdir -p $(K_BUILD_DIR)
+
+# build the extractdbg tool for extracting debug info from ELF files
+$(EXTRACTDGB_TOOL):
+	@$(MAKE) -C ../tools/extractdbg all;
 
 # compile assembly
 $(K_BUILD_DIR)/%.o: %.S | directories
@@ -209,14 +217,14 @@ $(K_BUILD_DIR)/ramdisk_fs.h:
 	@echo "#include <kernel/kernel.h>" >> $(K_BUILD_DIR)/ramdisk_fs.h
 	@echo "extern unsigned char ramdisk_fs[];" >> $(K_BUILD_DIR)/ramdisk_fs.h
 	@echo -n "#define ramdisk_fs_size " >> $(K_BUILD_DIR)/ramdisk_fs.h
-	@stat -c %s ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.h
+	@stat -c %s $(FILESYSTEM_IMG) >> $(K_BUILD_DIR)/ramdisk_fs.h
 
 $(K_BUILD_DIR)/ramdisk_fs.c:
 	@printf "$(TASK_COLOR)Creating ramdisk_fs.c\n$(NO_COLOR)"
 	@mkdir -p $(K_BUILD_DIR)
 	@echo "#include \"ramdisk_fs.h\"" > $(K_BUILD_DIR)/ramdisk_fs.c
 	@echo "unsigned char ramdisk_fs[] = {" >> $(K_BUILD_DIR)/ramdisk_fs.c
-	@xxd -i < ../$(BUILD_DIR)/filesystem.img >> $(K_BUILD_DIR)/ramdisk_fs.c
+	@xxd -i < $(FILESYSTEM_IMG) >> $(K_BUILD_DIR)/ramdisk_fs.c
 	@echo "};" >> $(K_BUILD_DIR)/ramdisk_fs.c
 
 $(K_BUILD_DIR)/ramdisk_fs.o: $(K_BUILD_DIR)/ramdisk_fs.c
@@ -229,55 +237,60 @@ $(K_BUILD_DIR)/ramdisk_fs.h:
 	@touch $(K_BUILD_DIR)/ramdisk_fs.h
 endif
 
-# embedd the device tree binary into the kernel as an array:
-ifeq ($(DTB_EMBEDDED), yes)
-$(K_BUILD_DIR)/dtb_embedded.h:
-	@printf "$(TASK_COLOR)Creating dtb_embedded.h\n$(NO_COLOR)"
-	@echo "#pragma once" > $(K_BUILD_DIR)/dtb_embedded.h
-	@echo "#include <kernel/kernel.h>" >> $(K_BUILD_DIR)/dtb_embedded.h
-	@echo "extern unsigned char dtb_embedded[];" >> $(K_BUILD_DIR)/dtb_embedded.h
-	@echo -n "#define dtb_embedded_size " >> $(K_BUILD_DIR)/dtb_embedded.h
-	@stat -c %s ../$(DTB_FILE) >> $(K_BUILD_DIR)/dtb_embedded.h
-
-$(K_BUILD_DIR)/dtb_embedded.c:
-	@printf "$(TASK_COLOR)Creating dtb_embedded.c\n$(NO_COLOR)"
-	@echo "#include \"dtb_embedded.h\"" > $(K_BUILD_DIR)/dtb_embedded.c
-	@echo "unsigned char dtb_embedded[] = {" >> $(K_BUILD_DIR)/dtb_embedded.c
-	@xxd -i < ../$(DTB_FILE) >> $(K_BUILD_DIR)/dtb_embedded.c
-	@echo "};" >> $(K_BUILD_DIR)/dtb_embedded.c
-
-$(K_BUILD_DIR)/dtb_embedded.o: $(K_BUILD_DIR)/dtb_embedded.c
-	@printf "$(TASK_COLOR)Compile dtb_embedded\n$(NO_COLOR)"
-	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $(K_BUILD_DIR)/dtb_embedded.c -o $(K_BUILD_DIR)/dtb_embedded.o
-
-else
-$(K_BUILD_DIR)/dtb_embedded.h:
-	@mkdir -p $(K_BUILD_DIR)
-	@touch $(K_BUILD_DIR)/dtb_embedded.h
-endif
-
 KERNEL_LD_FLAGS := --defsym=TEXT_OFFSET=$(TEXT_OFFSET) --defsym=PHYS_OFFSET=$(PHYS_OFFSET) --defsym=PAGE_OFFSET=$(PAGE_OFFSET)
 KERNEL_LD_FLAGS += -m $(LD_ARCH_STRING)
 
-$(KERNEL_PATH): $(K_BUILD_DIR)/ramdisk_fs.h $(K_BUILD_DIR)/dtb_embedded.h $(OBJECT_FILES) ./kernel.ld # build kernel
+$(KERNEL_PATH): $(EXTRACTDGB_TOOL) $(K_BUILD_DIR)/ramdisk_fs.h $(OBJECT_FILES) ./kernel.ld # build kernel
 	@printf "$(TASK_COLOR)Link kernel: $(@)\n$(NO_COLOR)"
 	@$(LD) $(LDFLAGS) $(KERNEL_LD_FLAGS) $(ARCH_LD_FLAGS) -T ./kernel.ld -o $(KERNEL_PATH) $(OBJECT_FILES)
 ifeq ($(CREATE_ASSEMBLY), yes)
 	@printf "$(TASK_COLOR)Disassemble kernel: $(K_BUILD_DIR)/$(KERNEL_NAME).asm\n$(NO_COLOR)"
 	@$(OBJDUMP) -S $(KERNEL_PATH) > $(K_BUILD_DIR)/$(KERNEL_NAME).asm
 endif
-	@$(OBJCOPY) -O binary $(KERNEL_PATH) $(KERNEL_PATH).bin
+	@$(OBJCOPY) -O binary $(KERNEL_PATH) $(KERNEL_PATH).img
 ifeq ($(CREATE_DEBUG_INFO), yes)
 	@printf "$(TASK_COLOR)Extract debug info: $(KERNEL_PATH).xdbg\n$(NO_COLOR)"
 	@$(EXTRACTDGB_TOOL) $(KERNEL_PATH) $(KERNEL_PATH).xdbg
 endif
 
+deploy: $(KERNEL_PATH)
+ifneq ($(KERNEL_FORMAT), elf)
+	@cp $(KERNEL_PATH).img ../$(BUILD_DIR)/boot/$(KERNEL_NAME).img
+endif
+	@cp $(KERNEL_PATH) ../$(BUILD_DIR)/boot/$(KERNEL_NAME)
+	@cp $(KERNEL_PATH).xdbg ../$(BUILD_DIR)/boot/$(KERNEL_NAME).xdbg
+
 clean:
 	-@rm -f $(KERNEL_PATH)
-	-@rm -f $(KERNEL_PATH).bin
+	-@rm -f $(KERNEL_PATH).img
 	-@rm -rf $(K_BUILD_DIR)
 	-@rm -f $(K_BUILD_DIR)/ramdisk_fs.h
 	-@rm -f $(RAMDISC_C)
 	-@rm -f $(DTB_C)
 	-@rm -f ../$(BUILD_DIR)/*.img
 
+
+ifneq "$(TARGET_GCC_VERSION_AT_LEAST_15)" "1"
+# can't use the C23 embed feature, use fallback:
+
+OBJ_COPY_OPTIONS := --input binary --output $(OBJ_COPY_OUTPUT) --binary-architecture $(OBJ_COPY_ARCH)
+
+$(K_BUILD_DIR)/bcm2711.o: ../boot/dtb/bcm2711-rpi-4-b-2gb.dtb
+	@printf "$(TASK_COLOR)Creating binary of DTB bcm2711\n$(NO_COLOR)"
+	@objcopy $(OBJ_COPY_OPTIONS) \
+	--redefine-sym _binary____boot_dtb_bcm2711_rpi_4_b_2gb_dtb_start=emdtb_bcm2711 \
+	$< $@
+
+$(K_BUILD_DIR)/jh7110.o: ../boot/dtb/jh7110-starfive-visionfive-2-v1.3b.dtb
+	@printf "$(TASK_COLOR)Creating binary of DTB jh7110\n$(NO_COLOR)"
+	@objcopy $(OBJ_COPY_OPTIONS) \
+	--redefine-sym _binary____boot_dtb_jh7110_starfive_visionfive_2_v1_3b_dtb_start=emdtb_jh7110 \
+	$< $@
+
+$(K_BUILD_DIR)/orangepi_rv2.o: ../boot/dtb/x1_orangepi-rv2.dtb
+	@printf "$(TASK_COLOR)Creating binary of DTB orangepi_rv2\n$(NO_COLOR)"
+	@objcopy $(OBJ_COPY_OPTIONS) \
+	--redefine-sym _binary____boot_dtb_x1_orangepi_rv2_dtb_start=emdtb_orangepi \
+	$< $@
+
+endif

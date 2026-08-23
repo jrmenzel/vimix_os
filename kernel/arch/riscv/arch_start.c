@@ -68,12 +68,13 @@ bool extension_is_supported(const char *riscv_isa, const char *ext)
     return false;
 }
 
-CPU_Features dtb_get_cpu_features(const void *dtb, size_t cpu_id)
+void dtb_get_cpu_features(const void *dtb, size_t cpu_id,
+                          CPU_Features *features_out)
 {
     CPU_Features featues = 0;
 
     int offset = dtb_get_cpu_offset(dtb, cpu_id, true);
-    if (offset < 0) return 0;
+    if (offset < 0) return;
 
     // parse MMU support
     int mmu_type_len;
@@ -147,5 +148,5 @@ CPU_Features dtb_get_cpu_features(const void *dtb, size_t cpu_id)
         }
     }
 
-    return featues;
+    *features_out = featues;
 }

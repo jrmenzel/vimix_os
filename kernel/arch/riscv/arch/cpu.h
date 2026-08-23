@@ -4,6 +4,7 @@
 #include <arch/riscv/riscv.h>
 #include <init/start.h>
 #include <kernel/kernel.h>
+#include <mm/arch_vm.h>
 #include <mm/memlayout.h>
 
 typedef uint32_t CPU_Features;
@@ -88,4 +89,14 @@ static inline size_t cpu_get_next_inst_after_syscall(size_t syscall_pc)
 {
     // RISC-V ecall is 4 bytes, so the next instruction is always 4 bytes after.
     return syscall_pc + 4;
+}
+
+// no explicit flush needed on RISC V
+static inline void cpu_flush_dcache_range(size_t va, size_t len) {}
+
+/// call after changing executable code in memory to flush instruction caches
+CAN_BE_CALLED_ON_USER_PAGE_TABLE static inline void
+cpu_flush_instruction_cache()
+{
+    asm volatile("fence.i");
 }

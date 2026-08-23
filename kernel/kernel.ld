@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /* set architecture when calling the linker with -m ARCH */
-ENTRY( _entry )
+ENTRY( _start )
 
 PHDRS
 {
@@ -13,12 +13,12 @@ SECTIONS
 {
   . = PAGE_OFFSET + TEXT_OFFSET;
   /*
-   * ensure that entry.S / _entry is at the expected location
+   * ensure that entry.S / _start is at the expected location
    * (depends on the platform to build for)
    */
   .text.start : AT(ADDR(.text.start) - PAGE_OFFSET + PHYS_OFFSET) {
     PROVIDE(__start_kernel = .);
-    *entry.o( .text )
+    *head.o( .text )
   } :text
 
   .text : AT(ADDR(.text) - PAGE_OFFSET + PHYS_OFFSET) {

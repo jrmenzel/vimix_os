@@ -21,8 +21,9 @@ COMMON_LIBS := $(LIB_BUILD_DIR)/vimixutils.a $(LIB_BUILD_DIR)/tomlc17.a
 
 B_BUILD_DIR := $(ROOT)/$(BUILD_DIR)/usr$(TARGET_SUFFIX)/$(BUILD_DIR_SUFFIX)
 B_DEPLOY_DIR := $(ROOT)/$(BUILD_DIR)/root$(TARGET_SUFFIX)/usr/$(DEPLOY_DIR_SUFFIX)
+XDBG_DEPLOY_DIR := $(ROOT)/$(BUILD_DIR)/root$(TARGET_SUFFIX)/xdbg/usr/$(DEPLOY_DIR_SUFFIX)
 
-ifeq ($(TARGET), host)
+ifeq ($(TARGET_OR_HOST), host)
 USER_SPACE_INC += /usr/include
 else
 USER_SPACE_INC += $(ROOT)/usr/include

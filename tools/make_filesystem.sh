@@ -6,7 +6,7 @@ BUILD_DIR_HOST=$2
 
 MKFS="${BUILD_DIR_HOST}/root/usr/bin/mkfs"
 FSCK="${BUILD_DIR_HOST}/root/usr/bin/fsck.vimixfs"
-FS_IMAGE="${BUILD_DIR}/filesystem.img"
+FS_IMAGE="${BUILD_DIR}/$3"
 
 META_DEFAULT="--uid 0 --gid 0 --dmode 0755 --fmode 0644"
 META_BINARIES="--uid 0 --gid 0 --dmode 0755 --fmode 0755"
@@ -24,11 +24,15 @@ mkdir -p root/sys
 mkdir -p root/tmp
 mkdir -p root/usr/bin
 mkdir -p root/usr/local/bin
+mkdir -p root/xdbg/usr/bin
+#mkdir -p root/xdbg/usr/local/bin
 
 $MKFS --fs $FS_IMAGE --create 12288
 $MKFS --fs $FS_IMAGE --in ./root/ / $META_DEFAULT
 $MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/usr/bin/ /usr/bin/ $META_BINARIES
 $MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/usr/local/bin/ /usr/local/bin/ $META_BINARIES
+$MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/xdbg/usr/bin/ /xdbg/usr/bin/ $META_DEFAULT
+#$MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/xdbg/usr/local/bin/ /xdbg/usr/local/bin/ $META_DEFAULT
 $MKFS --fs $FS_IMAGE --in ./README.md /README.md $META_DEFAULT
 $MKFS --fs $FS_IMAGE --meta /root/ $META_ROOT
 $MKFS --fs $FS_IMAGE --meta /home/user/ $META_USER

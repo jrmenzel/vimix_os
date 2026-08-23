@@ -429,7 +429,7 @@ int main(int argc, char *argv[])
         wait(NULL);
     }
 
-    printf("\ngrind passed\ngrind passed\n");
+    printf("\ngrind passed\ngrind passed\nALL TESTS PASSED\n");
 
     return 0;
 }

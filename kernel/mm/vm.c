@@ -25,7 +25,7 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE size_t
 mmu_set_kernel_pgtable_val(size_t reg_value, bool updateEpoch)
 {
     mmu_set_kernel_pgtable_reg(reg_value);
-    mmu_flush_instruction_cache();
+    cpu_flush_instruction_cache();
     mmu_flush_tlb();
 
     size_t inc = (updateEpoch) ? 1 : 0;
@@ -64,7 +64,7 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE void mmu_set_user_page_table(
     }
     size_t reg_value = mmu_make_page_table_reg((size_t)upagetable->root, asid);
     mmu_set_user_pgtable_reg(reg_value);
-    mmu_flush_instruction_cache();
+    cpu_flush_instruction_cache();
     mmu_flush_tlb_asid(asid);
 }
 

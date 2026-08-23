@@ -3,6 +3,9 @@
 #include <kernel/cpu.h>
 #include <kernel/proc.h>
 
+struct cpu g_cpus[MAX_CPUS] = {0};
+struct spinlock g_cpus_ipi_lock;
+
 void cpu_push_disable_device_interrupt_stack()
 {
     bool old = cpu_is_interrupts_enabled();

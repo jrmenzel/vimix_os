@@ -1,33 +1,33 @@
-# SPDX-License-Identifier: MIT
+/* SPDX-License-Identifier: MIT */
 
 #include <arch/riscv/asm/registers.h>
 #include <arch/riscv/asm/m_mode.h>
 
-#
-# machine-mode timer interrupt.
-#
-# Sets the next timer and triggers a supervisor software interrupt.
-#
-# When triggered the hardware automatically performs the following as an atomic operation:
-#  Fields in mstatus:
-#   MPIE  = MIE - save current interrupt enable state
-#   MIE   = 0   - disable interrupts
-#   MPP   = current priviledge level
-#  mcause = set to exception cause
-#  mepc   = pc  - save program counter
-#  pc     = mtvec - jump to m_mode_trap_vector
+
+// machine-mode timer interrupt.
+//
+// Sets the next timer and triggers a supervisor software interrupt.
+//
+// When triggered the hardware automatically performs the following as an atomic operation:
+//  Fields in mstatus:
+//   MPIE  = MIE - save current interrupt enable state
+//   MIE   = 0   - disable interrupts
+//   MPP   = current priviledge level
+//  mcause = set to exception cause
+//  mepc   = pc  - save program counter
+//  pc     = mtvec - jump to m_mode_trap_vector
 .globl m_mode_trap_vector
 .align 4
 m_mode_trap_vector:
-    # exchange caller stack with M Mode stack
+    // exchange caller stack with M Mode stack
     csrrw sp, mscratch, sp
 
-    # make room to save registers.
+    // make room to save registers.
     addi sp, sp, -REG_COUNT_TO_SAVE_ALL*SIZE_OF_REG
 
-    # save the registers.
+    // save the registers.
     SAVE_REG_TO_STACK( ra, IDX_ALL_RA )
-    # SAVE_REG_TO_STACK( sp, IDX_ALL_SP ) # sp is in mscratch, but can be omitted
+    // SAVE_REG_TO_STACK( sp, IDX_ALL_SP ) # sp is in mscratch, but can be omitted
     SAVE_REG_TO_STACK( gp, IDX_ALL_GP )
     SAVE_REG_TO_STACK( tp, IDX_ALL_TP )
     SAVE_REG_TO_STACK( t0, IDX_ALL_T0 )
@@ -58,13 +58,13 @@ m_mode_trap_vector:
     SAVE_REG_TO_STACK( t5, IDX_ALL_T5 )
     SAVE_REG_TO_STACK( t6, IDX_ALL_T6 )
 
-    # pass stack value to access (and modify) saved registers
+    // pass stack value to access (and modify) saved registers
     mv a0, sp
     call m_mode_interrupt_handler
 
-    # restore all registers:
+    // restore all registers:
     LOAD_REG_FROM_STACK( ra, IDX_ALL_RA )
-    # LOAD_REG_FROM_STACK( sp, IDX_ALL_SP ) # sp is in mscratch, but can be omitted
+    // LOAD_REG_FROM_STACK( sp, IDX_ALL_SP ) # sp is in mscratch, but can be omitted
     LOAD_REG_FROM_STACK( gp, IDX_ALL_GP )
     LOAD_REG_FROM_STACK( tp, IDX_ALL_TP )
     LOAD_REG_FROM_STACK( t0, IDX_ALL_T0 )
@@ -98,9 +98,9 @@ m_mode_trap_vector:
     addi sp, sp, REG_COUNT_TO_SAVE_ALL*SIZE_OF_REG
     csrrw sp, mscratch, sp
 
-    # mret changes these fields in mstatus:
-    #   MIE   = MPIE - restore previous interrupt enable state
-    #   MPIE  = 1
-    #   MPP   = 00
-    #  pc     = mepc - jump back
+    // mret changes these fields in mstatus:
+    //   MIE   = MPIE - restore previous interrupt enable state
+    //   MPIE  = 1
+    //   MPP   = 00
+    //  pc     = mepc - jump back
     mret

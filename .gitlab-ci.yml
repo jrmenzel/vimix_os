@@ -12,9 +12,9 @@ variables:
 .with_build_artifacts:
   artifacts:
     paths:
-      - build/filesystem.img
+      - build/boot/filesystem.img
       - build/boot/kernel-vimix
-      - build/boot/kernel-vimix.bin
+      - build/boot/kernel-vimix.img
       - build_host/root/usr/bin/mkfs
       - build_host/root/usr/bin/fsck.vimixfs
     when: always
@@ -42,210 +42,212 @@ clang_format_check:
   script:
     - tools/tests/check_formatting.sh
 
-# build with GCC analyzer on a recent Ubuntu
-gcc_15_analyze_riscv:
-  extends: .build_job
-  script:
-    - eval "make $BUILD_PARAMS ANALYZE=1"
+# Build all targets
+# One per arch also runs the GCC analyzer
 
-# Build all platforms on GCC 15
-build_qemu32_deb:
+# RISC V with M-Mode support
+build_rv32m_deb:
   extends: .build_job
   script:
-    - eval "make $BUILD_PARAMS PLATFORM=qemu32 BUILD_TYPE=debug"
+    - eval "make TARGET=rv32m $BUILD_PARAMS BUILD_TYPE=debug"
 
-build_qemu32_rel:
+build_rv32m_rel:
   extends: .build_job
   script:
-    - eval "make $BUILD_PARAMS PLATFORM=qemu32 BUILD_TYPE=release"
+    - eval "make TARGET=rv32m $BUILD_PARAMS BUILD_TYPE=release"
 
-build_qemu64_deb:
+build_rv64m_deb:
   extends: .build_job
   script:
-    - eval "make $BUILD_PARAMS PLATFORM=qemu64 BUILD_TYPE=debug"
+    - eval "make TARGET=rv64m $BUILD_PARAMS BUILD_TYPE=debug"
 
-build_qemu64_rel:
+build_rv64m_rel:
   extends: .build_job
   script:
-    - eval "make $BUILD_PARAMS PLATFORM=qemu64 BUILD_TYPE=release"
+    - eval "make TARGET=rv64m $BUILD_PARAMS BUILD_TYPE=release"
 
-build_spike32_deb:
+# RISCV with SBI support
+build_rv32_deb:
   extends: .build_job
   script:
-    - eval "make $BUILD_PARAMS PLATFORM=spike32 BUILD_TYPE=debug"
+    - eval "make TARGET=rv32 $BUILD_PARAMS BUILD_TYPE=debug"
 
-build_spike32_rel:
+build_rv32_rel:
   extends: .build_job
   script:
-    - eval "make $BUILD_PARAMS PLATFORM=spike32 BUILD_TYPE=release"
+    - eval "make TARGET=rv32 $BUILD_PARAMS BUILD_TYPE=release"
 
-build_spike64_deb:
+build_rv64_deb:
   extends: .build_job
   script:
-    - eval "make $BUILD_PARAMS PLATFORM=spike64 BUILD_TYPE=debug"
+    - eval "make TARGET=rv64 $BUILD_PARAMS BUILD_TYPE=debug ANALYZE=1"
 
-build_spike64_rel:
+build_rv64_rel:
   extends: .build_job
   script:
-    - eval "make $BUILD_PARAMS PLATFORM=spike64 BUILD_TYPE=release"
+    - eval "make TARGET=rv64 $BUILD_PARAMS BUILD_TYPE=release"
 
-build_visionfive2_deb:
-  extends: .build_job
-  script:
-    - eval "make $BUILD_PARAMS PLATFORM=visionfive2 BUILD_TYPE=debug"
-
-build_visionfive2_rel:
-  extends: .build_job
-  script:
-    - eval "make $BUILD_PARAMS PLATFORM=visionfive2 BUILD_TYPE=release"
 
 # tests
 
 usertests_release:
   extends: .usertest_job
   needs:
-    - job: build_qemu64_rel
+    - job: build_rv64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh usertests.sh qemu64 "ALL TESTS PASSED"
+    - ./tools/tests/run_test.sh usertests.sh sbi64 "ALL TESTS PASSED"
 
 usertests_release_32:
   extends: .usertest_job
   needs:
-    - job: build_qemu32_rel
+    - job: build_rv32_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh usertests.sh qemu32 "ALL TESTS PASSED"
+    - ./tools/tests/run_test.sh usertests.sh sbi32 "ALL TESTS PASSED"
 
 usertests_debug:
   extends: .usertest_job
   needs:
-    - job: build_qemu64_deb
+    - job: build_rv64_deb
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh usertests.sh qemu64 "ALL TESTS PASSED"
+    - ./tools/tests/run_test.sh usertests.sh sbi64 "ALL TESTS PASSED"
 
 usertests_memory:
   extends: .usertest_job
   needs:
-    - job: build_qemu64_rel
+    - job: build_rv64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 1 8
-    - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 4 8
-    - ./tools/tests/run_test.sh usertests_mem.sh qemu64 "ALL TESTS PASSED" 1 128
+    - ./tools/tests/run_test.sh usertests_mem.sh sbi64 "ALL TESTS PASSED" 1 8
+    - ./tools/tests/run_test.sh usertests_mem.sh sbi64 "ALL TESTS PASSED" 4 8
+    - ./tools/tests/run_test.sh usertests_mem.sh sbi64 "ALL TESTS PASSED" 1 128
 
 usertests_concurrent:
   extends: .usertest_job
   needs:
-    - job: build_qemu64_rel
+    - job: build_rv64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 1 32
-    - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 2 32
-    - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 3 32
-    - ./tools/tests/run_test.sh usertests_concurrent.sh qemu64 "ALL TESTS PASSED" 8 32
+    - ./tools/tests/run_test.sh usertests_concurrent.sh sbi64 "ALL TESTS PASSED" 1 32
+    - ./tools/tests/run_test.sh usertests_concurrent.sh sbi64 "ALL TESTS PASSED" 2 32
+    - ./tools/tests/run_test.sh usertests_concurrent.sh sbi64 "ALL TESTS PASSED" 3 32
+    - ./tools/tests/run_test.sh usertests_concurrent.sh sbi64 "ALL TESTS PASSED" 8 32
 
 usertests_failing_rel:
   extends: .usertest_job
   needs:
-    - job: build_qemu64_rel
+    - job: build_rv64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh usertests_fail.sh qemu64 "ALL TESTS PASSED" 1 64
-    - ./tools/tests/run_test.sh usertests_fail.sh qemu64 "ALL TESTS PASSED" 2 64
-    - ./tools/tests/run_test.sh usertests_fail.sh qemu64 "ALL TESTS PASSED" 5 64
-    - ./tools/tests/run_test.sh usertests_fail.sh qemu64 "ALL TESTS PASSED" 8 64
+    - ./tools/tests/run_test.sh usertests_fail.sh sbi64 "ALL TESTS PASSED" 1 64
+    - ./tools/tests/run_test.sh usertests_fail.sh sbi64 "ALL TESTS PASSED" 2 64
+    - ./tools/tests/run_test.sh usertests_fail.sh sbi64 "ALL TESTS PASSED" 5 64
+    - ./tools/tests/run_test.sh usertests_fail.sh sbi64 "ALL TESTS PASSED" 8 64
 
 fork_test:
   extends: .usertest_job
   needs:
-    - job: build_qemu64_rel
+    - job: build_rv64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh forktest.sh qemu64 "ALL TESTS PASSED" 1 32
-    - ./tools/tests/run_test.sh forktest.sh qemu64 "ALL TESTS PASSED" 2 32
-    - ./tools/tests/run_test.sh forktest.sh qemu64 "ALL TESTS PASSED" 4 32
-    - ./tools/tests/run_test.sh forktest.sh qemu64 "ALL TESTS PASSED" 8 32
+    - ./tools/tests/run_test.sh forktest.sh sbi64 "ALL TESTS PASSED" 1 32
+    - ./tools/tests/run_test.sh forktest.sh sbi64 "ALL TESTS PASSED" 2 32
+    - ./tools/tests/run_test.sh forktest.sh sbi64 "ALL TESTS PASSED" 4 32
+    - ./tools/tests/run_test.sh forktest.sh sbi64 "ALL TESTS PASSED" 8 32
 
 stack_grows_test:
   extends: .usertest_job
   needs:
-    - job: build_qemu64_rel
+    - job: build_rv64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh stack.sh qemu64 "Foo of 1180 is 1180"
+    - ./tools/tests/run_test.sh stack.sh sbi64 "Foo of 1180 is 1180"
 
 grind_test_2:
   extends: .usertest_job
   needs:
-    - job: build_qemu64_rel
+    - job: build_rv64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh grind_2.sh qemu64 "grind passed" 1 32
-    - ./tools/tests/run_test.sh grind_2.sh qemu64 "grind passed" 2 32
-    - ./tools/tests/run_test.sh grind_2.sh qemu64 "grind passed" 4 32
-    - ./tools/tests/run_test.sh grind_2.sh qemu64 "grind passed" 8 32
+    - ./tools/tests/run_test.sh grind_2.sh sbi64 "grind passed" 1 32
+    - ./tools/tests/run_test.sh grind_2.sh sbi64 "grind passed" 2 32
+    - ./tools/tests/run_test.sh grind_2.sh sbi64 "grind passed" 4 32
+    - ./tools/tests/run_test.sh grind_2.sh sbi64 "grind passed" 8 32
 
-grind_test_8:
+grind_test_8_1:
   extends: .usertest_job
   needs:
-    - job: build_qemu64_rel
+    - job: build_rv64_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh grind_8.sh qemu64 "grind passed" 1 32
-    - ./tools/tests/run_test.sh grind_8.sh qemu64 "grind passed" 2 32
-    - ./tools/tests/run_test.sh grind_8.sh qemu64 "grind passed" 4 32
-    - ./tools/tests/run_test.sh grind_8.sh qemu64 "grind passed" 8 32
+    - ./tools/tests/run_test.sh grind_8.sh sbi64 "grind passed" 1 32
+
+grind_test_8_3:
+  extends: .usertest_job
+  needs:
+    - job: build_rv64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh grind_8.sh sbi64 "grind passed" 3 32
+
+grind_test_8_7:
+  extends: .usertest_job
+  needs:
+    - job: build_rv64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh grind_8.sh sbi64 "grind passed" 7 32
 
 # Spike
 
 spike_boot64_rel:
   extends: .usertest_job
   needs:
-    - job: build_spike64_rel
+    - job: build_rv64m_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh echo.sh spike64 "ALL TESTS PASSED"
+    - ./tools/tests/run_test.sh echo.sh m-rdisk64 "ALL TESTS PASSED" 4 64 spike
 
 spike_boot32_rel:
   extends: .usertest_job
   needs:
-    - job: build_spike32_rel
+    - job: build_rv32m_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh echo.sh spike32 "ALL TESTS PASSED"
+    - ./tools/tests/run_test.sh echo.sh m-rdisk32 "ALL TESTS PASSED" 4 64 spike
 
 spike_usertests_misc:
   extends: .usertest_job
   needs:
-    - job: build_spike64_rel
+    - job: build_rv64m_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh usertests_misc.sh spike64 "ALL TESTS PASSED"
+    - ./tools/tests/run_test.sh usertests_misc.sh m-rdisk64 "ALL TESTS PASSED" 4 64 spike
 
 spike_usertests_concurrent:
   extends: .usertest_job
   needs:
-    - job: build_spike64_rel
+    - job: build_rv64m_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh usertests_concurrent.sh spike64 "ALL TESTS PASSED"
+    - ./tools/tests/run_test.sh usertests_concurrent.sh m-rdisk64 "ALL TESTS PASSED" 4 64 spike
 
 spike_usertests_mem:
   extends: .usertest_job
   needs:
-    - job: build_spike64_rel
+    - job: build_rv64m_rel
       artifacts: true
   script:
-    - ./tools/tests/run_test.sh usertests_mem.sh spike64 "ALL TESTS PASSED"
+    - ./tools/tests/run_test.sh usertests_mem.sh m-rdisk64 "ALL TESTS PASSED" 4 64 spike
 
 # test tools
 
 test_mkfs:
   stage: usertests
   needs:
-    - job: build_qemu64_rel
+    - job: build_rv64_rel
       artifacts: true
   script:
     - ./tools/tests/test_mkfs.sh

@@ -19,9 +19,8 @@ void timer_init(const void *dtb);
 
 /// @brief Called from start() and sets timer_schedule_interrupt() pointer
 /// depending on the configured timer.
-void timer_init_per_cpu(CPU_Features features);
+void timer_init_per_cpu();
 
 /// @brief To be implemented by architecture
-/// @param features CPU features
 /// @return Pointer to the timer schedule interrupt function
-timer_schedule_interrupt_p *arch_timer_interrupt_func(CPU_Features features);
+timer_schedule_interrupt_p *arch_timer_interrupt_func();

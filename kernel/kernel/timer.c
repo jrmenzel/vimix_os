@@ -17,9 +17,9 @@ void timer_init(const void *dtb)
     g_boot_time = get_time();
 }
 
-void timer_init_per_cpu(CPU_Features features)
+void timer_init_per_cpu()
 {
-    timer_schedule_interrupt = arch_timer_interrupt_func(features);
+    timer_schedule_interrupt = arch_timer_interrupt_func();
     if (timer_schedule_interrupt == NULL)
     {
         panic("no timer source found");

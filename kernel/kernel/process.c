@@ -108,7 +108,7 @@ struct process *process_alloc_init()
     // Set up new context to start executing at forkret,
     // which returns to user space.
     // proc was zero initialized, so is proc->context at this point
-    context_set_return_register(&proc->context, (xlen_t)(forkret));
+    context_set_return_register(&proc->context, (size_t)(forkret));
     context_set_stack_pointer(&proc->context, proc->kstack + KERNEL_STACK_SIZE);
 
     DEBUG_ASSERT_CPU_HOLDS_LOCK(&proc->lock);

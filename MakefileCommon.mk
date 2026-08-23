@@ -9,13 +9,27 @@ REL_WITH_DEBUG := yes
 
 #####
 # target architecture subpath in kernel/
-ARCH := riscv
+# default target
+TARGET := rv64
 
 # dir of this makefile: last in the MAKEFILE_LIST is the current file
 # (so call before including anything), realpath and dir get a dir incl
 # trailing '/'
 ROOT_DIR_MK_COMMON := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+include $(ROOT_DIR_MK_COMMON)kernel/arch/riscv/MakefileTargetsRISCV.mk
+
+ifeq ($(filter $(TARGET),$(TARGETS_RISCV)),)
+$(error "TARGET not set correctly, select one of: $(TARGETS_ARM64) $(TARGETS_RISCV)")
+# test here as this also can mean that ARCH is not set
+endif
+
 include $(ROOT_DIR_MK_COMMON)kernel/arch/$(ARCH)/MakefileArch.mk
+TARGET_GCC_VERSION_AT_LEAST_14 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 14)
+TARGET_GCC_VERSION_AT_LEAST_15 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 15)
+
+ifneq "$(TARGET_GCC_VERSION_AT_LEAST_14)" "1"
+$(error "GCC version 14 or higher is required.")
+endif
 
 
 # "build" is used as the foldername outside of the Makefiles as well.
@@ -26,7 +40,7 @@ ifeq ($(BUILD_TYPE), debug)
 BUILD_TYPE_SHORT := _d
 endif
 
-ifeq ($(TARGET), host)
+ifeq ($(TARGET_OR_HOST), host)
 BUILD_DIR := build_host
 else
 BUILD_DIR := build
@@ -60,7 +74,7 @@ USER_TEXT_START := "0x400000"
 
 #####
 # tools
-ifeq ($(TARGET), host)
+ifeq ($(TARGET_OR_HOST), host)
 CC := gcc
 AR := ar
 LD := ld
@@ -106,7 +120,7 @@ CFLAGS_TARGET_ONLY += -ffreestanding -fno-common -nostdlib
 CFLAGS_TARGET_ONLY += -nostdinc
 CFLAGS_TARGET_ONLY += -fno-stack-protector
 
-ifeq ($(TARGET), host)
+ifeq ($(TARGET_OR_HOST), host)
 # c flags for the user space apps on the host OS (with host stdlib):
 CFLAGS := $(CFLAGS_COMMON) -DBUILD_ON_HOST -D__USE_REAL_STDC 
 
