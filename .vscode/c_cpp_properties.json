@@ -11,7 +11,6 @@
         ],
         "kernel_defines": [
             "DEBUG",
-            "MEMORY_SIZE=64",
             "USER_TEXT_START=0x400000",
             "TEXT_OFFSET=0x200000"
         ],
@@ -19,8 +18,7 @@
             "__ARCH_riscv",
             "CONFIG_RISCV_SBI",
             "__RISCV_EXT_SSTC",
-            "__RISCV_CSR_TIME",
-            "__BOOT_S_MODE"
+            "__RISCV_CSR_TIME"
         ],
         "user_inc_path": [
             "${workspaceFolder}/kernel/include",
@@ -102,7 +100,6 @@
                 "${workspaceFolder}/usr/lib/tomlc17/src"
             ],
             "defines": [
-                "MEMORY_SIZE=64",
                 "BUILD_ON_HOST"
             ]
         }
