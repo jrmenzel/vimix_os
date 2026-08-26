@@ -5,6 +5,7 @@
 //
 
 #include <fcntl.h>
+#include <kernel/compiler.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,8 +15,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
-#pragma GCC diagnostic ignored "-Wanalyzer-fd-use-without-check"
+diagnostic_ignore_fd_leak;
+diagnostic_ignore_fd_use_without_check;
 
 const char *bin_echo = "/usr/bin/echo";
 const char *bin_cat = "/usr/bin/cat";

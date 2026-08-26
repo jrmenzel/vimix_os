@@ -25,10 +25,8 @@ bool create_group_list(struct get_group_buffer *gb, char *members_str)
 {
     // count members
     size_t member_count = 1;  // number of commas + 1
-    size_t members_str_len = 0;
     for (char *p = members_str; *p != 0; p++)
     {
-        members_str_len++;
         if (*p == ',')
         {
             member_count++;

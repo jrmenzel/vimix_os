@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <kernel/compiler.h>
 #include <kernel/vimixfs.h>
 #include <stdbool.h>
 #include <stdint.h>

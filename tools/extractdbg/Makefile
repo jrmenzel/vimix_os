@@ -1,4 +1,16 @@
-CC = gcc
+ifndef COMPILER
+COMPILER := $(shell if command -v clang >/dev/null 2>&1; then echo clang; else echo gcc; fi)
+endif
+
+ifeq ($(COMPILER), clang)
+ifeq ($(origin CC), default)
+CC := clang
+endif
+else
+ifeq ($(origin CC), default)
+CC := gcc
+endif
+endif
 BASE_CFLAGS = -Wall -Wextra -I../../kernel/include -I../../kernel/ -DBUILD_ON_HOST -D__USE_REAL_STDC
 CFLAGS_RELEASE = $(BASE_CFLAGS) -O2
 CFLAGS_DEBUG = $(BASE_CFLAGS) -O0 -g3
@@ -18,7 +30,7 @@ debug: CFLAGS = $(CFLAGS_DEBUG)
 debug: $(BIN)
 
 $(BIN): $(SRC)
-	@printf "Compile: $(@)\n"
+	@printf "Compile with $(CC): $(@)\n"
 	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:

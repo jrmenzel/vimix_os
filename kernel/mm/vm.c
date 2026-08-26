@@ -51,8 +51,8 @@ void mmu_set_kernel_page_table(struct Page_Table *kpagetable)
     }
 }
 
-CAN_BE_CALLED_ON_USER_PAGE_TABLE void mmu_set_user_page_table(
-    struct Page_Table *upagetable, size_t asid)
+bool mmu_prepare_user_page_table(struct Page_Table *upagetable, size_t asid,
+                                 size_t *reg_value_out)
 {
     // note: functions outside of the trapsec (and dynamically allocated kernel
     // memory) can be accessed till setting the user page table.
@@ -76,11 +76,9 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE void mmu_set_user_page_table(
     }
 
     size_t reg_value = mmu_make_page_table_reg((size_t)upagetable->root, asid);
-    mmu_set_user_pgtable_reg(reg_value);
-    if (first_time_enabled_here || asid == 0)
-    {
-        mmu_flush_tlb_asid(asid);
-    }
+    *reg_value_out = reg_value;
+
+    return first_time_enabled_here || asid == 0;
 }
 
 syserr_t kvm_apply_kernel_mapping(struct Page_Table *kpagetable)

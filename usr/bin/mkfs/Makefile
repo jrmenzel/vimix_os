@@ -24,7 +24,7 @@ $(B_DEPLOY_DIR)/fsck.vimixfs: $(B_BUILD_DIR)/fsck.vimixfs.o $(SHARED_O_FILES) $(
 	@$(LINKER)  $(LDFLAGS) -o $@ $^
 
 $(B_BUILD_DIR)/%.o: %.c 
-	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 ###########################################################

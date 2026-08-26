@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <fs/sysfs/sysfs.h>
+#include <kernel/compiler.h>
 #include <kernel/kobject.h>
 #include <kernel/rwspinlock.h>
 #include <kernel/stdarg.h>
@@ -31,10 +32,10 @@ const struct kobj_type default_kobj_ktype = {
 static inline void init_kobjects_in_root(struct kobject *kobj, const char *name)
 {
     kobject_init(kobj, &default_kobj_ktype);
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-security"
+    diagnostic_push;
+    diagnostic_ignore_format_security;
     kobject_add(kobj, &g_kobjects_root, name);
-#pragma GCC diagnostic pop
+    diagnostic_pop;
     kobject_put(kobj);
 }
 

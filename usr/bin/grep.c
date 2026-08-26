@@ -2,14 +2,15 @@
 
 // Simple grep.  Only supports ^ . * $ operators.
 
-#pragma GCC diagnostic ignored "-Wanalyzer-infinite-recursion"
-
 #include <fcntl.h>
+#include <kernel/compiler.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+diagnostic_ignore_infinite_recursion;
 
 char buf[1024];
 int match(char *, char *);

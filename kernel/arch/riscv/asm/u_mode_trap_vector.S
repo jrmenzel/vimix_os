@@ -164,3 +164,16 @@ return_to_user_mode_asm:
     // return to user mode and user pc.
     // return_to_user_mode() set up sstatus and sepc.
     sret
+
+.globl return_to_user_mode_switch
+.type return_to_user_mode_switch, @function
+return_to_user_mode_switch:
+    // return_to_user_mode_switch(user_satp, asid, flush_tlb, kernel_stack)
+    // Commit to the user page table and immediately continue with the
+    // register restore path. Do not return through a C frame after satp changes.
+    csrw satp, a0
+    beqz a2, 1f
+    sfence.vma zero, a1
+1:
+    mv a0, a3
+    j return_to_user_mode_asm

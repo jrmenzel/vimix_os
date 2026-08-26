@@ -103,17 +103,17 @@ long sbi_probe_extension(int32_t extid)
     return ret.value;
 }
 
-static inline struct sbiret sbi_get_mvendorid()
+static inline struct sbiret __attribute__((unused)) sbi_get_mvendorid()
 {
     return sbi_ecall(SBI_EXT_ID_BASE, SBI_BASE_GET_MVENDORID, 0, 0, 0, 0, 0, 0);
 }
 
-static inline struct sbiret sbi_get_marchid()
+static inline struct sbiret __attribute__((unused)) sbi_get_marchid()
 {
     return sbi_ecall(SBI_EXT_ID_BASE, SBI_BASE_GET_MARCHID, 0, 0, 0, 0, 0, 0);
 }
 
-static inline struct sbiret sbi_get_mimpid()
+static inline struct sbiret __attribute__((unused)) sbi_get_mimpid()
 {
     return sbi_ecall(SBI_EXT_ID_BASE, SBI_BASE_GET_MIMPID, 0, 0, 0, 0, 0, 0);
 }

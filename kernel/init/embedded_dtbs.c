@@ -2,7 +2,7 @@
 
 #include <init/embedded_dtbs.h>
 
-// if the C23 #embed feature is available (needs GCC 15)
+// if the C23 #embed feature is available
 #if defined(__has_embed)
 
 const unsigned char dtb_embedded[] = {
@@ -26,7 +26,6 @@ extern const unsigned char dtb_embedded[];
 #else
 const unsigned char dtb_embedded[1] = {0};
 #endif
-extern const unsigned char emdtb_bcm2711[];
 extern const unsigned char emdtb_jh7110[];
 extern const unsigned char emdtb_orangepi[];
 

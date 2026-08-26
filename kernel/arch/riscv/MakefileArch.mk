@@ -6,11 +6,13 @@ LD_ARCH_STRING := elf$(BITWIDTH)lriscv
 OBJ_COPY_OUTPUT := elf$(BITWIDTH)-littleriscv
 OBJ_COPY_ARCH := riscv
 GDB_ARCHITECTURE := riscv:rv$(BITWIDTH)
+TARGET_TRIPLE := riscv$(BITWIDTH)-unknown-elf
 
 #####
 # TOOLPREFIX, e.g. riscv64-unknown-elf-
 # Set explicitly or try to infer the correct TOOLPREFIX
 #TOOLPREFIX = 
+ifeq ($(COMPILER), gcc)
 ifndef TOOLPREFIX
 TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf$(BITWIDTH)-big' >/dev/null 2>&1; \
 	then echo 'riscv64-unknown-elf-'; \
@@ -25,28 +27,8 @@ TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf$(BITWID
 	echo "*** To turn off this error, set TOOLPREFIX in MakefileArch.mk." 1>&2; \
 	echo "***" 1>&2; exit 1; fi)
 endif
-
-
-# target instruction set and bit width
-MARCH := rv$(BITWIDTH)ima
-# optional: compressed instructions
-ifeq ($(RV_ENABLE_EXT_C), yes)
-MARCH := $(MARCH)c
 endif
 
-TARGET_GCC_VERSION_AT_LEAST_14 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 14)
-
-# mandatory: CSRs and fence instructions
-MARCH := $(MARCH)_zicsr_zifencei
-
-# optional: s-mode timer extension, needs gcc 14
-ifeq "$(TARGET_GCC_VERSION_AT_LEAST_14)" "1"
-ifeq ($(RV_ENABLE_EXT_SSTC), yes)
-MARCH := $(MARCH)_sstc
-endif
-
-EXT_DEFINES += -D__RISCV_EXT_SSTC
-endif
 
 # calling convention and linker architecture:
 ifeq ($(BITWIDTH), 32)
@@ -55,11 +37,45 @@ else
 MABI := lp64
 endif
 
+# target instruction set and bit width
+MARCH := rv$(BITWIDTH)ima
+# optional: compressed instructions
+ifeq ($(RV_ENABLE_EXT_C), yes)
+MARCH := $(MARCH)c
+endif
+
+# mandatory: CSRs and fence instructions
+MARCH := $(MARCH)_zicsr_zifencei
+
+ifeq ($(COMPILER), clang)
+RISCV_TARGET_CC_FOR_FEATURE_TEST ?= clang --target=$(TARGET_TRIPLE)
+else
+RISCV_TARGET_CC_FOR_FEATURE_TEST ?= $(TOOLPREFIX)gcc
+endif
+RISCV_CC_HAS_EXT_SSTC := $(shell tmp=/tmp/vimixos_sstc_test_$$$$.o; \
+	if printf '' | $(RISCV_TARGET_CC_FOR_FEATURE_TEST) -x c -c -o $$tmp \
+		-march=$(MARCH)_sstc -mabi=$(MABI) - >/dev/null 2>&1; \
+	then echo 1; else echo 0; fi; rm -f $$tmp)
+
+# optional: s-mode timer extension
+ifeq ($(RV_ENABLE_EXT_SSTC), yes)
+ifeq ($(RISCV_CC_HAS_EXT_SSTC), 1)
+MARCH := $(MARCH)_sstc
+EXT_DEFINES += -D__RISCV_EXT_SSTC
+endif
+endif
+
 ARCH_LFLAGS := -melf$(BITWIDTH)lriscv
 ARCH_CFLAGS := -march=$(MARCH) -mabi=$(MABI) $(EXT_DEFINES)
 ARCH_CFLAGS += -mcmodel=medany -mno-relax
 
 ARCH_KERNEL_CFLAGS += -DCONFIG_RISCV_$(BOOT_MODE)
+
+# clang can generate jump tables in libfdt functions called before relocation.
+# Those tables contain post-relocation addresses, so disable them for the kernel.
+ifeq ($(COMPILER), clang)
+ARCH_KERNEL_CFLAGS += -fno-jump-tables
+endif
 
 #
 # Arch specific files

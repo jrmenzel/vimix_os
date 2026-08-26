@@ -106,3 +106,4 @@ $
 - Added a [buddy allocator](docs/kernel/mm/memory_management.md). `kmalloc()` now supports smaller allocations of one [page](docs/kernel/mm/page.md) via a slab allocator (see [memory_management](docs/kernel/mm/memory_management.md)).
 - Added [Inter Processor Interrupts](docs/kernel/interrupts/IPI.md).
 - Relocated the kernel after boot to the upper half of the address space.
+- Build with [clang](docs/development/build_instructions.md).

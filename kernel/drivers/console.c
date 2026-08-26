@@ -421,7 +421,7 @@ dev_t console_init(struct Found_Device *console_dev)
     g_console.cdev.ops.ioctl = console_ioctl;
     g_console.cdev.dev.mode = 0666;
 
-    memset(&g_console.termios, sizeof(struct termios), 0);
+    memset(&g_console.termios, 0, sizeof(struct termios));
     g_console.termios.c_lflag = ECHO | ICANON | ICRNL;
     g_console.termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
     g_console.termios.c_cc[VTIME] = 0;  // no timeout in read()

@@ -54,7 +54,7 @@ void qsort(void *base, size_t nmemb, size_t size, compare_func compare)
 static void qs_partition(unsigned char *lo, unsigned char *hi, size_t elem_size,
                          compare_func compare)
 {
-start:
+start:;
     size_t range_bytes = (size_t)(hi - lo);
     if (range_bytes <= elem_size) return;  // zero or one element
 

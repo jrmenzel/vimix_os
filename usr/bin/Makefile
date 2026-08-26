@@ -71,7 +71,7 @@ $(EXTRACTDGB_TOOL):
 ###########################################################
 # compiling apps
 $(B_BUILD_DIR)/%.o: %.c
-	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 $(B_DEPLOY_DIR)/%: $(B_BUILD_DIR)/%.o $(COMMON_LIBS) | directories $(EXTRACTDGB_TOOL)

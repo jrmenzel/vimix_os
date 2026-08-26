@@ -21,11 +21,11 @@ CFLAGS += -fPIC
 # build tomlc17
 $(LIB_BUILD_DIR)/tomlc17.a : $(TOMLC17)
 	@printf "$(TASK_COLOR)Create library: $(@)\n$(NO_COLOR)"
-	@$(AR) -r -o $(LIB_BUILD_DIR)/tomlc17.a $(TOMLC17)
+	@$(AR) rc $(LIB_BUILD_DIR)/tomlc17.a $(TOMLC17)
 
 # generic rule to compile .c files to .o files on target
 $(TOMLC17_BUILD_DIR)/%.o: src/%.c
-	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 directories: # temp build directories
@@ -33,4 +33,3 @@ directories: # temp build directories
 
 clean:
 	-@rm -rf $(TOMLC17_BUILD_DIR)
-

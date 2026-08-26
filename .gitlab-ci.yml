@@ -3,7 +3,7 @@ stages:
   - usertests
 
 default:
-  image: pandora:5050/robert/vimixos/ci-ubuntu3:26.04
+  image: pandora:5050/robert/vimixos/ci-ubuntu5:26.04
   tags: ["docker"]
 
 variables:
@@ -87,6 +87,27 @@ build_rv64_rel:
   script:
     - eval "make TARGET=rv64 $BUILD_PARAMS BUILD_TYPE=release"
 
+# clang
+# RISCV with SBI support
+build_rv32_deb_clang:
+  extends: .build_job
+  script:
+    - eval "make COMPILER=clang TARGET=rv32 $BUILD_PARAMS BUILD_TYPE=debug"
+
+build_rv32_rel_clang:
+  extends: .build_job
+  script:
+    - eval "make COMPILER=clang TARGET=rv32 $BUILD_PARAMS BUILD_TYPE=release"
+
+build_rv64_deb_clang:
+  extends: .build_job
+  script:
+    - eval "make COMPILER=clang TARGET=rv64 $BUILD_PARAMS BUILD_TYPE=debug"
+
+build_rv64_rel_clang:
+  extends: .build_job
+  script:
+    - eval "make COMPILER=clang TARGET=rv64 $BUILD_PARAMS BUILD_TYPE=release"
 
 # tests
 
@@ -94,6 +115,14 @@ usertests_release:
   extends: .usertest_job
   needs:
     - job: build_rv64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests.sh sbi64 "ALL TESTS PASSED"
+
+usertests_release_clang:
+  extends: .usertest_job
+  needs:
+    - job: build_rv64_rel_clang
       artifacts: true
   script:
     - ./tools/tests/run_test.sh usertests.sh sbi64 "ALL TESTS PASSED"
@@ -110,6 +139,14 @@ usertests_debug:
   extends: .usertest_job
   needs:
     - job: build_rv64_deb
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests.sh sbi64 "ALL TESTS PASSED"
+
+usertests_debug_clang:
+  extends: .usertest_job
+  needs:
+    - job: build_rv64_deb_clang
       artifacts: true
   script:
     - ./tools/tests/run_test.sh usertests.sh sbi64 "ALL TESTS PASSED"

@@ -64,8 +64,10 @@ void panic(char *error_message)
     printk("kernel call stack:\n");
     debug_print_call_stack_kernel_fp((size_t)__builtin_frame_address(0));
 
+#if (__has_builtin(__builtin_stack_address))
     printk("kernel stack pointer: " FORMAT_REG_SIZE "\n",
            (size_t)__builtin_stack_address());
+#endif
 
     if (this_cpu->proc)
     {

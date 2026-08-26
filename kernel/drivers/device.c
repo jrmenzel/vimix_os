@@ -5,6 +5,7 @@
 #include <drivers/character_device.h>
 #include <drivers/device.h>
 #include <kernel/bio.h>
+#include <kernel/compiler.h>
 #include <kernel/interrupt_controller.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
@@ -86,13 +87,13 @@ void register_device(struct Device *dev)
         }
     }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-security"
+    diagnostic_push;
+    diagnostic_ignore_format_security;
     // ..., "%s", dev->name) would make the compiler happy,
-    // at this point we might not have dynamic memeory allocation,
+    // at this point we might not have dynamic memory allocation,
     // so we trust that the device names are well formatted.
     kobject_add(&dev->kobj, &g_kobjects_dev, dev->name);
-#pragma GCC diagnostic pop
+    diagnostic_pop;
 
     // this device had a reference since kobject_init(),
     // kobject_add() added another one for the parent, which

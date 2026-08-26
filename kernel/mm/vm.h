@@ -13,7 +13,8 @@
 /// @param pagetable Page table to use.
 void mmu_set_kernel_page_table(struct Page_Table *kpagetable);
 
-void mmu_set_user_page_table(struct Page_Table *upagetable, size_t asid);
+bool mmu_prepare_user_page_table(struct Page_Table *upagetable, size_t asid,
+                                 size_t *reg_value_out);
 
 /// @brief Construct the page table enable register value. It encodes the page
 /// table address, the ASID and flags. The format is ARCH specific.

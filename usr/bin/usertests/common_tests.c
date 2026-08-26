@@ -935,8 +935,8 @@ void test_read_access(const char *file_name, bool should_succeed, const char *s)
             exit(1);
         }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wanalyzer-fd-access-mode-mismatch"
+        diagnostic_push;
+        diagnostic_fd_access_mode_mismatch;
         // intentionally testing the write to a read-only file,
         // the analyzer rightfully warns about this "bug".
         errno = 0;
@@ -944,7 +944,7 @@ void test_read_access(const char *file_name, bool should_succeed, const char *s)
         assert_same_value(errno, EBADF);
 
         assert_no_error(close(fd));
-#pragma GCC diagnostic pop
+        diagnostic_pop;
     }
     else
     {
@@ -971,14 +971,14 @@ void test_write_access(const char *file_name, bool should_succeed,
         assert_open_ok_fd(s, fd, file_name);
         char buffer[1];
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wanalyzer-fd-access-mode-mismatch"
+        diagnostic_push;
+        diagnostic_fd_access_mode_mismatch;
         // intentionally testing the read to a write-only file,
         // the analyzer rightfully warns about this "bug".
         errno = 0;
         assert_error(read(fd, buffer, 1));
         assert_same_value(errno, EBADF);
-#pragma GCC diagnostic pop
+        diagnostic_pop;
 
         errno = 0;
         assert_no_error(write(fd, buffer, 1));  // test write after open

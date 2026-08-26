@@ -165,7 +165,10 @@ void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2,
     return_to_user_mode();
 }
 
-void return_to_user_mode_asm(size_t kernel_stack);
+void return_to_user_mode_asm(size_t kernel_stack) __attribute__((noreturn));
+void return_to_user_mode_switch(size_t user_page_table_reg, size_t asid,
+                                bool flush_tlb, size_t kernel_stack)
+    __attribute__((noreturn));
 
 CAN_BE_CALLED_ON_USER_PAGE_TABLE void return_to_user_mode()
 {
@@ -198,10 +201,14 @@ CAN_BE_CALLED_ON_USER_PAGE_TABLE void return_to_user_mode()
     cpu_set_exception_return_address(
         trapframe_get_program_counter(proc->trapframe));
 
-    // switch to user page table, works as this function is mapped to trampsec
-    mmu_set_user_page_table(proc->pagetable, 0);
+    size_t asid = 0;
+    size_t user_page_table_reg = 0;
+    bool flush_tlb = mmu_prepare_user_page_table(proc->pagetable, asid,
+                                                 &user_page_table_reg);
 
-    return_to_user_mode_asm(kernel_stack);
+    // switch to user page table and enter user mode without returning through C
+    return_to_user_mode_switch(user_page_table_reg, asid, flush_tlb,
+                               kernel_stack);
 }
 
 void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)

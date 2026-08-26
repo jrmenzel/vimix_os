@@ -189,7 +189,7 @@ clear_kernel_bss:
 // Set up a stack for S-Mode.
 .global setup_boot_stack
 setup_boot_stack:
-    lla a0, g_early_kernel_page_table
+    lla a0, g_kernel_cpu_stack
     li a1, KERNEL_STACK_SIZE
     // fall through to entry point setup_per_hart_stack which is used by M-Mode but with
     // different parameters.
@@ -246,4 +246,3 @@ wait_for_early_page_table:
     
     j _entry_m_mode                    // jump to the M-Mode entry point
 #endif
-

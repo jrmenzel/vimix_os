@@ -18,6 +18,8 @@ SECTIONS
   }
 
   .data : ALIGN(CONSTANT(MAXPAGESIZE)) {
+    *(.got .got.*)
+    *(.data.rel.ro .data.rel.ro.*)
     *(.sdata .sdata.*) /* do not need to distinguish this from .data */
     . = ALIGN(16);
     *(.data .data.*)

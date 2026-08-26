@@ -14,7 +14,7 @@ $(B_DEPLOY_DIR)/dhrystone: $(B_BUILD_DIR)/dhry_1.o $(B_BUILD_DIR)/dhry_2.o $(COM
 	@$(LINKER)  $(LDFLAGS) $^ -o $@
 
 $(B_BUILD_DIR)/%.o: %.c
-	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 directories: # make temp build directories

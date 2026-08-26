@@ -8,11 +8,13 @@
 #include <kernel/exec.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
+#include <kernel/page.h>
 #include <kernel/permission.h>
 #include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
+#include <lib/minmax.h>
 #include <lib/panic.h>
 #include <mm/memory_map.h>
 #include <mm/vm.h>
@@ -79,21 +81,26 @@ bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
 
         // error checks
         if ((ph.memsz < ph.filesz) || (ph.vaddr + ph.memsz < ph.vaddr) ||
-            (ph.vaddr % PAGE_SIZE != 0))
+            (ph.off + ph.filesz < ph.off) || (ph.vaddr < USER_TEXT_START))
         {
             return false;
         }
 
         // allocate pages and update last_va
-        size_t alloc_size = (ph.vaddr + ph.memsz) - *last_va;
-
-        size_t sz = uvm_alloc_heap(pagetable, *last_va, alloc_size,
-                                   elf_flags_to_map_type(ph.flags));
-        if (sz != alloc_size)
+        size_t segment_end = ph.vaddr + ph.memsz;
+        size_t mapped_end = PAGE_ROUND_UP(*last_va);
+        size_t segment_mapped_end = PAGE_ROUND_UP(segment_end);
+        if (segment_mapped_end > mapped_end)
         {
-            return false;
+            size_t alloc_size = segment_mapped_end - mapped_end;
+            size_t sz = uvm_alloc_heap(pagetable, mapped_end, alloc_size,
+                                       elf_flags_to_map_type(ph.flags));
+            if (sz != alloc_size)
+            {
+                return false;
+            }
         }
-        *last_va += alloc_size;
+        *last_va = max(*last_va, segment_end);
 
         // load actual data
         if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
@@ -260,31 +267,33 @@ syserr_t do_execv(char *path, char **argv)
 static int32_t loadseg(struct Page_Table *pagetable, size_t va,
                        struct inode *ip, size_t offset, size_t sz)
 {
-    for (size_t i = 0; i < sz; i += PAGE_SIZE)
+    for (size_t i = 0; i < sz;)
     {
+        size_t va_offset = va + i;
+        size_t page_va = PAGE_ROUND_DOWN(va_offset);
+        size_t page_offset = va_offset - page_va;
+
         spin_lock(&pagetable->lock);
-        size_t pa = uvm_get_physical_paddr(pagetable, va + i, NULL);
+        size_t pa = uvm_get_physical_paddr(pagetable, page_va, NULL);
         spin_unlock(&pagetable->lock);
         if (pa == 0)
         {
             panic("loadseg: address should exist");
         }
 
-        size_t n;
-        if (sz - i < PAGE_SIZE)
+        size_t n = PAGE_SIZE - page_offset;
+        if (sz - i < n)
         {
             n = sz - i;
         }
-        else
-        {
-            n = PAGE_SIZE;
-        }
 
-        size_t page_kva = phys_to_virt(pa);
+        size_t page_kva = phys_to_virt(pa) + page_offset;
         if (VFS_INODE_READ_KERNEL(ip, offset + i, page_kva, n) != n)
         {
             return -1;
         }
+
+        i += n;
     }
 
     return 0;

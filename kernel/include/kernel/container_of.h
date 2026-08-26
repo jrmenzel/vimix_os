@@ -4,10 +4,11 @@
  */
 #pragma once
 
-#define typeof_member(T, m) typeof(((T *)0)->m)
+#define typeof_member(T, m) __typeof__(((T *)0)->m)
 
 #ifndef __same_type
-#define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
+#define __same_type(a, b) \
+    __builtin_types_compatible_p(__typeof__(a), __typeof__(b))
 #endif
 
 #ifndef offsetof

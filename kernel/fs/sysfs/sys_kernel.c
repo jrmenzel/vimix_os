@@ -111,7 +111,7 @@ syserr_t sys_kernel_sysfs_ops_store(struct kobject *kobj, size_t attribute_idx,
             {
                 break;
             }
-            atomic_store(&sys_kern->app_crash_verbosity, (atomic_uint)value);
+            atomic_store(&sys_kern->app_crash_verbosity, (unsigned int)value);
             ret = n;
         }
         break;

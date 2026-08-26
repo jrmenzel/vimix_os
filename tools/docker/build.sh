@@ -5,7 +5,7 @@ GITLAB_PATH=pandora:5050/robert/vimixos
 #PLATFORMS="linux/amd64,linux/arm64"
 PLATFORMS="linux/amd64"
 CA_CERT=/home/robert/.config/gitlab_ssl/ca.crt
-IMAGE_BASE_NAME=ci-ubuntu3
+IMAGE_BASE_NAME=ci-ubuntu5
 
 echo "Building CI images for platforms: $PLATFORMS"
 

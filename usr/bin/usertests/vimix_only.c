@@ -140,12 +140,12 @@ size_t memory_allocated()
 
 void duptest(char *s)
 {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wanalyzer-fd-use-without-check"
+    diagnostic_push;
+    diagnostic_fd_use_without_check;
     int fd = dup(-1);  // intentially testing an invalid file descriptor
     assert_same_value(fd, -1);
     assert_errno(EBADF);
-#pragma GCC diagnostic pop
+    diagnostic_pop;
 
     // already open files = stdin/out/err
     for (size_t i = 3; i < MAX_FILES_PER_PROCESS; ++i)
@@ -2596,14 +2596,16 @@ void dirfile(char *s)
         printf("%s: could not open . for reading!\n", s);
         exit(1);
     }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wanalyzer-fd-access-mode-mismatch"
+
+    diagnostic_push;
+    diagnostic_fd_access_mode_mismatch;
     if (write(fd, "x", 1) > 0)
     {
         printf("%s: write into . succeeded!\n", s);
         exit(1);
     }
-#pragma GCC diagnostic pop
+    diagnostic_pop;
+
     close(fd);
 }
 
@@ -3256,8 +3258,8 @@ void stack_underflow(char *s)
 
 // check that writes to invalid addresses fail (including following NULL
 // pointers)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wanalyzer-null-dereference"
+diagnostic_push;
+diagnostic_null_dereference;
 void nowrite(char *s)
 {
     for (size_t ai = 0; ai < INVALID_PTR_COUNT; ai++)
@@ -3289,7 +3291,7 @@ void nowrite(char *s)
         }
     }
 }
-#pragma GCC diagnostic pop
+diagnostic_pop;
 
 // regression test. does the kernel panic if a process sbrk()s its
 // size to be less than a page, or zero, or reduces the break by an

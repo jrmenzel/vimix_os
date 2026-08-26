@@ -37,11 +37,11 @@ CFLAGS += -fPIC
 # build libc
 $(LIB_BUILD_DIR)/stdlib.a : $(STD_LIBC)
 	@printf "$(TASK_COLOR)Create library: $(@)\n$(NO_COLOR)"
-	@$(AR) -r -o $(LIB_BUILD_DIR)/stdlib.a $(STD_LIBC)
+	@$(AR) rc $(LIB_BUILD_DIR)/stdlib.a $(STD_LIBC)
 
 # generic rule to compile .c files to .o files on target
 $(LIBC_BUILD_DIR)/%.o: %.c
-	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 # automatically generated
@@ -50,7 +50,7 @@ $(LIBC_BUILD_DIR)/usys.S : usys.pl | directories
 	@perl usys.pl -$(ARCH) > $(LIBC_BUILD_DIR)/usys.S
 
 $(LIBC_BUILD_DIR)/usys.o : $(LIBC_BUILD_DIR)/usys.S
-	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) -c -o $(LIBC_BUILD_DIR)/usys.o $(LIBC_BUILD_DIR)/usys.S $(USER_SPACE_INC_PARAMS)
 
 directories: # temp build directories

@@ -24,11 +24,11 @@ CFLAGS += -fPIC
 # build libvimixutils
 $(LIB_BUILD_DIR)/vimixutils.a : $(LIB_VIMIXUTILS) 
 	@printf "$(TASK_COLOR)Create library: $(@)\n$(NO_COLOR)"
-	@$(AR) -r -o $(LIB_BUILD_DIR)/vimixutils.a $^
+	@$(AR) rc $(LIB_BUILD_DIR)/vimixutils.a $^
 
 # generic rule to compile .c files to .o files on target
 $(LIB_VIMIXUTILS_BUILD_DIR)/%.o: %.c
-	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
 directories: # temp build directories

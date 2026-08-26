@@ -110,9 +110,9 @@ ifeq ($(RAMDISK_EMBEDDED), yes)
 OBJS += ramdisk_fs.o
 RAMDISC_C := $(K_BUILD_DIR)/ramdisk_fs.c
 endif
-ifneq "$(TARGET_GCC_VERSION_AT_LEAST_15)" "1"
+ifneq "$(TARGET_CC_HAS_C23_EMBED)" "1"
 # can't use the C23 embed feature, use fallback:
-OBJS += bcm2711.o jh7110.o orangepi_rv2.o
+OBJS += jh7110.o orangepi_rv2.o
 ifdef DTB_EMBEDDED
 OBJS += embedded_boot_dtb.o
 endif
@@ -164,10 +164,6 @@ KBUILD_CFLAGS += -D__ARCH_$(ARCH)
 KBUILD_CFLAGS += -DTEXT_OFFSET=$(TEXT_OFFSET) -DPAGE_OFFSET=$(PAGE_OFFSET)
 KBUILD_CFLAGS += -fno-omit-frame-pointer
 
-ifeq "$(TARGET_GCC_VERSION_AT_LEAST_15)" "1"
-KBUILD_CFLAGS += --embed-dir=".." # embed relative to project root
-endif
-
 ifeq ($(RELOC_KERNEL), yes)
 KBUILD_CFLAGS += -D__CONFIG_RELOC_KERNEL
 endif
@@ -181,6 +177,11 @@ endif
 
 # assembler flags
 KBUILD_AFLAGS := -D__ASSEMBLY__ $(KBUILD_CFLAGS)
+
+ifeq "$(TARGET_CC_HAS_C23_EMBED)" "1"
+KBUILD_CFLAGS += -std=gnu23
+KBUILD_CFLAGS += --embed-dir=".." # embed relative to project root
+endif
 
 .PHONY: all directories clean
 all: directories $(KERNEL_PATH) # build all
@@ -200,7 +201,7 @@ $(K_BUILD_DIR)/%.o: %.S | directories
 
 # compile C, also create assembly listing
 $(K_BUILD_DIR)/%.o: %.c | directories
-	@printf "$(TASK_COLOR)Compile: $(@)\n$(NO_COLOR)"
+	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(KBUILD_CFLAGS) -I. $(KERNEL_SPACE_INC_PARAMS) -c $< -o $@
 ifeq ($(CREATE_ASSEMBLY), yes)
 	@printf "$(TASK_COLOR)Assembly $(basename $@).s\n$(NO_COLOR)"
@@ -270,26 +271,20 @@ clean:
 	-@rm -f ../$(BUILD_DIR)/*.img
 
 
-ifneq "$(TARGET_GCC_VERSION_AT_LEAST_15)" "1"
+ifneq "$(TARGET_CC_HAS_C23_EMBED)" "1"
 # can't use the C23 embed feature, use fallback:
 
 OBJ_COPY_OPTIONS := --input binary --output $(OBJ_COPY_OUTPUT) --binary-architecture $(OBJ_COPY_ARCH)
 
-$(K_BUILD_DIR)/bcm2711.o: ../boot/dtb/bcm2711-rpi-4-b-2gb.dtb
-	@printf "$(TASK_COLOR)Creating binary of DTB bcm2711\n$(NO_COLOR)"
-	@objcopy $(OBJ_COPY_OPTIONS) \
-	--redefine-sym _binary____boot_dtb_bcm2711_rpi_4_b_2gb_dtb_start=emdtb_bcm2711 \
-	$< $@
-
 $(K_BUILD_DIR)/jh7110.o: ../boot/dtb/jh7110-starfive-visionfive-2-v1.3b.dtb
 	@printf "$(TASK_COLOR)Creating binary of DTB jh7110\n$(NO_COLOR)"
-	@objcopy $(OBJ_COPY_OPTIONS) \
+	@$(OBJCOPY) $(OBJ_COPY_OPTIONS) \
 	--redefine-sym _binary____boot_dtb_jh7110_starfive_visionfive_2_v1_3b_dtb_start=emdtb_jh7110 \
 	$< $@
 
 $(K_BUILD_DIR)/orangepi_rv2.o: ../boot/dtb/x1_orangepi-rv2.dtb
 	@printf "$(TASK_COLOR)Creating binary of DTB orangepi_rv2\n$(NO_COLOR)"
-	@objcopy $(OBJ_COPY_OPTIONS) \
+	@$(OBJCOPY) $(OBJ_COPY_OPTIONS) \
 	--redefine-sym _binary____boot_dtb_x1_orangepi_rv2_dtb_start=emdtb_orangepi \
 	$< $@
 

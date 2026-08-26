@@ -3,7 +3,9 @@
 // Memory allocator by Kernighan and Ritchie,
 // The C programming Language, 2nd ed.  Section 8.7.
 
-#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
+#include <kernel/compiler.h>
+
+diagnostic_ignore_malloc_leak;
 
 #include <errno.h>
 #include <stdlib.h>

@@ -23,14 +23,16 @@ $(error "TARGET not set correctly, select one of: $(TARGETS_ARM64) $(TARGETS_RIS
 # test here as this also can mean that ARCH is not set
 endif
 
-include $(ROOT_DIR_MK_COMMON)kernel/arch/$(ARCH)/MakefileArch.mk
-TARGET_GCC_VERSION_AT_LEAST_14 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 14)
-TARGET_GCC_VERSION_AT_LEAST_15 := $(shell expr `$(TOOLPREFIX)gcc$(GCCPOSTFIX) -dumpversion | cut -f1 -d.` \>= 15)
-
-ifneq "$(TARGET_GCC_VERSION_AT_LEAST_14)" "1"
-$(error "GCC version 14 or higher is required.")
+# default to gcc, the specific cross compiler will be detected in the MakefileArch.mk
+ifndef COMPILER
+COMPILER := gcc
 endif
 
+ifeq ($(filter $(COMPILER),gcc clang),)
+$(error "COMPILER must be set to either 'gcc' or 'clang'")
+endif
+
+include $(ROOT_DIR_MK_COMMON)kernel/arch/$(ARCH)/MakefileArch.mk
 
 # "build" is used as the foldername outside of the Makefiles as well.
 # So if this gets changed, the Makefiles should be fine, but externel
@@ -75,30 +77,65 @@ USER_TEXT_START := "0x400000"
 #####
 # tools
 ifeq ($(TARGET_OR_HOST), host)
+ifeq ($(COMPILER), clang)
+CC := clang
+AR := llvm-ar
+LD := ld.lld
+OBJCOPY := llvm-objcopy
+OBJDUMP := llvm-objdump
+else
 CC := gcc
 AR := ar
 LD := ld
+OBJCOPY := objcopy
+OBJDUMP := objdump
+endif
 else
-CC := $(TOOLPREFIX)gcc$(GCCPOSTFIX)
+# cross compile for target
+ifeq ($(COMPILER), clang)
+CC := clang --target=$(TARGET_TRIPLE)
+AS := clang --target=$(TARGET_TRIPLE)
+AR := llvm-ar
+LD := ld.lld
+OBJCOPY := llvm-objcopy
+OBJDUMP := llvm-objdump
+else
+CC := $(TOOLPREFIX)gcc
 AS := $(TOOLPREFIX)gas
 AR := $(TOOLPREFIX)ar
 LD := $(TOOLPREFIX)ld
 OBJCOPY := $(TOOLPREFIX)objcopy
 OBJDUMP := $(TOOLPREFIX)objdump
 endif
+endif
+
+MAKEFILE_HASH := \#
+TARGET_CC_HAS_C23_EMBED := $(shell tmp=/tmp/vimixos_embed_test_$$$$; \
+	printf 'vimixos' > $$tmp.bin; \
+	printf 'const unsigned char x[] = {\n$(MAKEFILE_HASH)embed "'$$tmp.bin'"\n};\n' > $$tmp.c; \
+	if $(CC) -std=gnu23 --embed-dir="$(ROOT_DIR_MK_COMMON)" -x c -c $$tmp.c \
+		-o $$tmp.o >/dev/null 2>&1; \
+	then echo 1; else echo 0; fi; rm -f $$tmp.bin $$tmp.c $$tmp.o)
 
 #####
 # C compile flags
 git-hash=$(shell git log --pretty=format:'%h' -n 1)
 CFLAGS_COMMON := -DGIT_HASH=$(git-hash)
 CFLAGS_COMMON += -fno-omit-frame-pointer
-CFLAGS_COMMON += -Wall -Werror -Wno-stringop-truncation
+CFLAGS_COMMON += -Wall -Werror
+ifeq ($(COMPILER), gcc)
+CFLAGS_COMMON += -Wno-stringop-truncation
+else
+CFLAGS_COMMON += -Wno-gnu-designator
+endif
 CFLAGS_COMMON += -I.
 # Disable position independend code generation
-CFLAGS_COMMON += -fno-pie -no-pie
+CFLAGS_COMMON += -fno-pie
 
+ifeq ($(COMPILER), gcc)
 ifeq ($(ANALYZE), 1)
 CFLAGS_COMMON += -fanalyzer
+endif
 endif
 
 DEBUG_FLAGS := -ggdb -gdwarf -DDEBUG -g # debug info
@@ -125,6 +162,7 @@ ifeq ($(TARGET_OR_HOST), host)
 CFLAGS := $(CFLAGS_COMMON) -DBUILD_ON_HOST -D__USE_REAL_STDC 
 
 # linker command and flags
+LDFLAGS := -no-pie
 LINKER := $(CC) $(CFLAGS)
 else
 # c flags for the kernel and user space apps on the target OS:

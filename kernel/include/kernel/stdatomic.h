@@ -97,6 +97,7 @@ static inline void atomic_thread_fence(memory_order mem_order)
 /// __typeof__((void)0, *FOO) removes _Atomic and const from the type of *FOO
 /// based on the comma operator ((void)0 is needed to have a comma operator, but
 /// gets discarded).
+#define __atomic_ptr_without_atomic(PTR, TMP) ((__typeof__(&(TMP)))(PTR))
 
 /// @brief Store VAL into the atomic variable pointed to by PTR.
 /// @param PTR Pointer to the atomic variable.
@@ -112,7 +113,9 @@ static inline void atomic_thread_fence(memory_order mem_order)
     __extension__({                                                          \
         __auto_type __atomic_store_ptr = (PTR);                              \
         __typeof__((void)0, *__atomic_store_ptr) __atomic_store_tmp = (VAL); \
-        __atomic_store(__atomic_store_ptr, &__atomic_store_tmp, (MO));       \
+        __atomic_store(__atomic_ptr_without_atomic(__atomic_store_ptr,       \
+                                                   __atomic_store_tmp),      \
+                       &__atomic_store_tmp, (MO));                           \
     })
 
 /// @brief Store VAL into the atomic variable pointed to by PTR.
@@ -132,12 +135,14 @@ static inline void atomic_thread_fence(memory_order mem_order)
 ///   _acquire: lX + fence r,rw
 ///   _seq_cst: fence rw,rw + lX + fence r,rw
 /// @return The loaded value.
-#define atomic_load_explicit(PTR, MO)                               \
-    __extension__({                                                 \
-        __auto_type __atomic_load_ptr = (PTR);                      \
-        __typeof__((void)0, *__atomic_load_ptr) __atomic_load_tmp;  \
-        __atomic_load(__atomic_load_ptr, &__atomic_load_tmp, (MO)); \
-        __atomic_load_tmp;                                          \
+#define atomic_load_explicit(PTR, MO)                                          \
+    __extension__({                                                            \
+        __auto_type __atomic_load_ptr = (PTR);                                 \
+        __typeof__((void)0, *__atomic_load_ptr) __atomic_load_tmp;             \
+        __atomic_load(                                                         \
+            __atomic_ptr_without_atomic(__atomic_load_ptr, __atomic_load_tmp), \
+            &__atomic_load_tmp, (MO));                                         \
+        __atomic_load_tmp;                                                     \
     })
 
 /// @brief Load the value of the atomic variable pointed to by PTR.
@@ -160,15 +165,17 @@ static inline void atomic_thread_fence(memory_order mem_order)
 /// @param VAL New value to set.
 /// @param MO Memory order to use.
 /// @return The old value.
-#define atomic_exchange_explicit(PTR, VAL, MO)                              \
-    __extension__({                                                         \
-        __auto_type __atomic_exchange_ptr = (PTR);                          \
-        __typeof__((void)0, *__atomic_exchange_ptr) __atomic_exchange_val = \
-            (VAL);                                                          \
-        __typeof__((void)0, *__atomic_exchange_ptr) __atomic_exchange_tmp;  \
-        __atomic_exchange(__atomic_exchange_ptr, &__atomic_exchange_val,    \
-                          &__atomic_exchange_tmp, (MO));                    \
-        __atomic_exchange_tmp;                                              \
+#define atomic_exchange_explicit(PTR, VAL, MO)                                \
+    __extension__({                                                           \
+        __auto_type __atomic_exchange_ptr = (PTR);                            \
+        __typeof__((void)0, *__atomic_exchange_ptr) __atomic_exchange_val =   \
+            (VAL);                                                            \
+        __typeof__((void)0, *__atomic_exchange_ptr) __atomic_exchange_tmp;    \
+        __atomic_exchange(__atomic_ptr_without_atomic(__atomic_exchange_ptr,  \
+                                                      __atomic_exchange_tmp), \
+                          &__atomic_exchange_val, &__atomic_exchange_tmp,     \
+                          (MO));                                              \
+        __atomic_exchange_tmp;                                                \
     })
 
 /// @brief Atomically replace the value pointed to by PTR with VAL and return
@@ -202,14 +209,15 @@ static inline void atomic_thread_fence(memory_order mem_order)
 /// @param FAIL Memory order to use for the read operation if *PTR != *VAL.
 /// @return true if the comparison succeeded and the value was replaced,
 /// false otherwise.
-#define atomic_compare_exchange_strong_explicit(PTR, VAL, DES, SUC, FAIL)   \
-    __extension__({                                                         \
-        __auto_type __atomic_compare_exchange_ptr = (PTR);                  \
-        __typeof__((void)0, *__atomic_compare_exchange_ptr)                 \
-            __atomic_compare_exchange_tmp = (DES);                          \
-        __atomic_compare_exchange(__atomic_compare_exchange_ptr, (VAL),     \
-                                  &__atomic_compare_exchange_tmp, 0, (SUC), \
-                                  (FAIL));                                  \
+#define atomic_compare_exchange_strong_explicit(PTR, VAL, DES, SUC, FAIL) \
+    __extension__({                                                       \
+        __auto_type __atomic_compare_exchange_ptr = (PTR);                \
+        __typeof__((void)0, *__atomic_compare_exchange_ptr)               \
+            __atomic_compare_exchange_tmp = (DES);                        \
+        __atomic_compare_exchange(                                        \
+            __atomic_ptr_without_atomic(__atomic_compare_exchange_ptr,    \
+                                        __atomic_compare_exchange_tmp),   \
+            (VAL), &__atomic_compare_exchange_tmp, 0, (SUC), (FAIL));     \
     })
 
 /// @brief Atomically compare the value pointed to by PTR with *VAL. If equal,
@@ -238,14 +246,15 @@ static inline void atomic_thread_fence(memory_order mem_order)
 
 /// @brief Like atomic_compare_exchange_strong_explicit, but may fail
 /// spuriously. If used in a loop anyways, it can be faster though.
-#define atomic_compare_exchange_weak_explicit(PTR, VAL, DES, SUC, FAIL)     \
-    __extension__({                                                         \
-        __auto_type __atomic_compare_exchange_ptr = (PTR);                  \
-        __typeof__((void)0, *__atomic_compare_exchange_ptr)                 \
-            __atomic_compare_exchange_tmp = (DES);                          \
-        __atomic_compare_exchange(__atomic_compare_exchange_ptr, (VAL),     \
-                                  &__atomic_compare_exchange_tmp, 1, (SUC), \
-                                  (FAIL));                                  \
+#define atomic_compare_exchange_weak_explicit(PTR, VAL, DES, SUC, FAIL) \
+    __extension__({                                                     \
+        __auto_type __atomic_compare_exchange_ptr = (PTR);              \
+        __typeof__((void)0, *__atomic_compare_exchange_ptr)             \
+            __atomic_compare_exchange_tmp = (DES);                      \
+        __atomic_compare_exchange(                                      \
+            __atomic_ptr_without_atomic(__atomic_compare_exchange_ptr,  \
+                                        __atomic_compare_exchange_tmp), \
+            (VAL), &__atomic_compare_exchange_tmp, 1, (SUC), (FAIL));   \
     })
 
 /// @brief Like atomic_compare_exchange_strong, but may fail spuriously. If used
@@ -259,8 +268,15 @@ static inline void atomic_thread_fence(memory_order mem_order)
 /// @param PTR Pointer to the atomic variable.
 /// @param VAL Value to add.
 /// @return The old value.
-#define atomic_fetch_add(PTR, VAL) \
-    __atomic_fetch_add((PTR), (VAL), __ATOMIC_SEQ_CST)
+#define atomic_fetch_add(PTR, VAL)                                           \
+    __extension__({                                                          \
+        __auto_type __atomic_fetch_add_ptr = (PTR);                          \
+        __typeof__((void)0, *__atomic_fetch_add_ptr) __atomic_fetch_add_tmp; \
+        __atomic_fetch_add(                                                  \
+            __atomic_ptr_without_atomic(__atomic_fetch_add_ptr,              \
+                                        __atomic_fetch_add_tmp),             \
+            (VAL), __ATOMIC_SEQ_CST);                                        \
+    })
 
 /// @brief Atomically performs (*PTR += VAL) and returns the old value.
 /// @param PTR Pointer to the atomic variable.
@@ -275,16 +291,30 @@ static inline void atomic_thread_fence(memory_order mem_order)
 ///   _acq_rel: amoadd.w.aqrl
 ///   _seq_cst: amoadd.w.aqrl
 /// @return The old value.
-#define atomic_fetch_add_explicit(PTR, VAL, MO) \
-    __atomic_fetch_add((PTR), (VAL), (MO))
+#define atomic_fetch_add_explicit(PTR, VAL, MO)                              \
+    __extension__({                                                          \
+        __auto_type __atomic_fetch_add_ptr = (PTR);                          \
+        __typeof__((void)0, *__atomic_fetch_add_ptr) __atomic_fetch_add_tmp; \
+        __atomic_fetch_add(                                                  \
+            __atomic_ptr_without_atomic(__atomic_fetch_add_ptr,              \
+                                        __atomic_fetch_add_tmp),             \
+            (VAL), (MO));                                                    \
+    })
 
 /// @brief Atomically performs (*PTR -= VAL) and returns the old value.
 /// Uses memory_order_seq_cst.
 /// @param PTR Pointer to the atomic variable.
 /// @param VAL Value to subtract.
 /// @return The old value.
-#define atomic_fetch_sub(PTR, VAL) \
-    __atomic_fetch_sub((PTR), (VAL), __ATOMIC_SEQ_CST)
+#define atomic_fetch_sub(PTR, VAL)                                           \
+    __extension__({                                                          \
+        __auto_type __atomic_fetch_sub_ptr = (PTR);                          \
+        __typeof__((void)0, *__atomic_fetch_sub_ptr) __atomic_fetch_sub_tmp; \
+        __atomic_fetch_sub(                                                  \
+            __atomic_ptr_without_atomic(__atomic_fetch_sub_ptr,              \
+                                        __atomic_fetch_sub_tmp),             \
+            (VAL), __ATOMIC_SEQ_CST);                                        \
+    })
 
 /// @brief Atomically performs (*PTR -= VAL) and returns the old value.
 /// @param PTR Pointer to the atomic variable.
@@ -299,16 +329,29 @@ static inline void atomic_thread_fence(memory_order mem_order)
 ///   _acq_rel: amoadd.w.aqrl
 ///   _seq_cst: amoadd.w.aqrl
 /// @return The old value.
-#define atomic_fetch_sub_explicit(PTR, VAL, MO) \
-    __atomic_fetch_sub((PTR), (VAL), (MO))
+#define atomic_fetch_sub_explicit(PTR, VAL, MO)                              \
+    __extension__({                                                          \
+        __auto_type __atomic_fetch_sub_ptr = (PTR);                          \
+        __typeof__((void)0, *__atomic_fetch_sub_ptr) __atomic_fetch_sub_tmp; \
+        __atomic_fetch_sub(                                                  \
+            __atomic_ptr_without_atomic(__atomic_fetch_sub_ptr,              \
+                                        __atomic_fetch_sub_tmp),             \
+            (VAL), (MO));                                                    \
+    })
 
 /// @brief Atomically performs (*PTR |= VAL) and returns the old value.
 /// Uses memory_order_seq_cst.
 /// @param PTR Pointer to the atomic variable.
 /// @param VAL Value to subtract.
 /// @return The old value.
-#define atomic_fetch_or(PTR, VAL) \
-    __atomic_fetch_or((PTR), (VAL), __ATOMIC_SEQ_CST)
+#define atomic_fetch_or(PTR, VAL)                                             \
+    __extension__({                                                           \
+        __auto_type __atomic_fetch_or_ptr = (PTR);                            \
+        __typeof__((void)0, *__atomic_fetch_or_ptr) __atomic_fetch_or_tmp;    \
+        __atomic_fetch_or(__atomic_ptr_without_atomic(__atomic_fetch_or_ptr,  \
+                                                      __atomic_fetch_or_tmp), \
+                          (VAL), __ATOMIC_SEQ_CST);                           \
+    })
 
 /// @brief Atomically performs (*PTR |= VAL) and returns the old value.
 /// @param PTR Pointer to the atomic variable.
@@ -323,16 +366,29 @@ static inline void atomic_thread_fence(memory_order mem_order)
 ///   _acq_rel: amoor.w.aqrl
 ///   _seq_cst: amoor.w.aqrl
 /// @return The old value.
-#define atomic_fetch_or_explicit(PTR, VAL, MO) \
-    __atomic_fetch_or((PTR), (VAL), (MO))
+#define atomic_fetch_or_explicit(PTR, VAL, MO)                                \
+    __extension__({                                                           \
+        __auto_type __atomic_fetch_or_ptr = (PTR);                            \
+        __typeof__((void)0, *__atomic_fetch_or_ptr) __atomic_fetch_or_tmp;    \
+        __atomic_fetch_or(__atomic_ptr_without_atomic(__atomic_fetch_or_ptr,  \
+                                                      __atomic_fetch_or_tmp), \
+                          (VAL), (MO));                                       \
+    })
 
 /// @brief Atomically performs (*PTR ^= VAL) and returns the old value.
 /// Uses memory_order_seq_cst.
 /// @param PTR Pointer to the atomic variable.
 /// @param VAL Value to XOR.
 /// @return The old value.
-#define atomic_fetch_xor(PTR, VAL) \
-    __atomic_fetch_xor((PTR), (VAL), __ATOMIC_SEQ_CST)
+#define atomic_fetch_xor(PTR, VAL)                                           \
+    __extension__({                                                          \
+        __auto_type __atomic_fetch_xor_ptr = (PTR);                          \
+        __typeof__((void)0, *__atomic_fetch_xor_ptr) __atomic_fetch_xor_tmp; \
+        __atomic_fetch_xor(                                                  \
+            __atomic_ptr_without_atomic(__atomic_fetch_xor_ptr,              \
+                                        __atomic_fetch_xor_tmp),             \
+            (VAL), __ATOMIC_SEQ_CST);                                        \
+    })
 
 /// @brief Atomically performs (*PTR ^= VAL) and returns the old value.
 /// @param PTR Pointer to the atomic variable.
@@ -346,16 +402,30 @@ static inline void atomic_thread_fence(memory_order mem_order)
 ///   _acq_rel: amoxor.w.aqrl
 ///   _seq_cst: amoxor.w.aqrl
 /// @return The old value.
-#define atomic_fetch_xor_explicit(PTR, VAL, MO) \
-    __atomic_fetch_xor((PTR), (VAL), (MO))
+#define atomic_fetch_xor_explicit(PTR, VAL, MO)                              \
+    __extension__({                                                          \
+        __auto_type __atomic_fetch_xor_ptr = (PTR);                          \
+        __typeof__((void)0, *__atomic_fetch_xor_ptr) __atomic_fetch_xor_tmp; \
+        __atomic_fetch_xor(                                                  \
+            __atomic_ptr_without_atomic(__atomic_fetch_xor_ptr,              \
+                                        __atomic_fetch_xor_tmp),             \
+            (VAL), (MO));                                                    \
+    })
 
 /// @brief Atomically performs (*PTR &= VAL) and returns the old value.
 /// Uses memory_order_seq_cst.
 /// @param PTR Pointer to the atomic variable.
 /// @param VAL Value to AND.
 /// @return The old value.
-#define atomic_fetch_and(PTR, VAL) \
-    __atomic_fetch_and((PTR), (VAL), __ATOMIC_SEQ_CST)
+#define atomic_fetch_and(PTR, VAL)                                           \
+    __extension__({                                                          \
+        __auto_type __atomic_fetch_and_ptr = (PTR);                          \
+        __typeof__((void)0, *__atomic_fetch_and_ptr) __atomic_fetch_and_tmp; \
+        __atomic_fetch_and(                                                  \
+            __atomic_ptr_without_atomic(__atomic_fetch_and_ptr,              \
+                                        __atomic_fetch_and_tmp),             \
+            (VAL), __ATOMIC_SEQ_CST);                                        \
+    })
 
 /// @brief Atomically performs (*PTR &= VAL) and returns the old value.
 /// @param PTR Pointer to the atomic variable.
@@ -369,5 +439,12 @@ static inline void atomic_thread_fence(memory_order mem_order)
 ///   _acq_rel: amoand.w.aqrl
 ///   _seq_cst: amoand.w.aqrl
 /// @return The old value.
-#define atomic_fetch_and_explicit(PTR, VAL, MO) \
-    __atomic_fetch_and((PTR), (VAL), (MO))
+#define atomic_fetch_and_explicit(PTR, VAL, MO)                              \
+    __extension__({                                                          \
+        __auto_type __atomic_fetch_and_ptr = (PTR);                          \
+        __typeof__((void)0, *__atomic_fetch_and_ptr) __atomic_fetch_and_tmp; \
+        __atomic_fetch_and(                                                  \
+            __atomic_ptr_without_atomic(__atomic_fetch_and_ptr,              \
+                                        __atomic_fetch_and_tmp),             \
+            (VAL), (MO));                                                    \
+    })

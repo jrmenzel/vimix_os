@@ -9,6 +9,8 @@ RUN apt-get update && \
     git \
     clang \
     clang-format \
+    llvm \
+    lld \
     gcc-riscv64-linux-gnu \
     gcc-aarch64-linux-gnu \
     binutils-aarch64-linux-gnu \

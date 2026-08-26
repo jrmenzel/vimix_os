@@ -3,6 +3,7 @@
 #include <arch/irq.h>
 #include <drivers/device.h>
 #include <init/dtb.h>
+#include <kernel/compiler.h>
 #include <kernel/major.h>
 #include <kernel/string.h>
 #include <lib/minmax.h>
@@ -61,8 +62,8 @@ void dev_list_add_virtual_devices(struct Devices_List *dev_list)
 // init_device() calls init_device_by_phandle() for dependent devices,
 // this is seens as a potential infinite recursion by GCC analize which is a
 // false positive as long as there is no loop in the devices dependencies.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wanalyzer-infinite-recursion"
+diagnostic_push;
+diagnostic_infinite_recursion;
 
 dev_t init_device_by_phandle(struct Devices_List *dev_list, int phandle)
 {
@@ -133,7 +134,7 @@ dev_t init_device_by_name(struct Devices_List *dev_list, const char *dtb_name)
     }
     return INVALID_DEVICE;
 }
-#pragma GCC diagnostic pop
+diagnostic_pop;
 
 void clear_init_parameters(struct Device_Init_Parameters *param)
 {
