@@ -52,7 +52,7 @@ struct dentry *devfs_iops_lookup(struct inode *parent, struct dentry *dp)
         if ((devfs_itable.name[i] != NULL) &&
             (strcmp(dp->name, devfs_itable.name[i]) == 0))
         {
-            dp->ip = inode_get(&devfs_itable.inode[i]);
+            dentry_set_inode(dp, inode_get(&devfs_itable.inode[i]));
         }
     }
 

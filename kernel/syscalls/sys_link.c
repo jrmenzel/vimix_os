@@ -164,12 +164,14 @@ syserr_t do_rm(char *path, bool is_rmdir)
     }
 
     dcache_read_lock();
-    struct dentry *parent = dentry_get(file->parent);
+    bool file_is_unlinked = dentry_is_unlinked(file);
+    struct dentry *parent =
+        file->parent == NULL ? NULL : dentry_get(file->parent);
     dcache_read_unlock();
 
     // The target can be concurrently moved to the internal unlinked tree.
     // In that case parent->ip is NULL and must not be locked.
-    if (dentry_is_unlinked(file) || file->ip == NULL || parent == NULL ||
+    if (file_is_unlinked || file->ip == NULL || parent == NULL ||
         parent->ip == NULL)
     {
         dentry_put(file);
@@ -291,10 +293,11 @@ syserr_t do_rm(char *path, bool is_rmdir)
         return -ENOENT;
     }
 
-    dentry_unregister_from_parent(file);
+    struct dentry *file_old_parent = dentry_unregister_from_parent(file);
     dentry_register_with_parent(g_dentry_cache.unlinked_root, file);
     dentry_register_with_parent(parent, new_dentry);
     dcache_write_unlock();
+    dentry_put(file_old_parent);
 
     syserr_t (*rm_backend)(struct inode *, struct dentry *) =
         is_rmdir ? parent_ip->i_sb->i_op->iops_rmdir
@@ -307,10 +310,14 @@ syserr_t do_rm(char *path, bool is_rmdir)
     {
         // something went wrong, re-add to parent's list
         dcache_write_lock();
-        dentry_unregister_from_parent(new_dentry);
-        dentry_unregister_from_parent(file);
+        struct dentry *new_dentry_old_parent =
+            dentry_unregister_from_parent(new_dentry);
+        struct dentry *unlinked_old_parent =
+            dentry_unregister_from_parent(file);
         dentry_register_with_parent(parent, file);
         dcache_write_unlock();
+        dentry_put(new_dentry_old_parent);
+        dentry_put(unlinked_old_parent);
     }
     else
     {

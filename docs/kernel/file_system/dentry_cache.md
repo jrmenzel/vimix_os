@@ -12,7 +12,12 @@ Path to `dentry` (and by extension [[inode]]) lookup is done in `dentry_from_pat
 
 During path traversal, the [mode](../security/mode.md) of the [inode](inode.md) must be checked to error out if the path can not get traversed by the current [process](../processes/processes.md). This and other related metadata like [user and group IDs](../security/user_group_id.md) are considered static enough (and only get atomically changed by individual [syscalls](../syscalls/syscalls.md)) that the inodes don't get locked for reads of these fields.
 
-This also means that `dentry->ip` and `dentry->name` stay constant after creating. If others hold a reference to the same `dentry`, [syscalls](../syscalls/syscalls.md) like [open](../syscalls/open.md) with the `O_CREAT` flag or [unlink](../syscalls/unlink.md) must insert a new `dentry` to the `dentry_cache`. This way `dentries` and [inodes](inode.md) of open files stay valid till [close](../syscalls/close.md).
+The `dentry->name` stays constant after creating.
+An invalid dentry may atomically set its inode exactly once when a file is created;
+once an inode is set, it is never replaced while the dentry has references.
+Holding a dentry reference keeps both the dentry and its inode valid till [close](../syscalls/close.md).
+The inode pointer itself can be read without the dentry lock,
+but its inode fields still require the inode lock.
 
 ## Syscalls
 

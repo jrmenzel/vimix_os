@@ -27,7 +27,7 @@ syserr_t dentry_cache_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
 
     syserr_t ret = 0;
 
-    spin_lock(&dcache->list_lock);
+    dcache_list_lock(dcache);
     switch (attribute_idx)
     {
         case DC_LRU_SIZE:
@@ -39,7 +39,7 @@ syserr_t dentry_cache_sysfs_ops_show(struct kobject *kobj, size_t attribute_idx,
         case DC_CLEAR_LRU: ret = -EINVAL; break;
         default: ret = -ENOENT; break;
     }
-    spin_unlock(&dcache->list_lock);
+    dcache_list_unlock(dcache);
 
     if (ret == -1)
     {

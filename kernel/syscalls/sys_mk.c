@@ -5,6 +5,7 @@
 //
 
 #include <drivers/device.h>
+#include <fs/dentry_cache.h>
 #include <fs/fs_lookup.h>
 #include <kernel/dirent.h>
 #include <kernel/fcntl.h>
@@ -79,17 +80,17 @@ syserr_t do_mkdir(const char *pathname, mode_t mode)
         return -EEXIST;
     }
 
-    dentry_lock(dp);
+    dcache_read_lock();
     if (dp->parent == NULL)
     {
         // parent was unlinked
-        dentry_unlock(dp);
+        dcache_read_unlock();
         dentry_put(dp);
         return -ENOENT;
     }
     struct dentry *parent_dp = dentry_get(dp->parent);
     struct inode *parent_ip = parent_dp->ip;
-    dentry_unlock(dp);
+    dcache_read_unlock();
 
     syserr_t perm_ok =
         check_dentry_permission(get_current(), parent_dp, MAY_WRITE);
@@ -130,9 +131,16 @@ syserr_t do_mknod(const char *pathname, mode_t mode, dev_t device)
         return -EEXIST;
     }
 
-    dentry_lock(dp);
-    struct dentry *parent_dp = dentry_get(dp->parent);
-    dentry_unlock(dp);
+    dcache_read_lock();
+    struct dentry *parent_dp =
+        dp->parent == NULL ? NULL : dentry_get(dp->parent);
+    dcache_read_unlock();
+
+    if (parent_dp == NULL)
+    {
+        dentry_put(dp);
+        return -ENOENT;
+    }
 
     syserr_t perm_ok =
         check_dentry_permission(get_current(), parent_dp, MAY_WRITE);

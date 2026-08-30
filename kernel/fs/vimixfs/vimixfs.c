@@ -245,7 +245,7 @@ syserr_t vimixfs_iops_create(struct inode *parent, struct dentry *dp,
     }
 
     dcache_write_lock();
-    dp->ip = inode_get(ip);
+    dentry_set_inode(dp, inode_get(ip));
     dcache_write_unlock();
 
     inode_unlock_put(ip);
@@ -267,7 +267,7 @@ syserr_t vimixfs_iops_mknod(struct inode *parent, struct dentry *dp,
     }
 
     dcache_write_lock();
-    dp->ip = inode_get(ip);
+    dentry_set_inode(dp, inode_get(ip));
     dcache_write_unlock();
 
     inode_unlock_put(ip);
@@ -289,7 +289,7 @@ syserr_t vimixfs_iops_mkdir(struct inode *parent, struct dentry *dp,
     }
 
     dcache_write_lock();
-    dp->ip = inode_get(ip);
+    dentry_set_inode(dp, inode_get(ip));
     dcache_write_unlock();
 
     inode_unlock_put(ip);
@@ -813,7 +813,7 @@ struct inode *vimixfs_lookup(struct inode *dir, const char *name,
 
 struct dentry *vimixfs_iops_lookup(struct inode *parent, struct dentry *dp)
 {
-    dp->ip = vimixfs_lookup(parent, dp->name, NULL);
+    dentry_set_inode(dp, vimixfs_lookup(parent, dp->name, NULL));
     return dp;
 }
 
@@ -1072,7 +1072,7 @@ syserr_t vimixfs_iops_link(struct dentry *file_from, struct inode *dir_to,
     else
     {
         // success
-        new_link->ip = inode_get(file_from->ip);
+        dentry_set_inode(new_link, inode_get(dentry_inode(file_from)));
     }
     log_end_fs_transaction(sb);
 

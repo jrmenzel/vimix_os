@@ -6,6 +6,7 @@
 
 #include <drivers/block_device.h>
 #include <drivers/character_device.h>
+#include <fs/dentry_cache.h>
 #include <fs/fs_lookup.h>
 #include <ipc/pipe.h>
 #include <kernel/errno.h>
@@ -139,17 +140,17 @@ syserr_t do_open(char *pathname, int32_t flags, mode_t mode)
     else if (flags & O_CREAT)
     {
         //  file does not exist -> create it
-        dentry_lock(dp);
+        dcache_read_lock();
         if (dp->parent == NULL)
         {
             // parent was unlinked
-            dentry_unlock(dp);
+            dcache_read_unlock();
             dentry_put(dp);
             file_close(f);
             return -ENOENT;
         }
         struct dentry *parent = dentry_get(dp->parent);
-        dentry_unlock(dp);
+        dcache_read_unlock();
 
         if (check_dentry_permission(proc, parent, MAY_WRITE) < 0)
         {

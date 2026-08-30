@@ -387,7 +387,7 @@ struct dentry *sysfs_iops_lookup(struct inode *parent, struct dentry *dp)
         struct sysfs_node *node = sysfs_node_from_child_list(pos);
         if (strcmp(node->name, dp->name) == 0)
         {
-            dp->ip = sysfs_get_inode_from_node(parent->i_sb, node);
+            dentry_set_inode(dp, sysfs_get_inode_from_node(parent->i_sb, node));
             break;
         }
     }

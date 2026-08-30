@@ -153,7 +153,7 @@ syserr_t sys_chdir()
     }
 
     dentry_put(proc->cwd_dentry);
-    dentry_lock(dp);
+    dcache_read_lock();
     if (dp->parent == NULL)
     {
         // might be an unlinked directory or root, in both cases use the root
@@ -163,7 +163,7 @@ syserr_t sys_chdir()
     {
         proc->cwd_dentry = dentry_get(dp);
     }
-    dentry_unlock(dp);
+    dcache_read_unlock();
     dentry_put(dp);
 
     return 0;

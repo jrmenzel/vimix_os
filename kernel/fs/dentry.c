@@ -10,8 +10,11 @@
 // dentry management
 //
 
-// from dentry_cache (only needed here)
-void dentry_cache_move_to_lru(struct dentry *dp);
+// Internal dentry-cache eviction helper.
+void dentry_cache_drain_lru(struct dentry_cache *cache, size_t target);
+
+struct dentry_tree_guard g_dentry_tree_guard = {0};
+struct dentry_lru_guard g_dentry_lru_guard = {0};
 
 struct dentry *dentry_alloc()
 {
@@ -24,7 +27,7 @@ struct dentry *dentry_alloc()
     // init fields
     kref_init(&new_dentry->ref);
     spin_lock_init(&new_dentry->lock, "dentry_lock");
-    new_dentry->ip = NULL;
+    dentry_set_inode(new_dentry, NULL);
     new_dentry->name = NULL;
     new_dentry->parent = NULL;
     list_init(&new_dentry->child_list);
@@ -57,11 +60,11 @@ struct dentry *dentry_alloc_init_orphan(const char *name, struct inode *ip)
 
     if (ip != NULL)
     {
-        new_dentry->ip = inode_get(ip);
+        dentry_set_inode(new_dentry, inode_get(ip));
     }
     else
     {
-        new_dentry->ip = NULL;
+        dentry_set_inode(new_dentry, NULL);
     }
 
     return new_dentry;
@@ -81,13 +84,13 @@ void dentry_register_with_parent(struct dentry *parent, struct dentry *child)
     list_add(&child->sibling_list, &parent->child_list);
 }
 
-void dentry_unregister_from_parent(struct dentry *child)
+struct dentry *dentry_unregister_from_parent(struct dentry *child)
 {
     DEBUG_EXTRA_PANIC(child != NULL,
                       "dentry_unregister_from_parent: child is NULL");
     if (child->parent == NULL)
     {
-        return;
+        return NULL;
     }
 
 #ifdef CONFIG_DEBUG_SPINLOCK
@@ -98,9 +101,10 @@ void dentry_unregister_from_parent(struct dentry *child)
                       "dentry_unregister_from_parent: missing required lock");
 #endif
 
+    struct dentry *parent = child->parent;
     list_del(&child->sibling_list);
-    dentry_put(child->parent);  // drop parent's reference to child
     child->parent = NULL;
+    return parent;
 }
 
 struct dentry *dentry_alloc_init(struct dentry *parent, const char *name,
@@ -141,15 +145,13 @@ void dentry_free(struct dentry *dp)
                       "dentry_free: reference count too large");
 
     // drop inode ref
-    if (dp->ip != NULL)
+    struct inode *ip = dentry_inode(dp);
+    if (ip != NULL)
     {
-        // Defensive: avoid triggering kref underflow if ownership was
-        // violated elsewhere and the inode already reached refcount 0.
-        if (kref_read(&dp->ip->ref) > 0)
-        {
-            inode_put(dp->ip);
-        }
-        dp->ip = NULL;
+        DEBUG_EXTRA_ASSERT(kref_read(&ip->ref) > 0,
+                           "dentry inode reference was already released");
+        inode_put(ip);
+        dentry_set_inode(dp, NULL);
     }
 
     // free name
@@ -166,18 +168,18 @@ struct dentry *dentry_get(struct dentry *dp)
 {
     DEBUG_EXTRA_PANIC(dp != NULL, "dentry_get: dp is NULL");
 
+    dcache_list_lock(&g_dentry_cache);
     int previous = kref_get_and_return_previous(&dp->ref);
     if (previous == 0)
     {
         // re-use dentry from LRU list
-        spin_lock(&g_dentry_cache.list_lock);
         if (!list_empty(&dp->lru_list))
         {
             list_del(&dp->lru_list);
             g_dentry_cache.lru_size--;
         }
-        spin_unlock(&g_dentry_cache.list_lock);
     }
+    dcache_list_unlock(&g_dentry_cache);
     return dp;
 }
 
@@ -185,23 +187,42 @@ void dentry_put(struct dentry *dp)
 {
     DEBUG_EXTRA_PANIC(dp != NULL, "dentry_put: dp is NULL");
 
+    dcache_read_lock();
+    dcache_list_lock(&g_dentry_cache);
+
     if (kref_put(&dp->ref) == false)
     {
         // Still references left
+        dcache_list_unlock(&g_dentry_cache);
+        dcache_read_unlock();
         return;
     }
 
-    // No references left, move to recently used list if still linked in tree
-    if (dentry_is_unlinked(dp))
+    bool is_unlinked = dentry_is_unlinked(dp);
+    bool is_linked = dp->parent != NULL;
+
+    if (is_linked && !is_unlinked)
+    {
+        // Still linked in the discoverable dentry tree. Cache it with ref 0.
+        DEBUG_EXTRA_ASSERT(list_empty(&dp->lru_list),
+                           "zero-reference dentry already on LRU");
+        list_add(&dp->lru_list, &g_dentry_cache.lru_list);
+        g_dentry_cache.lru_size++;
+        size_t max_lru_size = g_dentry_cache.max_lru_size;
+        dcache_list_unlock(&g_dentry_cache);
+        dcache_read_unlock();
+
+        dentry_cache_drain_lru(&g_dentry_cache, max_lru_size);
+        return;
+    }
+
+    dcache_list_unlock(&g_dentry_cache);
+    dcache_read_unlock();
+
+    if (is_unlinked)
     {
         dentry_cache_remove_from_unlinked(dp);
         dentry_free(dp);
-        return;
-    }
-    else if (dp->parent != NULL)
-    {
-        // still linked in the dentry tree
-        dentry_cache_move_to_lru(dp);
         return;
     }
     else

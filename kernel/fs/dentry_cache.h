@@ -18,8 +18,8 @@
 struct dentry_cache
 {
     struct kobject kobj;
-    struct dentry *root;
     struct rwspinlock tree_lock;
+    struct dentry *root;
     struct spinlock list_lock;
     struct list_head lru_list;
     struct list_head unlinked_list;
@@ -51,6 +51,16 @@ static inline void dcache_write_lock()
 static inline void dcache_write_unlock()
 {
     rwspin_write_unlock(&g_dentry_cache.tree_lock);
+}
+
+static inline void dcache_list_lock(struct dentry_cache *dcache)
+{
+    spin_lock(&dcache->list_lock);
+}
+
+static inline void dcache_list_unlock(struct dentry_cache *dcache)
+{
+    spin_unlock(&dcache->list_lock);
 }
 
 /// @brief Init the dentry cache, called once when root gets mounted.
@@ -107,8 +117,7 @@ static inline bool dentry_is_unlinked(struct dentry *dp)
     return dp->parent == g_dentry_cache.unlinked_root;
 }
 
-/// @brief Prints the dentry cache to the console. Does not lock the dentries
-/// and is thus not free of races.
+/// @brief Prints the dentry cache to the console.
 void debug_print_dentry_cache();
 
 void debug_print_path(struct dentry *dentry);
