@@ -4,7 +4,6 @@ Prints info on available and used memory. Queries these from [sysfs](../../kerne
 
 > meminfo
 
-
 ---
 **Up:** [user space](../userspace.md)
 

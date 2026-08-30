@@ -5,7 +5,9 @@ Calls [sleep()](../../kernel/syscalls/ms_sleep.md) to pause process execution fo
 > sleep `<time in seconds>`
 
 **Returns:**
+
 - 0 on success
+
 **Syscall:** [ms_sleep](../../kernel/syscalls/ms_sleep.md)
 
 ---

@@ -10,11 +10,9 @@ int getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid);
 
 Query the real, effective and saved [group ID](../security/user_group_id.md).
 
-
 ## Kernel Mode
 
-Implemented in `sys_file_meta.c` as `sys_getresgid()`. 
-
+Implemented in `sys_file_meta.c` as `sys_getresgid()`.
 
 ## See also
 

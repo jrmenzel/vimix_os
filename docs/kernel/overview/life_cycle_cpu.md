@@ -1,7 +1,7 @@
 # The life cycle of a CPU
 
 **Boot:** (for details, see [boot_process](boot_process.md))
-`entry.S` -> `start.c` -> `main.c` calls `scheduler()`
+`head.S` -> `start.c` -> `main.c` calls `scheduler()`
 
 **scheduler():**
 `scheduler()` enters an infinite loop and will never return.

@@ -16,11 +16,14 @@ TARGET := rv64
 # (so call before including anything), realpath and dir get a dir incl
 # trailing '/'
 ROOT_DIR_MK_COMMON := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+include $(ROOT_DIR_MK_COMMON)kernel/arch/arm64/MakefileTargetsARM64.mk
 include $(ROOT_DIR_MK_COMMON)kernel/arch/riscv/MakefileTargetsRISCV.mk
 
 ifeq ($(filter $(TARGET),$(TARGETS_RISCV)),)
+ifeq ($(filter $(TARGET),$(TARGETS_ARM64)),)
 $(error "TARGET not set correctly, select one of: $(TARGETS_ARM64) $(TARGETS_RISCV)")
 # test here as this also can mean that ARCH is not set
+endif
 endif
 
 # default to gcc, the specific cross compiler will be detected in the MakefileArch.mk

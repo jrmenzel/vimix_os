@@ -19,9 +19,8 @@ The app [shutdown](../../userspace/bin/shutdown.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_system.c` as `sys_reboot()`. 
+Implemented in `sys_system.c` as `sys_reboot()`.
 **Warning:** Shuts off hard, ideally the OS would write all outstanding transactions to disk first or kill all processes first, etc.
-
 
 ## See also
 

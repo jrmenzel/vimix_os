@@ -5,8 +5,11 @@
 #include <init/embedded_dtbs.h>
 #include <init/system.h>
 #include <kernel/kticks.h>
+#include <kernel/pgtable.h>
 #include <kernel/smp.h>
 #include <kernel/time.h>
+
+extern void _start_secondary();
 
 struct System_Description
 {
@@ -14,6 +17,8 @@ struct System_Description
 };
 
 struct System_Description g_compatible_systems[] = {
+    [SYSTEM_ARM64_VIRT] = {"linux,dummy-virt"},
+    [SYSTEM_ARM64_RASPBERRY_PI_4] = {"raspberrypi,4-model-b"},
     [SYSTEM_RISCV_QEMU] = {"riscv-virtio"},
     [SYSTEM_RISCV_SPIKE] = {"ucbbar,spike-bare-dev"},
     [SYSTEM_RISCV_VISIONFIVE2] = {"starfive,jh7110"},
@@ -90,15 +95,24 @@ void system_print_info()
     }
 }
 
+// work around of linker errors on RISC V when using the macro directly
+__attribute__((noinline)) static size_t runtime_virt_to_phys(size_t va)
+{
+    return virt_to_phys(va);
+}
+
 void system_boot_other_cpus(const void *dtb)
 {
     size_t this_hart = smp_processor_id();
     size_t hartid = 0;
+
+    size_t secondary_entry_pa = runtime_virt_to_phys((size_t)_start_secondary);
+
     while (hartid < MAX_CPUS)
     {
         if (hartid != this_hart)
         {
-            syserr_t err = system_boot_cpu(hartid, dtb);
+            syserr_t err = system_boot_cpu(hartid, dtb, secondary_entry_pa);
             if (err != 0)
             {
                 printk("Failed to boot CPU %zd, error %zd\n", hartid, err);

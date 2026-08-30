@@ -1,0 +1,171 @@
+/* SPDX-License-Identifier: MIT */
+
+#include <arch/arm64/asm/registers.h>
+#include <arch/arm64/asm/context_class_type.h>
+#include <mm/memlayout.h>
+
+#define SAVE_REG_TO_TRAP_FRAME(REGISTER, OFFSET) SAVE_REG_TO_ARRAY(REGISTER, OFFSET, x0)
+#define LOAD_REG_FROM_TRAP_FRAME(REGISTER, OFFSET) LOAD_REG_FROM_ARRAY(REGISTER, OFFSET, x0)
+
+// 128 byte slot per exception
+.equ TRAP_VECTOR_SLOT_SIZE, 0x80
+.equ ARM64_TRAPFRAME_VA, 0x3ffffff000
+
+.macro SUPERVISOR_TRAP_VECTOR class type switch_to_kernel_stack=0
+    .balign TRAP_VECTOR_SLOT_SIZE
+    .Lvector_start\@:
+    // Current-EL exceptions may arrive with SP_EL0 selected. Unsupported
+    // lower-EL AArch32 vectors already use SP_EL1, so this is harmless there.
+    .if \switch_to_kernel_stack
+        msr spsel, #1
+    .endif
+
+    // Preserve x30 (LR) across the C handler call.
+    SAVE_REG_TO_STACK(x30, xzr)
+    SAVE_REG_TO_STACK(x28, x29)
+    SAVE_REG_TO_STACK(x26, x27)
+    SAVE_REG_TO_STACK(x24, x25)
+    SAVE_REG_TO_STACK(x22, x23)
+    SAVE_REG_TO_STACK(x20, x21)
+    SAVE_REG_TO_STACK(x18, x19)
+    SAVE_REG_TO_STACK(x16, x17)
+    SAVE_REG_TO_STACK(x14, x15)
+    SAVE_REG_TO_STACK(x12, x13)
+    SAVE_REG_TO_STACK(x10, x11)
+    SAVE_REG_TO_STACK(x8, x9)
+    SAVE_REG_TO_STACK(x6, x7)
+    SAVE_REG_TO_STACK(x4, x5)
+    SAVE_REG_TO_STACK(x2, x3)
+    SAVE_REG_TO_STACK(x0, x1)
+
+    mov     x0, sp
+    mov     x1, \class
+    mov     x2, \type
+    bl kernel_mode_interrupt_handler
+
+    b SUPERVISOR_TRAP_VECTOR_SECOND_HALF
+
+    .if (. - .Lvector_start\@) > TRAP_VECTOR_SLOT_SIZE
+        .error "SUPERVISOR_TRAP_VECTOR exceeds 128-byte slot size"
+    .endif
+.endm
+
+SUPERVISOR_TRAP_VECTOR_SECOND_HALF:
+    LOAD_REG_FROM_STACK(x0, x1)
+    LOAD_REG_FROM_STACK(x2, x3)
+    LOAD_REG_FROM_STACK(x4, x5)
+    LOAD_REG_FROM_STACK(x6, x7)
+    LOAD_REG_FROM_STACK(x8, x9)
+    LOAD_REG_FROM_STACK(x10, x11)
+    LOAD_REG_FROM_STACK(x12, x13)
+    LOAD_REG_FROM_STACK(x14, x15)
+    LOAD_REG_FROM_STACK(x16, x17)
+    LOAD_REG_FROM_STACK(x18, x19)
+    LOAD_REG_FROM_STACK(x20, x21)
+    LOAD_REG_FROM_STACK(x22, x23)
+    LOAD_REG_FROM_STACK(x24, x25)
+    LOAD_REG_FROM_STACK(x26, x27)
+    LOAD_REG_FROM_STACK(x28, x29)
+    LOAD_REG_FROM_STACK(x30, xzr)
+    
+    eret
+
+.macro USER_TRAP_VECTOR class type
+    .balign TRAP_VECTOR_SLOT_SIZE
+    .Lvector_start\@:
+    SAVE_REG_TO_STACK(x0, x1)
+    movz x0, #(ARM64_TRAPFRAME_VA & 0xffff)
+    movk x0, #((ARM64_TRAPFRAME_VA >> 16) & 0xffff), lsl #16
+    movk x0, #((ARM64_TRAPFRAME_VA >> 32) & 0xffff), lsl #32
+
+    // save the user registers in TRAPFRAME
+    SAVE_REG_TO_TRAP_FRAME(x15, IDX_TRAPFRAME_X15)
+    SAVE_REG_TO_TRAP_FRAME(x14, IDX_TRAPFRAME_X14)
+    SAVE_REG_TO_TRAP_FRAME(x13, IDX_TRAPFRAME_X13)
+    SAVE_REG_TO_TRAP_FRAME(x12, IDX_TRAPFRAME_X12)
+    SAVE_REG_TO_TRAP_FRAME(x11, IDX_TRAPFRAME_X11)
+    SAVE_REG_TO_TRAP_FRAME(x10, IDX_TRAPFRAME_X10)
+    SAVE_REG_TO_TRAP_FRAME(x9, IDX_TRAPFRAME_X9)
+    SAVE_REG_TO_TRAP_FRAME(x8, IDX_TRAPFRAME_X8)
+    SAVE_REG_TO_TRAP_FRAME(x7, IDX_TRAPFRAME_X7)
+    SAVE_REG_TO_TRAP_FRAME(x6, IDX_TRAPFRAME_X6)
+    SAVE_REG_TO_TRAP_FRAME(x5, IDX_TRAPFRAME_X5)
+    SAVE_REG_TO_TRAP_FRAME(x4, IDX_TRAPFRAME_X4)
+    SAVE_REG_TO_TRAP_FRAME(x3, IDX_TRAPFRAME_X3)
+    SAVE_REG_TO_TRAP_FRAME(x2, IDX_TRAPFRAME_X2)
+    SAVE_REG_TO_TRAP_FRAME(x1, IDX_TRAPFRAME_X1)
+
+    LOAD_REG_FROM_STACK(x2, x3) // restore x0 to x2 as x0 is used to index trapframe
+    SAVE_REG_TO_TRAP_FRAME(x2, IDX_TRAPFRAME_X0)
+
+    mov x1, \class
+    mov x2, \type
+    mov x3, xzr
+    b USER_TRAP_VECTOR_SECOND_HALF
+
+    .if (. - .Lvector_start\@) > TRAP_VECTOR_SLOT_SIZE
+        .error "USER_TRAP_VECTOR exceeds 128-byte slot size"
+    .endif
+.endm
+
+USER_TRAP_VECTOR_SECOND_HALF:
+    SAVE_REG_TO_TRAP_FRAME(x30, IDX_TRAPFRAME_X30)
+    SAVE_REG_TO_TRAP_FRAME(x29, IDX_TRAPFRAME_X29)
+    SAVE_REG_TO_TRAP_FRAME(x28, IDX_TRAPFRAME_X28)
+    SAVE_REG_TO_TRAP_FRAME(x27, IDX_TRAPFRAME_X27)
+    SAVE_REG_TO_TRAP_FRAME(x26, IDX_TRAPFRAME_X26)
+    SAVE_REG_TO_TRAP_FRAME(x25, IDX_TRAPFRAME_X25)
+    SAVE_REG_TO_TRAP_FRAME(x24, IDX_TRAPFRAME_X24)
+    SAVE_REG_TO_TRAP_FRAME(x23, IDX_TRAPFRAME_X23)
+    SAVE_REG_TO_TRAP_FRAME(x22, IDX_TRAPFRAME_X22)
+    SAVE_REG_TO_TRAP_FRAME(x21, IDX_TRAPFRAME_X21)
+    SAVE_REG_TO_TRAP_FRAME(x20, IDX_TRAPFRAME_X20)
+    SAVE_REG_TO_TRAP_FRAME(x19, IDX_TRAPFRAME_X19)
+    SAVE_REG_TO_TRAP_FRAME(x18, IDX_TRAPFRAME_X18)
+    SAVE_REG_TO_TRAP_FRAME(x17, IDX_TRAPFRAME_X17)
+    SAVE_REG_TO_TRAP_FRAME(x16, IDX_TRAPFRAME_X16)
+
+    // Save current user stack pointer so return_to_user_mode() can restore it.
+    mrs x4, sp_el0
+    SAVE_REG_TO_TRAP_FRAME(x4, IDX_TRAPFRAME_SP)
+    
+    // set stack frame to an invalid value
+    mov x29, xzr
+
+    // Keep using current EL1 stack. On ARM64 exceptions from EL0 enter EL1
+    // with SP_EL1 selected, and reloading SP from trapframe here can inject a
+    // corrupted user-like pointer into the kernel handler path.
+
+    LOAD_REG_FROM_TRAP_FRAME(x4, IDX_TRAPFRAME_KERNEL_TRAP)
+
+    mov x0, sp
+    br x4
+
+// The vector table has to be properly aligned to 2048 byte (2^11)
+// Each entry is 128 byte (2^7), there are 16 entries in total.
+.align 11
+.global trap_vectors
+trap_vectors:
+    //  Current EL (EL1), stack is SP_EL0 (user stack)
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_CURRENT_EL_SP_EL0 CTX_TYPE_SYNCHRONOUS 1
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_CURRENT_EL_SP_EL0 CTX_TYPE_IRQ 1
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_CURRENT_EL_SP_EL0 CTX_TYPE_FIQ 1
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_CURRENT_EL_SP_EL0 CTX_TYPE_SERROR 1
+
+    //  Current EL (EL1), stack is SP_EL1 (kernel stack)
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_CURRENT_EL_SP_ELX CTX_TYPE_SYNCHRONOUS
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_CURRENT_EL_SP_ELX CTX_TYPE_IRQ
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_CURRENT_EL_SP_ELX CTX_TYPE_FIQ
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_CURRENT_EL_SP_ELX CTX_TYPE_SERROR
+    
+    //  Lower EL (EL0), AArch64: e.g. syscalls
+    USER_TRAP_VECTOR CTX_CLASS_LOWER_EL_AARCH64 CTX_TYPE_SYNCHRONOUS
+    USER_TRAP_VECTOR CTX_CLASS_LOWER_EL_AARCH64 CTX_TYPE_IRQ
+    USER_TRAP_VECTOR CTX_CLASS_LOWER_EL_AARCH64 CTX_TYPE_FIQ
+    USER_TRAP_VECTOR CTX_CLASS_LOWER_EL_AARCH64 CTX_TYPE_SERROR
+
+    //  Lower EL, from AArch32: unsupported
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_LOWER_EL_AARCH32 CTX_TYPE_SYNCHRONOUS
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_LOWER_EL_AARCH32 CTX_TYPE_IRQ
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_LOWER_EL_AARCH32 CTX_TYPE_FIQ
+    SUPERVISOR_TRAP_VECTOR CTX_CLASS_LOWER_EL_AARCH32 CTX_TYPE_SERROR

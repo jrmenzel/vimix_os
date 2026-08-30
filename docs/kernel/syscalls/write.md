@@ -11,7 +11,7 @@ Write to a [file](../file_system/file.md).
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_write()`. 
+Implemented in `sys_file.c` as `sys_write()`.
 
 ## See also
 

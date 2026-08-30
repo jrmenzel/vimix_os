@@ -11,7 +11,7 @@ Change the [processes](../processes/processes.md) `umask`, will return the old m
 
 ## Kernel Mode
 
-Implemented in `sys_file_meta.c` as `sys_umask()`. 
+Implemented in `sys_file_meta.c` as `sys_umask()`.
 
 ## See also
 

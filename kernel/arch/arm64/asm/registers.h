@@ -1,0 +1,74 @@
+/* SPDX-License-Identifier: MIT */
+#pragma once
+
+// The order of registers in the trapframe struct must match the order defined
+// here.
+#define IDX_TRAPFRAME_X0 0
+#define IDX_TRAPFRAME_X1 1
+#define IDX_TRAPFRAME_X2 2
+#define IDX_TRAPFRAME_X3 3
+#define IDX_TRAPFRAME_X4 4
+#define IDX_TRAPFRAME_X5 5
+#define IDX_TRAPFRAME_X6 6
+#define IDX_TRAPFRAME_X7 7
+#define IDX_TRAPFRAME_X8 8
+#define IDX_TRAPFRAME_X9 9
+#define IDX_TRAPFRAME_X10 10
+#define IDX_TRAPFRAME_X11 11
+#define IDX_TRAPFRAME_X12 12
+#define IDX_TRAPFRAME_X13 13
+#define IDX_TRAPFRAME_X14 14
+#define IDX_TRAPFRAME_X15 15
+#define IDX_TRAPFRAME_X16 16
+#define IDX_TRAPFRAME_X17 17
+#define IDX_TRAPFRAME_X18 18
+#define IDX_TRAPFRAME_X19 19
+#define IDX_TRAPFRAME_X20 20
+#define IDX_TRAPFRAME_X21 21
+#define IDX_TRAPFRAME_X22 22
+#define IDX_TRAPFRAME_X23 23
+#define IDX_TRAPFRAME_X24 24
+#define IDX_TRAPFRAME_X25 25
+#define IDX_TRAPFRAME_X26 26
+#define IDX_TRAPFRAME_X27 27
+#define IDX_TRAPFRAME_X28 28
+#define IDX_TRAPFRAME_X29 29
+#define IDX_TRAPFRAME_X30 30
+
+#define IDX_TRAPFRAME_ELR 31
+#define IDX_TRAPFRAME_SPSR 32
+#define IDX_TRAPFRAME_SP 33
+
+#define IDX_TRAPFRAME_KERNEL_PAGE_TABLE 34
+#define IDX_TRAPFRAME_KERNEL_SP 35
+#define IDX_TRAPFRAME_KERNEL_TRAP 36
+#define IDX_TRAPFRAME_KERNEL_EPC 37
+#define IDX_TRAPFRAME_KERNEL_HARTID 38
+
+// for struct context
+#define IDX_CONTEXT_SP 0
+#define IDX_CONTEXT_X18 1
+#define IDX_CONTEXT_X19 2
+#define IDX_CONTEXT_X20 3
+#define IDX_CONTEXT_X21 4
+#define IDX_CONTEXT_X22 5
+#define IDX_CONTEXT_X23 6
+#define IDX_CONTEXT_X24 7
+#define IDX_CONTEXT_X25 8
+#define IDX_CONTEXT_X26 9
+#define IDX_CONTEXT_X27 10
+#define IDX_CONTEXT_X28 11
+#define IDX_CONTEXT_X29 12
+#define IDX_CONTEXT_X30 13
+
+#define SIZE_OF_REG 8
+#define STORE_SIZET(value, addr) str value, [addr]
+#define LOAD_SIZET(value, addr) ldr value, [addr]
+
+#define SAVE_REG_TO_ARRAY(REGISTER, OFFSET, REG) \
+    str REGISTER, [REG, (OFFSET * SIZE_OF_REG)]
+#define LOAD_REG_FROM_ARRAY(REGISTER, OFFSET, REG) \
+    ldr REGISTER, [REG, (OFFSET * SIZE_OF_REG)]
+
+#define SAVE_REG_TO_STACK(REG_A, REG_B) stp	REG_A, REG_B, [sp, #-16]!
+#define LOAD_REG_FROM_STACK(REG_A, REG_B) ldp REG_A, REG_B, [sp], #16

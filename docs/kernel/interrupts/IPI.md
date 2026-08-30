@@ -8,7 +8,6 @@ IPIs are used to stop the scheduling on all CPUs during a `panic()` or  [shutdow
 
 On [RISCV](../../riscv/RISCV.md) IPIs are implemented via [SBI calls](../../riscv/SBI.md) which configure [CLINT](../../riscv/CLINT.md) to issue an [M-mode](../../riscv/M-mode.md) interrupt on the other CPU which then schedules an interrupt in [S-mode](../../riscv/S-mode.md).
 
-
 ---
 **Overview:** [kernel](../kernel.md)
 

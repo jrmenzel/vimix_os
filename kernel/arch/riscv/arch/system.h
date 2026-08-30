@@ -8,9 +8,10 @@
 
 static inline void arch_init_system() { init_sbi(); }
 
-static inline syserr_t system_boot_cpu(size_t cpu_idx, const void *dtb)
+static inline syserr_t system_boot_cpu(size_t cpu_idx, const void *dtb,
+                                       size_t start_pa)
 {
-    return sbi_start_hart(cpu_idx, (size_t)dtb);
+    return sbi_start_hart(cpu_idx, (size_t)dtb, start_pa);
 }
 
 static inline bool system_did_cpu_start(size_t cpu_idx)

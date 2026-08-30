@@ -81,16 +81,17 @@ int main() {
 }
 ```
 
-
 ## Building
 
 For debug build:
+
 ```bash
 export DEBUG=1
 make
 ```
 
 For release build:
+
 ```bash
 unset DEBUG
 make

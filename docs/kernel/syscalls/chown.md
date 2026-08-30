@@ -17,8 +17,7 @@ The app [chown](../../userspace/bin/chown.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_file_meta.c` as `sys_chown()` / `sys_fchown()`. 
-
+Implemented in `sys_file_meta.c` as `sys_chown()` / `sys_fchown()`.
 
 ## See also
 

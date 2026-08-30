@@ -4,8 +4,7 @@ Switches to the given user (sets [user / group IDs](../../kernel/security/user_g
 
 > su user
 
-To change the user ID via [setuid](../../kernel/syscalls/setuid.md), the [process](../../kernel/processes/processes.md) must run as `root`. To allow other users to execute `su`, the executable has the [set user ID bit](../../kernel/security/mode.md) set. 
-
+To change the user ID via [setuid](../../kernel/syscalls/setuid.md), the [process](../../kernel/processes/processes.md) must run as `root`. To allow other users to execute `su`, the executable has the [set user ID bit](../../kernel/security/mode.md) set.
 
 ---
 **Up:** [user space](../userspace.md)

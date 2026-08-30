@@ -36,15 +36,13 @@ int closedir(DIR *dirp);
 
 There is no standard for this syscall, but the wrappers in `dirent.h` are part of the POSIX standard. They are implemented in the stdc lib in `dirent_impl.c`.
 
-
 ## User Apps
 
 The app [ls](../../userspace/bin/ls.md) uses this to list the directory contents.
 
-
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_get_dirent()`. 
+Implemented in `sys_file.c` as `sys_get_dirent()`.
 
 ## See also
 

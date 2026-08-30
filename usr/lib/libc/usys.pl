@@ -27,6 +27,21 @@ sub entry_named {
         print " li a0,-1\n";
         print "1:\n";
         print " ret\n";
+    } elsif ($ARGV[0] eq "-arm64")
+    {
+        print ".global $name\n";
+        print "${name}:\n";
+        print " mov x8, #SYS_${syscall_name}\n";
+        print " svc #0\n";
+        print " cmp w0, #0\n";
+        print " b.ge 1f\n";
+        print " neg w0, w0\n";
+        print " adrp x9, errno\n";
+        print " add x9, x9, :lo12:errno\n";
+        print " str w0, [x9]\n";
+        print " mov x0, #-1\n";
+        print "1:\n";
+        print " ret\n";
     }
 }
 

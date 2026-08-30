@@ -7,7 +7,7 @@
 int32_t pipe(int pipe_descriptors[2]);
 ```
 
-A pipe consists of a buffer in [kernel](../kernel.md) memory and is accessed via two [files](../file_system/file.md): one for writing and one for reading. 
+A pipe consists of a buffer in [kernel](../kernel.md) memory and is accessed via two [files](../file_system/file.md): one for writing and one for reading.
 
 `pipe_descriptors[0]` is the read end, `pipe_descriptors[1]` is the write end of the pipe.
 

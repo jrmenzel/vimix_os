@@ -11,7 +11,7 @@ Waits on [processe](../processes/processes.md) to exit. Parent processes use thi
 
 ## Kernel Mode
 
-Implemented in `sys_process.c` as `sys_wait()`. 
+Implemented in `sys_process.c` as `sys_wait()`.
 
 ## See also
 

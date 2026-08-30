@@ -23,9 +23,20 @@
 #define JH7110_TEMP_MAJOR 12
 #define UART_16550_MAJOR 13
 
+#define BCM2835_AUX_MAJOR 14
+#define BCM2835_UART_AUX_MAJOR 15
+#define BCM2835_FIRMWARE_MAJOR 16
+#define BCM2835_GPIO_MAJOR 17
+#define BCM2835_MBOX_MAJOR 18
+#define BCM2711_PM_MAJOR 19
+#define GIC2_MAJOR 20
+#define ARM_PL011_MAJOR 21
+#define ARM_PL031_MAJOR 22
+#define MAJOR_ARM_PSCI 23
+
 // special case: not a device itself but needs a device number for its inodes
-#define DEVFS_MAJOR 14
-#define SYSFS_MAJOR 15
+#define DEVFS_MAJOR 24
+#define SYSFS_MAJOR 25
 
 // highest major device number to check for invalid device numbers
 #define MAX_MAJOR_DEVICE_NUMBER (SYSFS_MAJOR)

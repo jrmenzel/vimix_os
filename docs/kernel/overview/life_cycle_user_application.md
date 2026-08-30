@@ -9,9 +9,9 @@ Process 0 gets initialized in [init_userspace](../processes/init_userspace.md).
 Normal processes start with [fork](../syscalls/fork.md):
 
 - fork creates a new process
-  - new processes have set their return address (`context.ra`) to `forkret()`
+	- new processes have set their return address (`context.ra`) to `forkret()`
 - `forkret()` will return to user space
-  - this happens via `return_to_user_mode()` and `return_to_user_mode_asm` (`u_mode_trap_vector.S`)
+	- this happens via `return_to_user_mode()` and `return_to_user_mode_asm` (`u_mode_trap_vector.S`)
 
 ## New Applications
 
@@ -19,9 +19,9 @@ New programs start in an existing process via [execv](../syscalls/execv.md):
 
 - [execv](../syscalls/execv.md) reads an ELF file from disk, copies the binary code into memory, sets the arguments and sets the program counter of the user mode context to the application start in memory
 - Return from the syscall will return to the new code at the application start.
-  - The first code for all applications is `_start` from `crt0.c`, the standard library for all apps.
-    - It sets the stdin / stdout and stderr files to 0,1 and 2. For all applications these will be already setup as `init` did this and is the parent of all other processes (see [init_userspace](../processes/init_userspace.md), [stdio](../../misc/stdio.md)).
-  - Then `main()` gets called and the return value provided to [exit](../syscalls/exit.md) (this way it also ensures that [exit](../syscalls/exit.md) gets called as `_start` can not return to anywhere.)
+	- The first code for all applications is `_start` from `crt0.c`, the standard library for all apps.
+		- It sets the stdin / stdout and stderr files to 0,1 and 2. For all applications these will be already setup as `init` did this and is the parent of all other processes (see [init_userspace](../processes/init_userspace.md), [stdio](../../misc/stdio.md)).
+	- Then `main()` gets called and the return value provided to [exit](../syscalls/exit.md) (this way it also ensures that [exit](../syscalls/exit.md) gets called as `_start` can not return to anywhere.)
 
 ## Syscalls
 

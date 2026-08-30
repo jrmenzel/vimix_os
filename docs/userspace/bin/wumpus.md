@@ -4,14 +4,13 @@ A _Wumpus_ is a creature that lives in a cave with several rooms connected by tu
 
 This program is based on one described in "People's Computer Company," (November 1973).
 
-### BUGS
+## BUGS
 
 It will never replace Space War.
 
-
 ## History
 
-Hunt the Wumpus was originally developed by Gregory Yob in 1973. See also https://en.wikipedia.org/wiki/Hunt_the_Wumpus. The source and description above are based on the UNIX version 7 source by Ken Thompson, updated to compile on a modern C compiler. 
+Hunt the Wumpus was originally developed by Gregory Yob in 1973. See also https://en.wikipedia.org/wiki/Hunt_the_Wumpus. The source and description above are based on the UNIX version 7 source by Ken Thompson, updated to compile on a modern C compiler.
 
 ---
 **Up:** [user space](../userspace.md)

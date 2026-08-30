@@ -11,7 +11,9 @@ Reboots:
 > shutdown -r
 
 **Returns:**
+
 - ideally never, negative values on error
+
 **Syscall:** [reboot](../../kernel/syscalls/reboot.md)
 
 ---

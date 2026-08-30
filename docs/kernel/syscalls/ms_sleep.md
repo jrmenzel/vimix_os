@@ -16,7 +16,7 @@ The app [sleep](../../userspace/bin/sleep.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_process.c` as `sys_ms_sleep()`. 
+Implemented in `sys_process.c` as `sys_ms_sleep()`.
 
 ## See also
 

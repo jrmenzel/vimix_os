@@ -11,7 +11,7 @@ Change process heap memory size.
 
 ## Kernel Mode
 
-Implemented in `sys_process.c` as `sys_sbrk()`. 
+Implemented in `sys_process.c` as `sys_sbrk()`.
 
 ## See also
 

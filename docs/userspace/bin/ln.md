@@ -8,7 +8,9 @@ Creates a new (hard) link for a file. This means that another directory entry po
 Soft links (via `ln -s ...`) are not supported.
 
 **Returns:**
+
 - 0 on success
+
 **Syscall:** [link](../../kernel/syscalls/link.md)
 
 ---

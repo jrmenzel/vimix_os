@@ -9,10 +9,9 @@ off_t lseek(int fd, off_t offset, int whence);
 
 Get/set read position of a [file](../file_system/file.md).
 
-
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_lseek()`. 
+Implemented in `sys_file.c` as `sys_lseek()`.
 
 ## See also
 

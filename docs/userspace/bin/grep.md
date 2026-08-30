@@ -6,6 +6,7 @@ If no file is provided, grep reads from [stdin](../../misc/stdio.md).
 > grep `pattern` `file`
 
 **Returns:**
+
 - 0 on success
 
 ---

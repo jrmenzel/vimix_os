@@ -2,8 +2,8 @@
 
 See also: [calling_syscall](calling_syscall.md).
 
+## Process Control
 
-**Process Control**
 - [fork](fork.md) - Fork process.
 - [execv](execv.md) - Execute another binary.
 - [exit](exit.md) - Exit process.
@@ -13,10 +13,12 @@ See also: [calling_syscall](calling_syscall.md).
 - [chdir](chdir.md) - Change the current directory (see proc cwd).
 - [sbrk](sbrk.md) - Allocate/free process heap.
 
-**Process Information**
+## Process Information
+
 - [getpid](getpid.md) Get PID of the current [process](../processes/processes.md).
 
-**File Management**
+## File Management
+
 - [mkdir](mkdir.md) - create [directory](file_system/directory.md)
 - [get_dirent](get_dirent.md) - get directory entries
 - [mknod](mknod.md) - make nodes in file system
@@ -31,7 +33,8 @@ See also: [calling_syscall](calling_syscall.md).
 - [unlink](unlink.md) - remove a hard link, also used to delete files
 - [rmdir](rmdir.md) - remove empty directories
 
-**File Meta Data Management**
+## File Meta Data Management
+
 - [chown](chown.md) - Change file ownership.
 - [chmod](chmod.md) - Change file mode.
 - [getresgid](getresgid.md) - Get [process](../processes/processes.md) [group IDs](../security/user_group_id.md).
@@ -41,22 +44,25 @@ See also: [calling_syscall](calling_syscall.md).
 - [setresgid](setresgid.md) - Set any [process](../processes/processes.md) [group ID](../security/user_group_id.md).
 - [setresuid](setresuid.md) - Set any [process](../processes/processes.md) [user ID](../security/user_group_id.md).
 
-**File Information**
+## File Information
+
 - [stat / fstat](stat.md) - get file metadata
 
-**System**
+## System
+
 - [reboot](reboot.md) - halt or reboot the system
 - [mount](mount.md) - mount [file_system](../file_system/file_system.md)
 - [umount](umount.md) - unmount file system
 - [uptime](uptime.md) - returns how long the system is running
 - [statvfs](statvfs.md) - get file system statistics
 
-**Communication**
+## Communication
+
 - [pipe](pipe.md) - Pipe between two processes.
 
-**Misc**
-- [clock_gettime](clock_gettime.md) - Get the current UNIX time.
+## Misc
 
+- [clock_gettime](clock_gettime.md) - Get the current UNIX time.
 
 ---
 **Overview:** [kernel](../kernel.md)

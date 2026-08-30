@@ -37,7 +37,12 @@ LOGFILE="$LOGDIR/${EMU_APP}-run_${SCRIPT}_${EMU}_$(date +%Y%m%d_%H%M%S).log"
 echo "Setting autoexec to $TARGET_SCRIPT"
 ./tools/set_autoexec.sh "$TARGET_SCRIPT"
 
-MAKE_PARAMS="EMU=$EMU CPUS=$CPU_COUNT MEMORY_SIZE=$MEMORY"
+if [ "$EMU" = "raspi4" ]
+then
+    MAKE_PARAMS="EMU=$EMU"
+else
+    MAKE_PARAMS="EMU=$EMU CPUS=$CPU_COUNT MEMORY_SIZE=$MEMORY"
+fi
 
 echo "Running: make ${EMU_APP}-run $MAKE_PARAMS (logging to $LOGFILE)"
 # run make, capture both stdout+stderr, tee to logfile while printing to console

@@ -1,0 +1,7 @@
+/* SPDX-License-Identifier: MIT */
+#pragma once
+
+#define ARM_PSCI_FN_VERSION 0x84000000
+#define ARM_PSCI_FN_SYSTEM_OFF 0x84000008
+#define ARM_PSCI_FN_SYSTEM_RESET 0x84000009
+#define ARM_PSCI_FN_CPU_ON 0xC4000003

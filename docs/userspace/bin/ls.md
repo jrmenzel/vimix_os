@@ -5,7 +5,9 @@ List contents of provided directories or the content of the CWD if no directory 
 > ls `DIR0` `DIR1` ... `DIRn`
 
 **Returns:**
+
 - 0 on success
+
 **Syscall:** [get_dirent](../../kernel/syscalls/get_dirent.md)
 
 ---

@@ -4,9 +4,10 @@ Prints file or directory stats like size and [inode](../../kernel/file_system/in
 
 > stat `FILE`
 
-
 **Returns:**
+
 - 0 on success
+
 **Syscall:** [stat](../../kernel/syscalls/stat.md)
 
 ---

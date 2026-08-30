@@ -14,8 +14,7 @@ If called from a non-privileged process, sets the effective [group ID](../securi
 
 ## Kernel Mode
 
-Implemented in `sys_file_meta.c` as `sys_setgid()`. 
-
+Implemented in `sys_file_meta.c` as `sys_setgid()`.
 
 ## See also
 

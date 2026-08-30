@@ -36,46 +36,56 @@
             ],
         },
         {
-            // debug a user space application
-            "name": "userspace: init",
+            // debug the kernel
+            "name": "kernel ARM64",
             "type": "cppdbg",
             "request": "launch",
-            "program": "build/root/usr/bin/init",
+            "program": "build/boot/kernel-vimix",
             "cwd": "${workspaceRoot}",
-            "miDebuggerPath": "riscv64-elf-gdb",
+            "miDebuggerPath": "aarch64-linux-gnu-gdb",
+            "targetArchitecture": "arm64",
             "miDebuggerServerAddress": "127.0.0.1:26000",
             "MIMode": "gdb",
+            "hardwareBreakpoints": {
+                "require": true,
+                "limit": 6
+            },
             "stopAtEntry": false,
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": false
-                }
-            ]
-        },
-        {
-            // debug a user space application
-            "name": "userspace: login",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "build/root/usr/bin/login",
-            "cwd": "${workspaceRoot}",
-            "miDebuggerPath": "riscv64-elf-gdb",
-            "miDebuggerServerAddress": "127.0.0.1:26000",
-            "MIMode": "gdb",
-            "stopAtEntry": false,
-            "setupCommands": [
+                },
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description": "Set hex output for all vars, useful when debugging addesses",
+                    "text": "set output-radix 16",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set ARM64 architecture before remote introspection",
+                    "text": "set architecture aarch64",
+                    "ignoreFailures": false
+                },
+                {
+                    "description": "Prefer hardware breakpoints for live kernel debug",
+                    "text": "set breakpoint auto-hw on",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set GDB working directory",
+                    "text": "cd ${workspaceFolder}",
+                },
+                {
+                    "description": "Load workspace gdb commands (relocation-aware symbols)",
+                    "text": "source ${workspaceFolder}/.gdbinit_vscode",
                     "ignoreFailures": false
                 }
             ]
         },
         {
             // debug a user space application
-            "name": "userspace: usertests",
+            "name": "userspace RISC V: usertests",
             "type": "cppdbg",
             "request": "launch",
             "program": "build/root/usr/bin/usertests",
@@ -83,6 +93,30 @@
             "miDebuggerPath": "riscv64-elf-gdb",
             "miDebuggerServerAddress": "127.0.0.1:26000",
             "MIMode": "gdb",
+            "stopAtEntry": false,
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": false
+                }
+            ]
+        },
+        {
+            // debug a user space application
+            "name": "userspace ARM64: usertests",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "build/root/usr/bin/usertests",
+            "cwd": "${workspaceRoot}",
+            "miDebuggerPath": "aarch64-linux-gnu-gdb",
+            "targetArchitecture": "arm64",
+            "miDebuggerServerAddress": "127.0.0.1:26000",
+            "MIMode": "gdb",
+            "hardwareBreakpoints": {
+                "require": true,
+                "limit": 6
+            },
             "stopAtEntry": false,
             "setupCommands": [
                 {

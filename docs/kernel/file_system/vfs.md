@@ -4,13 +4,11 @@ The virtual file system is an abstraction which allows the kernel to work with [
 
 The functions each file system needs to implement are defined in `vfs_operations.h`. They are defined in three structs: one for functions related to the super block, one for inode related operations and one for file related ones.
 
-At init time each file system calls `register_file_system()` with a struct containing everything the kernel needs to mount a file system of that type. 
+At init time each file system calls `register_file_system()` with a struct containing everything the kernel needs to mount a file system of that type.
 
-
-### Mounting
+## Mounting
 
 When a file system should be mounted the kernel looks through all registered file systems, matches the name and calls the matching `init_fs_super_block()` function. This sets the file system related functions and also adds "private" (fs specific) data to the `super_block`.
-
 
 ---
 **Overview:** [kernel](kernel.md) | [file_system](file_system.md)

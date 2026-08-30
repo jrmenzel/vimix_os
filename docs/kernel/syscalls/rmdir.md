@@ -15,7 +15,7 @@ The app [rmdir](../../userspace/bin/rmdir.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_rmdir()`. 
+Implemented in `sys_file.c` as `sys_rmdir()`.
 
 ## See also
 

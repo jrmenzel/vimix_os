@@ -14,6 +14,7 @@ $(info EMU set to $(EMU) by default for TARGET=$(TARGET))
 endif
 endif
 
+include kernel/arch/arm64/MakefileEmusARM64.mk
 include kernel/arch/riscv/MakefileEmusRISCV.mk
 
 .PHONY: all directories kernel userspace host
@@ -115,7 +116,9 @@ QEMU_DEBUG_OPTS := -S -gdb tcp:localhost:$(GDB_PORT)
 
 emu-check:
 ifeq ($(filter $(EMU),$(EMUS_RISCV)),)
-	$(error "EMU not set correctly, select one of: $(EMUS_RISCV)")
+ifeq ($(filter $(EMU),$(EMUS_ARM64)),)
+	$(error "EMU not set correctly, select one of: $(EMUS_ARM64) $(EMUS_RISCV)")
+endif
 endif
 
 emu-requirements: emu-check $(DEPLOYED_TARGET_FILE)

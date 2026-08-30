@@ -4,6 +4,7 @@ All kernel threads share the same memory map.
 For the [user space](../../userspace/userspace.md) [processes](../processes/processes.md) memory maps, see [memory_map_process](memory_map_process.md).
 
 Below is a memory map of the kernel:
+
 ```
 PA 0x0000000080200000, VA 0x0000000080200000, size      4kb, kernel entry at PA
 PA 0x000000008022f000, VA 0x0000003ffffff000, size      4kb, kernel text
@@ -36,9 +37,9 @@ PA 0x0000000083e0c000, VA 0xffffffffffffd000, size      4kb, user kernel stack
 
 During early boot a page table is created to map the kernel from its current physical location in RAM to a known location in the upper half of the address space. Then execution is transferred there.
 
-The kernel then creates a full mapping with all memory and found device MMIO. During the initial relocation (and then additional CPUs boot), the first kernel page (with `_entry`) needs to be mapped at its original location.
+The kernel then creates a full mapping with all memory and found device MMIO. During the initial relocation (and then additional CPUs boot), the first kernel page (with `_start`) needs to be mapped at its original location.
 
-All memory is mapped starting at the split of the upper half (`0x80000000` on 32-bit and `0xffffffc000000000` on Sv39 / 64-bit). The boot loader placed the kernel at `TEXT_OFFSET` away from the RAM start, so the kernel ends up there it has been linked to.
+All memory is mapped starting at the split of the upper half (`0x80000000` on 32-bit and `0xffffffc000000000` on Sv39 / 64-bit [RISC V](../../riscv/RISCV.md); `0xFFFF000000000000` on [ARM 64](../../aarch64/ARM%2064.md)). The boot loader placed the kernel at `TEXT_OFFSET` away from the RAM start, so the kernel ends up where it has been linked to.
 
 Memory mapped IO gets virtual addresses at runtime and can end up anywhere.
 

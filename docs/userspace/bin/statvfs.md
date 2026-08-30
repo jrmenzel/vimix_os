@@ -4,9 +4,10 @@ Prints file system stats like total and used block count. Basically calling [sta
 
 > statvfs `FILE`
 
-
 **Returns:**
+
 - 0 on success
+
 **Syscall:** [statvfs](../../kernel/syscalls/statvfs.md)
 
 ---

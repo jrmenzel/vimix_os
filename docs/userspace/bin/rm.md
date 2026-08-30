@@ -6,7 +6,9 @@ Deletes [files](../../kernel/file_system/file.md), but not [directories](../../k
 > rm -r `dir`
 
 **Returns:**
+
 - 0 on success
+
 **Syscall:** [unlink](../../kernel/syscalls/unlink.md)
 
 ---

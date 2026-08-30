@@ -4,7 +4,6 @@ A simple [file system](../../kernel/file_system/file_system.md) benchmark used d
 
 > fsbench
 
-
 ---
 **Up:** [user space](../userspace.md)
 

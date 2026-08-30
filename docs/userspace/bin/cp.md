@@ -2,9 +2,10 @@
 
 Copies a file with name `FROM` into the file `TO`. `TO` gets overwritten if it does exist and created if it does not. If `TO` is a directory, the call is equivalent to `cp FROM TO/FROM`.
 
-> cp `FROM` `TO` 
+> cp `FROM` `TO`
 
 **Returns:**
+
 - 0 on success
 
 ---

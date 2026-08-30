@@ -15,7 +15,7 @@ The app [kill](../../userspace/bin/kill.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_process.c` as `sys_kill()`. 
+Implemented in `sys_process.c` as `sys_kill()`.
 
 ## See also
 

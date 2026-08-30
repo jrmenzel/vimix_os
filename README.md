@@ -2,14 +2,14 @@
 
 VIMIX OS is a small Unix like OS which started as a fork of [xv6](https://github.com/mit-pdos/xv6-riscv) (which is a partial re-implementation of Unix version 6 for 64-bit [RISC V](https://en.wikipedia.org/wiki/RISC-V)).
 
-By now VIMIX runs on 32 and 64-bit [RISC V](https://en.wikipedia.org/wiki/RISC-V).
+By now VIMIX runs on 32 and 64-bit [RISC V](https://en.wikipedia.org/wiki/RISC-V) as well as 64-bit [ARM](docs/aarch64/ARM%2064.md).
 
 See [contributors](docs/contributors.md) for original xv6 contributors and authors of other 3rd party components.
-
 
 ## Quick Links
 
 Compile and try out:
+
 - [getting started with the development](docs/development/getting_started.md)
 	- [Build requirements and instructions](docs/development/build_instructions.md).
 	- [How to run on qemu](docs/development/run_on_qemu.md).
@@ -17,6 +17,7 @@ Compile and try out:
 - Details about the [user space](docs/userspace/userspace.md).
 
 How it looks like (text mode via UART only) running on [qemu](docs/development/run_on_qemu.md):
+
 ```
 Early console detected: SBI
 
@@ -63,18 +64,18 @@ drwxr-xr-x root root     9216 B  12.4.2026  18:38:11 tests
 drwxrwxrwt root root      128 B  4.1.2026   20:23:49 tmp
 drwxr-xr-x root root      256 B  4.1.2026   20:23:49 usr
 $ cat /README.md | grep RISC | wc
-4 78 607 
+4 78 607
 $ fortune
 I'd spell creat with an e. - Ken Thompson when asked what he would do differently if he were to redesign UNIX
-$ 
+$
 ```
-
 
 ## Changes from xv6
 
 - Added [documentation](docs/development/overview_directories.md) in `docs`.
 - Cleanups: Reorganized code, separate headers, renamed many functions and variables, using stdint types, general refactoring, reduced number of GOTOs, ...
 - Support 32-bit RISC V (in addition to 64-bit), both booting in [M-mode](docs/riscv/M-mode.md) and [S-mode](docs/riscv/S-mode.md) in a [SBI](docs/riscv/SBI.md) environment. Inspired by a 32-bit xv6 port by Michael Schröder (https://github.com/x653/xv6-riscv-fpga/tree/main/xv6-riscv).
+- [ARM 64-bit](docs/aarch64/ARM%2064.md) support.
 - The [user space](docs/userspace/userspace.md) tries to mimics a real UNIX. Some apps can get compiled unchanged for Linux too.
 - Changed [memory map](docs/kernel/mm/memory_map_process.md); app stacks grow dynamically.
 - Added applications:
@@ -84,13 +85,13 @@ $
 	- [reboot](docs/kernel/syscalls/reboot.md)
 	- [clock_gettime](docs/kernel/syscalls/clock_gettime.md)
 	- [lseek](docs/kernel/syscalls/lseek.md)
-	- split `unlink()` into [unlink](docs/kernel/syscalls/unlink.md) and [rmdir](docs/kernel/syscalls/rmdir.md)
+	- split `unlink()` into [unlink](docs/kernel/syscalls/unlink.md) and [rmdir](docs/kernel/scalls/rmdir.md)
 	- [mount](docs/kernel/syscalls/mount.md) and [umount](docs/kernel/syscalls/umount.md)
 	- [statvfs](docs/kernel/syscalls/statvfs.md)
 	- [truncate](docs/kernel/syscalls/truncate.md)
 	- [chown](docs/kernel/syscalls/chown.md) and [chmod](docs/kernel/syscalls/chmod.md)
 	- [getresgid](getresgid.md) / [getresuid](getresuid.md)
-	- [setuid](setuid.md) / [setgid](setgid.md) / [setresgid](setresgid.md) / [setresuid](setresuid.md)
+	- [setuid](setuid.md) / [setgid](setgid.md) / [setresgid](setresgid.md) / [setresuid](setresuid.)
 	- [fstat](docs/kernel/syscalls/stat.md)
 	- [umask](docs/kernel/syscalls/umask.md)
 - Support multiple [devices](docs/kernel/devices/devices.md), not just two hard coded ones.
@@ -106,4 +107,4 @@ $
 - Added a [buddy allocator](docs/kernel/mm/memory_management.md). `kmalloc()` now supports smaller allocations of one [page](docs/kernel/mm/page.md) via a slab allocator (see [memory_management](docs/kernel/mm/memory_management.md)).
 - Added [Inter Processor Interrupts](docs/kernel/interrupts/IPI.md).
 - Relocated the kernel after boot to the upper half of the address space.
-- Build with [clang](docs/development/build_instructions.md).
+- Can be build with [clang](docs/development/build_instructions.md).

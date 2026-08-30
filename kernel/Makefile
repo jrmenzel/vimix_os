@@ -112,7 +112,7 @@ RAMDISC_C := $(K_BUILD_DIR)/ramdisk_fs.c
 endif
 ifneq "$(TARGET_CC_HAS_C23_EMBED)" "1"
 # can't use the C23 embed feature, use fallback:
-OBJS += jh7110.o orangepi_rv2.o
+OBJS += bcm2711.o jh7110.o orangepi_rv2.o
 ifdef DTB_EMBEDDED
 OBJS += embedded_boot_dtb.o
 endif
@@ -275,6 +275,12 @@ ifneq "$(TARGET_CC_HAS_C23_EMBED)" "1"
 # can't use the C23 embed feature, use fallback:
 
 OBJ_COPY_OPTIONS := --input binary --output $(OBJ_COPY_OUTPUT) --binary-architecture $(OBJ_COPY_ARCH)
+
+$(K_BUILD_DIR)/bcm2711.o: ../boot/dtb/bcm2711-rpi-4-b-2gb.dtb
+	@printf "$(TASK_COLOR)Creating binary of DTB bcm2711\n$(NO_COLOR)"
+	@$(OBJCOPY) $(OBJ_COPY_OPTIONS) \
+	--redefine-sym _binary____boot_dtb_bcm2711_rpi_4_b_2gb_dtb_start=emdtb_bcm2711 \
+	$< $@
 
 $(K_BUILD_DIR)/jh7110.o: ../boot/dtb/jh7110-starfive-visionfive-2-v1.3b.dtb
 	@printf "$(TASK_COLOR)Creating binary of DTB jh7110\n$(NO_COLOR)"

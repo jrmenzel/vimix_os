@@ -15,13 +15,13 @@ Toml config file parsing is done via tomlc17, see [README](../usr/lib/tomlc17/RE
 C stdlib `qsort` is based on the UNIX V7 implementation. See also `licenses/Caldera-license.pdf`.
 
 Ported third party applications:
+
 - [dhrystone](userspace/local/bin/dhrystone.md)
 - [wumpus](userspace/bin/wumpus.md)
 
 ## Tools
 
 `tools/extractdbg` to get the file name / line info from an ELF file was mostly done by AI...
-
 
 ---
 **Up:** [README](../README.md)

@@ -12,6 +12,8 @@
 
 #include <arch/irq.h>
 #include <arch/riscv/sbi.h>
+#include <drivers/arm_pl011.h>
+#include <drivers/bcm2835_aux_uart.h>
 #include <drivers/character_device.h>
 #include <drivers/console.h>
 #include <drivers/htif.h>
@@ -446,6 +448,28 @@ dev_t console_init(struct Found_Device *console_dev)
                         console_dev->init_parameters.interrupt,
                         uart_interrupt_handler);
         }
+#if defined(__ARCH_arm64)
+        else if (strcmp(name, "brcm,bcm2835-aux-uart") == 0)
+        {
+            device_putc = bcm2835_aux_uart_putc;
+            device_putc_sync = bcm2835_aux_uart_putc_sync;
+            g_console_poll_callback = bcm2835_aux_uart_poll_input;
+
+            dev_set_irq(&g_console.cdev.dev,
+                        console_dev->init_parameters.interrupt,
+                        bcm2835_aux_uart_interrupt_handler);
+        }
+        else if (strcmp(name, "arm,pl011") == 0)
+        {
+            device_putc = arm_pl011_putc;
+            device_putc_sync = arm_pl011_putc;
+            g_console_poll_callback = arm_pl011_poll_input;
+
+            dev_set_irq(&g_console.cdev.dev,
+                        console_dev->init_parameters.interrupt,
+                        arm_pl011_interrupt_handler);
+        }
+#endif
     }
     else
     {

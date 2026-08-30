@@ -12,8 +12,8 @@ Without a `testname`, all tests are run.
 `-c` Run tests in an infinite loop until one fails
 `-C` Run tests in an infinite loop, ignore failures
 
-
 **Returns:**
+
 - 0 on success
 
 ---

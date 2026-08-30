@@ -1,11 +1,11 @@
 # How to run on qemu
 
-**Pre-requirement:** 
-1. Install qemu for RISC V 64-bit or 32-bit. 
-2. Build VIMIX (see [build_instructions](development/build_instructions.md)), make sure `PLATFORM` in `MakefileArch.mk` is set to `qemu`.
+**Pre-requirement:**
 
+1. Install qemu for [RISC V](../riscv/RISCV.md) and/or [ARM 64](../aarch64/ARM%2064.md).
+2. Build VIMIX (see [build_instructions](development/build_instructions.md)), make sure `TARGET` is passed via command line if a target other than the default one should be build.
 
-Run 
+Run
 > make qemu
 
 Or run manually:
@@ -14,31 +14,28 @@ Or run manually:
 To run via make without recompiling (and re-generating the file system image) call:
 > make qemu-run
 
-
 ## Debugging on qemu with gdb or VSCode
 
 Start qemu with
 > make qemu-gdb
 
-qemu will wait for a debugger to attach, plain `gdb` works as well as VSCode.
+qemu will wait for a debugger to attach, plain `gdb` works as well as VSCode. Select the matching architecture target in VSCodes `run and debug` drop down.
 **Note:** In both cases, `gdb` or `VSCode`, qemu must be started manually.
-
 
 ### VSCode
 
 In `VSCode`, a `launch.json` is provided with various settings:
-- 32-bit vs 64-bit must be selected matching the compile target.
+
+- [RISC V](../riscv/RISCV.md) vs. [ARM 64](../aarch64/ARM%2064.md) specific targets must be selected matching the compile target.
 - Either [user space](userspace/userspace.md) applications or the [kernel](kernel/kernel.md) can be debugged, but not both at the same time (read: no stepping through a [syscall](kernel/syscalls/syscalls.md) into the kernel).
 - Adjust the presets for user space apps that don't have one.
 - If the debugger was not found, set `"miDebuggerPath": "<path on your distro>",`, `gdb-multiarch` can be used on any target if available.
-
 
 ### gdb
 
 Launch gdb from the project directory to apply the settings from `.gdbinit`. If gdb refuses to load these settings, add the full path to the gdbinit to your `~/.config/gdb/gdbinit`.
 
-
 ---
 **Up:** [getting started with the development](getting_started.md)
 
-[automated_tests](automated_tests.md) | [build_instructions](development/build_instructions.md) | [cicd](cicd.md) | [debugging](development/debugging.md) | [overview_directories](development/overview_directories.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) 
+[automated_tests](automated_tests.md) | [build_instructions](development/build_instructions.md) | [cicd](cicd.md) | [debugging](development/debugging.md) | [overview_directories](development/overview_directories.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md)

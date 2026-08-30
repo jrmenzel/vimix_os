@@ -5,7 +5,9 @@ Prints the current date and time.
 > date
 
 **Returns:**
+
 - 0 on success
+
 **Syscall:** [clock_gettime](../../kernel/syscalls/clock_gettime.md)
 
 ---

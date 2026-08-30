@@ -13,13 +13,13 @@ Assuming the derived struct always places the base struct as the first member, a
 ```C
 struct Base
 {
-	// Base members and methods
+    // Base members and methods
 };
 
 struct Derived_Class
 {
-	Base base;
-	// additional members and methods
+    Base base;
+    // additional members and methods
 };
 ```
 

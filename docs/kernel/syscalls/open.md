@@ -7,16 +7,14 @@
 int open(const char *name, int32_t flags, ... /*mode_t mode*/)
 ```
 
-
 Open a [file](../file_system/file.md), optionally creating it.
 `flags` : See `sys/fcntl.h` for flag defines.
 
 **Note:** If flag `O_CREAT` is provided, `mode` must be set (otherwise it gets ignored). The [processes](../processes/processes.md) `umask`gets applied to the `mode` before it's set for the new file (see [file mode](../security/mode.md)).
 
-
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_open()`. 
+Implemented in `sys_file.c` as `sys_open()`.
 
 ## See also
 

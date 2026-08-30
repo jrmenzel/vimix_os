@@ -15,7 +15,7 @@ The app [mknod](../../userspace/bin/mknod.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_mknod()`. 
+Implemented in `sys_file.c` as `sys_mknod()`.
 
 ## See also
 

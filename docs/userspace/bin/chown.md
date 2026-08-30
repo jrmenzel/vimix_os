@@ -5,12 +5,13 @@ Changes the [file](../../kernel/file_system/file.md) [owner (and optionally grou
 > chown `user name`:`group name` `file`
 > chown `user name` `file`
 
-
 **Returns:**
+
 - 0 on success
+
 **Syscall:** [chown](../../kernel/syscalls/chown.md)
 
 ---
 **Up:** [user space](../userspace.md)
 
-**File Meta Data:** [chgrp](chgrp.md) | [chmod](chmod.md) | [chown](chown.md) 
+**File Meta Data:** [chgrp](chgrp.md) | [chmod](chmod.md) | [chown](chown.md)

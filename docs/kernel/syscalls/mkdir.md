@@ -15,7 +15,7 @@ The app [mkdir](../../userspace/bin/mkdir.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_mkdir()`. 
+Implemented in `sys_file.c` as `sys_mkdir()`.
 
 ## See also
 

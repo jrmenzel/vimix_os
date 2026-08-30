@@ -1,7 +1,6 @@
 # VimixFS
 
-VimixFS is a modified version of the xv6 [file system](file_system.md), which was designed after the original UNIX version 6 file system. 
-
+VimixFS is a modified version of the xv6 [file system](file_system.md), which was designed after the original UNIX version 6 file system.
 
 ## Disk Layout
 
@@ -11,7 +10,6 @@ The disk is organized in blocks of `1024` bytes.
 | ---------------- | ---- | ----------- | -------- | ------------- | ---------------- | ----------- |
 | Blocks (example) | 1    | 1           | e.g. 32  | ~2% of blocks | 1/8192 of blocks | most blocks |
 
-
 **Boot:**
 The first block is reserved for the boot loader for historic reasons. This block is currently not used.
 
@@ -19,12 +17,12 @@ The first block is reserved for the boot loader for historic reasons. This block
 This block contains the struct `vimixfs_superblock` which describes the [file system](file_system.md), including the position and size of the following areas. Everything in here stays static after the file system got created.
 
 **Log Area:**
-The first block contains the log header struct `logheader`. It contains a count of blocks to be committed and the destination block addresses. The following blocks are used to store the data for blocks to be committed from the log. The number of these blocks is stored in the super block. 
+The first block contains the log header struct `logheader`. It contains a count of blocks to be committed and the destination block addresses. The following blocks are used to store the data for blocks to be committed from the log. The number of these blocks is stored in the super block.
 
 See [vimixfs_log](vimixfs_log.md).
 
 **Inode Area:**
-The [inodes](inode.md) are stored sequentially on disk in an array as `struct vimixfs_dinode` (disk inode). The inode number is the index into this array. The amount of blocks reserved for this inode array defines the maximum of supported inodes and thus files and directories. 
+The [inodes](inode.md) are stored sequentially on disk in an array as `struct vimixfs_dinode` (disk inode). The inode number is the index into this array. The amount of blocks reserved for this inode array defines the maximum of supported inodes and thus files and directories.
 
 Inode 1 is by definition the root directory of the file system.
 
@@ -36,7 +34,6 @@ Stores one bit per block as a use/free flag. The size of this area is defined by
 
 **Data Blocks:**
 Unstructured data blocks with the contents of the files and directories as well as `indirect blocks` for large files. The size of this area defines the usable disk size of the file system.
-
 
 ## Limits
 
@@ -51,11 +48,10 @@ The maximal file size supported is thus `(20 + 256 + 256*256) blocks` = `65812 k
 A `struct vimixfs_dirent` is `64` bytes long, thus 16 directory entries can be stored in one block. A file can be up to `65812` blocks large. This limits the number of directory entries per directory to `1,052,992` entries. Each dir contains `.` and `..`, so the usable number of files and/or sub directories will be slightly lower.
 
 **Max file system size:**
-Blocks are indexed by 32-bit unsigned integers. Thus file systems of up to 4 GB should be possible. 
+Blocks are indexed by 32-bit unsigned integers. Thus file systems of up to 4 GB should be possible.
 
 **Max file name:**
 Just 60 chars, limited by `VIMIXFS_NAME_MAX` and indirectly by the size of one `struct vimixfs_dirent`.
-
 
 ## Changes compared to xv6
 
@@ -65,7 +61,6 @@ Just 60 chars, limited by `VIMIXFS_NAME_MAX` and indirectly by the size of one `
 - Increased max file name from 14 to 60.
 - Changed meta data stored per inode to add missing fields.
 - Added a double indirect mapping of blocks for files above 256 kb.
-
 
 ## Related
 

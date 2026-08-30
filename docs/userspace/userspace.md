@@ -1,11 +1,9 @@
 # Userspace
 
-
 ## Init in Userspace
 
 The [kernel](../kernel/kernel.md) starts the [init](bin/init.md) program as the first process (for details see [init_userspace](../kernel/processes/init_userspace.md)).
 This normally starts a shell ([sh](bin/sh.md)) for users to start any application.
-
 
 ## Applications
 
@@ -14,15 +12,16 @@ This normally starts a shell ([sh](bin/sh.md)) for users to start any applicatio
 - [/usr/bin/init](bin/init.md) - the first process
 - [/usr/bin/login](bin/login.md) - login user
 
-
 ### User Applications
 
 Stored in `/usr/bin` or `/usr/local/bin`.
 
 **Process Management:**
+
 - [kill](bin/kill.md) - send signals to [processes](../kernel/processes/processes.md)
 
 **File Management:**
+
 - [cp](bin/cp.md) - copy a file
 - [ln](bin/ln.md) - create hard links to files
 - [ls](bin/ls.md) - list directory content
@@ -34,11 +33,13 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [statvfs](bin/statvfs.md) - get [file system](../kernel/file_system/file_system.md) statistics
 
 **File Ownership:**
+
 - [chgrp](bin/chgrp.md) - Change group.
 - [chmod](bin/chmod.md) - Change mode.
 - [chown](bin/chown.md) - Change owner.
 
 **Misc:**
+
 - [cat](bin/cat.md) - concatenate input files and print them
 - [xxd](bin/xxd.md) - hex dump
 - [echo](bin/echo.md) - echo parameters back
@@ -50,6 +51,7 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [dhrystone](local/bin/dhrystone.md) - A benchmark
 
 **System:**
+
 - [fsinfo](bin/fsinfo.md) - info on mounted [file systems](../kernel/file_system/file_system.md)
 - [sh](bin/sh.md) - the shell
 - [which](bin/which.md) - finds programs in the search path
@@ -60,26 +62,26 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [su](bin/su.md) - switch user
 
 **Games:**
+
 - [fortune](bin/fortune.md) - classic UNIX fortune cookie
 - [wumpus](bin/wumpus.md) - UNIX 7 version of Hunt the Wumpus
 
 **Tests:**
+
 - [usertests](tests/usertests.md) - various automated tests
 - [forktest](tests/forktest.md) - tests [fork](../kernel/syscalls/fork.md) syscall
 - [grind](tests/grind.md) - tests random [syscalls](../kernel/syscalls/syscalls.md) forever (wont return)
 - [zombie](tests/zombie.md) - tests if a zombie process is correctly handled
 - [skill](tests/skill.md) - tests a stack overflow
 
-
 ### Linux support
 
 Some user space apps compile also on Linux. See [build_instructions](../development/build_instructions.md) for details.
 
-
 ## File System
 
-
 **/dev:** - All devices, automatically added by the [devfs](../kernel/file_system/devfs/devfs.md)
+
 - [/dev/console](dev/console.md)
 - [/dev/null](dev/null.md)
 - [/dev/random](dev/random.md)
@@ -87,11 +89,13 @@ Some user space apps compile also on Linux. See [build_instructions](../developm
 - [/dev/temp](dev/temp.md) (optional)
 
 **/etc** - Config files
+
 - [group](etc/group.md)
 - [passwd](etc/passwd.md)
 - [shadow](etc/shadow.md)
 
 **/home:** - Can be a [mount point](bin/mount.md) for an optional second file system
+
 - /user home of the user account
 
 **/root** - home of the root user (to be present even if `/home` is not mounted)
@@ -101,6 +105,7 @@ Some user space apps compile also on Linux. See [build_instructions](../developm
 **/tmp** - space for temporary files. Has the [sticky bit](../kernel/security/mode.md) set to only allow [file owner](../kernel/security/user_group_id.md) to delete created temp files.
 
 **/tests:**
+
 - Shell scripts for automated testing
 
 ---

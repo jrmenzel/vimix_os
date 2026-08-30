@@ -5,6 +5,7 @@ Starts an application and measures its execution time. Resolution is seconds.
 > time `app` `<app parameters...>`
 
 **Returns:**
+
 - 0 on success
 
 ---

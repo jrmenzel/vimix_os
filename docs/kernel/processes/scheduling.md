@@ -11,14 +11,14 @@ The scheduler only stops after an [IPI](../interrupts/IPI.md) indicating the sys
 From the processes perspective: [life_cycle_user_application](../overview/life_cycle_user_application.md).
 
 **Note:**
-- Tasks can switch CPUs. 
+
+- Tasks can switch CPUs.
 - Tasks can switch CPUs while in kernel mode
 
 ## Scheduling Algorithm
 
 - A primitive **round-robin** scheduler without any priorities.
 - All CPUs go over the same global process list, CPUs can be switched at random.
-
 
 ---
 **Overview:** [kernel](../kernel.md)

@@ -30,7 +30,6 @@ Amane Uehara, Pablo Ventura, Xi Wang, WaheedHafez, Keiichi Watanabe,
 Nicolas Wolovick, wxdao, Grant Wu, Jindong Zhang, Icenowy Zheng,
 ZhUyU1997, and Zou Chang Wei.
 
-
 The code in the files that constitute xv6 is
 Copyright 2006-2022 Frans Kaashoek, Robert Morris, and Russ Cox.
 

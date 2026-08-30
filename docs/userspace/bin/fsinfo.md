@@ -4,7 +4,6 @@ Prints info on [mounted](../../kernel/syscalls/mount.md) [file systems](../../ke
 
 > fsinfo
 
-
 ---
 **Up:** [user space](../userspace.md)
 

@@ -14,8 +14,6 @@
 #include <kernel/reset.h>
 #include <kernel/smp.h>
 
-void _start_secondary();
-
 struct sbiret sbi_ecall(int32_t ext, int32_t fid, xlen_t arg0, xlen_t arg1,
                         xlen_t arg2, xlen_t arg3, xlen_t arg4, xlen_t arg5)
 {
@@ -249,6 +247,7 @@ void init_sbi()
     long minor = version & SBI_SPEC_VERSION_MINOR_MASK;
     printk("SBI specification: v%ld.%ld\n", major, minor);
 
+    // register shutdown functions if the required extension exists:
     if (!EXT_SRST_QUERIED)
     {
         EXT_SRST_SUPPORTED = (sbi_probe_extension(SBI_EXT_ID_SRST) > 0);
@@ -260,12 +259,7 @@ void init_sbi()
     }
 }
 
-__attribute__((noinline)) static size_t sbi_virt_to_phys_runtime(size_t va)
-{
-    return va - PAGE_OFFSET + g_kernel_memory.phys_base;
-}
-
-syserr_t sbi_start_hart(size_t hartid, size_t opaque)
+syserr_t sbi_start_hart(size_t hartid, size_t opaque, size_t start_pa)
 {
     if (sbi_probe_extension(SBI_EXT_ID_HSM) <= 0)
     {
@@ -276,9 +270,7 @@ syserr_t sbi_start_hart(size_t hartid, size_t opaque)
     if (plic_get_hart_s_context(hartid) != -1)
     {
         // CPU exists in device tree and supports s mode interrupts
-        size_t entry_va = (size_t)_start_secondary;
-        size_t entry_addr = sbi_virt_to_phys_runtime(entry_va);
-        long ret = sbi_hart_start(hartid, entry_addr, opaque);
+        long ret = sbi_hart_start(hartid, start_pa, opaque);
         if (ret != SBI_SUCCESS)
         {
             printk("SBI HSM: starting hart %zd: FAILED\n", hartid);

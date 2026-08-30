@@ -20,6 +20,11 @@
             "__RISCV_EXT_SSTC",
             "__RISCV_CSR_TIME"
         ],
+        "kernel_defines_arm64": [
+            "__ARCH_arm64",
+            "PAGE_OFFSET=0xFFFF000000000000",
+            "__ARCH_64BIT"
+        ],
         "user_inc_path": [
             "${workspaceFolder}/kernel/include",
             "${workspaceFolder}/usr/lib/libc",
@@ -65,6 +70,23 @@
                 "__ARCH_32BIT",
                 "PAGE_OFFSET=0x80000000",
                 "CONFIG_RISCV_BOOT_M_MODE"
+            ],
+            "compilerArgs": [
+                "-nostdinc"
+            ]
+        },
+        {
+            "name": "64 bit ARM Kernel Dev",
+            "intelliSenseMode": "linux-gcc-arm64",
+            "cStandard": "c17",
+            "compilerPath": "/usr/bin/aarch64-linux-gnu-gcc",
+            "includePath": [
+                "${kernel_inc_path}",
+                "${workspaceFolder}/kernel/arch/arm64"
+            ],
+            "defines": [
+                "${kernel_defines}",
+                "${kernel_defines_arm64}"
             ],
             "compilerArgs": [
                 "-nostdinc"

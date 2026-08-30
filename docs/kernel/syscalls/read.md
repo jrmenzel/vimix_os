@@ -11,7 +11,7 @@ Read `n` chars from a [file](../file_system/file.md) to `buffer`.
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_()`. 
+Implemented in `sys_file.c` as `sys_()`.
 
 ## See also
 

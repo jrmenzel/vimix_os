@@ -2,11 +2,11 @@
 
 Prints a hex dump from a file. Optionally only prints the first `n` bytes.
 
-> xxd `file` 
-
+> xxd `file`
 > xxd -l `n` `file`
 
 **Returns:**
+
 - 0 on success
 
 ---

@@ -4,17 +4,14 @@ A RAM disk is a [block device](devices.md) backed by memory. They can not be cre
 
 Linux boots with a ram disk (initrd) to load additional drivers, not for the full root file system.
 
-
 ## Embedded in the Kernel Binary
 
 Converts the `filesystem.img` into an array and embeds it into the kernel binary.
 See `RAMDISK_EMBEDDED` in `MakefileCommon.mk`.
 
-
 ## Loaded by a Boot Loader: initrd
 
-Boot loaders and qemu can load a file into RAM and provide the location to the [kernel](../kernel.md) via the [device tree file](../../misc/device_tree.md). 
-
+Boot loaders and qemu can load a file into RAM and provide the location to the [kernel](../kernel.md) via the [device tree file](../../misc/device_tree.md).
 
 ---
 **Overview:** [kernel](../kernel.md)

@@ -11,6 +11,10 @@ const unsigned char dtb_embedded[] = {
 #endif
 };
 
+const unsigned char emdtb_bcm2711[] = {
+#embed "./boot/dtb/bcm2711-rpi-4-b-2gb.dtb"
+};
+
 const unsigned char emdtb_jh7110[] = {
 #embed "./boot/dtb/jh7110-starfive-visionfive-2-v1.3b.dtb"
 };
@@ -26,6 +30,7 @@ extern const unsigned char dtb_embedded[];
 #else
 const unsigned char dtb_embedded[1] = {0};
 #endif
+extern const unsigned char emdtb_bcm2711[];
 extern const unsigned char emdtb_jh7110[];
 extern const unsigned char emdtb_orangepi[];
 
@@ -37,6 +42,8 @@ const unsigned char *get_embedded_dtb(enum Compatible_System compatible)
 {
     switch (compatible)
     {
+        case SYSTEM_ARM64_VIRT: return NULL;
+        case SYSTEM_ARM64_RASPBERRY_PI_4: return emdtb_bcm2711;
         case SYSTEM_RISCV_QEMU: return NULL;
         case SYSTEM_RISCV_SPIKE: return NULL;
         case SYSTEM_RISCV_VISIONFIVE2: return get_pointer((size_t)emdtb_jh7110);

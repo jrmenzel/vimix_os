@@ -1,6 +1,6 @@
 # SysFS
 
-SysFS is modeled at a high level after the Linux sys fs. It gets [mounted](../../syscalls/mount.md) at `/sys` by the first [process](../../processes/processes.md) [init](../../../userspace/bin/init.md). This pseudo file system exposes `kobject`s and there attributes. 
+SysFS is modeled at a high level after the Linux sys fs. It gets [mounted](../../syscalls/mount.md) at `/sys` by the first [process](../../processes/processes.md) [init](../../../userspace/bin/init.md). This pseudo file system exposes `kobject`s and there attributes.
 
 ## kobject
 
@@ -14,13 +14,11 @@ Each `kobject` registers itself with SysFS via `sysfs_register_kobject()` at whi
 
 ### Attributes
 
-Each `sysfs_attribute` hold the unique data for that file (name, access rights). When [user space](../../../userspace/userspace.md) reads/writes one of these files, `sysfs_iops_read()` / `sysfs_fops_write()` will call the `kobject` specific read/write callbacks from `sysfs_ops` (in `kobj_type`). These object type specific functions get the attribute index to distinguish between the different files. 
-
+Each `sysfs_attribute` hold the unique data for that file (name, access rights). When [user space](../../../userspace/userspace.md) reads/writes one of these files, `sysfs_iops_read()` / `sysfs_fops_write()` will call the `kobject` specific read/write callbacks from `sysfs_ops` (in `kobj_type`). These object type specific functions get the attribute index to distinguish between the different files.
 
 ### Reading from user space
 
 Every time the user space calls a read/write function on a SysFS file, the content gets regenerated. To get the expected results, a single [read](../../syscalls/read.md) or [write](../../syscalls/write.md) [syscall](../../syscalls/syscalls.md) should be made. E.g. read a SysFS file with one `read(fd, buffer, n)` call instead of something like `fgets()` that will call `read()` multiple times.
-
 
 ---
 **Overview:** [kernel](kernel.md) | [file_system](file_system.md)

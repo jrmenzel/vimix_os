@@ -6,6 +6,7 @@ If no file is given, wc reads from [stdin](../../misc/stdio.md).
 > wc `FILE0` `FILE1` ... `FILEn`
 
 **Returns:**
+
 - 0 on success
 
 ---

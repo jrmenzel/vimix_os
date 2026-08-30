@@ -45,7 +45,8 @@ long sbi_probe_extension(int32_t extid);
 /// parameter
 /// @param hartid Hart ID of the hart to boot
 /// @param opaque E.g. used to pass the device tree
-syserr_t sbi_start_hart(size_t hartid, size_t opaque);
+/// @param start_pa Physical address to start at
+syserr_t sbi_start_hart(size_t hartid, size_t opaque, size_t start_pa);
 
 /// @brief Check if a hart has started after calling sbi_start_hart
 /// @param hartid Hart ID of the hart to check

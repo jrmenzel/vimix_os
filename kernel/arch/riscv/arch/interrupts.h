@@ -82,3 +82,32 @@ static inline void int_acknowledge_timer() { rv_clear_csr_sip(SIP_STIP); }
 /// @brief acknowledge the software interrupt by clearing
 /// the S-Mode Software Interrupt pending bit in sip
 static inline void int_acknowledge_ipi() { rv_clear_csr_sip(SIP_SSIP); }
+
+static inline bool int_ctx_source_is_spurious(struct Interrupt_Context *ctx)
+{
+    return false;
+}
+
+static inline bool int_ctx_source_is_unclassified_async(
+    struct Interrupt_Context *ctx)
+{
+    return false;
+}
+
+static inline void int_consume_unclassified_async(struct Interrupt_Context *ctx)
+{
+    (void)ctx;
+}
+
+static inline int32_t int_ctx_get_pending_irq(struct Interrupt_Context *ctx)
+{
+    (void)ctx;
+    return -1;
+}
+
+static inline size_t int_ctx_get_async_timer_state(
+    struct Interrupt_Context *ctx)
+{
+    (void)ctx;
+    return 0;
+}

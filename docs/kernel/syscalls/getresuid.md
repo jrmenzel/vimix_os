@@ -1,4 +1,4 @@
-# Syscall 
+# Syscall
 
 ## User Mode
 
@@ -10,11 +10,9 @@ int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
 
 Query the real, effective and saved [user ID](../security/user_group_id.md).
 
-
 ## Kernel Mode
 
-Implemented in `sys_file_meta.c` as `sys_getresuid()`. 
-
+Implemented in `sys_file_meta.c` as `sys_getresuid()`.
 
 ## See also
 

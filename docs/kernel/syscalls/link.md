@@ -15,7 +15,7 @@ The app [ln](../../userspace/bin/ln.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_link()`. 
+Implemented in `sys_file.c` as `sys_link()`.
 
 ## See also
 

@@ -6,25 +6,24 @@ The initial process [init](../../userspace/bin/init.md) gets created with UID/GI
 
 ## Real and Effective IDs
 
-User and group IDs on Linux come in four flavors: 
-- real
-	- IDs of the actual owner.
-- effective
-	- Initial value:
-		- If binary has `setuid bit` set: eUID = UID from file.
-		- If binary has `setgid bit` set: eGID = GID from file.
-		- If binary has no special bits set: a copy of the real IDs.
-	- Can be changed by some [syscalls](../syscalls/syscalls.md).
-	- IDs used for access checks.
-- saved
-	- Privilege level the process can return to.
-- file system
-	- Set by `setfsuid`/`setfsgid` for higher privileged daemons to impersonate a lower privileged user without a full privilege transition. Only affects file related sycalls.
-	- VIMIX does not implement this and uses the effective IDs instead.
+User and group IDs on Linux come in four flavors:
 
+- real
+    - IDs of the actual owner.
+- effective
+    - Initial value:
+        - If binary has `setuid bit` set: eUID = UID from file.
+        - If binary has `setgid bit` set: eGID = GID from file.
+        - If binary has no special bits set: a copy of the real IDs.
+    - Can be changed by some [syscalls](../syscalls/syscalls.md).
+    - IDs used for access checks.
+- saved
+    - Privilege level the process can return to.
+- file system
+    - Set by `setfsuid`/`setfsgid` for higher privileged daemons to impersonate a lower privileged user without a full privilege transition. Only affects file related sycalls.
+    - VIMIX does not implement this and uses the effective IDs instead.
 
 ## Privilege changing Syscalls
-
 
 All syscalls and wrappers are found in `unistd.h`.
 
@@ -44,7 +43,6 @@ All syscalls and wrappers are found in `unistd.h`.
 2. Unprivileged processes can set any ID to any value of the currently set (real, effective, saved) IDs.
 
 [execv](../syscalls/execv.md) changes the IDs implicitly based on set [setuid / setgid](user_group_id.md) bit of the [file](../file_system/file.md).
-
 
 ---
 **Overview:** [kernel](../kernel.md)

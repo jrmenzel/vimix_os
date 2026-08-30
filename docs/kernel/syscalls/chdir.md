@@ -11,7 +11,7 @@ Change working directory of process.
 
 ## Kernel Mode
 
-Implemented in `sys_process.c` as `sys_chdir()`. 
+Implemented in `sys_process.c` as `sys_chdir()`.
 
 ## See also
 

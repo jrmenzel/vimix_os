@@ -1,6 +1,7 @@
 {
     "recommendations": [
         "xaver.clang-format",
-        "zhwu95.riscv"
+        "zhwu95.riscv",
+        "dan-c-underwood.arm"
     ]
 }

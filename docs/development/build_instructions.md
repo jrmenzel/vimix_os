@@ -3,11 +3,12 @@
 Requirements:
 
 - qemu
-- [RISC V](riscv/RISCV.md) gcc toolchain (version 14 or later)
-	- optionally clang 23 or later
-- clang-format version 20 or later
+- [RISC V](riscv/RISCV.md) and/or [ARM 64](../aarch64/ARM%2064.md) gcc toolchain (version 14 or later)
+  - optionally clang 21 or later
+- optional: clang-format version 20 or later
 
 On Arch Linux install:
+
 ```bash
 sudo pacman -S qemu-system-riscv qemu-system-riscv-firmware riscv64-elf-binutils riscv64-elf-gcc riscv64-elf-gdb riscv64-elf-newlib xxd uboot-tools
 ```
@@ -30,10 +31,9 @@ To list additional make targets, e.g. to only rebuild the [kernel](../kernel/ker
 
 Make variables can be passed on the command line as `make VARIABLE=value`. The
 defaults are defined in `MakefileCommon.mk` and the architecture-specific
-Makefiles. Currently only [RISC V](riscv/RISCV.md) is supported.
+Makefiles. Only [RISC V](riscv/RISCV.md) and [ARM 64](../aarch64/ARM%2064.md) are supported
 
-Architecture specific setting, e.g. 32 vs 64-bit etc. can be found in `kernel/arch/<architecture>/MakefileArch.mk`.
-
+Architecture specific setting, e.g. 32 vs 64-bit etc. can be found in `kernel/arch/<architecture>/MakefileArch.mk`. These make files define `platforms` with all relevant settings preset for either a specific emulator config or hardware device.
 
 ### Make parameters
 
@@ -99,11 +99,9 @@ make TARGET=rv64 EMU=sbi64 CPUS=8 MEMORY_SIZE=128 qemu
 make TARGET=rv64 GDB_PORT=26001 qemu-gdb
 ```
 
-
 ### 32- vs 64-bit
 
-For RISC V either 32-bit or 64-bit target can get selected based on the target. 64-bit [kernel](kernel/kernel.md) can only run 64-bit [applications](userspace/userspace.md). Both versions have the same features. 
-
+For RISC V either 32-bit or 64-bit target can get selected based on the target. 64-bit [kernel](kernel/kernel.md) can only run 64-bit [applications](userspace/userspace.md). Both versions have the same features.
 
 ### RISC V Extensions
 
@@ -111,21 +109,17 @@ The use of the RISC V compressed instruction extension can be disabled by settin
 
 When `RV_ENABLE_EXT_SSTC` is set, the timer will be based on this extension (if available) instead of using the [SBI](riscv/SBI.md) timer.
 
-
 ### SBI
 
 VIMIX can run bare-metal (booting in [M-mode](riscv/M-mode.md)) or via an [SBI](riscv/SBI.md) compatible environment in [S-mode](riscv/S-mode.md). Select the mode with `TARGET`, as described in the make-parameter table above.
-
 
 ### Root Filesystem
 
 The root [file system](kernel/file_system/file_system.md) can be on a [ramdisk](kernel/devices/ramdisk.md), either embedded in the kernel binary or loaded by the boot loader from a file. On [qemu](run_on_qemu.md) it can also be a virtio [device](kernel/devices/devices.md). See make file variables `VIRTIO_DISK`, `RAMDISK_EMBEDDED` and `RAMDISK_BOOTLOADER`.
 
-
 ### Kernel parameters
 
 The file `param.h` sets various system values like the maximum supported CPUs or processes. It also contains debug switches which enable additional runtime tests.
-
 
 ## Compile apps for the host
 
@@ -135,8 +129,7 @@ Some [user space](userspace/userspace.md) apps compile on the host (tested on Li
 
 The binaries end up in `build_host/root/usr/bin`. See `.vscode/launch.json` on how to debug them running on the host.
 
-
 ---
 **Up:** [getting started with the development](getting_started.md)
 
-[automated_tests](automated_tests.md) | [build_instructions](development/build_instructions.md) | [cicd](cicd.md) | [debugging](development/debugging.md) | [overview_directories](development/overview_directories.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md) 
+[automated_tests](automated_tests.md) | [build_instructions](development/build_instructions.md) | [cicd](cicd.md) | [debugging](development/debugging.md) | [overview_directories](development/overview_directories.md) | [run_on_qemu](run_on_qemu.md) | [run_on_spike](run_on_spike.md) | [run_on_visionfive2](run_on_visionfive2.md)

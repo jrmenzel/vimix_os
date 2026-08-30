@@ -109,6 +109,27 @@ build_rv64_rel_clang:
   script:
     - eval "make COMPILER=clang TARGET=rv64 $BUILD_PARAMS BUILD_TYPE=release"
 
+# ARM
+build_arm64_deb:
+  extends: .build_job
+  script:
+    - eval "make TARGET=arm64 $BUILD_PARAMS BUILD_TYPE=debug"
+
+build_arm64_rel:
+  extends: .build_job
+  script:
+    - eval "make TARGET=arm64 $BUILD_PARAMS BUILD_TYPE=release"
+
+#build_arm64_raspi4_deb:
+#  extends: .build_job
+#  script:
+#    - eval "make TARGET=raspi4 $BUILD_PARAMS BUILD_TYPE=debug ANALYZE=1"
+#
+#build_arm64_raspi4_rel:
+#  extends: .build_job
+#  script:
+#    - eval "make TARGET=raspi4 $BUILD_PARAMS BUILD_TYPE=release"
+
 # tests
 
 usertests_release:
@@ -278,6 +299,94 @@ spike_usertests_mem:
       artifacts: true
   script:
     - ./tools/tests/run_test.sh usertests_mem.sh m-rdisk64 "ALL TESTS PASSED" 4 64 spike
+
+# ARM64
+
+arm_arm64_boot64_rel:
+  extends: .usertest_job
+  needs:
+    - job: build_arm64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh echo.sh arm64 "ALL TESTS PASSED"
+
+arm_arm64_boot64_deb:
+  extends: .usertest_job
+  needs:
+    - job: build_arm64_deb
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh echo.sh arm64 "ALL TESTS PASSED"
+
+arm_raspi4_boot64_rel:
+  extends: .usertest_job
+  needs:
+    - job: build_arm64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh echo.sh raspi4 "ALL TESTS PASSED"
+
+arm_raspi4_boot64_deb:
+  extends: .usertest_job
+  needs:
+    - job: build_arm64_deb
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh echo.sh raspi4 "ALL TESTS PASSED"
+
+arm_arm64_memory_rel:
+  extends: .usertest_job
+  needs:
+    - job: build_arm64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests_mem.sh arm64 "ALL TESTS PASSED" 2 64
+
+arm_arm64_misc_rel:
+  extends: .usertest_job
+  needs:
+    - job: build_arm64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests_misc.sh arm64 "ALL TESTS PASSED"
+
+arm_arm64_concurrent_rel:
+  extends: .usertest_job
+  needs:
+    - job: build_arm64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests_concurrent.sh arm64 "ALL TESTS PASSED" 1 64
+    - ./tools/tests/run_test.sh usertests_concurrent.sh arm64 "ALL TESTS PASSED" 2 64
+    - ./tools/tests/run_test.sh usertests_concurrent.sh arm64 "ALL TESTS PASSED" 5 64
+    - ./tools/tests/run_test.sh usertests_concurrent.sh arm64 "ALL TESTS PASSED" 8 64
+
+arm_arm64_failing_rel:
+  extends: .usertest_job
+  needs:
+    - job: build_arm64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests_fail.sh arm64 "ALL TESTS PASSED" 1 64
+    - ./tools/tests/run_test.sh usertests_fail.sh arm64 "ALL TESTS PASSED" 2 64
+    - ./tools/tests/run_test.sh usertests_fail.sh arm64 "ALL TESTS PASSED" 5 64
+    - ./tools/tests/run_test.sh usertests_fail.sh arm64 "ALL TESTS PASSED" 8 64
+
+arm_arm64_usertests_rel:
+  extends: .usertest_job
+  needs:
+    - job: build_arm64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh usertests.sh arm64 "ALL TESTS PASSED"
+
+arm_raspi4_grind_rel:
+  extends: .usertest_job
+  needs:
+    - job: build_arm64_rel
+      artifacts: true
+  script:
+    - ./tools/tests/run_test.sh grind_8.sh raspi4 "grind passed"
 
 # test tools
 

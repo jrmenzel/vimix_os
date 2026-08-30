@@ -1,0 +1,12 @@
+/* SPDX-License-Identifier: MIT */
+#pragma once
+
+#define CTX_CLASS_CURRENT_EL_SP_EL0 0
+#define CTX_CLASS_CURRENT_EL_SP_ELX 1
+#define CTX_CLASS_LOWER_EL_AARCH64 2
+#define CTX_CLASS_LOWER_EL_AARCH32 3
+
+#define CTX_TYPE_SYNCHRONOUS 0
+#define CTX_TYPE_IRQ 1
+#define CTX_TYPE_FIQ 2
+#define CTX_TYPE_SERROR 3

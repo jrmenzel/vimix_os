@@ -51,6 +51,23 @@ bool source_is_software_timer(struct Interrupt_Context *ctx)
     return false;
 }
 
+static void log_unknown_async_interrupt_once(const char *where,
+                                             struct Interrupt_Context *ctx)
+{
+    static bool logged = false;
+    if (logged)
+    {
+        return;
+    }
+    logged = true;
+
+    printk(
+        "\nNotice: consumed unclassified asynchronous interrupt in %s "
+        "(pending_irq=%d, timer_state=0x%zx)\n",
+        where, int_ctx_get_pending_irq(ctx),
+        int_ctx_get_async_timer_state(ctx));
+}
+
 /// Handle an interrupt, exception, or system call from user space.
 /// called from u_mode_trap_vector.S, first C function after storing the
 /// CPU state / registers in assembly.
@@ -123,6 +140,16 @@ void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2,
     else if (int_ctx_source_is_device(&ctx))
     {
         handle_device_interrupt();
+    }
+    else if (int_ctx_source_is_spurious(&ctx))
+    {
+        // GIC reports no pending interrupt. Ignore the spurious async trap.
+    }
+    else if (int_ctx_source_is_unclassified_async(&ctx))
+    {
+        // Best-effort consume an otherwise unclassified async interrupt.
+        log_unknown_async_interrupt_once("user_mode_interrupt_handler", &ctx);
+        int_consume_unclassified_async(&ctx);
     }
     else if (int_ctx_source_is_page_fault(&ctx))
     {
@@ -248,6 +275,16 @@ void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
     else if (int_ctx_source_is_device(&ctx))
     {
         handle_device_interrupt();
+    }
+    else if (int_ctx_source_is_spurious(&ctx))
+    {
+        // GIC reports no pending interrupt. Ignore the spurious async trap.
+    }
+    else if (int_ctx_source_is_unclassified_async(&ctx))
+    {
+        // Best-effort consume an otherwise unclassified async interrupt.
+        log_unknown_async_interrupt_once("kernel_mode_interrupt_handler", &ctx);
+        int_consume_unclassified_async(&ctx);
     }
     else
     {

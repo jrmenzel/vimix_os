@@ -13,14 +13,13 @@ Returns [file system](../file_system/file_system.md) stats. See `struct statvfs`
 
 Both functions do the same, but one takes a path and the other a [file](../file_system/file.md) descriptor. Both exist as syscalls to not force the app to open another file.
 
-
 ## User Apps
 
 The app [statvfs](../../userspace/bin/statvfs.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_filesystem.c` as `sys_statvfs()` and `sys_fstatvfs()`. 
+Implemented in `sys_filesystem.c` as `sys_statvfs()` and `sys_fstatvfs()`.
 
 ## See also
 

@@ -9,10 +9,10 @@ To send an interrupt to another CPU use [IPI](IPI.md).
 In [M-Mode](../../riscv/M-mode.md) (call to `m_mode_trap_vector` via [SBI](../../riscv/SBI.md) ecalls), the [CLINT](../../riscv/CLINT.md) timer interrupt can get enabled.
 When the timer interrupt gets triggered, it will set an [S-Mode](../../riscv/S-mode.md) software interrupt pending.
 
-
 ## Supervisor Mode
 
 **Interrupts:**
+
 - From [devices](../devices/devices.md)
 - Forwarded timer interrupts from [M-Mode](../../riscv/M-mode.md) or [SBI](../../riscv/SBI.md).
 
@@ -29,11 +29,9 @@ A Timer Interrupt can cause a `yield` and hand over the CPU to the scheduler.
 
 Always disabled when a `spin_lock` is held.
 
-
 ## Timer Interrupts
 
 See [timer_interrupt](timer_interrupt.md).
-
 
 ---
 **Overview:** [kernel](../kernel.md)

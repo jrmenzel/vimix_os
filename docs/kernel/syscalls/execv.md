@@ -13,12 +13,13 @@ Execute program at `pathname` replacing the currently running process. `argv` is
 The open file descriptors stay the same.
 
 **Returns:**
+
 - `-1` on error (e.g. file to execute not found)
 - **won't return** on success
 
 ## Kernel Mode
 
-Implemented in `sys_process.c` as `sys_execv()`. 
+Implemented in `sys_process.c` as `sys_execv()`.
 
 ## See also
 

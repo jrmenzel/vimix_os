@@ -12,11 +12,9 @@ Sets the real, effective and saved [group IDs](../security/user_group_id.md) to 
 
 If called from a non-privileged process, the provided IDs must be one of the current real, effective or saved IDs.
 
-
 ## Kernel Mode
 
-Implemented in `sys_file_meta.c` as `sys_setresgid()`. 
-
+Implemented in `sys_file_meta.c` as `sys_setresgid()`.
 
 ## See also
 

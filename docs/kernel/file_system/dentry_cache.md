@@ -2,7 +2,7 @@
 
 A `dentry` is a path element of the [file system](file_system.md) in memory. Most importantly it stores the path element name and a pointer to the matching [inode](inode.md). It also stores a pointer to its parent and a list of children nodes. This way `dentries` build a tree representing the file layout, the `dentry cache`. Not all sub-trees are present in the `dentry cache`. But if a [file/dir](file.md) is present, the full path back to root is also present in the cache.
 
-The main motivation for the `dentry cache` is to avoid reads from the [file system](file_system.md) (or even from disk if blocks are not cached) for all the path lookups. This is why it also contains failed file lookups / non existent files. They have their [inode](inode.md) pointer set to `NULL`. 
+The main motivation for the `dentry cache` is to avoid reads from the [file system](file_system.md) (or even from disk if blocks are not cached) for all the path lookups. This is why it also contains failed file lookups / non existent files. They have their [inode](inode.md) pointer set to `NULL`.
 
 The in memory tree of `dentries` is using reference counting to track which entries are used. Open files, the current working directory of a [process](../processes/processes.md) and [mounts](../syscalls/mount.md) hold a reference to "their" `dentry`. [Syscalls](../syscalls/syscalls.md) temporarily hold references to `dentries`.
 
@@ -19,7 +19,6 @@ This also means that `dentry->ip` and `dentry->name` stay constant after creatin
 [Syscalls](../syscalls/syscalls.md) operating on path or file names use these path lookup functions to get references to the `dentries` to operate on. If they use [files](file.md), those will contain the `dentry`.
 
 If a [syscall](../syscalls/syscalls.md) changes the [file system](file_system.md) layout, it is working together with the [VFS layer](vfs.md) to update the `dentry cache`. E.g. the [open syscall](../syscalls/open.md) calls via `fops_open` into the specific [file system](file_system.md) and passes in a file which already has a `dentry` attached to which the `fops_open` implementation has to attach the [inode](inode.md) of the opened file.
-
 
 ---
 **Overview:** [kernel](kernel.md) | [file_system](file_system.md)

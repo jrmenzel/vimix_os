@@ -13,22 +13,19 @@ The device tree address is passed into the init function of [devices](kernel/dev
 
 Note that all values returned from the device tree are 32 bit aligned. When casting return values into 64 bit ints use `__attribute__((__aligned__(4)))` (or the predefined typedefs `dtb_aligned_uint64_t`/`dtb_aligned_int64_t`). Otherwise unaligned reads can trigger an exception on architectures which don't support them.
 
-
 ## Print Device Tree
 
 ### qemu
 
 To dump the device tree of [qemu](../development/run_on_qemu.md) run:
 
-> make PLATFORM=qemu64 qemu-dump-tree
-
+> make EMU=rv64 qemu-dump-tree
 
 To dump the device tree of [Spike](../development/run_on_spike.md) run:
 
-> make PLATFORM=spike64 spike-dump-tree
+> make EMU=m-rdisk64 spike-dump-tree
 
 Both will generate `*.dtb` and `*.dts` files named after the current platform. Requires the dtc app.
-
 
 ### U-Boot
 
@@ -37,8 +34,6 @@ On a real device like the [VisionFive 2](../development/run_on_visionfive2.md) e
 ```
 StarFive # fdt print /
 ```
-
-
 
 ---
 [kernel](../kernel/kernel.md) | [userspace](../userspace/userspace.md)

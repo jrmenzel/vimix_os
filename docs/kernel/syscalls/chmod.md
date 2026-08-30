@@ -17,7 +17,7 @@ The app [chmod](../../userspace/bin/chmod.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_file_meta.c` as `sys_chmod()` / `sys_fchmod()`. 
+Implemented in `sys_file_meta.c` as `sys_chmod()` / `sys_fchmod()`.
 
 ## See also
 

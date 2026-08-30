@@ -50,7 +50,7 @@ static inline bool cpu_is_interrupts_enabled()
     return (x & SSTATUS_SIE) != 0;
 }
 
-/// Set the Supervisor-mode trap vector (interrupt handler) function
+/// Set the kernel trap vector (interrupt handler) function
 static inline void cpu_set_trap_vector(size_t supervisor_trap_vector)
 {
     rv_write_csr_stvec((xlen_t)supervisor_trap_vector);

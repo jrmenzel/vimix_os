@@ -9,7 +9,9 @@ Make device files for character or block [devices](../../kernel/devices/devices.
 `major`, `minor`: device number
 
 **Returns:**
+
 - 0 on success
+
 **Syscall:** [mknod](../../kernel/syscalls/mknod.md)
 
 ---

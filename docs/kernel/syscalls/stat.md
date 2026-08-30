@@ -17,7 +17,7 @@ The app [stat](../../userspace/bin/stat.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_stat()` and `sys_fstat()`. 
+Implemented in `sys_file.c` as `sys_stat()` and `sys_fstat()`.
 
 ## See also
 

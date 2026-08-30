@@ -1,6 +1,5 @@
 # Memory Management
 
-
 The kernel manages free [pages](page.md) with a buddy allocator in blocks of a power-of-2 number of pages (1 page, 2,4,8, etc). Blocks can be requested with `alloc_pages()`.
 
 Smaller allocations can be requested with `kmalloc()`, it uses a number of slab allocators internally which get their memory in full pages from `alloc_pages()`.
@@ -11,7 +10,7 @@ Smaller allocations can be requested with `kmalloc()`, it uses a number of slab 
 
 To allocate memory less than one [page](page.md) call `kmalloc()` (free with `kfree()`). Internally it uses a number of slab allocators organized in caches for objects of different sizes. Those are all power-of-2 sizes from `MIN_SLAB_SIZE` to 1/4 of the page size plus a cache for objects up to 1280 bytes. The last one is used by the [block io cache](../file_system/block_io.md). If an allocation is between the largest value supported by the slab allocators and the page size, a full page will get allocated by calling `alloc_pages()`.
 
-As most slabs manage power-of-2 allocation sizes (e.g. 32 byte, 64 byte etc.), so most allocations will use a power-of-2 value of bytes of memory. 
+As most slabs manage power-of-2 allocation sizes (e.g. 32 byte, 64 byte etc.), so most allocations will use a power-of-2 value of bytes of memory.
 
 All memory up to one page can be freed with `kfree()` without knowing the allocation size. If the freed pointer is already page aligned, it gets freed via `free_page()`, if it is not aligned, if is an object from a slab allocator. In that case rounding down the pointer to the page boundary will give the responsible slab which is then called with `kmem_slab_free()`.
 
@@ -24,6 +23,7 @@ The allocation is optionally zeroed based on the passed flags.
 Per supported size of the buddy allocator, one linked list of free blocks is maintained. The pointers for the linked list are stored in the free pages, so no memory is wasted.
 
 This has the following limitations:
+
 - Even if only a few bytes are needed, each allocation will use up at least one full [page](page.md).
 - Allocation of multiple pages can fail if there is no continuous memory region free of that size. This can happen even if the total amount of free memory is less than requested.
 
@@ -31,10 +31,9 @@ This has the following limitations:
 
 Dynamically growing and shrinking lists of objects are manages by a double linked list (`struct list_head` from `kernel/list.h`).
 
-
 ## Virtual Memory
 
-Supports Sv39 on 64-bit and Sv32 on 32-bit [RISC V](../../riscv/RISCV.md).
+Supports Sv39 on 64-bit and Sv32 on 32-bit [RISC V](../../riscv/RISCV.md). [ARM 64](../../aarch64/ARM%2064.md) uses a similar 4-level page table.
 
 One page table fits exactly into one [page](page.md) of `4KB`:
 **64-bit:**
@@ -46,11 +45,12 @@ Page table: `pagetable_t`. An array of 1024 `pagetable_element` which are just 3
 All mapped memory regions of the kernels page table as well as of each [process](../processes/processes.md) are tracked in `struct Memory_Map`.
 
 All harts use the same kernel page table:
+
 - all memory is mapped
 - found [devices](../devices/devices.md) are mapped
 - the trampoline function gets mapped
-See [memory_map_kernel](memory_map_kernel.md) for details.
 
+See [memory_map_kernel](memory_map_kernel.md) for details.
 
 ## User Space Allocations
 
@@ -58,7 +58,6 @@ See [memory_map_kernel](memory_map_kernel.md) for details.
 - in virtual memory space, see [memory_map_process](memory_map_process.md)
 
 User space applications can only increase or decrease their memory heap with the [sbrk](../syscalls/sbrk.md) system call. The C standard library will manage this heap and provide convenient `malloc()` and `free()` calls.
-
 
 ---
 **Overview:** [kernel](../kernel.md)

@@ -138,6 +138,7 @@ const struct instruction *debug_info_lookup_instruction(
 const struct instruction *debug_info_lookup_caller(
     const struct debug_info *dbg_info, size_t ra)
 {
+#if defined(__ARCH_riscv)
     // try to find calling instruction,
     // can be 2 bytes or 4 bytes before return address on RISC V
     size_t caller_addr = ra - 2;
@@ -148,6 +149,12 @@ const struct instruction *debug_info_lookup_caller(
         caller_addr -= 2;
         instr = debug_info_lookup_instruction(dbg_info, caller_addr);
     }
+#elif defined(__ARCH_arm64)
+    const struct instruction *instr =
+        debug_info_lookup_instruction(dbg_info, ra - 4);
+#else
+#error "Unsupported architecture"
+#endif
     return instr;
 }
 

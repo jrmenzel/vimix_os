@@ -11,7 +11,7 @@ System uptime in ticks.
 
 ## Kernel Mode
 
-Implemented in `sys_system.c` as `sys_uptime()`. 
+Implemented in `sys_system.c` as `sys_uptime()`.
 
 ## See also
 

@@ -6,6 +6,7 @@ If no file is provided, cat reads from [stdin](../../misc/stdio.md).
 > cat `FILE0` `FILE1` ... `FILEn`
 
 **Returns:**
+
 - 0 on success
 
 ---
