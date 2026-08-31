@@ -948,6 +948,48 @@ void dirtest(char *s)
     }
 }
 
+void getcwd_test(char *s)
+{
+    const char *utests_path = "/tmp/utests";
+    char cwd[32];
+
+    assert_no_ptr_error(getcwd(cwd, sizeof(cwd)));
+    assert_same_string(cwd, utests_path);
+    assert_errno(0);
+
+    char exact_sized_buffer[sizeof("/tmp/utests")];
+    assert_no_ptr_error(getcwd(exact_sized_buffer, sizeof(exact_sized_buffer)));
+    assert_same_string(exact_sized_buffer, utests_path);
+    assert_errno(0);
+
+    char *allocated_cwd = get_current_dir_name();
+    assert_no_ptr_error(allocated_cwd);
+    assert_same_string(allocated_cwd, utests_path);
+    assert_errno(0);
+    free(allocated_cwd);
+
+    assert_same_value(getcwd(cwd, 0), NULL);
+    assert_errno(EINVAL);
+
+    assert_same_value(getcwd(cwd, strlen(utests_path)), NULL);
+    assert_errno(ERANGE);
+
+    assert_same_value(getcwd((char *)TEST_PTR_MAX_ADDRESS, sizeof(cwd)), NULL);
+    assert_errno(EFAULT);
+
+    assert_no_error(chdir("/"));
+
+    assert_no_ptr_error(getcwd(cwd, sizeof(cwd)));
+    assert_same_string(cwd, "/");
+    assert_errno(0);
+
+    allocated_cwd = get_current_dir_name();
+    assert_no_ptr_error(allocated_cwd);
+    assert_same_string(allocated_cwd, "/");
+    assert_errno(0);
+    free(allocated_cwd);
+}
+
 void exectest(char *s)
 {
     char *echoargv[] = {"/usr/bin/echo", "OK", 0};
@@ -3810,6 +3852,7 @@ struct test tests_vimix[] = {
     {writebig, "writebig", TEST_MASK_FILESYSTEM},
     {createtest, "createtest", TEST_MASK_FILESYSTEM},
     {dirtest, "dirtest", TEST_MASK_FILESYSTEM},
+    {getcwd_test, "getcwd", TEST_MASK_FILESYSTEM},
     {exectest, "exectest", TEST_MASK_NONE},
     {pipe1, "pipe1", TEST_MASK_NONE | TEST_MASK_OFTEN_FAIL},
     {preempt, "preempt", TEST_MASK_CORE_COUNT},

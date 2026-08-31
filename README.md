@@ -94,6 +94,7 @@ $
 	- [setuid](setuid.md) / [setgid](setgid.md) / [setresgid](setresgid.md) / [setresuid](setresuid.)
 	- [fstat](docs/kernel/syscalls/stat.md)
 	- [umask](docs/kernel/syscalls/umask.md)
+	- [getcwdlen](docs/kernel/syscalls/getcwdlen.md)
 - Support multiple [devices](docs/kernel/devices/devices.md), not just two hard coded ones.
 - Added devices:
 	- [/dev/null](docs/userspace/dev/null.md), [/dev/zero](docs/userspace/dev/zero.md), [/dev/random](docs/userspace/dev/random.md)

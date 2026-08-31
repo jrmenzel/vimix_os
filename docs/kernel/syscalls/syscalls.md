@@ -16,6 +16,7 @@ See also: [calling_syscall](calling_syscall.md).
 ## Process Information
 
 - [getpid](getpid.md) Get PID of the current [process](../processes/processes.md).
+- [getcwdlen](getcwdlen.md) Get the Current Working Directory.
 
 ## File Management
 

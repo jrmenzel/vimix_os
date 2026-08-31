@@ -16,3 +16,5 @@ Implemented in `sys_process.c` as `sys_getpid()`.
 ## See also
 
 **Overview:** [syscalls](syscalls.md)
+
+**Process Information:** [getpid](getpid.md) | [getcwdlen](getcwdlen.md)

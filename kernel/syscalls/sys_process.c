@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/trap.h>
+#include <fs/dentry_cache.h>
 #include <kernel/exec.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
@@ -243,4 +244,82 @@ syserr_t sys_setgroups()
     argaddr(1, &list_addr);
 
     return do_setgroups(size, list_addr);
+}
+
+syserr_t do_getcwdlen_locked(size_t buf_addr, size_t buf_size,
+                             struct dentry *dentry)
+{
+    if (dentry_is_unlinked(dentry))
+    {
+        return -ENOENT;
+    }
+
+    size_t required_len = dentry_get_cwd_length(dentry);
+
+    if (buf_addr == 0)
+    {
+        // only query the length
+        return required_len;
+    }
+
+    if (buf_size < required_len)
+    {
+        return -ERANGE;
+    }
+
+    // try to copy the path
+
+    // sanity check:
+    if (required_len > PAGE_SIZE)
+    {
+        return -EOTHER;
+    }
+
+    char *tmp = kmalloc(required_len, ALLOC_FLAG_ZERO_MEMORY);
+    if (tmp == NULL)
+    {
+        return -ENOMEM;
+    }
+
+    dentry_get_cwd(dentry, tmp, required_len);
+
+    struct process *proc = get_current();
+    if (uvm_copy_out(proc->pagetable, buf_addr, tmp, required_len) < 0)
+    {
+        kfree(tmp);
+        return -EFAULT;
+    }
+
+    kfree(tmp);
+
+    return required_len;
+}
+
+syserr_t do_getcwdlen(size_t buf_addr, size_t buf_size)
+{
+    struct process *proc = get_current();
+
+    if ((buf_addr != 0) && (buf_size == 0))
+    {
+        return -EINVAL;
+    }
+
+    dcache_read_lock();
+    syserr_t ret = do_getcwdlen_locked(buf_addr, buf_size, proc->cwd_dentry);
+    dcache_read_unlock();
+
+    return ret;
+}
+
+syserr_t sys_getcwdlen()
+{
+    // parameter 0: char buf[]
+    size_t buf_addr;
+    argaddr(0, &buf_addr);
+
+    // parameter 1: size_t size
+    size_t buf_size;
+    argsize_t(1, &buf_size);
+
+    return do_getcwdlen(buf_addr, buf_size);
 }

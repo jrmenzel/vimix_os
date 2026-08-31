@@ -61,6 +61,21 @@ static inline uint32_t usleep(int32_t useconds)
     return (uint32_t)ms_sleep(useconds / 1000);
 }
 
+// VIMIX specific Syscall that returns the required buffer size
+// (incl 0-terminator) and fills the provided buffer if it is
+// big enough.
+extern ssize_t getcwdlen(char buf[], size_t size);
+
+// POSIX wrapper for getcwdlen(): Fills the provided buffer
+// with the current working directory (if big enough) and
+// returns a pointer to buf OR NULL on failure.
+char *getcwd(char buf[], size_t size);
+
+// POSIX wrapper for getcwdlen(): Checks the required buffer size,
+// mallocs it and fills it on a second getcwdlen() call.
+// Caller must free() the buffer.
+char *get_current_dir_name();
+
 ///////////////////////////////////////
 // 2. File Management
 //

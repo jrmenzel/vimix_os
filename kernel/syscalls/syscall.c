@@ -179,6 +179,7 @@ static syserr_t (*const syscalls[])() = {
     [SYS_setgroups] sys_setgroups,
     [SYS_getgroups] sys_getgroups,
     [SYS_umask] sys_umask,
+    [SYS_getcwdlen] sys_getcwdlen,
 };
 // clang-format on
 

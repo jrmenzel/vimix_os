@@ -231,3 +231,59 @@ void dentry_put(struct dentry *dp)
         dentry_free(dp);
     }
 }
+
+size_t dentry_get_cwd_length(struct dentry *dentry)
+{
+    size_t len = 0;
+    if (dentry == NULL)
+    {
+        return 0;
+    }
+    if (dentry->parent == NULL)
+    {
+        return 2;  // "/" + trailing zero
+    }
+    else
+    {
+        len = dentry_get_cwd_length(dentry->parent);
+        if (dentry->parent->parent != NULL)
+        {
+            len++;
+        }
+    }
+
+    return len + strlen(dentry->name);
+}
+
+size_t dentry_get_cwd(struct dentry *dentry, char *buf, size_t buf_len)
+{
+    size_t printed_total = 0;
+
+    if (dentry == NULL)
+    {
+        return printed_total;
+    }
+
+    if (dentry->parent == NULL)
+    {
+        return snprintf(buf, buf_len, "/");
+    }
+    else
+    {
+        size_t printed = dentry_get_cwd(dentry->parent, buf, buf_len);
+        buf_len += printed;
+        buf += printed;
+        printed_total += printed;
+
+        if (dentry->parent->parent != NULL)
+        {
+            size_t printed = snprintf(buf, buf_len, "/");
+            buf_len += printed;
+            buf += printed;
+            printed_total += printed;
+        }
+    }
+
+    printed_total += snprintf(buf, buf_len, "%s", dentry->name);
+    return printed_total;
+}

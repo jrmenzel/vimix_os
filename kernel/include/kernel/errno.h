@@ -36,7 +36,7 @@
 // #define EMLINK 31   ///< Too many links
 // #define EPIPE 32    ///< Broken pipe
 // #define EDOM 33     ///< Math argument out of domain of func
-// #define ERANGE 34   ///< Math result not representable
+#define ERANGE 34     ///< Math result not representable, buffer too small
 #define ENOTEMPTY 39  ///< Dir not empty
 
 #define EOTHER 0xFFF0       ///< todos to find the right error codes ;-)

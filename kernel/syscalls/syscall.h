@@ -55,6 +55,10 @@ syserr_t sys_getgroups();
 /// unistd.h.
 syserr_t sys_setgroups();
 
+/// @brief Syscall "size_t getcwdlen(char buf[], size_t size)" from
+/// unistd.h for POSIX-like getcwd() and get_current_dir_name().
+syserr_t sys_getcwdlen();
+
 // ********************************************************
 // File management from sys_file.c
 //

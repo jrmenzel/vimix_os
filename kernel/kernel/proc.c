@@ -921,7 +921,6 @@ void debug_print_process(bool print_call_stack_user,
     }
     printk(" | %s", proc->name);
     printk(" | cwd: ");
-    // debug_print_inode(proc->cwd_dentry->ip);
     debug_print_path(proc->cwd_dentry);
     printk(" | state: %s", state);
 

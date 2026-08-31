@@ -5,6 +5,21 @@ Normally it gets started by [init](init.md).
 
 Searches for commands in `/usr/bin` and `/usr/local/bin`.
 
+## Build-in Commands
+
+> exit
+
+Closes the shell.
+
+> echo $?
+
+Returns the last programs return code.
+
+> pwd
+
+Print the Current Working Directory. 
+
+
 See also [life_cycle_user_application](../../kernel/overview/life_cycle_user_application.md).
 
 ---

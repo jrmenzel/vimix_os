@@ -97,3 +97,4 @@ entry("fchmod");
 entry("setgroups");
 entry("getgroups");
 entry("umask");
+entry("getcwdlen");

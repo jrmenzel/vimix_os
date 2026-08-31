@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <errno.h>
 #include <kernel/limits.h>
 #include <kernel/page.h>
 #include <kernel/param.h>
@@ -213,4 +214,34 @@ uid_t getegid()
     gid_t egid;
     getresgid(NULL, &egid, NULL);
     return egid;
+}
+
+char *getcwd(char buf[], size_t size)
+{
+    errno = 0;
+    getcwdlen(buf, size);
+    if (errno != 0)
+    {
+        // some error
+        return NULL;
+    }
+    return buf;
+}
+
+char *get_current_dir_name(void)
+{
+    errno = 0;
+    size_t s = (size_t)getcwdlen(NULL, 0);
+    if (errno != 0)
+    {
+        // some error
+        return NULL;
+    }
+    char *path = malloc(s);
+    if (path == NULL)
+    {
+        return NULL;
+    }
+
+    return getcwd(path, s);
 }

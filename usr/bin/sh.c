@@ -1,5 +1,13 @@
 /* SPDX-License-Identifier: MIT */
 
+#if defined(BUILD_ON_HOST)
+// get_current_dir_name() requires _GNU_SOURCE
+#define _GNU_SOURCE
+#include <linux/limits.h>
+#else
+#include <kernel/limits.h>
+#endif
+
 // Shell.
 #include <ctype.h>
 #include <errno.h>
@@ -11,12 +19,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <vimixutils/path.h>
-
-#if defined(BUILD_ON_HOST)
-#include <linux/limits.h>
-#else
-#include <kernel/limits.h>
-#endif
 
 // Parsed command representation
 #define EXEC 1
@@ -249,6 +251,20 @@ int main(int argc, const char *argv[])
         if (strcmp(buf, "echo $?\n") == 0)
         {
             printf("%d\n", status);
+            continue;
+        }
+        if (strcmp(buf, "pwd\n") == 0)
+        {
+            char *cwd = get_current_dir_name();
+            if (cwd != NULL)
+            {
+                printf("%s\n", cwd);
+                free(cwd);
+            }
+            else if (errno == ENOENT)
+            {
+                printf("UNLINKED DIR\n");
+            }
             continue;
         }
         if (is_blank_string(buf))

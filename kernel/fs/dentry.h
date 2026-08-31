@@ -165,3 +165,10 @@ static inline bool dentry_is_invalid(struct dentry *dp)
 
     return dentry_inode(dp) == NULL;
 }
+
+/// @brief Returns the length of the CWD path including
+/// trailing zero. Assumes dcache is externally locked.
+/// @return Path length.
+size_t dentry_get_cwd_length(struct dentry *dentry);
+
+size_t dentry_get_cwd(struct dentry *dentry, char *buf, size_t buf_len);
