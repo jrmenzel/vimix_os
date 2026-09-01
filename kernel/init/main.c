@@ -3,11 +3,11 @@
 #include <arch/interrupts.h>
 #include <arch/system.h>
 #include <arch/trap.h>
-#include <drivers/console.h>
+#include <drivers/bdev/ramdisk.h>
+#include <drivers/bdev/virtio_disk.h>
 #include <drivers/devices_list.h>
 #include <drivers/driver_list.h>
-#include <drivers/ramdisk.h>
-#include <drivers/virtio_disk.h>
+#include <drivers/tty/console.h>
 #include <init/dtb.h>
 #include <init/early_pgtable.h>
 #include <init/main.h>

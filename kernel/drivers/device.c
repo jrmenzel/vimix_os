@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/irq.h>
-#include <drivers/block_device.h>
-#include <drivers/character_device.h>
+#include <drivers/bdev/block_device.h>
+#include <drivers/cdev/character_device.h>
 #include <drivers/device.h>
 #include <kernel/bio.h>
 #include <kernel/compiler.h>

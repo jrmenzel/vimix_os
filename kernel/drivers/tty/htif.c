@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/console.h>
-#include <drivers/htif.h>
+#include <drivers/tty/console.h>
+#include <drivers/tty/htif.h>
 #include <kernel/major.h>
 #include <kernel/pgtable.h>
 #include <kernel/reset.h>

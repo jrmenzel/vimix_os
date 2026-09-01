@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/bcm2835_firmware.h>
-#include <drivers/bcm2835_mbox.h>
+#include <drivers/bcm/bcm2835_firmware.h>
+#include <drivers/bcm/bcm2835_mbox.h>
 #include <kernel/kticks.h>
 #include <kernel/major.h>
 #include <kernel/pgtable.h>

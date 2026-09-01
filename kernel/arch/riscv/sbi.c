@@ -5,7 +5,7 @@
 #include <arch/riscv/riscv.h>
 #include <arch/riscv/sbi.h>
 #include <arch/riscv/sbi_defs.h>
-#include <drivers/console.h>
+#include <drivers/tty/console.h>
 #include <init/dtb.h>
 #include <kernel/ipi.h>
 #include <kernel/kernel.h>

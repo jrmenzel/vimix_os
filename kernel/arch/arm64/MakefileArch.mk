@@ -39,11 +39,11 @@ OBJS_ARCH := arch/arm64/asm/head.o \
 	arch/arm64/arch_system.o \
 	arch/arm64/drivers/arm_psci.o \
 	arch/arm64/drivers/gic_v2.o \
-	drivers/arm_pl011.o \
-	drivers/arm_pl031.o \
-	drivers/bcm2711_pm.o \
-	drivers/bcm2835_aux.o \
-	drivers/bcm2835_aux_uart.o \
-	drivers/bcm2835_firmware.o \
-	drivers/bcm2835_gpio.o \
-	drivers/bcm2835_mbox.o
+	drivers/tty/arm_pl011.o \
+	drivers/rtc/arm_pl031.o \
+	drivers/bcm/bcm2711_pm.o \
+	drivers/bcm/bcm2835_aux.o \
+	drivers/tty/bcm2835_aux_uart.o \
+	drivers/bcm/bcm2835_firmware.o \
+	drivers/bcm/bcm2835_gpio.o \
+	drivers/bcm/bcm2835_mbox.o

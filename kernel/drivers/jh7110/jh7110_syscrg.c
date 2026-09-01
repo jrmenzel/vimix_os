@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/jh7110_syscrg.h>
+#include <drivers/jh7110/jh7110_syscrg.h>
 #include <drivers/mmio_access.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>

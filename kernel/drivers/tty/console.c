@@ -12,12 +12,12 @@
 
 #include <arch/irq.h>
 #include <arch/riscv/sbi.h>
-#include <drivers/arm_pl011.h>
-#include <drivers/bcm2835_aux_uart.h>
-#include <drivers/character_device.h>
-#include <drivers/console.h>
-#include <drivers/htif.h>
-#include <drivers/uart16550.h>
+#include <drivers/cdev/character_device.h>
+#include <drivers/tty/arm_pl011.h>
+#include <drivers/tty/bcm2835_aux_uart.h>
+#include <drivers/tty/console.h>
+#include <drivers/tty/htif.h>
+#include <drivers/tty/uart16550.h>
 #include <fs/dentry_cache.h>
 #include <kernel/errno.h>
 #include <kernel/file.h>

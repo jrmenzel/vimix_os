@@ -4,8 +4,8 @@
 // Support functions for system calls that involve file descriptors.
 //
 
-#include <drivers/block_device.h>
-#include <drivers/character_device.h>
+#include <drivers/bdev/block_device.h>
+#include <drivers/cdev/character_device.h>
 #include <fs/dentry_cache.h>
 #include <fs/fs_lookup.h>
 #include <ipc/pipe.h>

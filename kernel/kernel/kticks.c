@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/console.h>
+#include <drivers/tty/console.h>
 #include <kernel/kticks.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>

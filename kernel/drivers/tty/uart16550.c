@@ -5,9 +5,9 @@
 //
 
 #include <arch/asm.h>
-#include <drivers/console.h>
 #include <drivers/mmio_access.h>
-#include <drivers/uart16550.h>
+#include <drivers/tty/console.h>
+#include <drivers/tty/uart16550.h>
 #include <kernel/cpu.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>

@@ -3,16 +3,17 @@
 #include <kernel/kticks.h>
 #include <kernel/rtc.h>
 
-static rtc_get_time_fn g_rtc_get_time_fn_ptr = NULL;
+struct rtc_device *g_rtc = NULL;
 
-void rtc_register_get_time_fn(rtc_get_time_fn fn)
+void rtc_register(struct rtc_device *rtc)
 {
-    g_rtc_get_time_fn_ptr = fn;
+    DEBUG_EXTRA_PANIC(g_rtc == NULL, "Only one RTC is supported");
+    g_rtc = rtc;
 }
 
 struct timespec rtc_get_time()
 {
-    if (g_rtc_get_time_fn_ptr == NULL)
+    if (g_rtc == NULL)
     {
         // no real time clock -> assume boot was at time 0 / 1.1.1970
         struct timespec time;
@@ -21,5 +22,5 @@ struct timespec rtc_get_time()
         return time;
     }
 
-    return g_rtc_get_time_fn_ptr();
+    return g_rtc->get_time_fn(g_rtc);
 }

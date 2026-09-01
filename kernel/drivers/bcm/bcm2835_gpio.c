@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/asm.h>
-#include <drivers/bcm2835_gpio.h>
+#include <drivers/bcm/bcm2835_gpio.h>
 #include <drivers/mmio_access.h>
 #include <kernel/major.h>
 #include <kernel/string.h>

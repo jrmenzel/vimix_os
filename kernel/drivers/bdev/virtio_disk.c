@@ -6,9 +6,9 @@
 // qemu ... -drive file=fs.img,if=none,format=raw,id=x0 -device
 // virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
+#include <drivers/bdev/virtio.h>
+#include <drivers/bdev/virtio_disk.h>
 #include <drivers/mmio_access.h>
-#include <drivers/virtio.h>
-#include <drivers/virtio_disk.h>
 #include <kernel/buf.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
@@ -16,6 +16,7 @@
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
+#include <kernel/stdatomic.h>
 #include <kernel/string.h>
 #include <mm/kalloc.h>
 

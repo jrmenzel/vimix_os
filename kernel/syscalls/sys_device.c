@@ -4,7 +4,7 @@
 // Device management system calls.
 //
 
-#include <drivers/character_device.h>
+#include <drivers/cdev/character_device.h>
 #include <kernel/file.h>
 #include <kernel/kernel.h>
 #include <kernel/permission.h>

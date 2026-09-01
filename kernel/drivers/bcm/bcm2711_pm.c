@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/cpu.h>
-#include <drivers/bcm2711_pm.h>
+#include <drivers/bcm/bcm2711_pm.h>
 #include <drivers/mmio_access.h>
 #include <kernel/major.h>
 #include <kernel/reset.h>

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/bcm2835_mbox.h>
+#include <drivers/bcm/bcm2835_mbox.h>
 #include <drivers/mmio_access.h>
 #include <kernel/major.h>
 #include <kernel/spinlock.h>

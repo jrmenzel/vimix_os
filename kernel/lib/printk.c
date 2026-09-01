@@ -9,7 +9,7 @@
 #include <arch/riscv/sbi_defs.h>
 #endif
 
-#include <drivers/console.h>
+#include <drivers/tty/console.h>
 #include <kernel/kernel.h>
 #include <kernel/printk.h>
 #include <kernel/spinlock.h>

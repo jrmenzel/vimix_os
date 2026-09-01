@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/block_device.h>
+#include <drivers/bdev/block_device.h>
 #include <kernel/bio.h>
 #include <kernel/bio_sysfs.h>
 #include <kernel/buf.h>

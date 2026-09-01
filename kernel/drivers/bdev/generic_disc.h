@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#include <drivers/block_device.h>
+#include <drivers/bdev/block_device.h>
 #include <kernel/types.h>
 
 ///

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/bcm2835_aux.h>
+#include <drivers/bcm/bcm2835_aux.h>
 #include <drivers/mmio_access.h>
 #include <kernel/major.h>
 

@@ -88,8 +88,8 @@ OBJS_ARCH := arch/riscv/asm/head.o \
 	arch/riscv/drivers/plic.o \
 	arch/riscv/scause.o \
 	arch/riscv/sbi.o \
-	drivers/jh7110_temp.o \
-	drivers/jh7110_syscrg.o
+	drivers/cdev/jh7110_temp.o \
+	drivers/jh7110/jh7110_syscrg.o
 
 ifeq ($(BOOT_MODE), BOOT_M_MODE)
 OBJS_ARCH += arch/riscv/asm/m_mode_trap_vector.o

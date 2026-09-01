@@ -19,18 +19,18 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	$(ARCH_DIR)/arch_timer.o \
 	$(ARCH_DIR)/arch_trap.o \
 	drivers/device.o \
-	drivers/console.o \
-	drivers/uart16550.o \
-	drivers/dev_null.o \
-	drivers/dev_random.o \
-	drivers/dev_zero.o \
+	drivers/tty/console.o \
+	drivers/tty/uart16550.o \
+	drivers/cdev/dev_null.o \
+	drivers/cdev/dev_random.o \
+	drivers/cdev/dev_zero.o \
 	drivers/devices_list.o \
 	drivers/driver_list.o \
-	drivers/htif.o \
-	drivers/ramdisk.o \
-	drivers/goldfish_rtc.o \
-	drivers/syscon.o \
-	drivers/virtio_disk.o \
+	drivers/tty/htif.o \
+	drivers/bdev/ramdisk.o \
+	drivers/rtc/goldfish_rtc.o \
+	drivers/misc/syscon.o \
+	drivers/bdev/virtio_disk.o \
 	fs/dentry.o \
 	fs/dentry_cache.o \
 	fs/dentry_cache_sysfs.o \
@@ -124,6 +124,13 @@ OBJS += $(addprefix lib/libfdt/, $(LIBFDT_OBJS))
 
 SUB_DIRS := \
   drivers \
+  drivers/bcm \
+  drivers/bdev \
+  drivers/cdev \
+  drivers/jh7110 \
+  drivers/misc \
+  drivers/rtc \
+  drivers/tty \
   fs \
   fs/devfs \
   fs/sysfs \

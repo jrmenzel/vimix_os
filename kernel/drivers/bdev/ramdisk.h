@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
-#include <drivers/block_device.h>
+#include <drivers/bdev/block_device.h>
 #include <drivers/devices_list.h>
 
 /// @brief Adds itself to the devices list.

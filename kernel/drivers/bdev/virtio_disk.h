@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <drivers/bdev/generic_disc.h>
+#include <drivers/bdev/virtio.h>
 #include <drivers/device.h>
 #include <drivers/devices_list.h>
-#include <drivers/generic_disc.h>
-#include <drivers/virtio.h>
 #include <kernel/buf.h>
 #include <kernel/container_of.h>
 #include <kernel/kernel.h>

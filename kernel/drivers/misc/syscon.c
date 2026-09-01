@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <drivers/misc/syscon.h>
 #include <drivers/mmio_access.h>
-#include <drivers/syscon.h>
 #include <init/dtb.h>
 #include <kernel/major.h>
 #include <kernel/pgtable.h>

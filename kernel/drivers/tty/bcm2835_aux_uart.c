@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/asm.h>
-#include <drivers/bcm2835_aux.h>
-#include <drivers/bcm2835_aux_uart.h>
-#include <drivers/bcm2835_firmware.h>
-#include <drivers/bcm2835_gpio.h>
-#include <drivers/console.h>
+#include <drivers/bcm/bcm2835_aux.h>
+#include <drivers/bcm/bcm2835_firmware.h>
+#include <drivers/bcm/bcm2835_gpio.h>
 #include <drivers/mmio_access.h>
+#include <drivers/tty/bcm2835_aux_uart.h>
+#include <drivers/tty/console.h>
 #include <init/dtb.h>
 #include <init/system.h>
 #include <kernel/major.h>

@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/asm.h>
-#include <drivers/arm_pl011.h>
-#include <drivers/console.h>
 #include <drivers/mmio_access.h>
+#include <drivers/tty/arm_pl011.h>
+#include <drivers/tty/console.h>
 #include <kernel/cpu.h>
 #include <kernel/major.h>
 
