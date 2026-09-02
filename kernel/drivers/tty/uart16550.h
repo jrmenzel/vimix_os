@@ -2,6 +2,7 @@
 #pragma once
 
 #include <drivers/devices_list.h>
+#include <drivers/tty/tty_device.h>
 #include <kernel/kernel.h>
 #include <kernel/spinlock.h>
 
@@ -19,7 +20,8 @@ enum UART_BAUD_RATE
 
 /// @brief Inits the hardware, creates a uart_16550 object
 /// and adds it to the devices list.
-dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name);
+dev_t uart_init(struct Device_Init_Parameters *init_parameters,
+                const char *name);
 
 bool uart_set_baud_rate(enum UART_BAUD_RATE rate);
 
@@ -49,6 +51,8 @@ int uart_getc();
 /// @brief Struct of the driver for the common 16550 UART.
 struct uart_16550
 {
+    struct TTY_Device tty;
+
     struct spinlock uart_tx_lock;
 
     /// the transmit output buffer.

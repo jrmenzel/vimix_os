@@ -12,7 +12,7 @@ struct bcm2835_aux
     bool is_initialized;
 };
 
-dev_t bcm2835_aux_init(struct Device_Init_Parameters *init_param,
+dev_t bcm2835_aux_init(struct Device_Init_Parameters *init_parameters,
                        const char *name);
 
 #define BCM2835_AUX_DEVICE_UART (0)

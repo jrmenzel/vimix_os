@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <drivers/devices_list.h>
+#include <drivers/tty/tty_device.h>
 #include <kernel/kernel.h>
 
 /// @brief Init function

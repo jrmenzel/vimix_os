@@ -2,10 +2,8 @@
 
 #include <drivers/cdev/character_device.h>
 #include <drivers/cdev/jh7110_temp.h>
+#include <drivers/driver.h>
 #include <drivers/jh7110/jh7110_syscrg.h>
-#include <drivers/mmio_access.h>
-#include <kernel/kernel.h>
-#include <kernel/major.h>
 #include <kernel/pgtable.h>
 #include <kernel/proc.h>
 
@@ -70,7 +68,9 @@ void jh7110_temp_interrupt(dev_t dev) {}
 dev_t jh7110_temp_init(struct Device_Init_Parameters *init_parameters,
                        const char *name)
 {
-    if (g_jh7110_temp.is_initialized || !init_parameters)
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
+
+    if (g_jh7110_temp.is_initialized)
     {
         printk("temp: already initialized\n");
         return INVALID_DEVICE;

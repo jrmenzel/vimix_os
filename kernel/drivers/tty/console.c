@@ -12,21 +12,20 @@
 
 #include <arch/irq.h>
 #include <arch/riscv/sbi.h>
-#include <drivers/cdev/character_device.h>
+#include <drivers/driver.h>
 #include <drivers/tty/arm_pl011.h>
 #include <drivers/tty/bcm2835_aux_uart.h>
 #include <drivers/tty/console.h>
 #include <drivers/tty/htif.h>
 #include <drivers/tty/uart16550.h>
 #include <fs/dentry_cache.h>
+#include <kernel/container_of.h>
 #include <kernel/errno.h>
 #include <kernel/file.h>
 #include <kernel/fs.h>
 #include <kernel/ioctl.h>
-#include <kernel/kernel.h>
 #include <kernel/kobject.h>
 #include <kernel/kticks.h>
-#include <kernel/major.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
@@ -38,65 +37,71 @@
 #define DELETE_KEY '\x7f'
 #define CONTROL_KEY(x) ((x) - '@')  // Control-x
 
-// pointers for the put char function of either a UART driver or the SBI
-// fallback
-void (*device_putc)(int32_t ch) = NULL;
-void (*device_putc_sync)(int32_t ch) = NULL;
-
-/// @brief NULL if no regular callback to poll input is needed
-/// (used if no real console device is available)
-void (*g_console_poll_callback)() = NULL;
-
-/// @brief add a CR / 'r' for every '\n' written
-const bool g_console_add_cr = true;
-
-/// send one character to the uart.
-/// called by printk(), and to echo input characters,
-/// but not from write().
-void console_putc(int32_t c)
-{
-    if (c == BACKSPACE)
-    {
-        // if the user typed backspace, overwrite with a space.
-        device_putc_sync('\b');
-        device_putc_sync(' ');
-        device_putc_sync('\b');
-    }
-    else
-    {
-        if (g_console_add_cr && c == '\n')
-        {
-            // add carrige return to a newline
-            device_putc_sync('\r');
-        }
-        device_putc_sync(c);
-    }
-}
-
-struct
+/// max line length: real UNIXes allow 4096 bytes
+#define CONSOLE_INPUT_BUF_SIZE 128
+struct Console_Device
 {
     struct Character_Device cdev;  ///< derived from a character device
     struct Device_Init_Parameters init_parameters;
 
     struct spinlock lock;
 
-    /// max line length: real UNIXes allow 4096 bytes
-#define INPUT_BUF_SIZE 128
-    char buf[INPUT_BUF_SIZE];
-    uint32_t r;  ///< Read index
-    uint32_t w;  ///< Write index
-    uint32_t e;  ///< Edit index
+    char buf[CONSOLE_INPUT_BUF_SIZE];
+    size_t r;  ///< Read index
+    size_t w;  ///< Write index
+    size_t e;  ///< Edit index
 
     // support for simple RAW mode
     struct termios termios;
-} g_console;
+
+    bool add_cr;  ///< add a CR / 'r' for every '\n' written
+
+    device_putc_fn putc;
+    device_putc_fn putc_sync;
+};
+
+#define console_driver_from_cdev(ptr) \
+    container_of((ptr), struct Console_Device, cdev)
+
+/// @brief NULL if no regular callback to poll input is needed
+/// (used if no real console device is available)
+void (*g_console_poll_callback)() = NULL;
+
+atomic_size_t g_console_next_minor = 0;
+
+struct Console_Device *g_boot_console = NULL;
+
+/// send one character to the uart.
+/// called by printk(), and to echo input characters,
+/// but not from write().
+void console_putc(struct Console_Device *console, int32_t c)
+{
+    if (c == BACKSPACE)
+    {
+        // if the user typed backspace, overwrite with a space.
+        console->putc_sync('\b');
+        console->putc_sync(' ');
+        console->putc_sync('\b');
+    }
+    else
+    {
+        if (console->add_cr && c == '\n')
+        {
+            // add carrige return to a newline
+            console->putc_sync('\r');
+        }
+        console->putc_sync(c);
+    }
+}
 
 /// user write()s to the console go here.
 ssize_t console_write(struct Device *dev, bool addr_is_userspace, size_t src,
                       size_t n)
 {
-    ssize_t i;
+    struct Character_Device *cdev = character_device_from_device(dev);
+    struct Console_Device *console = console_driver_from_cdev(cdev);
 
+    ssize_t i;
     for (i = 0; i < (ssize_t)n; i++)
     {
         char c;
@@ -105,12 +110,12 @@ ssize_t console_write(struct Device *dev, bool addr_is_userspace, size_t src,
             break;
         }
 
-        if (g_console_add_cr && c == '\n')
+        if (console->add_cr && c == '\n')
         {
             // add carrige return to a newline, don't count extra
-            device_putc('\r');
+            console->putc('\r');
         }
-        device_putc(c);
+        console->putc(c);
     }
 
     return i;
@@ -123,29 +128,32 @@ ssize_t console_write(struct Device *dev, bool addr_is_userspace, size_t src,
 ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
                      size_t n, uint32_t unused_file_offset)
 {
-    size_t target = n;
-    ssize_t termios_target = g_console.termios.c_cc[VMIN];
-    bool canonical_mode = (g_console.termios.c_lflag & ICANON);
+    struct Character_Device *cdev = character_device_from_device(dev);
+    struct Console_Device *console = console_driver_from_cdev(cdev);
 
-    spin_lock(&g_console.lock);
+    size_t target = n;
+    ssize_t termios_target = console->termios.c_cc[VMIN];
+    bool canonical_mode = (console->termios.c_lflag & ICANON);
+
+    spin_lock(&console->lock);
     while (n > 0)
     {
-        size_t timeout = g_console.termios.c_cc[VTIME];  // 1/10s
+        size_t timeout = console->termios.c_cc[VTIME];  // 1/10s
         timeout = timeout * TIMER_INTERRUPTS_PER_SECOND / 10;
         timeout += kticks_get_ticks();
 
         // wait until interrupt handler has put some
-        // input into g_console.buffer.
-        while (g_console.r == g_console.w)
+        // input into console->buffer.
+        while (console->r == console->w)
         {
             if (proc_is_killed(get_current()))
             {
-                spin_unlock(&g_console.lock);
+                spin_unlock(&console->lock);
                 return -ESRCH;
             }
             if (canonical_mode)
             {
-                sleep(&g_console.r, &g_console.lock);
+                sleep(&console->r, &console->lock);
             }
             else
             {
@@ -153,17 +161,17 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
                 if (now >= timeout)
                 {
                     // timeout expired
-                    spin_unlock(&g_console.lock);
+                    spin_unlock(&console->lock);
                     return 0;
                 }
                 // wake up eack kernel tick to check for input
                 // if we wait here for a console interrupt, we miss the
                 // timeout
-                sleep(&g_ticks, &g_console.lock);
+                sleep(&g_ticks, &console->lock);
             }
         }
 
-        int32_t c = g_console.buf[g_console.r++ % INPUT_BUF_SIZE];
+        int32_t c = console->buf[console->r++ % CONSOLE_INPUT_BUF_SIZE];
 
         if (c == CONTROL_KEY('D'))
         {  // end-of-file
@@ -171,7 +179,7 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
             {
                 // Save ^D for next time, to make sure
                 // caller gets a 0-byte result.
-                g_console.r--;
+                console->r--;
             }
             break;
         }
@@ -198,24 +206,27 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
             break;
         }
     }
-    spin_unlock(&g_console.lock);
+    spin_unlock(&console->lock);
 
     return target - n;
 }
 
-int console_ioctl(struct inode *ip, int req, void *ttyctl)
+int console_ioctl(struct Device *dev, struct inode *ip, int req, void *ttyctl)
 {
-    spin_lock(&g_console.lock);
+    struct Character_Device *cdev = character_device_from_device(dev);
+    struct Console_Device *console = console_driver_from_cdev(cdev);
+
+    spin_lock(&console->lock);
     if (req == TCGETA)
     {
         // *termios_p = cons.termios;
         struct termios *termios_out = (struct termios *)ttyctl;
 
         if (either_copyout(true, (size_t)termios_out,
-                           (void *)&(g_console.termios),
+                           (void *)&(console->termios),
                            sizeof(struct termios)) == -1)
         {
-            spin_unlock(&g_console.lock);
+            spin_unlock(&console->lock);
             return -1;
         }
     }
@@ -224,10 +235,10 @@ int console_ioctl(struct inode *ip, int req, void *ttyctl)
         // cons.termios = *termios_p;
         struct termios *termios_in = (struct termios *)ttyctl;
 
-        if (either_copyin((void *)&(g_console.termios), true,
-                          (size_t)termios_in, sizeof(struct termios)) == -1)
+        if (either_copyin((void *)&(console->termios), true, (size_t)termios_in,
+                          sizeof(struct termios)) == -1)
         {
-            spin_unlock(&g_console.lock);
+            spin_unlock(&console->lock);
             return -1;
         }
     }
@@ -244,17 +255,17 @@ int console_ioctl(struct inode *ip, int req, void *ttyctl)
         if (either_copyout(true, (size_t)(ws_out), (void *)&(ws),
                            sizeof(struct winsize)) == -1)
         {
-            spin_unlock(&g_console.lock);
+            spin_unlock(&console->lock);
             return -1;
         }
     }
     else
     {
         printk("console_ioctl: unknown request 0x%x\n", req);
-        spin_unlock(&g_console.lock);
+        spin_unlock(&console->lock);
         return -1;
     }
-    spin_unlock(&g_console.lock);
+    spin_unlock(&console->lock);
     return 0;
 }
 
@@ -287,7 +298,7 @@ void print_epochs()
     }
 }
 
-bool console_handle_control_keys(int32_t c)
+bool console_handle_control_keys(struct Console_Device *console, int32_t c)
 {
     bool processed = true;
 
@@ -326,12 +337,12 @@ bool console_handle_control_keys(int32_t c)
         case CONTROL_KEY('Y'): debug_print_kobject_tree(); break;
         case CONTROL_KEY('D'): debug_print_dentry_cache(); break;
         case DELETE_KEY:  // Delete key
-            if (g_console.e != g_console.w)
+            if (console->e != console->w)
             {
-                g_console.e--;
-                if (g_console.termios.c_lflag & ECHO)
+                console->e--;
+                if (console->termios.c_lflag & ECHO)
                 {
-                    console_putc(BACKSPACE);
+                    console_putc(console, BACKSPACE);
                 }
             }
             break;
@@ -343,66 +354,117 @@ bool console_handle_control_keys(int32_t c)
 
 /// the console input interrupt handler.
 /// uart_interrupt_handler() calls this for input character.
-/// do erase/kill processing, append to g_console.buf,
+/// do erase/kill processing, append to g_console->buf,
 /// wake up console_read() if a whole line has arrived.
 void console_interrupt_handler(int32_t c)
 {
-    spin_lock(&g_console.lock);
+    struct Console_Device *console = g_boot_console;
+
+    spin_lock(&console->lock);
 
     bool input_processed = false;
-    if (g_console.termios.c_lflag & ICANON)
+    if (console->termios.c_lflag & ICANON)
     {
-        input_processed = console_handle_control_keys(c);
+        input_processed = console_handle_control_keys(console, c);
     }
 
     if (!input_processed)
     {
-        if (c != 0 && g_console.e - g_console.r < INPUT_BUF_SIZE)
+        if (c != 0 && console->e - console->r < CONSOLE_INPUT_BUF_SIZE)
         {
             // carriage return to newline
-            if (g_console.termios.c_lflag & ICRNL)
+            if (console->termios.c_lflag & ICRNL)
             {
                 c = (c == '\r') ? '\n' : c;
             }
 
             // echo back to the user.
-            if (g_console.termios.c_lflag & ECHO)
+            if (console->termios.c_lflag & ECHO)
             {
-                console_putc(c);
+                console_putc(console, c);
             }
 
             // store for consumption by console_read().
-            g_console.buf[g_console.e++ % INPUT_BUF_SIZE] = c;
+            console->buf[console->e++ % CONSOLE_INPUT_BUF_SIZE] = c;
 
             // in non-canonical mode, return each key press, otherwise wait for
             // newline
-            bool wakeup_readers = !(g_console.termios.c_lflag & ICANON);
+            bool wakeup_readers = !(console->termios.c_lflag & ICANON);
             wakeup_readers |= (c == '\n');
             wakeup_readers |= (c == CONTROL_KEY('D'));
             // buffer full:
-            wakeup_readers |= (g_console.e - g_console.r == INPUT_BUF_SIZE);
+            wakeup_readers |=
+                (console->e - console->r == CONSOLE_INPUT_BUF_SIZE);
 
             if (wakeup_readers)
             {
-                g_console.w = g_console.e;
-                wakeup(&g_console.r);
+                console->w = console->e;
+                wakeup(&console->r);
             }
         }
     }
 
-    spin_unlock(&g_console.lock);
+    spin_unlock(&console->lock);
+}
+
+struct Console_Device *console_init2(struct TTY_Device *tty)
+{
+    DEBUG_EXTRA_PANIC(tty != NULL, "tty is NULL");
+
+    struct Console_Device *console =
+        kmalloc(sizeof(struct Console_Device), ALLOC_FLAG_ZERO_MEMORY);
+    if (console == NULL)
+    {
+        return NULL;
+    }
+    if (g_boot_console == NULL)
+    {
+        g_boot_console = console;
+    }
+
+    spin_lock_init(&console->lock, "cons");
+
+    size_t minor = (size_t)atomic_fetch_add(&g_console_next_minor, 1);
+
+    const size_t NAME_LEN = 16;
+    char *device_name = kmalloc(NAME_LEN, ALLOC_FLAG_NONE);
+    if (device_name == NULL)
+    {
+        kfree(console);
+        printk("console: out of memory\n");
+        return NULL;
+    }
+    snprintf(device_name, NAME_LEN, "console%zd", minor);
+
+    // init device and register it in the system
+    dev_init(&console->cdev.dev, CHAR, MKDEV(CONSOLE_DEVICE_MAJOR, minor),
+             "console", INVALID_IRQ_NUMBER, NULL);
+    console->cdev.ops.read = console_read;
+    console->cdev.ops.write = console_write;
+    console->cdev.ops.ioctl = console_ioctl;
+    console->cdev.dev.mode = 0666;
+
+    memset(&console->termios, 0, sizeof(struct termios));
+    console->termios.c_lflag = ECHO | ICANON | ICRNL;
+    console->termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
+    console->termios.c_cc[VTIME] = 0;  // no timeout in read()
+
+    console->add_cr = true;
+
+    console->putc = tty->putc;
+    console->putc_sync = tty->putc_sync;
+    g_console_poll_callback = tty->poll_callback;
+
+    register_device(&console->cdev.dev);
+    printk_redirect_to_console(console);
+
+    return console;
 }
 
 void console_putc_noop(int32_t ch) {}
 
 dev_t console_init(struct Found_Device *console_dev)
 {
-    // already initialized with another device
-    if (device_putc != NULL)
-    {
-        return INVALID_DEVICE;
-    }
-
     if (console_dev != NULL)
     {
         struct Devices_List *dev_list = get_devices_list();
@@ -413,59 +475,74 @@ dev_t console_init(struct Found_Device *console_dev)
         }
     }
 
-    spin_lock_init(&g_console.lock, "cons");
+    struct Console_Device *console =
+        kmalloc(sizeof(struct Console_Device), ALLOC_FLAG_ZERO_MEMORY);
+    if (console == NULL)
+    {
+        return INVALID_DEVICE;
+    }
+    if (g_boot_console == NULL)
+    {
+        g_boot_console = console;
+    }
+
+    spin_lock_init(&console->lock, "cons");
+
+    size_t minor = (size_t)atomic_fetch_add(&g_console_next_minor, 1);
 
     // init device and register it in the system
-    dev_init(&g_console.cdev.dev, CHAR, MKDEV(CONSOLE_DEVICE_MAJOR, 0),
+    dev_init(&console->cdev.dev, CHAR, MKDEV(CONSOLE_DEVICE_MAJOR, minor),
              "console", INVALID_IRQ_NUMBER, NULL);
-    g_console.cdev.ops.read = console_read;
-    g_console.cdev.ops.write = console_write;
-    g_console.cdev.ops.ioctl = console_ioctl;
-    g_console.cdev.dev.mode = 0666;
+    console->cdev.ops.read = console_read;
+    console->cdev.ops.write = console_write;
+    console->cdev.ops.ioctl = console_ioctl;
+    console->cdev.dev.mode = 0666;
 
-    memset(&g_console.termios, 0, sizeof(struct termios));
-    g_console.termios.c_lflag = ECHO | ICANON | ICRNL;
-    g_console.termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
-    g_console.termios.c_cc[VTIME] = 0;  // no timeout in read()
+    memset(&console->termios, 0, sizeof(struct termios));
+    console->termios.c_lflag = ECHO | ICANON | ICRNL;
+    console->termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
+    console->termios.c_cc[VTIME] = 0;  // no timeout in read()
+
+    console->add_cr = true;
 
     if (console_dev != NULL)
     {
         const char *name = console_dev->driver->dtb_name;
         if (strcmp(name, "ucb,htif0") == 0)
         {
-            device_putc = htif_putc;
-            device_putc_sync = htif_putc;
+            console->putc = htif_putc;
+            console->putc_sync = htif_putc;
             g_console_poll_callback = htif_console_poll_input;
         }
         else if (strcmp(name, "ns16550a") == 0 ||
                  strcmp(name, "snps,dw-apb-uart") == 0)
         {
             // ns16550a or snps,dw-apb-uart
-            device_putc = uart_putc;
-            device_putc_sync = uart_putc_sync;
+            console->putc = uart_putc;
+            console->putc_sync = uart_putc_sync;
 
-            dev_set_irq(&g_console.cdev.dev,
+            dev_set_irq(&console->cdev.dev,
                         console_dev->init_parameters.interrupt,
                         uart_interrupt_handler);
         }
 #if defined(__ARCH_arm64)
         else if (strcmp(name, "brcm,bcm2835-aux-uart") == 0)
         {
-            device_putc = bcm2835_aux_uart_putc;
-            device_putc_sync = bcm2835_aux_uart_putc_sync;
+            console->putc = bcm2835_aux_uart_putc;
+            console->putc_sync = bcm2835_aux_uart_putc_sync;
             g_console_poll_callback = bcm2835_aux_uart_poll_input;
 
-            dev_set_irq(&g_console.cdev.dev,
+            dev_set_irq(&console->cdev.dev,
                         console_dev->init_parameters.interrupt,
                         bcm2835_aux_uart_interrupt_handler);
         }
         else if (strcmp(name, "arm,pl011") == 0)
         {
-            device_putc = arm_pl011_putc;
-            device_putc_sync = arm_pl011_putc;
+            console->putc = arm_pl011_putc;
+            console->putc_sync = arm_pl011_putc;
             g_console_poll_callback = arm_pl011_poll_input;
 
-            dev_set_irq(&g_console.cdev.dev,
+            dev_set_irq(&console->cdev.dev,
                         console_dev->init_parameters.interrupt,
                         arm_pl011_interrupt_handler);
         }
@@ -477,22 +554,23 @@ dev_t console_init(struct Found_Device *console_dev)
         if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) > 0)
         {
             // SBI console fallback
-            device_putc = sbi_console_putchar;
-            device_putc_sync = sbi_console_putchar;
+            console->putc = sbi_console_putchar;
+            console->putc_sync = sbi_console_putchar;
             g_console_poll_callback = sbi_console_poll_input;
             printk("Console fallback: SBI\n");
         }
 #endif
     }
 
-    if (device_putc == NULL)
+    if (console->putc == NULL)
     {
         // run with no input/output:
-        device_putc = console_putc_noop;
-        device_putc_sync = console_putc_noop;
+        console->putc = console_putc_noop;
+        console->putc_sync = console_putc_noop;
     }
 
-    register_device(&g_console.cdev.dev);
+    register_device(&console->cdev.dev);
+    printk_redirect_to_console(console);
 
-    return g_console.cdev.dev.device_number;
+    return console->cdev.dev.device_number;
 }

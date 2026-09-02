@@ -4,6 +4,7 @@
 #include <init/dtb.h>
 #include <init/embedded_dtbs.h>
 #include <init/system.h>
+#include <kernel/errno.h>
 #include <kernel/kticks.h>
 #include <kernel/pgtable.h>
 #include <kernel/smp.h>
@@ -115,7 +116,11 @@ void system_boot_other_cpus(const void *dtb)
             syserr_t err = system_boot_cpu(hartid, dtb, secondary_entry_pa);
             if (err != 0)
             {
-                printk("Failed to boot CPU %zd, error %zd\n", hartid, err);
+                // silently ignore if this CPU id does not exist
+                if (err != -ENODEV)
+                {
+                    printk("Failed to boot CPU %zd, error %zd\n", hartid, err);
+                }
                 break;
             }
 

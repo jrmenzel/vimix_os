@@ -6,7 +6,7 @@
 
 #define BCM2835_MBOX_CHANNEL_PROPERTY_TAGS 8
 
-dev_t bcm2835_mbox_init(struct Device_Init_Parameters *init_param,
+dev_t bcm2835_mbox_init(struct Device_Init_Parameters *init_parameters,
                         const char *name);
 
 /// @brief Send one mailbox message and wait for a response on the same channel.

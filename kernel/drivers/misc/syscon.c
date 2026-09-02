@@ -1,82 +1,82 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <drivers/driver.h>
 #include <drivers/misc/syscon.h>
-#include <drivers/mmio_access.h>
 #include <init/dtb.h>
-#include <kernel/major.h>
 #include <kernel/pgtable.h>
 #include <kernel/reset.h>
 
 REGISTER_DRIVER("syscon", syscon_init);
 
-struct syscon
+struct syscon_device
 {
-    bool is_initialized;
     size_t mmio_base;         ///< memory map start
     size_t poweroff_offset;   ///< expected: 0 (but read from device tree)
     size_t reboot_offset;     ///< expected: 0
     uint32_t poweroff_value;  ///< expected: 0x5555
     uint32_t reboot_value;    ///< expected: 0x7777
-} g_syscon = {0};
+};
+
+struct syscon_device *g_syscon = NULL;
 
 void syscon_machine_power_off();
 void syscon_machine_restart();
 
-bool parse_dtb_poweroff_node(const void *dtb)
+bool parse_dtb_poweroff_node(struct syscon_device *syscon, const void *dtb)
 {
     return parse_dtb_node(dtb, "/poweroff", "syscon-poweroff",
-                          &g_syscon.poweroff_value, &g_syscon.poweroff_offset);
+                          &syscon->poweroff_value, &syscon->poweroff_offset);
 }
 
-bool parse_dtb_reboot_node(const void *dtb)
+bool parse_dtb_reboot_node(struct syscon_device *syscon, const void *dtb)
 {
     return parse_dtb_node(dtb, "/reboot", "syscon-reboot",
-                          &g_syscon.reboot_value, &g_syscon.reboot_offset);
+                          &syscon->reboot_value, &syscon->reboot_offset);
 }
 
 dev_t syscon_init(struct Device_Init_Parameters *init_parameters,
                   const char *name)
 {
-    if (g_syscon.is_initialized)
+    DRIVER_CHECK_INIT_PARAMS_DTB(init_parameters);
+
+    if (g_syscon != NULL)
+    {
+        // only one instance is supported
+        return INVALID_DEVICE;
+    }
+
+    g_syscon = kmalloc(sizeof(struct syscon_device), ALLOC_FLAG_ZERO_MEMORY);
+    if (g_syscon == NULL)
     {
         return INVALID_DEVICE;
     }
 
-    if (!init_parameters || !init_parameters->dtb)
+    if (!parse_dtb_poweroff_node(g_syscon, init_parameters->dtb))
     {
+        kfree(g_syscon);
+        g_syscon = NULL;
         return INVALID_DEVICE;
     }
 
-    if (!parse_dtb_poweroff_node(init_parameters->dtb))
-    {
-        return INVALID_DEVICE;
-    }
-
-    g_syscon.mmio_base = init_parameters->mem[0].start_va;
+    g_syscon->mmio_base = init_parameters->mem[0].start_va;
     g_machine_power_off_func = &syscon_machine_power_off;
 
-    if (parse_dtb_reboot_node(init_parameters->dtb))
+    if (parse_dtb_reboot_node(g_syscon, init_parameters->dtb))
     {
         g_machine_restart_func = &syscon_machine_restart;
     }
 
-    g_syscon.is_initialized = true;
     return MKDEV(SYSCON_MAJOR, 0);
-}
-
-void syscon_write_reg(size_t reg, uint32_t value)
-{
-    if (!g_syscon.is_initialized) return;
-
-    MMIO_WRITE_UINT_32(g_syscon.mmio_base, reg, value);
 }
 
 void syscon_machine_power_off()
 {
-    syscon_write_reg(g_syscon.poweroff_offset, g_syscon.poweroff_value);
+    MMIO_WRITE_UINT_32(g_syscon->mmio_base, g_syscon->poweroff_offset,
+                       g_syscon->poweroff_value);
 }
 
 void syscon_machine_restart()
 {
-    syscon_write_reg(g_syscon.reboot_offset, g_syscon.reboot_value);
+    MMIO_WRITE_UINT_32(g_syscon->mmio_base, g_syscon->reboot_offset,
+                       g_syscon->reboot_value);
 }

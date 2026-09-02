@@ -2,9 +2,7 @@
 
 #include <arch/arm64/drivers/arm_psci.h>
 #include <arch/arm64/drivers/arm_psci_defs.h>
-#include <drivers/driver_list.h>
-#include <kernel/kernel.h>
-#include <kernel/major.h>
+#include <drivers/driver.h>
 #include <kernel/reset.h>
 #include <kernel/string.h>
 #include <libfdt.h>
@@ -107,10 +105,9 @@ PSCI_CALL_FUNCTION arm_psci_parse_method(const void *dtb, int node_offset)
 dev_t arm_psci_init(struct Device_Init_Parameters *init_parameters,
                     const char *name)
 {
-    (void)name;
+    DRIVER_CHECK_INIT_PARAMS_DTB_ONLY(init_parameters);
 
-    if (g_arm_psci.initialized || (init_parameters == NULL) ||
-        (init_parameters->dtb == NULL))
+    if (g_arm_psci.initialized)
     {
         return INVALID_DEVICE;
     }

@@ -10,6 +10,8 @@
 #define FORMAT_REG_SIZE "0x%016zx"
 #endif
 
+struct Console_Device;
+
 // Call at boot before calling any printk().
 // Until a console driver (or SBI based fallback) is found, printk will store
 // the output in a buffer and flush it to the console when
@@ -17,7 +19,7 @@
 void printk_init();
 
 // call after a console device was initialized
-void printk_redirect_to_console();
+void printk_redirect_to_console(struct Console_Device *console);
 
 // called on panic to prevent deadlocks from printing the last messages
 // only used in ccase of kernel panics

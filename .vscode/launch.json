@@ -46,9 +46,16 @@
             "targetArchitecture": "arm64",
             "miDebuggerServerAddress": "127.0.0.1:26000",
             "MIMode": "gdb",
+            // Keep QEMU halted until cppdbg has loaded both the physical and
+            // higher-half symbols and has finished binding source breakpoints.
+            //"stopAtConnect": true,
+            "launchCompleteCommand": "None",
             "hardwareBreakpoints": {
-                "require": true,
-                "limit": 6
+                // ARM64 kernel symbols exist at both their pre-MMU physical
+                // and post-MMU virtual addresses, so one source breakpoint can
+                // consume two GDB hardware-breakpoint locations.  Do not apply
+                // an adapter-side limit; let GDB/QEMU report the real limit.
+                "require": true
             },
             "stopAtEntry": false,
             "setupCommands": [
@@ -58,18 +65,18 @@
                     "ignoreFailures": false
                 },
                 {
-                    "description": "Set hex output for all vars, useful when debugging addesses",
-                    "text": "set output-radix 16",
-                    "ignoreFailures": true
-                },
-                {
                     "description": "Set ARM64 architecture before remote introspection",
-                    "text": "set architecture aarch64",
+                    "text": "-gdb-set architecture aarch64",
                     "ignoreFailures": false
                 },
                 {
+                    "description": "Set hex output for all vars, useful when debugging addresses",
+                    "text": "-gdb-set output-radix 16",
+                    "ignoreFailures": true
+                },
+                {
                     "description": "Prefer hardware breakpoints for live kernel debug",
-                    "text": "set breakpoint auto-hw on",
+                    "text": "-gdb-set breakpoint auto-hw on",
                     "ignoreFailures": true
                 },
                 {

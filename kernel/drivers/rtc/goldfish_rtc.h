@@ -2,8 +2,6 @@
 #pragma once
 
 #include <drivers/devices_list.h>
-#include <kernel/kernel.h>
-#include <kernel/rtc.h>
 
 // real-time clock driver found in RISC V qemu
 // https://android.googlesource.com/platform/external/qemu/+/master/docs/GOLDFISH-VIRTUAL-HARDWARE.TXT

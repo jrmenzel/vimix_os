@@ -28,12 +28,9 @@ struct bcm2835_firmware g_bcm2835_firmware = {0};
 
 void bcm2835_firmware_power_off();
 
-dev_t bcm2835_firmware_init(struct Device_Init_Parameters *init_param,
+dev_t bcm2835_firmware_init(struct Device_Init_Parameters *init_parameters,
                             const char *name)
 {
-    (void)init_param;
-    (void)name;
-
     struct Devices_List *dev_list = get_devices_list();
     bool mbox_init = init_device_by_name(dev_list, "brcm,bcm2835-mbox");
     if (!mbox_init) return INVALID_DEVICE;

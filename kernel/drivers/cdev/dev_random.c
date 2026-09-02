@@ -63,7 +63,8 @@ ssize_t dev_random_read(struct Device *dev, bool addr_is_userspace, size_t addr,
     return len;
 }
 
-dev_t dev_random_init(struct Device_Init_Parameters *param, const char *name)
+dev_t dev_random_init(struct Device_Init_Parameters *init_parameters,
+                      const char *name)
 {
     // init device and register it in the system
     dev_init(&g_dev_random.cdev.dev, CHAR, MKDEV(DEV_RANDOM_MAJOR, 0), "random",

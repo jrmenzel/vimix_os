@@ -83,10 +83,10 @@ GDB_PORT := 26000
 
 QEMU_OPTS := $(QEMU_OPTS_ARCH) -m $(MEMORY_SIZE)M -smp $(CPUS) -nographic
 
-ifneq ("$(wildcard $(KERNEL_FILE).img)","")
-QEMU_OPTS += -kernel $(KERNEL_FILE).img
-else
+ifeq ($(KERNEL_FORMAT), elf)
 QEMU_OPTS += -kernel $(KERNEL_FILE)
+else
+QEMU_OPTS += -kernel $(KERNEL_FILE).img
 endif
 
 ifeq ($(VIRTIO_DISK), yes)
@@ -109,6 +109,12 @@ endif
 
 #
 # Debugging in QEMU
+
+# Most targets are linked for the physical address at which the emulator loads
+# them.  ARM64 Image files are an exception: PHYS_OFFSET is zero in the Image
+# header, while QEMU's virt machine RAM (and hence the loaded kernel) starts at
+# 0x40000000.  Emulator definitions can override this for GDB symbol relocation.
+GDB_PHYS_OFFSET ?= $(PHYS_OFFSET)
 
 # -S = do not start CPUs, wait for 'c' in monitor (VSCode sends this on attach)
 # -s = alias for "-gdb tcp:localhost:1234"
@@ -142,11 +148,13 @@ qemu-dump-tree: emu-requirements
 	$(QEMU) $(QEMU_OPTS) -machine dumpdtb=tree_$(EMU).dtb
 	dtc -o tree_$(EMU).dts -O dts -I dtb tree_$(EMU).dtb
 
+.PHONY: .gdbinit .gdbinit_vscode
+
 .gdbinit: tools/gdbinit Makefile MakefileCommon.mk
 	@cp tools/gdbinit .gdbinit
 	@sed -i 's/_PORT/$(GDB_PORT)/g' .gdbinit
 	@sed -i 's/_KERNEL_VIRT_BASE/($(PAGE_OFFSET)+$(TEXT_OFFSET))/g' .gdbinit
-	@sed -i 's/_KERNEL_PHYS_BASE/($(PHYS_OFFSET)+$(TEXT_OFFSET))/g' .gdbinit
+	@sed -i 's/_KERNEL_PHYS_BASE/($(GDB_PHYS_OFFSET)+$(TEXT_OFFSET))/g' .gdbinit
 	@sed -i "s~_KERNEL~$(KERNEL_FILE)~g" .gdbinit
 	@sed -i 's/_ARCHITECTURE/$(GDB_ARCHITECTURE)/g' .gdbinit
 
@@ -154,7 +162,7 @@ qemu-dump-tree: emu-requirements
 	@cp tools/gdbinit_vscode .gdbinit_vscode
 	@sed -i 's/_PORT/$(GDB_PORT)/g' .gdbinit_vscode
 	@sed -i 's/_KERNEL_VIRT_BASE/($(PAGE_OFFSET)+$(TEXT_OFFSET))/g' .gdbinit_vscode
-	@sed -i 's/_KERNEL_PHYS_BASE/($(PHYS_OFFSET)+$(TEXT_OFFSET))/g' .gdbinit_vscode
+	@sed -i 's/_KERNEL_PHYS_BASE/($(GDB_PHYS_OFFSET)+$(TEXT_OFFSET))/g' .gdbinit_vscode
 	@sed -i "s~_KERNEL~$(KERNEL_FILE)~g" .gdbinit_vscode
 	@sed -i 's/_ARCHITECTURE/$(GDB_ARCHITECTURE)/g' .gdbinit_vscode
 

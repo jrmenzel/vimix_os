@@ -1,10 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
-#include <drivers/mmio_access.h>
+#include <drivers/driver.h>
 #include <drivers/rtc/goldfish_rtc.h>
-#include <kernel/major.h>
-#include <kernel/stdatomic.h>
-#include <mm/kalloc.h>
+#include <kernel/rtc.h>
 
 REGISTER_DRIVER("google,goldfish-rtc", goldfish_rtc_init);
 
@@ -15,7 +13,7 @@ atomic_size_t g_goldfish_next_minor = 0;
 dev_t goldfish_rtc_init(struct Device_Init_Parameters *init_parameters,
                         const char *name)
 {
-    DEBUG_EXTRA_PANIC(init_parameters != NULL, "RTC init parameters are NULL");
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
 
     struct rtc_device *rtc =
         kmalloc(sizeof(struct rtc_device), ALLOC_FLAG_ZERO_MEMORY);

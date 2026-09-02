@@ -3,9 +3,9 @@
 #include <arch/irq.h>
 #include <drivers/bdev/generic_disc.h>
 #include <drivers/bdev/ramdisk.h>
+#include <drivers/driver.h>
 #include <kernel/container_of.h>
 #include <kernel/kernel.h>
-#include <kernel/major.h>
 #include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/stdatomic.h>
@@ -75,11 +75,7 @@ void ramdisk_block_device_write(struct Block_Device *bd, struct buf *b)
 dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
                    const char *name)
 {
-    if (init_parameters->mem[0].start_pa == 0 ||
-        init_parameters->mem[0].size == 0)
-    {
-        panic("invalid ramdisk_init parameters");
-    }
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
 
     struct ramdisk *rdisk =
         kmalloc(sizeof(struct ramdisk), ALLOC_FLAG_ZERO_MEMORY);
@@ -94,14 +90,15 @@ dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
     rdisk->ram_base = (void *)phys_to_virt(init_parameters->mem[0].start_pa);
     rdisk->disk.bdev.size = init_parameters->mem[0].size;
 
-    char *device_name = kmalloc(16, ALLOC_FLAG_NONE);
+    const size_t NAME_LEN = 16;
+    char *device_name = kmalloc(NAME_LEN, ALLOC_FLAG_NONE);
     if (device_name == NULL)
     {
         kfree(rdisk);
         printk("ramdisk: out of memory\n");
         return INVALID_DEVICE;
     }
-    snprintf(device_name, 16, "ramdisk%zd", minor);
+    snprintf(device_name, NAME_LEN, "ramdisk%zd", minor);
 
     // init device and register it in the system
     dev_init(&rdisk->disk.bdev.dev, BLOCK, MKDEV(RAMDISK_MAJOR, minor),

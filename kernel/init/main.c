@@ -107,7 +107,6 @@ void init_devices(const void *dtb)
     {
         panic("not a valid console");
     }
-    printk_redirect_to_console();
 
     printk("init remaining devices...\n");
     dev_list_init_all_devices(dev_list);

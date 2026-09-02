@@ -3,7 +3,7 @@
 #include <arch/irq.h>
 #include <arch/riscv/drivers/plic.h>
 #include <drivers/device.h>
-#include <drivers/mmio_access.h>
+#include <drivers/driver.h>
 #include <init/dtb.h>
 #include <kernel/interrupt_controller.h>
 #include <kernel/kernel.h>
@@ -161,9 +161,11 @@ void plic_init_hart_context_lookup(const void *dtb, size_t plic_offset)
 dev_t plic_init(struct Device_Init_Parameters *init_parameters,
                 const char *name)
 {
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
+
     if (g_plic.plic_is_initialized)
     {
-        return 0;
+        return INVALID_DEVICE;
     }
     g_plic.mmio_base = init_parameters->mem[0].start_va;
 

@@ -25,5 +25,5 @@ bool bcm2835_firmware_get_revision(uint32_t *revision_out);
 /// @return true on success.
 bool bcm2835_firmware_get_clock_rate(uint32_t clock_id, uint32_t *rate_out);
 
-dev_t bcm2835_firmware_init(struct Device_Init_Parameters *init_param,
+dev_t bcm2835_firmware_init(struct Device_Init_Parameters *init_parameters,
                             const char *name);

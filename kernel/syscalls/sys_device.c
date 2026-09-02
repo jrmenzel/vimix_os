@@ -63,7 +63,7 @@ syserr_t do_ioctl(struct file *f, int request, void *optional_param)
     }
 
     inode_lock_exclusive(ip);
-    syserr_t res = cdev->ops.ioctl(ip, request, optional_param);
+    syserr_t res = cdev->ops.ioctl(&cdev->dev, ip, request, optional_param);
     inode_unlock_exclusive(ip);
 
     return res;

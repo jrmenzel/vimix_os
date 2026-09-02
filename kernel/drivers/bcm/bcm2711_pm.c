@@ -2,8 +2,7 @@
 
 #include <arch/cpu.h>
 #include <drivers/bcm/bcm2711_pm.h>
-#include <drivers/mmio_access.h>
-#include <kernel/major.h>
+#include <drivers/driver.h>
 #include <kernel/reset.h>
 #include <kernel/spinlock.h>
 
@@ -47,11 +46,13 @@ static void bcm2711_pm_do_full_reset(void)
     spin_unlock(&g_bcm2711_pm.lock);
 }
 
-dev_t bcm2711_pm_init(struct Device_Init_Parameters *init_param,
+dev_t bcm2711_pm_init(struct Device_Init_Parameters *init_parameters,
                       const char *name)
 {
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
+
     spin_lock_init(&g_bcm2711_pm.lock, "bcm2711_pm_lock");
-    g_bcm2711_pm.mmio_base = init_param->mem[0].start_va;
+    g_bcm2711_pm.mmio_base = init_parameters->mem[0].start_va;
     g_bcm2711_pm.isInitialized = true;
 
     printk("register BCM2711 PM shutdown/restart functions\n");

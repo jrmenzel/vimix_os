@@ -5,12 +5,10 @@
 //
 
 #include <arch/asm.h>
-#include <drivers/mmio_access.h>
+#include <drivers/driver.h>
 #include <drivers/tty/console.h>
 #include <drivers/tty/uart16550.h>
 #include <kernel/cpu.h>
-#include <kernel/kernel.h>
-#include <kernel/major.h>
 #include <kernel/pgtable.h>
 #include <kernel/proc.h>
 #include <kernel/spinlock.h>
@@ -111,18 +109,20 @@ static inline void uart_disable_tx_interrupt()
     uart_set_interrupt_enable(uart_get_interrupt_enable() & ~IER_TX_ENABLE);
 }
 
-dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name)
+dev_t uart_init(struct Device_Init_Parameters *init_parameters,
+                const char *name)
 {
-    DEBUG_EXTRA_ASSERT(
-        init_param->reg_io_width == 1 || init_param->reg_io_width == 4,
-        "unsupported IO width");
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
+    DEBUG_EXTRA_ASSERT(init_parameters->reg_io_width == 1 ||
+                           init_parameters->reg_io_width == 4,
+                       "unsupported IO width");
 
     if (g_uart_16550_initialized)
         return INVALID_DEVICE;  // only one instance for now
 
-    g_uart_16550.mmio_base = init_param->mem[0].start_va;
-    g_uart_16550.reg_io_width = init_param->reg_io_width;
-    g_uart_16550.reg_shift = init_param->reg_shift;
+    g_uart_16550.mmio_base = init_parameters->mem[0].start_va;
+    g_uart_16550.reg_io_width = init_parameters->reg_io_width;
+    g_uart_16550.reg_shift = init_parameters->reg_shift;
 
     //   disable interrupts.
     write_register(&g_uart_16550, IER, 0x00);
@@ -139,6 +139,10 @@ dev_t uart_init(struct Device_Init_Parameters *init_param, const char *name)
 
     // init uart_16550 object
     spin_lock_init(&g_uart_16550.uart_tx_lock, "uart");
+
+    g_uart_16550.tty.putc = uart_putc;
+    g_uart_16550.tty.putc_sync = uart_putc_sync;
+    g_uart_16550.tty.poll_callback = NULL;
 
     g_uart_16550_initialized = true;
     return MKDEV(UART_16550_MAJOR, 0);

@@ -5,10 +5,9 @@
 #include <arch/interrupts.h>
 #include <arch/irq.h>
 #include <drivers/device.h>
-#include <drivers/mmio_access.h>
+#include <drivers/driver.h>
 #include <kernel/interrupt_controller.h>
 #include <kernel/kobject.h>
-#include <kernel/major.h>
 #include <kernel/param.h>
 #include <kernel/smp.h>
 
@@ -30,6 +29,8 @@ static uint32_t g_gic2_last_ack_token[MAX_CPUS] = {0};
 dev_t gic2_init(struct Device_Init_Parameters *init_parameters,
                 const char *name)
 {
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
+
     // Device tree GICv2 reg order is distributor first, then CPU interface.
     g_gic2.mmio_base_dist = init_parameters->mem[0].start_va;
     g_gic2.mmio_base_cpu = init_parameters->mem[1].start_va;

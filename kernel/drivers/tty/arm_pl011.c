@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/asm.h>
-#include <drivers/mmio_access.h>
+#include <drivers/driver.h>
 #include <drivers/tty/arm_pl011.h>
 #include <drivers/tty/console.h>
 #include <kernel/cpu.h>
-#include <kernel/major.h>
 
 REGISTER_DRIVER("arm,pl011", arm_pl011_init);
 
@@ -93,15 +92,15 @@ static inline void pl011_write(size_t reg, uint32_t value)
     MMIO_WRITE_UINT_32(g_arm_pl011.uart_base, reg, value);
 }
 
-dev_t arm_pl011_init(struct Device_Init_Parameters *init_param,
+dev_t arm_pl011_init(struct Device_Init_Parameters *init_parameters,
                      const char *name)
 {
-    (void)name;
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
 
     if (g_arm_pl011_initialized)
         return INVALID_DEVICE;  // only one instance for now
 
-    g_arm_pl011.uart_base = init_param->mem[0].start_va;
+    g_arm_pl011.uart_base = init_parameters->mem[0].start_va;
     spin_lock_init(&g_arm_pl011.arm_pl011_lock, "arm_pl011_lock");
 
     // Disable UART before changing baud/line config.
@@ -124,6 +123,10 @@ dev_t arm_pl011_init(struct Device_Init_Parameters *init_param,
     // Enable receive interrupts and RX/TX/UART.
     pl011_write(PL011_UART_IMSC, IMSC_RXIM | IMSC_RTIM);
     pl011_write(PL011_UART_CR, CR_UARTEN | CR_TXEN | CR_RXEN);
+
+    g_arm_pl011.tty.putc = arm_pl011_putc;
+    g_arm_pl011.tty.putc_sync = arm_pl011_putc;
+    g_arm_pl011.tty.poll_callback = arm_pl011_poll_input;
 
     g_arm_pl011_initialized = true;
 

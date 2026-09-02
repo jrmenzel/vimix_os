@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <drivers/bcm/bcm2835_mbox.h>
-#include <drivers/mmio_access.h>
-#include <kernel/major.h>
+#include <drivers/driver.h>
 #include <kernel/spinlock.h>
 
 REGISTER_DRIVER("brcm,bcm2835-mbox", bcm2835_mbox_init);
@@ -26,11 +25,13 @@ struct bcm2835_mbox
 
 struct bcm2835_mbox g_bcm2835_mbox;
 
-dev_t bcm2835_mbox_init(struct Device_Init_Parameters *init_param,
+dev_t bcm2835_mbox_init(struct Device_Init_Parameters *init_parameters,
                         const char *name)
 {
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
+
     spin_lock_init(&g_bcm2835_mbox.lock, "bcm2835_mbox_lock");
-    g_bcm2835_mbox.mmio_base = init_param->mem[0].start_va;
+    g_bcm2835_mbox.mmio_base = init_parameters->mem[0].start_va;
     g_bcm2835_mbox.is_initialized = true;
 
     return MKDEV(BCM2835_MBOX_MAJOR, 0);

@@ -4,12 +4,11 @@
 #include <drivers/bcm/bcm2835_aux.h>
 #include <drivers/bcm/bcm2835_firmware.h>
 #include <drivers/bcm/bcm2835_gpio.h>
-#include <drivers/mmio_access.h>
+#include <drivers/driver.h>
 #include <drivers/tty/bcm2835_aux_uart.h>
 #include <drivers/tty/console.h>
 #include <init/dtb.h>
 #include <init/system.h>
-#include <kernel/major.h>
 #include <libfdt.h>
 
 REGISTER_DRIVER("brcm,bcm2835-aux-uart", bcm2835_aux_uart_init);
@@ -112,9 +111,11 @@ static size_t bcm2835_aux_uart_get_clock(const void *dtb, int uart_node_offset)
     return fallback;
 }
 
-dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_param,
+dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_parameters,
                             const char *name)
 {
+    DRIVER_CHECK_INIT_PARAMS_DTB(init_parameters);
+
     // this UART needs a GPIO provider to configure TX/RX pins
     struct Devices_List *dev_list = get_devices_list();
     bool gpio_init = init_device_by_name(dev_list, "brcm,bcm2835-gpio");
@@ -122,7 +123,7 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_param,
     gpio_init |= init_device_by_name(dev_list, "brcm,bcm2835-gpiomem");
     if (!gpio_init) return INVALID_DEVICE;
 
-    g_bcm2835_aux_uart.mmio_base = init_param->mem[0].start_va;
+    g_bcm2835_aux_uart.mmio_base = init_parameters->mem[0].start_va;
 
     size_t clock;
     if (getSystemCompatible() == SYSTEM_ARM64_RASPBERRY_PI_4)
@@ -149,13 +150,13 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_param,
     }
     else
     {
-        clock =
-            bcm2835_aux_uart_get_clock(init_param->dtb, init_param->dev_offset);
+        clock = bcm2835_aux_uart_get_clock(init_parameters->dtb,
+                                           init_parameters->dev_offset);
     }
     g_bcm2835_aux_uart.clock_hz = clock;
     spin_lock_init(&g_bcm2835_aux_uart.lock, "bcm2835_aux_uart_lock");
 
-    // We should read the clocks from the init_param and find the right
+    // We should read the clocks from the init_parameters and find the right
     // device that way. But at least on Raspberry Pi 3/4 this is the right one.
     // Also the clocks from the device tree will ensure it was initilized before
     // this UART.
@@ -182,6 +183,10 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_param,
     // enable Rx & Tx
     MMIO_WRITE_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_CNTL,
                        AUX_MU_CNTL_R_ENABLE | AUX_MU_CNTL_T_ENABLE);
+
+    g_bcm2835_aux_uart.tty.putc = bcm2835_aux_uart_putc;
+    g_bcm2835_aux_uart.tty.putc_sync = bcm2835_aux_uart_putc_sync;
+    g_bcm2835_aux_uart.tty.poll_callback = bcm2835_aux_uart_poll_input;
 
     return MKDEV(BCM2835_UART_AUX_MAJOR, 0);
 }

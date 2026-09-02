@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <drivers/driver.h>
 #include <drivers/tty/console.h>
 #include <drivers/tty/htif.h>
-#include <kernel/major.h>
 #include <kernel/pgtable.h>
 #include <kernel/reset.h>
 
@@ -113,6 +113,10 @@ void htif_console_poll_input()
 dev_t htif_init(struct Device_Init_Parameters *init_parameters,
                 const char *name)
 {
+    // note: no DRIVER_CHECK_INIT_PARAMS() as ->mem[0].start_pa can be 0!
+    DEBUG_EXTRA_PANIC(init_parameters != NULL,
+                      "Driver init parameters are NULL");
+
     if (htif_is_initialized)
     {
         // can happen as htif might get initialized as a boot console and later
@@ -136,6 +140,11 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
     }
     printk("register HTIF shutdown function\n");
     g_machine_power_off_func = &htif_machine_power_off;
+
+    // struct TTY_Device tty;
+    // tty.putc = htif_putc;
+    // tty.putc_sync = htif_putc;
+    // tty.poll_callback = htif_console_poll_input;
 
     htif_is_initialized = true;
 

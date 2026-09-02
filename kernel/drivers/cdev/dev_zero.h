@@ -4,4 +4,5 @@
 #include <drivers/devices_list.h>
 
 /// @brief Adds itself to the devices list.
-dev_t dev_zero_init(struct Device_Init_Parameters *param, const char *name);
+dev_t dev_zero_init(struct Device_Init_Parameters *init_parameters,
+                    const char *name);

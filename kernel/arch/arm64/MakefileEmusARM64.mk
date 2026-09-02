@@ -11,6 +11,7 @@ CPUS               := 2
 MEMORY_SIZE        := 64
 QEMU_OPTS_ARCH     := -cpu cortex-a72 -machine $(QEMU_MACHINE) -serial mon:stdio 
 RAMDISK_BOOTLOADER := yes
+GDB_PHYS_OFFSET    := 0x40000000
 
 else ifeq ($(EMU), kvm)
 QEMU_MACHINE       := virt,gic-version=2
@@ -18,6 +19,7 @@ CPUS               := 2
 MEMORY_SIZE        := 64
 QEMU_OPTS_ARCH     := -enable-kvm -cpu host -machine $(QEMU_MACHINE) -no-reboot -serial mon:stdio 
 RAMDISK_BOOTLOADER := yes
+GDB_PHYS_OFFSET    := 0x40000000
 
 else ifeq ($(EMU), raspi4)
 QEMU_MACHINE       := raspi4b

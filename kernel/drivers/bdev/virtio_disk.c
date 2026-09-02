@@ -8,7 +8,7 @@
 
 #include <drivers/bdev/virtio.h>
 #include <drivers/bdev/virtio_disk.h>
-#include <drivers/mmio_access.h>
+#include <drivers/driver.h>
 #include <kernel/buf.h>
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
@@ -182,10 +182,12 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     return disk->disk.bdev.dev.device_number;
 }
 
-dev_t virtio_disk_init(struct Device_Init_Parameters *init_param,
+dev_t virtio_disk_init(struct Device_Init_Parameters *init_parameters,
                        const char *name)
 {
-    size_t b = init_param->mem[0].start_va;
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
+
+    size_t b = init_parameters->mem[0].start_va;
 
     if (MMIO_READ_UINT_32(b, VIRTIO_MMIO_MAGIC_VALUE) != VIRTIO_DISK_MAGIC ||
         MMIO_READ_UINT_32(b, VIRTIO_MMIO_VERSION) != 2 ||
@@ -196,7 +198,7 @@ dev_t virtio_disk_init(struct Device_Init_Parameters *init_param,
     }
 
     size_t minor = (size_t)atomic_fetch_add(&g_virtio_next_minor, 1);
-    dev_t dev = virtio_disk_init_internal(minor, init_param);
+    dev_t dev = virtio_disk_init_internal(minor, init_parameters);
     return dev;
 }
 

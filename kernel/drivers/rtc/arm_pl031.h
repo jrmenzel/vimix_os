@@ -2,8 +2,6 @@
 #pragma once
 
 #include <drivers/devices_list.h>
-#include <kernel/kernel.h>
-#include <kernel/rtc.h>
 
 // ARM PL031 RTC driver, found for example on the qemu virt board
 // https://support.arm.com/documentation/ddi0224/c/Programmers-model/General-registers

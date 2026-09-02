@@ -3,7 +3,7 @@
 #include <arch/irq.h>
 #include <drivers/cdev/character_device.h>
 #include <drivers/cdev/dev_null.h>
-#include <kernel/major.h>
+#include <drivers/driver.h>
 #include <kernel/proc.h>
 
 REGISTER_VIRTUAL_DRIVER("/dev/null", dev_null_init);
@@ -26,7 +26,8 @@ ssize_t dev_null_write(struct Device *dev, bool addr_is_userspace, size_t addr,
     return len;
 }
 
-dev_t dev_null_init(struct Device_Init_Parameters *param, const char *name)
+dev_t dev_null_init(struct Device_Init_Parameters *init_parameters,
+                    const char *name)
 {
     // init device and register it in the system
     dev_init(&g_dev_null.cdev.dev, CHAR, MKDEV(DEV_NULL_MAJOR, 0), "null",

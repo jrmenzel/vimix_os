@@ -19,36 +19,35 @@
 
 #include "print_impl.h"
 
-typedef void (*putc_func_t)(int32_t c);
-
 /// lock to avoid interleaving concurrent printk's.
-static struct
+struct PrintK
 {
     struct spinlock lock;
     bool locking;
     bool init;
-    putc_func_t putc_func;
     struct Circular_Buffer cb;
-} g_printk = {0};
+    struct Console_Device *console;
+};
+
+struct PrintK g_printk = {0};
 
 // store printk output until a console driver is available, then flush it to the
 // console.
 #define EARLY_PRINT_BUFFER_SIZE (512)
 char g_early_printk_buffer[EARLY_PRINT_BUFFER_SIZE];
 
-// default putc() callback before a driver was found, stores data for later
-// dumping.
-void console_none(int32_t c)
-{
-    cbuffer_write(&g_printk.cb, (const char *)&c, 1);
-}
-
 // print_impl compatible callback to print a char via the current putc()
 // function.
 void console_putc_dummy(int32_t c, size_t payload)
 {
-    putc_func_t func = (putc_func_t)payload;
-    func(c);
+    if (g_printk.console == NULL)
+    {
+        cbuffer_write(&g_printk.cb, (const char *)&c, 1);
+    }
+    else
+    {
+        console_putc(g_printk.console, c);
+    }
 }
 
 void printk_init()
@@ -56,23 +55,14 @@ void printk_init()
     spin_lock_init(&g_printk.lock, "pr");
     g_printk.locking = true;
     g_printk.init = true;
-    g_printk.putc_func = console_none;
+    g_printk.console = NULL;
     cbuffer_init(&g_printk.cb, g_early_printk_buffer, EARLY_PRINT_BUFFER_SIZE);
-
-#ifdef __ARCH_riscv
-    if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) > 0)
-    {
-        // SBI console fallback
-        g_printk.putc_func = sbi_console_putchar;
-        printk("Early console detected: SBI\n");
-    }
-#endif
 }
 
-void printk_redirect_to_console()
+void printk_redirect_to_console(struct Console_Device *console)
 {
     printk("Redirecting printk to console device...\n");
-    g_printk.putc_func = console_putc;
+    g_printk.console = console;
 
     // flush early printk buffer to new console:
     size_t available_data = cbuffer_available_data(&g_printk.cb);
@@ -117,10 +107,10 @@ void printk(char *format, ...)
         spin_lock(&g_printk.lock);
     }
 
-    // printing via console_putc()
+    // printing via console
     va_list ap;
     va_start(ap, format);
-    print_impl(console_putc_dummy, (size_t)g_printk.putc_func, format, ap);
+    print_impl(console_putc_dummy, 0, format, ap);
     va_end(ap);
 
     // unlock

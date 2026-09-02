@@ -2,8 +2,7 @@
 
 #include <arch/asm.h>
 #include <drivers/bcm/bcm2835_gpio.h>
-#include <drivers/mmio_access.h>
-#include <kernel/major.h>
+#include <drivers/driver.h>
 #include <kernel/string.h>
 
 REGISTER_DRIVER("brcm,bcm2835-gpio", bcm2835_gpio_init);
@@ -41,12 +40,14 @@ struct bcm2835_gpio g_bcm2835_gpio = {0};
 
 #define MAX_PINS (GPFSEL_PINS_PER_REG * 6)
 
-dev_t bcm2835_gpio_init(struct Device_Init_Parameters *init_param,
+dev_t bcm2835_gpio_init(struct Device_Init_Parameters *init_parameters,
                         const char *name)
 {
+    DRIVER_CHECK_INIT_PARAMS(init_parameters);
+
     spin_lock_init(&g_bcm2835_gpio.lock, "bcm2835_gpio_lock");
 
-    g_bcm2835_gpio.mmio_base = init_param->mem[0].start_va;
+    g_bcm2835_gpio.mmio_base = init_parameters->mem[0].start_va;
     g_bcm2835_gpio.is_2711_variant = (strcmp(name, "brcm,bcm2711-gpio") == 0);
     g_bcm2835_gpio.is_initialized = true;
     return MKDEV(BCM2835_GPIO_MAJOR, 0);

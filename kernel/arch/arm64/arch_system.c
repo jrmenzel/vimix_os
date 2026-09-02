@@ -83,8 +83,8 @@ void ensure_addr_is_mapped(size_t pa)
 syserr_t system_boot_cpu(size_t cpu_idx, const void *dtb, size_t start_pa)
 {
     const char *cpus_method = dtb_cpus_enable_method(dtb);
-    printk("Booting secondary CPU %zd with method '%s'...\n", cpu_idx,
-           cpus_method != NULL ? cpus_method : "(none)");
+    // printk("Booting secondary CPU %zd with method '%s'...\n", cpu_idx,
+    //        cpus_method != NULL ? cpus_method : "(none)");
 
     bool cpus_method_is_bcm2836_smp = false;
     if (cpus_method != NULL)
@@ -96,7 +96,7 @@ syserr_t system_boot_cpu(size_t cpu_idx, const void *dtb, size_t start_pa)
     int cpu_offset = dtb_get_cpu_offset(dtb, cpu_idx, false);
     if (cpu_offset < 0)
     {
-        return -EOTHER;
+        return -ENODEV;
     }
 
     uint64_t cpu_target = cpu_idx;
@@ -126,11 +126,11 @@ syserr_t system_boot_cpu(size_t cpu_idx, const void *dtb, size_t start_pa)
     bool requested = false;
     size_t psci_ctx_pa = 0;
 
-    printk("Enable method for CPU %zd: '%s'\n", cpu_idx, enable_method);
+    // printk("Enable method for CPU %zd: '%s'\n", cpu_idx, enable_method);
 
     if (strncmp(enable_method, "psci", 4) == 0)
     {
-        printk("CPU %zd: PSCI enable-method requested\n", cpu_idx);
+        // printk("CPU %zd: PSCI enable-method requested\n", cpu_idx);
 
         if (!arm_psci_available())
         {
@@ -153,7 +153,7 @@ syserr_t system_boot_cpu(size_t cpu_idx, const void *dtb, size_t start_pa)
     else if ((strncmp(enable_method, "spin-table", 10) == 0) ||
              (strncmp(enable_method, "brcm,bcm2836-smp", 16) == 0))
     {
-        printk("CPU %zd: spin-table enable-method requested\n", cpu_idx);
+        // printk("CPU %zd: spin-table enable-method requested\n", cpu_idx);
 
         uint64_t release_pa = 0;
         if (!dtb_read_u64_prop(dtb, cpu_offset, "cpu-release-addr",

@@ -267,16 +267,19 @@ syserr_t sbi_start_hart(size_t hartid, size_t opaque, size_t start_pa)
         return -EOTHER;
     }
 
-    if (plic_get_hart_s_context(hartid) != -1)
+    if (plic_get_hart_s_context(hartid) == -1)
     {
-        // CPU exists in device tree and supports s mode interrupts
-        long ret = sbi_hart_start(hartid, start_pa, opaque);
-        if (ret != SBI_SUCCESS)
-        {
-            printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
-            return -EOTHER;
-        }
+        return -ENODEV;
     }
+
+    // CPU exists in device tree and supports s mode interrupts
+    long ret = sbi_hart_start(hartid, start_pa, opaque);
+    if (ret != SBI_SUCCESS)
+    {
+        printk("SBI HSM: starting hart %zd: FAILED\n", hartid);
+        return -EOTHER;
+    }
+
     return 0;
 }
 

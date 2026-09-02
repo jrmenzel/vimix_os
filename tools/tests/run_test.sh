@@ -23,6 +23,30 @@ CPU_COUNT="${4:-4}"
 MEMORY="${5:-64}"
 EMU_APP="${6:-qemu}"
 
+# qemu-run does not rebuild, but Make still needs the target in order to select
+# architecture-specific settings such as the deployed kernel file format.
+case "$EMU" in
+  arm64|raspi4|kvm)
+    TARGET="arm64"
+    ;;
+  sbi32|sbi-rdisk32)
+    TARGET="rv32"
+    ;;
+  sbi64|sbi-rdisk64)
+    TARGET="rv64"
+    ;;
+  m32|m-rdisk32)
+    TARGET="rv32m"
+    ;;
+  m64|m-rdisk64)
+    TARGET="rv64m"
+    ;;
+  *)
+    echo "Error: cannot determine TARGET from emulator '$EMU'" >&2
+    exit 2
+    ;;
+esac
+
 # check if script exists
 TARGET_SCRIPT="root/tests/${SCRIPT}"
 if [ ! -f "$TARGET_SCRIPT" ]; then
@@ -44,9 +68,9 @@ else
     MAKE_PARAMS="EMU=$EMU CPUS=$CPU_COUNT MEMORY_SIZE=$MEMORY"
 fi
 
-echo "Running: make ${EMU_APP}-run $MAKE_PARAMS (logging to $LOGFILE)"
+echo "Running: make ${EMU_APP}-run TARGET=$TARGET $MAKE_PARAMS (logging to $LOGFILE)"
 # run make, capture both stdout+stderr, tee to logfile while printing to console
-if ! make ${EMU_APP}-run $MAKE_PARAMS 2>&1 | tee "$LOGFILE"; then
+if ! make ${EMU_APP}-run TARGET="$TARGET" $MAKE_PARAMS 2>&1 | tee "$LOGFILE"; then
   echo "make ${EMU_APP}-run exited with non-zero status; continuing to search log" >&2
 fi
 

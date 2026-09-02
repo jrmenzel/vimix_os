@@ -13,7 +13,7 @@ struct bcm2835_gpio
     bool is_initialized;
 };
 
-dev_t bcm2835_gpio_init(struct Device_Init_Parameters *init_param,
+dev_t bcm2835_gpio_init(struct Device_Init_Parameters *init_parameters,
                         const char *name);
 
 #define GPFSEL_FUNC_INPUT (0)
