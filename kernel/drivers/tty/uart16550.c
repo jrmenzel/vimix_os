@@ -8,6 +8,7 @@
 #include <drivers/driver.h>
 #include <drivers/tty/console.h>
 #include <drivers/tty/uart16550.h>
+#include <init/system.h>
 #include <kernel/cpu.h>
 #include <kernel/pgtable.h>
 #include <kernel/proc.h>
@@ -60,6 +61,8 @@
 REGISTER_DRIVER("ns16550a", uart_init);
 REGISTER_DRIVER("snps,dw-apb-uart", uart_init);
 
+atomic_size_t g_uart_next_minor = 0;
+
 int32_t read_register(struct uart_16550 *uart, size_t reg)
 {
     if (uart->reg_io_width == 1)
@@ -84,29 +87,27 @@ void write_register(struct uart_16550 *uart, size_t reg, uint32_t value)
     }
 }
 
-struct uart_16550 g_uart_16550;
-bool g_uart_16550_initialized = false;
-
-void uart_send_buffer();
-
-static inline uint8_t uart_get_interrupt_enable()
+static inline uint8_t uart_get_interrupt_enable(struct uart_16550 *uart)
 {
-    return (uint8_t)read_register(&g_uart_16550, IER);
+    return (uint8_t)read_register(uart, IER);
 }
 
-static inline void uart_set_interrupt_enable(uint8_t ier)
+static inline void uart_set_interrupt_enable(struct uart_16550 *uart,
+                                             uint8_t ier)
 {
-    write_register(&g_uart_16550, IER, ier);
+    write_register(uart, IER, ier);
 }
 
-static inline void uart_enable_tx_interrupt()
+static inline void uart_enable_tx_interrupt(struct uart_16550 *uart)
 {
-    uart_set_interrupt_enable(uart_get_interrupt_enable() | IER_TX_ENABLE);
+    uart_set_interrupt_enable(uart,
+                              uart_get_interrupt_enable(uart) | IER_TX_ENABLE);
 }
 
-static inline void uart_disable_tx_interrupt()
+static inline void uart_disable_tx_interrupt(struct uart_16550 *uart)
 {
-    uart_set_interrupt_enable(uart_get_interrupt_enable() & ~IER_TX_ENABLE);
+    uart_set_interrupt_enable(uart,
+                              uart_get_interrupt_enable(uart) & ~IER_TX_ENABLE);
 }
 
 dev_t uart_init(struct Device_Init_Parameters *init_parameters,
@@ -117,38 +118,75 @@ dev_t uart_init(struct Device_Init_Parameters *init_parameters,
                            init_parameters->reg_io_width == 4,
                        "unsupported IO width");
 
-    if (g_uart_16550_initialized)
-        return INVALID_DEVICE;  // only one instance for now
+    struct uart_16550 *uart =
+        kmalloc(sizeof(struct uart_16550), ALLOC_FLAG_ZERO_MEMORY);
+    if (uart == NULL)
+    {
+        return INVALID_DEVICE;
+    }
 
-    g_uart_16550.mmio_base = init_parameters->mem[0].start_va;
-    g_uart_16550.reg_io_width = init_parameters->reg_io_width;
-    g_uart_16550.reg_shift = init_parameters->reg_shift;
+    uart->mmio_base = init_parameters->mem[0].start_va;
+    uart->reg_io_width = init_parameters->reg_io_width;
+    uart->reg_shift = init_parameters->reg_shift;
+
+    size_t minor = (size_t)atomic_fetch_add(&g_uart_next_minor, 1);
+    const size_t NAME_LEN = 16;
+    char *device_name = kmalloc(NAME_LEN, ALLOC_FLAG_NONE);
+    if (device_name == NULL)
+    {
+        printk("uart: out of memory\n");
+        kfree(uart);
+        return INVALID_DEVICE;
+    }
+    snprintf(device_name, NAME_LEN, "uart16550_%zd", minor);
 
     //   disable interrupts.
-    write_register(&g_uart_16550, IER, 0x00);
+    write_register(uart, IER, 0x00);
 
-    uart_set_baud_rate(BAUD_115200);
+    uart_set_baud_rate(uart, BAUD_115200);
 
     // reset and enable FIFOs.
-    write_register(&g_uart_16550, FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
+    write_register(uart, FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
     // enable receive interrupt; TX interrupt gets enabled only while
     // transmit queue has pending bytes.
     uint32_t interrupt_enable = IER_RX_ENABLE;
-    write_register(&g_uart_16550, IER, interrupt_enable);
+    write_register(uart, IER, interrupt_enable);
 
     // init uart_16550 object
-    spin_lock_init(&g_uart_16550.uart_tx_lock, "uart");
+    spin_lock_init(&uart->uart_tx_lock, "uart");
 
-    g_uart_16550.tty.putc = uart_putc;
-    g_uart_16550.tty.putc_sync = uart_putc_sync;
-    g_uart_16550.tty.poll_callback = NULL;
+    uart->tty.putc = uart_putc;
+    uart->tty.putc_sync = uart_putc_sync;
+    uart->tty.poll_callback = NULL;
 
-    g_uart_16550_initialized = true;
-    return MKDEV(UART_16550_MAJOR, 0);
+    uart->tty.console = console_init(&uart->tty);
+    if (uart->tty.console == NULL)
+    {
+        kfree(uart);
+        kfree(device_name);
+        return INVALID_DEVICE;
+    }
+
+    dev_t dev_id = MKDEV(UART_16550_MAJOR, minor);
+
+    // init device and register it in the system
+    size_t interrupt_count = init_parameters->interrupt_count;
+    if ((g_system.compatible == SYSTEM_RISCV_SPIKE) && (interrupt_count > 1))
+    {
+        // Spike emits "interrupts = <irq 4>" for its one-cell PLIC. The
+        // second value is intended as an active-high flag, not another IRQ.
+        interrupt_count = 1;
+    }
+    dev_init(&uart->tty.dev, OTHER, dev_id, device_name,
+             init_parameters->interrupts, interrupt_count,
+             uart_interrupt_handler);
+    register_device(&uart->tty.dev);
+
+    return dev_id;
 }
 
-bool uart_set_baud_rate(enum UART_BAUD_RATE rate)
+bool uart_set_baud_rate(struct uart_16550 *uart, enum UART_BAUD_RATE rate)
 {
     // the BAUD rate is the system clock / 16 / [DLM DLL] / (PSD+1)
     // the PSD register is not present in all 16650 UARTS
@@ -170,68 +208,74 @@ bool uart_set_baud_rate(enum UART_BAUD_RATE rate)
     }
 
     // special mode to set baud rate.
-    write_register(&g_uart_16550, LCR, LCR_BAUD_LATCH);
+    write_register(uart, LCR, LCR_BAUD_LATCH);
 
-    write_register(&g_uart_16550, DLL, DLL_value);
-    write_register(&g_uart_16550, DLM, DLM_value);
+    write_register(uart, DLL, DLL_value);
+    write_register(uart, DLM, DLM_value);
 
     // leave set-baud mode,
     // and set word length to 8 bits, no parity.
-    write_register(&g_uart_16550, LCR, LCR_EIGHT_BITS);
+    write_register(uart, LCR, LCR_EIGHT_BITS);
 
     return true;
 }
 
-void uart_putc(int32_t c)
+void uart_putc(struct TTY_Device *tty, int32_t c)
 {
-    spin_lock(&g_uart_16550.uart_tx_lock);
+    struct uart_16550 *uart = uart_16550_from_tty(tty);
 
-    while (g_uart_16550.uart_tx_w == g_uart_16550.uart_tx_r + UART_TX_BUF_SIZE)
+    spin_lock(&uart->uart_tx_lock);
+
+    while (uart->uart_tx_w == uart->uart_tx_r + UART_TX_BUF_SIZE)
     {
         // buffer is full.
         // wait for uart_send_buffer() to open up space in the buffer.
-        sleep(&g_uart_16550.uart_tx_r, &g_uart_16550.uart_tx_lock);
+        sleep(&uart->uart_tx_r, &uart->uart_tx_lock);
     }
-    g_uart_16550.uart_tx_buf[g_uart_16550.uart_tx_w % UART_TX_BUF_SIZE] = c;
-    g_uart_16550.uart_tx_w += 1;
+    uart->uart_tx_buf[uart->uart_tx_w % UART_TX_BUF_SIZE] = c;
+    uart->uart_tx_w += 1;
 
     // Keep TX-empty interrupts enabled while there is buffered output.
-    uart_enable_tx_interrupt();
+    uart_enable_tx_interrupt(uart);
 
-    uart_send_buffer();
-    spin_unlock(&g_uart_16550.uart_tx_lock);
+    uart_send_buffer(uart);
+    spin_unlock(&uart->uart_tx_lock);
 }
 
-void uart_putc_sync(int32_t c)
+void uart_putc_sync(struct TTY_Device *tty, int32_t c)
 {
-    cpu_push_disable_device_interrupt_stack();
+    struct uart_16550 *uart = uart_16550_from_tty(tty);
 
-    while ((read_register(&g_uart_16550, LSR) & LSR_TX_IDLE) == 0)
+    // Serialize direct THR access with the buffered transmit path. The spin
+    // lock also disables device interrupts on this CPU while it is held.
+    spin_lock(&uart->uart_tx_lock);
+
+    while ((read_register(uart, LSR) & LSR_TX_IDLE) == 0)
     {
         // wait for Transmit Holding Empty to be set in LSR.
         ARCH_ASM_NOP;
     }
-    write_register(&g_uart_16550, THR, c);
+    write_register(uart, THR, c);
 
-    cpu_pop_disable_device_interrupt_stack();
+    spin_unlock(&uart->uart_tx_lock);
 }
 
 /// @brief If the UART is idle, and a character is waiting
 /// in the transmit buffer, send it.
 /// Caller must hold uart_tx_lock.
 /// Called from both the top- and bottom-half.
-void uart_send_buffer()
+void uart_send_buffer(struct uart_16550 *uart)
 {
     while (true)
     {
-        if (g_uart_16550.uart_tx_w == g_uart_16550.uart_tx_r)
+        if (uart->uart_tx_w == uart->uart_tx_r)
         {
             // transmit buffer is empty.
-            uart_disable_tx_interrupt();
+            uart_disable_tx_interrupt(uart);
             return;
         }
 
-        if ((read_register(&g_uart_16550, LSR) & LSR_TX_IDLE) == 0)
+        if ((read_register(uart, LSR) & LSR_TX_IDLE) == 0)
         {
             // the UART transmit holding register is full,
             // so we cannot give it another byte.
@@ -239,25 +283,24 @@ void uart_send_buffer()
             return;
         }
 
-        int32_t c =
-            g_uart_16550.uart_tx_buf[g_uart_16550.uart_tx_r % UART_TX_BUF_SIZE];
-        g_uart_16550.uart_tx_r += 1;
+        int32_t c = uart->uart_tx_buf[uart->uart_tx_r % UART_TX_BUF_SIZE];
+        uart->uart_tx_r += 1;
 
         // maybe uart_putc() is waiting for space in the buffer.
-        wakeup(&g_uart_16550.uart_tx_r);
+        wakeup(&uart->uart_tx_r);
 
-        write_register(&g_uart_16550, THR, c);
+        write_register(uart, THR, c);
     }
 }
 
 /// @brief Read a character from UART
 /// @return The char on success or -1 on failure
-int32_t uart_getc()
+int32_t uart_getc(struct uart_16550 *uart)
 {
-    if (read_register(&g_uart_16550, LSR) & LSR_DATA_READY)
+    if (read_register(uart, LSR) & LSR_DATA_READY)
     {
         // input data is ready.
-        return read_register(&g_uart_16550, RHR);
+        return read_register(uart, RHR);
     }
     else
     {
@@ -265,17 +308,17 @@ int32_t uart_getc()
     }
 }
 
-void uart_handle_input()
+void uart_handle_input(struct uart_16550 *uart)
 {
     // read and process incoming characters.
     while (true)
     {
-        int c = uart_getc();
+        int c = uart_getc(uart);
         if (c == -1)
         {
             break;
         }
-        console_interrupt_handler(c);
+        console_interrupt_handler(uart->tty.console, c);
     }
 }
 
@@ -284,31 +327,75 @@ void uart_handle_input()
 /// both. called from interrupt_handler().
 void uart_interrupt_handler(dev_t dev)
 {
-    spin_lock(&g_uart_16550.uart_tx_lock);
-    // Read ISR to identify source; persistent TX-empty condition must be
-    // controlled by masking/unmasking TX interrupts.
-    uint8_t int_status = read_register(&g_uart_16550, ISR);
-    uint8_t interrupt = int_status & 0x0F;
+    struct Device *device = dev_by_device_number(dev);
+    struct TTY_Device *tty = tty_device_from_device(device);
+    struct uart_16550 *uart = uart_16550_from_tty(tty);
 
-    if ((interrupt & 0x01) == 0)
+    bool interrupt_done = false;
+
+    if (g_system.compatible == SYSTEM_RISCV_SPIKE)
     {
-        // if bit 0 is un-set, an interrupt is pending
+        // Spike does not model IIR acknowledgement and prioritization like a
+        // real 16550. Inspect the actual line conditions once and then
+        // complete the PLIC claim instead of dispatching on its IIR value.
+        uint8_t line_status = read_register(uart, LSR);
+        if (line_status & LSR_DATA_READY)
+        {
+            uart_handle_input(uart);
+        }
+
+        spin_lock(&uart->uart_tx_lock);
+        if ((line_status & LSR_TX_IDLE) &&
+            (uart_get_interrupt_enable(uart) & IER_TX_ENABLE))
+        {
+            uart_send_buffer(uart);
+        }
+        spin_unlock(&uart->uart_tx_lock);
+
+        return;
+    }
+
+    // A UART may have another source pending by the time the current source
+    // has been handled, so loop until all are handled.
+    while (interrupt_done == false)
+    {
+        uint8_t interrupt = read_register(uart, ISR) & 0x0F;
+        if (interrupt & ISR_INT_NONE)
+        {
+            interrupt_done = true;
+            break;
+        }
 
         switch (interrupt)
         {
-            case ISR_INT_RX_DATA: uart_handle_input(); break;
-            case ISR_INT_TX_EMPTY: uart_send_buffer(); break;
-            case ISR_INT_MODEM_STATUS: break;
-            case ISR_INT_DMA_RX_END: break;
-            case ISR_INT_DMA_TX_END: break;
-            case ISR_INT_RX_STATUS: break;
-            case ISR_INT_RX_TIMEOUT: uart_handle_input(); break;
+            case ISR_INT_RX_DATA: uart_handle_input(uart); break;
+            case ISR_INT_TX_EMPTY:
+                spin_lock(&uart->uart_tx_lock);
+                uart_send_buffer(uart);
+                spin_unlock(&uart->uart_tx_lock);
+                break;
+            case ISR_INT_MODEM_STATUS:
+                // Reading MSR acknowledges a modem-status interrupt.
+                read_register(uart, MSR);
+                break;
+            case ISR_INT_DMA_RX_END:
+            case ISR_INT_DMA_TX_END:
+                // Unsupported device-specific DMA
+                interrupt_done = true;
+                break;
+            case ISR_INT_RX_STATUS:
+            {
+                // Reading LSR acknowledges a receiver-line-status interrupt.
+                read_register(uart, LSR);
+                break;
+            }
+            case ISR_INT_RX_TIMEOUT: uart_handle_input(uart); break;
             default:
             {
                 printk("16550 UART: unknown interrupt %d\n", interrupt);
+                interrupt_done = true;
+                break;
             }
         }
     }
-
-    spin_unlock(&g_uart_16550.uart_tx_lock);
 }

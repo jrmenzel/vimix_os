@@ -148,9 +148,12 @@ void gic2_init_per_cpu()
     {
         struct kobject *kobj = kobject_from_child_list(pos);
         struct Device *dev = device_from_kobj(kobj);
-        if (dev->irq_number != INVALID_IRQ_NUMBER)
+        for (size_t i = 0; i < dev->interrupt_count; ++i)
         {
-            gic2_set_prio0(dev->irq_number);
+            if (dev->interrupts[i].irq != INVALID_IRQ_NUMBER)
+            {
+                gic2_set_prio0(dev->interrupts[i].irq);
+            }
         }
     }
     rwspin_read_unlock(&g_kobjects_dev.children_lock);

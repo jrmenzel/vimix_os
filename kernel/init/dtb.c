@@ -528,19 +528,34 @@ struct Found_Device *dtb_find_boot_console_in_dev_list(
     const void *dtb, struct Devices_List *dev_list)
 {
     int console_offset = dtb_find_boot_console_index(dtb);
-    if (console_offset < 0) return NULL;  // contains a negative error code
+    if (console_offset >= 0)
+    {
+        // See what the selected console is compatible with and find its
+        // driver-backed device.
+        const char *value = dtb_get_nonempty_string_property(
+            dtb, console_offset, "compatible", NULL);
+        if (value != NULL)
+        {
+            struct list_head *pos;
+            list_for_each(pos, &dev_list->devices)
+            {
+                struct Found_Device *dev = found_device_from_devices_list(pos);
+                if (dtb_is_str_in_str_list(value, dev->driver->dtb_name))
+                {
+                    return dev;
+                }
+            }
+        }
+    }
 
-    // see what it is compatible with...
-    const char *value = dtb_get_nonempty_string_property(dtb, console_offset,
-                                                         "compatible", NULL);
-    if (value == NULL) return NULL;
-
-    // find the device:
+    // Spike advertises an HTIF device but commonly has no stdout-path (or a
+    // path naming a UART whose driver is intentionally disabled). Use HTIF as
+    // the boot console when it is available.
     struct list_head *pos;
     list_for_each(pos, &dev_list->devices)
     {
         struct Found_Device *dev = found_device_from_devices_list(pos);
-        if (dtb_is_str_in_str_list(value, dev->driver->dtb_name))
+        if (strcmp(dev->driver->dtb_name, "ucb,htif0") == 0)
         {
             return dev;
         }

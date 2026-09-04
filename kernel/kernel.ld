@@ -50,7 +50,9 @@ SECTIONS
     /* avoid writing to HTIF locations during bss clear */
     . = ALIGN(16);
     tohost = .;
+    QUAD(0);
     fromhost = .;
+    QUAD(0);
 
     /*PROVIDE(__end_data = .);*/
   } :data

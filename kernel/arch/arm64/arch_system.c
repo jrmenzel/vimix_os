@@ -41,10 +41,10 @@ void cpu_flush_dcache_range(size_t va, size_t len)
 
 static bool arm64_spin_table_release(uint64_t release_pa, uint64_t entry_pa)
 {
-    printk(
-        "Releasing secondary CPU with entry point 0x%llx via spin-table "
-        "release address 0x%llx\n",
-        (unsigned long long)entry_pa, (unsigned long long)release_pa);
+    // printk(
+    //     "Releasing secondary CPU with entry point 0x%llx via spin-table "
+    //     "release address 0x%llx\n",
+    //     (unsigned long long)entry_pa, (unsigned long long)release_pa);
 
     size_t release_va_addr = phys_to_virt((size_t)release_pa);
     volatile uint64_t *release_va64 = (volatile uint64_t *)release_va_addr;
@@ -57,7 +57,7 @@ static bool arm64_spin_table_release(uint64_t release_pa, uint64_t entry_pa)
     // send event to all cores (here: to wake them up)
     asm volatile("sev" : : : "memory");
 
-    printk("done releasing secondary CPU via spin-table\n");
+    // printk("done releasing secondary CPU via spin-table\n");
 
     return true;
 }
@@ -75,7 +75,7 @@ void ensure_addr_is_mapped(size_t pa)
             phys_to_virt(ps_page_start), PAGE_SIZE, MM_REGION_RESERVED_RAM);
         kvm_apply_kernel_mapping(g_kernel_pagetable);
 
-        debug_print_memory_map(&g_kernel_pagetable->memory_map);
+        // debug_print_memory_map(&g_kernel_pagetable->memory_map);
     }
     spin_unlock(&g_kernel_pagetable->lock);
 }

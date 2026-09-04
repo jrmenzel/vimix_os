@@ -256,19 +256,20 @@ void plic_init_per_cpu()
     {
         struct kobject *kobj = kobject_from_child_list(pos);
         struct Device *dev = device_from_kobj(kobj);
-        if (dev->irq_number != INVALID_IRQ_NUMBER)
+        for (size_t i = 0; i < dev->interrupt_count; ++i)
         {
-            size_t block = dev->irq_number / 32;
-            size_t enable_bit = dev->irq_number % 32;
+            int32_t irq = dev->interrupts[i].irq;
+            size_t block = irq / 32;
+            size_t enable_bit = irq % 32;
             irq_enable_flags[block] |= (1 << enable_bit);
 
-            uint32_t irq_prio = plic_get_interrupt_priority(dev->irq_number);
+            uint32_t irq_prio = plic_get_interrupt_priority(irq);
             if (irq_prio == 0)
             {
                 // set the default priority in case the device did not call
                 // plic_set_interrupt_priority() before (or the prio was
                 // lost as the PLIC was not initialized yet)
-                plic_set_interrupt_priority(dev->irq_number, 1);
+                plic_set_interrupt_priority(irq, 1);
             }
         }
     }

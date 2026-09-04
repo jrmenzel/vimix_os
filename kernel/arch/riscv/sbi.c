@@ -60,7 +60,7 @@ void sbi_console_poll_input()
         {
             break;
         }
-        console_interrupt_handler(c);
+        // console_interrupt_handler(c);
     }
 }
 

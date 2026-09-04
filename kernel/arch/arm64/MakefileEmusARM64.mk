@@ -26,6 +26,7 @@ QEMU_MACHINE       := raspi4b
 CPUS               := 4
 MEMORY_SIZE        := 2048
 QEMU_OPTS_ARCH     := -cpu cortex-a72 -machine $(QEMU_MACHINE) -no-reboot -serial null -serial mon:stdio 
+RAMDISK_BOOTLOADER := yes
 
 # Raspberry Pi 4 emulation on qemu requires us to provide the DTB file.
 # That must have the correct location of the ramdisk.

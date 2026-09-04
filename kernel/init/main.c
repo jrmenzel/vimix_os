@@ -99,9 +99,13 @@ void init_devices(const void *dtb)
     struct Found_Device *console_dev =
         dtb_find_boot_console_in_dev_list(dtb, dev_list);
 
-    printk("init console: %s\n",
-           console_dev != NULL ? console_dev->driver->dtb_name : "fallback");
-    dev_t con_dev = console_init(console_dev);  // try fallback on NULL
+    if (console_dev == NULL)
+    {
+        panic("no console");
+    }
+
+    printk("init console: %s\n", console_dev->driver->dtb_name);
+    dev_t con_dev = init_device(dev_list, console_dev);
 
     if (con_dev == INVALID_DEVICE)
     {

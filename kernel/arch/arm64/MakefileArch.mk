@@ -28,7 +28,8 @@ TOOLPREFIX := $(shell if aarch64-unknown-elf-objdump -i 2>&1 | grep 'elf64-big' 
 endif
 
 
-ARCH_CFLAGS := -mcpu=cortex-a72+nofp -mtune=cortex-a72 
+# Raspberry Pi 4: Cortex-A72
+ARCH_CFLAGS := -mcpu=cortex-a72+nofp -mtune=cortex-a72
 ARCH_CFLAGS += -mno-outline-atomics -mgeneral-regs-only -static -mstrict-align
 
 OBJS_ARCH := arch/arm64/asm/head.o \

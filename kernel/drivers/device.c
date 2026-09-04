@@ -11,11 +11,15 @@
 #include <kernel/proc.h>
 
 void dev_init(struct Device *dev, device_type type, dev_t device_number,
-              const char *name, int32_t irq_number,
+              const char *name, struct Device_Interrupt *irqs, size_t irq_count,
               interrupt_handler_p interrupt_handler)
 {
     dev->type = type;
-    dev->irq_number = irq_number;
+    dev->interrupt_count = irq_count;
+    for (size_t i = 0; i < irq_count; ++i)
+    {
+        dev->interrupts[i] = irqs[i];
+    }
     dev->dev_ops.interrupt_handler = interrupt_handler;
     dev->device_number = device_number;
     dev->name = name;
@@ -55,10 +59,13 @@ struct Device *dev_by_irq_number(int32_t irq_number)
     {
         struct kobject *kobj = kobject_from_child_list(pos);
         struct Device *dev = device_from_kobj(kobj);
-        if (dev->irq_number == irq_number)
+        for (size_t i = 0; i < dev->interrupt_count; ++i)
         {
-            rwspin_read_unlock(&g_kobjects_dev.children_lock);
-            return dev;
+            if (dev->interrupts[i].irq == irq_number)
+            {
+                rwspin_read_unlock(&g_kobjects_dev.children_lock);
+                return dev;
+            }
         }
     }
     rwspin_read_unlock(&g_kobjects_dev.children_lock);
@@ -78,12 +85,12 @@ void register_device(struct Device *dev)
     }
 
     // hook up interrupts:
-    if (dev->irq_number != INVALID_IRQ_NUMBER)
+    for (size_t i = 0; i < dev->interrupt_count; ++i)
     {
         if (g_int_con.set_priority != NULL)
         {
             // if the interrupt controller is already initialized
-            g_int_con.set_priority(dev->irq_number, 1);
+            g_int_con.set_priority(dev->interrupts[i].irq, 1);
         }
     }
 
@@ -99,13 +106,6 @@ void register_device(struct Device *dev)
     // kobject_add() added another one for the parent, which
     // from now on will be the only one
     kobject_put(&dev->kobj);
-}
-
-void dev_set_irq(struct Device *dev, int32_t irq_number,
-                 interrupt_handler_p interrupt_handler)
-{
-    dev->irq_number = irq_number;
-    dev->dev_ops.interrupt_handler = interrupt_handler;
 }
 
 bool dev_exists(dev_t device_number)

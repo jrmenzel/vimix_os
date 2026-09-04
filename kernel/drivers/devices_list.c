@@ -88,12 +88,21 @@ dev_t init_device(struct Devices_List *dev_list, struct Found_Device *dev)
     if (dev->driver->init_func == NULL) return INVALID_DEVICE;
 
     // init required other drivers first:
-    int32_t parent_int_ctl = dev->init_parameters.interrupt_parent_phandle;
-    if ((parent_int_ctl != 0) &&
-        (parent_int_ctl != (int32_t)dev->init_parameters.phandle))
+    for (size_t i = 0; i < dev->init_parameters.interrupt_count; ++i)
     {
-        // make sure the interrupt controller is initialized:
-        init_device_by_phandle(dev_list, parent_int_ctl);
+        if (dev->init_parameters.interrupts[i].irq == INVALID_IRQ_NUMBER)
+        {
+            break;
+        }
+
+        int32_t parent_int_ctl =
+            dev->init_parameters.interrupts[i].parent_phandle;
+        if ((parent_int_ctl != 0) &&
+            (parent_int_ctl != (int32_t)dev->init_parameters.phandle))
+        {
+            // make sure the interrupt controller is initialized:
+            init_device_by_phandle(dev_list, parent_int_ctl);
+        }
     }
 
     // init clocks:
@@ -138,16 +147,19 @@ diagnostic_pop;
 
 void clear_init_parameters(struct Device_Init_Parameters *param)
 {
-    param->interrupt = INVALID_IRQ_NUMBER;
-    memset(param->mem, 0,
-           sizeof(struct Memory_Mapped_Registers) * DEVICE_MAX_MEM_MAPS);
+    memset(param, 0, sizeof(struct Device_Init_Parameters));
+
+    for (size_t i = 0; i < DEVICE_MAX_INTERRUPTS; ++i)
+    {
+        param->interrupts[i].irq = INVALID_IRQ_NUMBER;
+    }
+    param->interrupt_count = 0;
+
     param->mmu_map_memory = false;
     param->reg_io_width = 1;
     param->reg_shift = 0;
     param->dtb = NULL;
     param->phandle = 0;
-    param->interrupt_parent_phandle = 0;
-    memset(param->clock_phandles, 0, sizeof(uint32_t) * DEVICE_MAX_CLOCKS);
 }
 
 struct Found_Device *dev_list_get_first_device(struct Devices_List *dev_list,
@@ -176,26 +188,32 @@ void dev_list_init_all_devices(struct Devices_List *dev_list)
     }
 }
 
-static int32_t dtb_get_device_interrupt(const void *dtb, int device_offset,
-                                        uint32_t interrupt_parent_phandle,
-                                        int32_t fallback)
+const int32_t INT_TYPE_SPI = 0;
+const int32_t INT_TYPE_PPI = 1;
+const int32_t INT_TYPE_SGI = 2;
+
+static void dtb_get_device_interrupts(
+    const void *dtb, int device_offset, uint32_t interrupt_parent_phandle,
+    struct Device_Init_Parameters *init_parameters)
 {
     int len = 0;
     const uint32_t *interrupts =
         fdt_getprop(dtb, device_offset, "interrupts", &len);
     if (interrupts == NULL || len < (int)sizeof(uint32_t))
     {
-        return fallback;
+        // zero interrupts, that's how init_parameters was pre-initialized
+        return;
     }
 
-    int interrupt_cells = 1;
+    // query how many values describe one interrupt
+    int32_t interrupt_cells = 1;
     if (interrupt_parent_phandle != 0)
     {
         int parent_offset =
             fdt_node_offset_by_phandle(dtb, interrupt_parent_phandle);
         if (parent_offset >= 0)
         {
-            int parent_cells = dtb_read_prop_u32_with_fallback(
+            int32_t parent_cells = dtb_read_prop_u32_with_fallback(
                 dtb, parent_offset, "#interrupt-cells", 1);
             if (parent_cells > 0)
             {
@@ -204,37 +222,62 @@ static int32_t dtb_get_device_interrupt(const void *dtb, int device_offset,
         }
     }
 
-    // Need one complete interrupt specifier.
-    if (len < (int)(sizeof(uint32_t) * interrupt_cells))
+    size_t interrupt_specifier_size =
+        sizeof(uint32_t) * (size_t)interrupt_cells;
+
+    // Ignore malformed properties containing an incomplete interrupt
+    // description
+    if ((size_t)len < interrupt_specifier_size ||
+        (size_t)len % interrupt_specifier_size != 0)
     {
-        return fallback;
+        return;
     }
 
-    // Default: single-cell controllers where the first cell is the IRQ ID.
-    int32_t irq = (int32_t)fdt32_to_cpu(interrupts[0]);
+    size_t interrupt_count = (size_t)len / interrupt_specifier_size;
+    DEBUG_EXTRA_ASSERT(interrupt_count <= DEVICE_MAX_INTERRUPTS,
+                       "unsupported interrrupt count");
+    interrupt_count = min(interrupt_count, DEVICE_MAX_INTERRUPTS);
 
-    // GIC style: <type number flags>
-    // type 0 = SPI (ID = 32 + number), type 1 = PPI (ID = 16 + number).
-    if (interrupt_cells >= 3)
+    for (size_t i = 0; i < interrupt_count; ++i)
     {
-        uint32_t type = fdt32_to_cpu(interrupts[0]);
-        uint32_t number = fdt32_to_cpu(interrupts[1]);
-        if (type == 0)
-        {
-            irq = (int32_t)(32 + number);
-        }
-        else if (type == 1)
-        {
-            irq = (int32_t)(16 + number);
-        }
-        else if (type == 2)
-        {
-            // SGI numbering is already 0..15.
-            irq = (int32_t)number;
-        }
-    }
+        // Index in the given array of values:
+        const uint32_t *specifier = interrupts + i * interrupt_cells;
 
-    return irq;
+        // Assume first cell is the IRQ
+        int32_t irq = (int32_t)fdt32_to_cpu(specifier[0]);
+        uint32_t flags = 0;
+        if (interrupt_cells > 1)
+        {
+            // Assume last cell are flags
+            flags = fdt32_to_cpu(specifier[interrupt_cells - 1]);
+        }
+
+        // GIC style: <type number flags>
+        if (interrupt_cells >= 3)
+        {
+            uint32_t type = fdt32_to_cpu(specifier[0]);
+            uint32_t number = fdt32_to_cpu(specifier[1]);
+            if (type == INT_TYPE_SPI)
+            {
+                irq = (int32_t)(32 + number);
+            }
+            else if (type == INT_TYPE_PPI)
+            {
+                irq = (int32_t)(16 + number);
+            }
+            else if (type == INT_TYPE_SGI)
+            {
+                // SGI numbering is already 0..15.
+                irq = (int32_t)number;
+            }
+        }
+
+        init_parameters->interrupts[i].irq = irq;
+        init_parameters->interrupts[i].parent_phandle =
+            interrupt_parent_phandle;
+        init_parameters->interrupts[i].flags = flags;
+    }
+    init_parameters->interrupt_count = interrupt_count;
 }
 
 static uint32_t dtb_get_effective_interrupt_parent_phandle(const void *dtb,
@@ -330,9 +373,9 @@ ssize_t dev_list_add_from_dtb(struct Devices_List *dev_list, const void *dtb,
         }
     }
 
-    // Parse the first interrupt specifier and convert to a controller IRQ ID.
-    params.interrupt = dtb_get_device_interrupt(
-        dtb, device_offset, params.interrupt_parent_phandle, params.interrupt);
+    // Parse interrupt specifiers and convert them to controller IRQ IDs.
+    dtb_get_device_interrupts(dtb, device_offset,
+                              params.interrupt_parent_phandle, &params);
 
     return dev_list_add_with_parameters(dev_list, driver, params);
 }
@@ -349,18 +392,14 @@ void debug_print_found_device(struct Found_Device *dev)
                dev->init_parameters.reg_io_width,
                dev->init_parameters.reg_shift);
     }
-    if (dev->init_parameters.interrupt != INVALID_IRQ_NUMBER)
+    for (size_t i = 0; i < dev->init_parameters.interrupt_count; ++i)
     {
-        printk("interrupt: %d ", dev->init_parameters.interrupt);
+        printk("IRQ: %d (ph: %d)", dev->init_parameters.interrupts[i].irq,
+               dev->init_parameters.interrupts[i].parent_phandle);
     }
     if (dev->init_parameters.phandle)
     {
         printk("phandle: %d ", dev->init_parameters.phandle);
-    }
-    if (dev->init_parameters.interrupt_parent_phandle)
-    {
-        printk("int-parent phandle: %d ",
-               dev->init_parameters.interrupt_parent_phandle);
     }
 
     for (size_t c = 0;

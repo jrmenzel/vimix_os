@@ -6,46 +6,6 @@
 #include <kernel/kernel.h>
 #include <kernel/spinlock.h>
 
-enum UART_BAUD_RATE
-{
-    BAUD_1200,
-    BAUD_2400,
-    BAUD_4800,
-    BAUD_9600,
-    BAUD_19200,
-    BAUD_38400,
-    BAUD_57600,
-    BAUD_115200
-};
-
-/// @brief Inits the hardware, creates a uart_16550 object
-/// and adds it to the devices list.
-dev_t uart_init(struct Device_Init_Parameters *init_parameters,
-                const char *name);
-
-bool uart_set_baud_rate(enum UART_BAUD_RATE rate);
-
-/// @brief Console Character Device will set this up
-void uart_interrupt_handler(dev_t dev);
-
-/// add a character to the output buffer and tell the
-/// UART to start sending if it isn't already.
-/// blocks if the output buffer is full.
-/// because it may block, it can't be called
-/// from interrupts; it's only suitable for use
-/// by write().
-void uart_putc(int32_t c);
-
-/// alternate version of uart_putc() that doesn't
-/// use interrupts, for use by kernel printk() and
-/// to echo characters. it spins waiting for the uart's
-/// output register to be empty.
-void uart_putc_sync(int32_t c);
-
-/// read one input character from the UART.
-/// return -1 if none is waiting.
-int uart_getc();
-
 #define UART_TX_BUF_SIZE 32
 
 /// @brief Struct of the driver for the common 16550 UART.
@@ -75,3 +35,30 @@ struct uart_16550
     /// different register width
     int32_t reg_shift;
 };
+
+#define uart_16550_from_tty(ptr) container_of(ptr, struct uart_16550, tty)
+
+enum UART_BAUD_RATE
+{
+    BAUD_1200,
+    BAUD_2400,
+    BAUD_4800,
+    BAUD_9600,
+    BAUD_19200,
+    BAUD_38400,
+    BAUD_57600,
+    BAUD_115200
+};
+
+/// @brief Inits the hardware, creates a uart_16550 object
+/// and adds it to the devices list.
+dev_t uart_init(struct Device_Init_Parameters *init_parameters,
+                const char *name);
+
+bool uart_set_baud_rate(struct uart_16550 *uart, enum UART_BAUD_RATE rate);
+
+void uart_send_buffer(struct uart_16550 *uart);
+
+void uart_putc(struct TTY_Device *tty, int32_t c);
+void uart_putc_sync(struct TTY_Device *tty, int32_t c);
+void uart_interrupt_handler(dev_t dev);

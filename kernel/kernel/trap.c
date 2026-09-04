@@ -314,8 +314,6 @@ void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
 
 void handle_device_interrupt()
 {
-    // this is a supervisor external interrupt, via PLIC.
-
     // irq indicates which device interrupted.
     int irq = g_int_con.claim();
 
@@ -325,8 +323,6 @@ void handle_device_interrupt()
         return;
     }
 
-    bool irq_handled = false;
-
     struct Device *dev = dev_by_irq_number(irq);
     if (dev)
     {
@@ -334,10 +330,8 @@ void handle_device_interrupt()
                           "Device has no interrupt handler\n");
 
         dev->dev_ops.interrupt_handler(dev->device_number);
-        irq_handled = true;
     }
-
-    if (irq_handled == false)
+    else
     {
         printk("unexpected interrupt irq=%d\n", irq);
     }

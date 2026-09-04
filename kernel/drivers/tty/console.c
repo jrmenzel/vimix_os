@@ -56,20 +56,13 @@ struct Console_Device
 
     bool add_cr;  ///< add a CR / 'r' for every '\n' written
 
-    device_putc_fn putc;
-    device_putc_fn putc_sync;
+    struct TTY_Device *tty;
 };
 
 #define console_driver_from_cdev(ptr) \
     container_of((ptr), struct Console_Device, cdev)
 
-/// @brief NULL if no regular callback to poll input is needed
-/// (used if no real console device is available)
-void (*g_console_poll_callback)() = NULL;
-
 atomic_size_t g_console_next_minor = 0;
-
-struct Console_Device *g_boot_console = NULL;
 
 /// send one character to the uart.
 /// called by printk(), and to echo input characters,
@@ -79,18 +72,18 @@ void console_putc(struct Console_Device *console, int32_t c)
     if (c == BACKSPACE)
     {
         // if the user typed backspace, overwrite with a space.
-        console->putc_sync('\b');
-        console->putc_sync(' ');
-        console->putc_sync('\b');
+        console->tty->putc_sync(console->tty, '\b');
+        console->tty->putc_sync(console->tty, ' ');
+        console->tty->putc_sync(console->tty, '\b');
     }
     else
     {
         if (console->add_cr && c == '\n')
         {
             // add carrige return to a newline
-            console->putc_sync('\r');
+            console->tty->putc_sync(console->tty, '\r');
         }
-        console->putc_sync(c);
+        console->tty->putc_sync(console->tty, c);
     }
 }
 
@@ -113,9 +106,9 @@ ssize_t console_write(struct Device *dev, bool addr_is_userspace, size_t src,
         if (console->add_cr && c == '\n')
         {
             // add carrige return to a newline, don't count extra
-            console->putc('\r');
+            console->tty->putc(console->tty, '\r');
         }
-        console->putc(c);
+        console->tty->putc(console->tty, c);
     }
 
     return i;
@@ -356,10 +349,8 @@ bool console_handle_control_keys(struct Console_Device *console, int32_t c)
 /// uart_interrupt_handler() calls this for input character.
 /// do erase/kill processing, append to g_console->buf,
 /// wake up console_read() if a whole line has arrived.
-void console_interrupt_handler(int32_t c)
+void console_interrupt_handler(struct Console_Device *console, int32_t c)
 {
-    struct Console_Device *console = g_boot_console;
-
     spin_lock(&console->lock);
 
     bool input_processed = false;
@@ -407,7 +398,7 @@ void console_interrupt_handler(int32_t c)
     spin_unlock(&console->lock);
 }
 
-struct Console_Device *console_init2(struct TTY_Device *tty)
+struct Console_Device *console_init(struct TTY_Device *tty)
 {
     DEBUG_EXTRA_PANIC(tty != NULL, "tty is NULL");
 
@@ -416,10 +407,6 @@ struct Console_Device *console_init2(struct TTY_Device *tty)
     if (console == NULL)
     {
         return NULL;
-    }
-    if (g_boot_console == NULL)
-    {
-        g_boot_console = console;
     }
 
     spin_lock_init(&console->lock, "cons");
@@ -434,143 +421,47 @@ struct Console_Device *console_init2(struct TTY_Device *tty)
         printk("console: out of memory\n");
         return NULL;
     }
-    snprintf(device_name, NAME_LEN, "console%zd", minor);
-
-    // init device and register it in the system
-    dev_init(&console->cdev.dev, CHAR, MKDEV(CONSOLE_DEVICE_MAJOR, minor),
-             "console", INVALID_IRQ_NUMBER, NULL);
-    console->cdev.ops.read = console_read;
-    console->cdev.ops.write = console_write;
-    console->cdev.ops.ioctl = console_ioctl;
-    console->cdev.dev.mode = 0666;
-
-    memset(&console->termios, 0, sizeof(struct termios));
-    console->termios.c_lflag = ECHO | ICANON | ICRNL;
-    console->termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
-    console->termios.c_cc[VTIME] = 0;  // no timeout in read()
-
-    console->add_cr = true;
-
-    console->putc = tty->putc;
-    console->putc_sync = tty->putc_sync;
-    g_console_poll_callback = tty->poll_callback;
-
-    register_device(&console->cdev.dev);
-    printk_redirect_to_console(console);
-
-    return console;
-}
-
-void console_putc_noop(int32_t ch) {}
-
-dev_t console_init(struct Found_Device *console_dev)
-{
-    if (console_dev != NULL)
+    if (minor == 0)
     {
-        struct Devices_List *dev_list = get_devices_list();
-        dev_t uart_dev = init_device(dev_list, console_dev);
-        if (uart_dev == INVALID_DEVICE)
-        {
-            return INVALID_DEVICE;
-        }
-    }
-
-    struct Console_Device *console =
-        kmalloc(sizeof(struct Console_Device), ALLOC_FLAG_ZERO_MEMORY);
-    if (console == NULL)
-    {
-        return INVALID_DEVICE;
-    }
-    if (g_boot_console == NULL)
-    {
-        g_boot_console = console;
-    }
-
-    spin_lock_init(&console->lock, "cons");
-
-    size_t minor = (size_t)atomic_fetch_add(&g_console_next_minor, 1);
-
-    // init device and register it in the system
-    dev_init(&console->cdev.dev, CHAR, MKDEV(CONSOLE_DEVICE_MAJOR, minor),
-             "console", INVALID_IRQ_NUMBER, NULL);
-    console->cdev.ops.read = console_read;
-    console->cdev.ops.write = console_write;
-    console->cdev.ops.ioctl = console_ioctl;
-    console->cdev.dev.mode = 0666;
-
-    memset(&console->termios, 0, sizeof(struct termios));
-    console->termios.c_lflag = ECHO | ICANON | ICRNL;
-    console->termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
-    console->termios.c_cc[VTIME] = 0;  // no timeout in read()
-
-    console->add_cr = true;
-
-    if (console_dev != NULL)
-    {
-        const char *name = console_dev->driver->dtb_name;
-        if (strcmp(name, "ucb,htif0") == 0)
-        {
-            console->putc = htif_putc;
-            console->putc_sync = htif_putc;
-            g_console_poll_callback = htif_console_poll_input;
-        }
-        else if (strcmp(name, "ns16550a") == 0 ||
-                 strcmp(name, "snps,dw-apb-uart") == 0)
-        {
-            // ns16550a or snps,dw-apb-uart
-            console->putc = uart_putc;
-            console->putc_sync = uart_putc_sync;
-
-            dev_set_irq(&console->cdev.dev,
-                        console_dev->init_parameters.interrupt,
-                        uart_interrupt_handler);
-        }
-#if defined(__ARCH_arm64)
-        else if (strcmp(name, "brcm,bcm2835-aux-uart") == 0)
-        {
-            console->putc = bcm2835_aux_uart_putc;
-            console->putc_sync = bcm2835_aux_uart_putc_sync;
-            g_console_poll_callback = bcm2835_aux_uart_poll_input;
-
-            dev_set_irq(&console->cdev.dev,
-                        console_dev->init_parameters.interrupt,
-                        bcm2835_aux_uart_interrupt_handler);
-        }
-        else if (strcmp(name, "arm,pl011") == 0)
-        {
-            console->putc = arm_pl011_putc;
-            console->putc_sync = arm_pl011_putc;
-            g_console_poll_callback = arm_pl011_poll_input;
-
-            dev_set_irq(&console->cdev.dev,
-                        console_dev->init_parameters.interrupt,
-                        arm_pl011_interrupt_handler);
-        }
-#endif
+        // call the first just console
+        strncpy(device_name, "console", NAME_LEN);
     }
     else
     {
-#ifdef __ARCH_riscv
-        if (sbi_probe_extension(SBI_LEGACY_EXT_CONSOLE_PUTCHAR) > 0)
-        {
-            // SBI console fallback
-            console->putc = sbi_console_putchar;
-            console->putc_sync = sbi_console_putchar;
-            g_console_poll_callback = sbi_console_poll_input;
-            printk("Console fallback: SBI\n");
-        }
-#endif
+        snprintf(device_name, NAME_LEN, "console%zd", minor);
     }
 
-    if (console->putc == NULL)
+    // init device and register it in the system
+    dev_init(&console->cdev.dev, CHAR, MKDEV(CONSOLE_DEVICE_MAJOR, minor),
+             device_name, NULL, 0, NULL);
+    console->cdev.ops.read = console_read;
+    console->cdev.ops.write = console_write;
+    console->cdev.ops.ioctl = console_ioctl;
+    console->cdev.dev.mode = 0666;
+
+    memset(&console->termios, 0, sizeof(struct termios));
+    console->termios.c_lflag = ECHO | ICANON | ICRNL;
+    console->termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
+    console->termios.c_cc[VTIME] = 0;  // no timeout in read()
+
+    console->add_cr = true;
+
+    console->tty = tty;
+    if (tty->poll_callback)
     {
-        // run with no input/output:
-        console->putc = console_putc_noop;
-        console->putc_sync = console_putc_noop;
+        bool ok = kticks_register_tty_callback(tty->poll_callback, tty);
+        if (!ok)
+        {
+            printk("Error registering regular callback for TTY\n");
+        }
     }
 
     register_device(&console->cdev.dev);
-    printk_redirect_to_console(console);
 
-    return console->cdev.dev.device_number;
+    if (printk_has_console() == false)
+    {
+        printk_set_console(console);
+    }
+
+    return console;
 }

@@ -43,6 +43,7 @@ Only sv39 [memory_management](kernel/mm/memory_management.md) is supported.
 
 - [qemu virt device](../development/run_on_qemu.md)
 - [Raspberry Pi 4](../development/run_on_raspberrypi4.md)
+  - Does not support Raspberry Pi 3, as it requires a different interrupt controller.
 
 ---
 **Up:** [README](../../README.md)

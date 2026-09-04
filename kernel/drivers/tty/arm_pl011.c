@@ -8,8 +8,7 @@
 
 REGISTER_DRIVER("arm,pl011", arm_pl011_init);
 
-struct arm_pl011 g_arm_pl011;
-bool g_arm_pl011_initialized = false;
+atomic_size_t g_arm_pl011_next_minor = 0;
 
 #define CR_TXEN (1 << 8)
 #define CR_RXEN (1 << 9)
@@ -82,92 +81,122 @@ void calculate_divisors(uint32_t *integer, uint32_t *fractional)
 #define PL011_PCell_ID2 (0x0FF8)
 #define PL011_PCell_ID3 (0x0FFC)
 
-static inline uint32_t pl011_read(size_t reg)
-{
-    return MMIO_READ_UINT_32(g_arm_pl011.uart_base, reg);
-}
-
-static inline void pl011_write(size_t reg, uint32_t value)
-{
-    MMIO_WRITE_UINT_32(g_arm_pl011.uart_base, reg, value);
-}
-
 dev_t arm_pl011_init(struct Device_Init_Parameters *init_parameters,
                      const char *name)
 {
     DRIVER_CHECK_INIT_PARAMS(init_parameters);
 
-    if (g_arm_pl011_initialized)
-        return INVALID_DEVICE;  // only one instance for now
+    struct Arm_pl011 *arm_pl011 =
+        kmalloc(sizeof(struct Arm_pl011), ALLOC_FLAG_ZERO_MEMORY);
+    if (arm_pl011 == NULL)
+    {
+        return INVALID_DEVICE;
+    }
 
-    g_arm_pl011.uart_base = init_parameters->mem[0].start_va;
-    spin_lock_init(&g_arm_pl011.arm_pl011_lock, "arm_pl011_lock");
+    size_t minor = (size_t)atomic_fetch_add(&g_arm_pl011_next_minor, 1);
+    const size_t NAME_LEN = 16;
+    char *device_name = kmalloc(NAME_LEN, ALLOC_FLAG_NONE);
+    if (device_name == NULL)
+    {
+        printk("uart: out of memory\n");
+        kfree(arm_pl011);
+        return INVALID_DEVICE;
+    }
+    snprintf(device_name, NAME_LEN, "arm_pl011_%zd", minor);
+
+    arm_pl011->mmio_base = init_parameters->mem[0].start_va;
+    spin_lock_init(&arm_pl011->arm_pl011_lock, "arm_pl011_lock");
 
     // Disable UART before changing baud/line config.
-    pl011_write(PL011_UART_CR, 0);
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_CR, 0);
 
     // Mask and clear all interrupts before reconfiguration.
-    pl011_write(PL011_UART_IMSC, 0);
-    pl011_write(PL011_UART_ICR, ICR_ALL);
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_IMSC, 0);
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_ICR, ICR_ALL);
 
     // Configure baud rate for the default QEMU virt PL011 clock.
     uint32_t integer = 0;
     uint32_t fractional = 0;
     calculate_divisors(&integer, &fractional);
-    pl011_write(PL011_UART_IBRD, integer);
-    pl011_write(PL011_UART_FBRD, fractional);
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_IBRD, integer);
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_FBRD, fractional);
 
     // 8N1 and FIFO enabled.
-    pl011_write(PL011_UART_LCRH, LCR_WLEN_8BIT | LCR_FEN);
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_LCRH,
+                       LCR_WLEN_8BIT | LCR_FEN);
 
     // Enable receive interrupts and RX/TX/UART.
-    pl011_write(PL011_UART_IMSC, IMSC_RXIM | IMSC_RTIM);
-    pl011_write(PL011_UART_CR, CR_UARTEN | CR_TXEN | CR_RXEN);
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_IMSC,
+                       IMSC_RXIM | IMSC_RTIM);
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_CR,
+                       CR_UARTEN | CR_TXEN | CR_RXEN);
 
-    g_arm_pl011.tty.putc = arm_pl011_putc;
-    g_arm_pl011.tty.putc_sync = arm_pl011_putc;
-    g_arm_pl011.tty.poll_callback = arm_pl011_poll_input;
+    arm_pl011->tty.putc = arm_pl011_putc;
+    arm_pl011->tty.putc_sync = arm_pl011_putc;
+    arm_pl011->tty.poll_callback = NULL;
 
-    g_arm_pl011_initialized = true;
+    arm_pl011->tty.console = console_init(&arm_pl011->tty);
+    if (arm_pl011->tty.console == NULL)
+    {
+        kfree(arm_pl011);
+        kfree(device_name);
+        return INVALID_DEVICE;
+    }
 
-    return MKDEV(ARM_PL011_MAJOR, 0);
+    dev_t dev_id = MKDEV(ARM_PL011_MAJOR, minor);
+
+    // init device and register it in the system
+    dev_init(&arm_pl011->tty.dev, OTHER, dev_id, device_name,
+             init_parameters->interrupts, init_parameters->interrupt_count,
+             arm_pl011_interrupt_handler);
+    register_device(&arm_pl011->tty.dev);
+
+    return dev_id;
 }
 
 void arm_pl011_interrupt_handler(dev_t dev)
 {
-    (void)dev;
+    struct Device *device = dev_by_device_number(dev);
+    struct TTY_Device *tty = tty_device_from_device(device);
+    struct Arm_pl011 *arm_pl011 = arm_pl011_from_tty(tty);
 
-    uint32_t mis = pl011_read(PL011_UART_MIS);
+    uint32_t mis = MMIO_READ_UINT_32(arm_pl011->mmio_base, PL011_UART_MIS);
     if ((mis & (MIS_RXMIS | MIS_RTMIS)) == 0)
     {
         if (mis != 0)
         {
-            pl011_write(PL011_UART_ICR, mis);
+            MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_ICR, mis);
         }
         return;
     }
 
     // Drain all available RX bytes in one interrupt.
-    while ((pl011_read(PL011_UART_FR) & FR_RXFE) == 0)
+    while ((MMIO_READ_UINT_32(arm_pl011->mmio_base, PL011_UART_FR) & FR_RXFE) ==
+           0)
     {
-        int32_t c = (int32_t)(pl011_read(PL011_UART_DR) & 0xFF);
-        console_interrupt_handler(c);
+        int32_t c =
+            (int32_t)(MMIO_READ_UINT_32(arm_pl011->mmio_base, PL011_UART_DR) &
+                      0xFF);
+        console_interrupt_handler(tty->console, c);
     }
 
-    pl011_write(PL011_UART_ICR, mis);
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_ICR, mis);
 }
 
-void arm_pl011_putc(int32_t c)
+void arm_pl011_putc(struct TTY_Device *tty, int32_t c)
 {
+    struct Arm_pl011 *arm_pl011 = arm_pl011_from_tty(tty);
+
     cpu_push_disable_device_interrupt_stack();
 
-    while (pl011_read(PL011_UART_FR) & FR_TXFF)
+    while (MMIO_READ_UINT_32(arm_pl011->mmio_base, PL011_UART_FR) & FR_TXFF)
     {
         ARCH_ASM_NOP;
     }
-    pl011_write(PL011_UART_DR, (uint32_t)(c & 0xFF));
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_DR,
+                       (uint32_t)(c & 0xFF));
 
-    while (pl011_read(PL011_UART_FR) & FR_BUSY)
+    while (MMIO_READ_UINT_32(arm_pl011->mmio_base, PL011_UART_FR) & FR_BUSY)
     {
         ARCH_ASM_NOP;
     }
@@ -175,26 +204,28 @@ void arm_pl011_putc(int32_t c)
     cpu_pop_disable_device_interrupt_stack();
 }
 
-int arm_pl011_getc()
+int arm_pl011_getc(struct Arm_pl011 *arm_pl011)
 {
-    if (pl011_read(PL011_UART_FR) & FR_RXFE)
+    if (MMIO_READ_UINT_32(arm_pl011->mmio_base, PL011_UART_FR) & FR_RXFE)
     {
         return -1;
     }
 
-    return (int)(pl011_read(PL011_UART_DR) & 0xFF);
+    return (int)(MMIO_READ_UINT_32(arm_pl011->mmio_base, PL011_UART_DR) & 0xFF);
 }
 
-void arm_pl011_poll_input()
+void arm_pl011_poll_input(struct TTY_Device *tty)
 {
+    struct Arm_pl011 *arm_pl011 = arm_pl011_from_tty(tty);
+
     while (true)
     {
-        int32_t c = arm_pl011_getc();
+        int32_t c = arm_pl011_getc(arm_pl011);
         if (c < 0)
         {
             break;
         }
 
-        console_interrupt_handler(c);
+        console_interrupt_handler(tty->console, c);
     }
 }

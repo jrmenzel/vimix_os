@@ -29,7 +29,7 @@ void virtio_block_device_write(struct Block_Device *bd, struct buf *b);
 void virtio_block_device_interrupt(dev_t dev);
 
 dev_t virtio_disk_init_internal(size_t disk_index,
-                                struct Device_Init_Parameters *mapping)
+                                struct Device_Init_Parameters *init_parameters)
 {
     struct virtio_disk *disk =
         kmalloc(sizeof(struct virtio_disk), ALLOC_FLAG_ZERO_MEMORY);
@@ -48,7 +48,7 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     snprintf(device_name, 16, "virtio%zd", disk_index);
 
     spin_lock_init(&disk->vdisk_lock, "virtio_disk");
-    disk->mmio_base = mapping->mem[0].start_va;
+    disk->mmio_base = init_parameters->mem[0].start_va;
     size_t b = disk->mmio_base;
 
     uint32_t status = 0;
@@ -171,7 +171,8 @@ dev_t virtio_disk_init_internal(size_t disk_index,
     // plic.c and trap.c arrange for interrupts
     dev_init(&disk->disk.bdev.dev, BLOCK,
              MKDEV(QEMU_VIRT_IO_DISK_MAJOR, disk_index), device_name,
-             mapping->interrupt, virtio_block_device_interrupt);
+             init_parameters->interrupts, init_parameters->interrupt_count,
+             virtio_block_device_interrupt);
     disk->disk.bdev.size = config->capacity * 512;
     disk->disk.bdev.ops.read_buf = virtio_block_device_read;
     disk->disk.bdev.ops.write_buf = virtio_block_device_write;

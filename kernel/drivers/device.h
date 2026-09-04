@@ -22,9 +22,19 @@ struct general_device_ops
 enum device_type_enum
 {
     CHAR,
-    BLOCK
+    BLOCK,
+    OTHER  ///< For devices which do not appear in /dev
 };
 typedef enum device_type_enum device_type;
+
+#define DEVICE_MAX_INTERRUPTS (16)
+
+struct Device_Interrupt
+{
+    uint32_t parent_phandle;
+    int32_t irq;
+    uint32_t flags;
+};
 
 /// @brief Base for all devices.
 /// Devices react with dev_ops->interrupt_handler() on interrupt irq_number.
@@ -34,7 +44,10 @@ struct Device
 
     device_type type;
     /// @brief Interrupt ReQuest number the device reacts to
-    int32_t irq_number;
+    // int32_t irq_number;
+    struct Device_Interrupt interrupts[DEVICE_MAX_INTERRUPTS];
+    size_t interrupt_count;
+
     struct general_device_ops dev_ops;
 
     dev_t device_number;  ///< Major and Minor device number, use MKDEV macro
@@ -46,21 +59,12 @@ struct Device
 #define device_from_kobj(ptr) container_of(ptr, struct Device, kobj)
 
 void dev_init(struct Device *dev, device_type type, dev_t device_number,
-              const char *name, int32_t irq_number,
+              const char *name, struct Device_Interrupt *irqs, size_t irq_count,
               interrupt_handler_p interrupt_handler);
 
 struct Device *dev_by_device_number(dev_t device_number);
 
 struct Device *dev_by_irq_number(int32_t irq_number);
-
-/// @brief Initialize the device, called from the character and block device
-/// init functions.
-/// @param dev Device to init
-/// @param irq_number IRQ to listen to or INVALID_IRQ_NUMBER
-/// @param interrupt_handler valid interrupt callback or NULL (irq_number
-/// must be INVALID_IRQ_NUMBER)
-void dev_set_irq(struct Device *dev, int32_t irq_number,
-                 interrupt_handler_p interrupt_handler);
 
 /// @brief Every driver has to call this and register the device.
 /// @param dev the device to register

@@ -13,6 +13,8 @@
 
 REGISTER_DRIVER("brcm,bcm2835-aux-uart", bcm2835_aux_uart_init);
 
+atomic_size_t g_bcm2835_aux_uart_next_minor = 0;
+
 // Auxilary mini UART registers
 #define AUX_MU_IO (0x00)
 #define AUX_MU_IER (0x04)
@@ -39,17 +41,18 @@ REGISTER_DRIVER("brcm,bcm2835-aux-uart", bcm2835_aux_uart_init);
 #define AUX_MU_STAT (0x24)
 #define AUX_MU_BAUD (0x28)
 
-struct bcm2835_aux_uart g_bcm2835_aux_uart;
+// struct bcm2835_aux_uart g_bcm2835_aux_uart;
 
-static int32_t bcm2835_aux_uart_getc_nonblocking()
+static int32_t bcm2835_aux_uart_getc_nonblocking(
+    struct bcm2835_aux_uart *aux_uart)
 {
-    if (!(MMIO_READ_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_LSR) &
+    if (!(MMIO_READ_UINT_32(aux_uart->mmio_base, AUX_MU_LSR) &
           AUX_MU_LSR_DATA_READY))
     {
         return -1;
     }
 
-    return MMIO_READ_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_IO) & 0xFF;
+    return MMIO_READ_UINT_32(aux_uart->mmio_base, AUX_MU_IO) & 0xFF;
 }
 
 void bcm2835_aux_uart_set_baud_rate(struct bcm2835_aux_uart *aux_uart,
@@ -123,7 +126,25 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_parameters,
     gpio_init |= init_device_by_name(dev_list, "brcm,bcm2835-gpiomem");
     if (!gpio_init) return INVALID_DEVICE;
 
-    g_bcm2835_aux_uart.mmio_base = init_parameters->mem[0].start_va;
+    struct bcm2835_aux_uart *aux_uart =
+        kmalloc(sizeof(struct bcm2835_aux_uart), ALLOC_FLAG_ZERO_MEMORY);
+    if (aux_uart == NULL)
+    {
+        return INVALID_DEVICE;
+    }
+
+    aux_uart->mmio_base = init_parameters->mem[0].start_va;
+
+    size_t minor = (size_t)atomic_fetch_add(&g_bcm2835_aux_uart_next_minor, 1);
+    const size_t NAME_LEN = 20;
+    char *device_name = kmalloc(NAME_LEN, ALLOC_FLAG_NONE);
+    if (device_name == NULL)
+    {
+        printk("uart: out of memory\n");
+        kfree(aux_uart);
+        return INVALID_DEVICE;
+    }
+    snprintf(device_name, NAME_LEN, "bcm2835_aux_uart%zd", minor);
 
     size_t clock;
     if (getSystemCompatible() == SYSTEM_ARM64_RASPBERRY_PI_4)
@@ -153,8 +174,8 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_parameters,
         clock = bcm2835_aux_uart_get_clock(init_parameters->dtb,
                                            init_parameters->dev_offset);
     }
-    g_bcm2835_aux_uart.clock_hz = clock;
-    spin_lock_init(&g_bcm2835_aux_uart.lock, "bcm2835_aux_uart_lock");
+    aux_uart->clock_hz = clock;
+    spin_lock_init(&aux_uart->lock, "bcm2835_aux_uart_lock");
 
     // We should read the clocks from the init_parameters and find the right
     // device that way. But at least on Raspberry Pi 3/4 this is the right one.
@@ -162,17 +183,15 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_parameters,
     // this UART.
     if (!bcm2835_aux_enable(BCM2835_AUX_DEVICE_UART)) return INVALID_DEVICE;
 
-    MMIO_WRITE_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_CNTL, 0);
-    MMIO_WRITE_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_MCR, 0);
-    MMIO_WRITE_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_IER,
-                       AUX_MU_IER_RX_ENABLE);
-    MMIO_WRITE_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_LCR,
-                       AUX_MU_LCR_8BIT_MODE);
+    MMIO_WRITE_UINT_32(aux_uart->mmio_base, AUX_MU_CNTL, 0);
+    MMIO_WRITE_UINT_32(aux_uart->mmio_base, AUX_MU_MCR, 0);
+    MMIO_WRITE_UINT_32(aux_uart->mmio_base, AUX_MU_IER, AUX_MU_IER_RX_ENABLE);
+    MMIO_WRITE_UINT_32(aux_uart->mmio_base, AUX_MU_LCR, AUX_MU_LCR_8BIT_MODE);
     // clear transmit and recieve FIFOs
     MMIO_WRITE_UINT_32(
-        g_bcm2835_aux_uart.mmio_base, AUX_MU_IIR,
+        aux_uart->mmio_base, AUX_MU_IIR,
         AUX_MU_IIR_FIFO_ENABLE | AUX_MU_IIR_T_FIFO | AUX_MU_IIR_R_FIFO);
-    bcm2835_aux_uart_set_baud_rate(&g_bcm2835_aux_uart, 115200);
+    bcm2835_aux_uart_set_baud_rate(aux_uart, 115200);
 
     // setup GPIO pins:
     bcm2835_gpio_set_pin_to_function(14, GPFSEL_FUNC_ALT_5);
@@ -181,72 +200,97 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_parameters,
     bcm2835_gpio_set_pull_up_control(15, GPPUD_OFF);
 
     // enable Rx & Tx
-    MMIO_WRITE_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_CNTL,
+    MMIO_WRITE_UINT_32(aux_uart->mmio_base, AUX_MU_CNTL,
                        AUX_MU_CNTL_R_ENABLE | AUX_MU_CNTL_T_ENABLE);
 
-    g_bcm2835_aux_uart.tty.putc = bcm2835_aux_uart_putc;
-    g_bcm2835_aux_uart.tty.putc_sync = bcm2835_aux_uart_putc_sync;
-    g_bcm2835_aux_uart.tty.poll_callback = bcm2835_aux_uart_poll_input;
+    aux_uart->tty.putc = bcm2835_aux_uart_putc;
+    aux_uart->tty.putc_sync = bcm2835_aux_uart_putc_sync;
+    aux_uart->tty.poll_callback = NULL;  // bcm2835_aux_uart_poll_input;
 
-    return MKDEV(BCM2835_UART_AUX_MAJOR, 0);
+    aux_uart->tty.console = console_init(&aux_uart->tty);
+    if (aux_uart->tty.console == NULL)
+    {
+        kfree(aux_uart);
+        kfree(device_name);
+        return INVALID_DEVICE;
+    }
+
+    dev_t dev_id = MKDEV(BCM2835_UART_AUX_MAJOR, minor);
+
+    // init device and register it in the system
+    dev_init(&aux_uart->tty.dev, OTHER, dev_id, device_name,
+             init_parameters->interrupts, init_parameters->interrupt_count,
+             bcm2835_aux_uart_interrupt_handler);
+    register_device(&aux_uart->tty.dev);
+
+    return dev_id;
 }
 
 void bcm2835_aux_uart_interrupt_handler(dev_t dev)
 {
-    (void)dev;
+    struct Device *device = dev_by_device_number(dev);
+    struct TTY_Device *tty = tty_device_from_device(device);
+    struct bcm2835_aux_uart *aux_uart = bcm2835_aux_uart_from_tty(tty);
 
     // Drain all available RX bytes to avoid losing characters when the FIFO
     // already contains multiple bytes per interrupt.
     while (true)
     {
-        int32_t c = bcm2835_aux_uart_getc_nonblocking();
+        int32_t c = bcm2835_aux_uart_getc_nonblocking(aux_uart);
         if (c < 0)
         {
             break;
         }
 
-        console_interrupt_handler(c);
+        console_interrupt_handler(tty->console, c);
     }
 }
 
-void bcm2835_aux_uart_poll_input()
+void bcm2835_aux_uart_poll_input(struct TTY_Device *tty)
 {
+    struct bcm2835_aux_uart *aux_uart = bcm2835_aux_uart_from_tty(tty);
+
     while (true)
     {
-        int32_t c = bcm2835_aux_uart_getc_nonblocking();
+        int32_t c = bcm2835_aux_uart_getc_nonblocking(aux_uart);
         if (c < 0)
         {
             break;
         }
 
-        console_interrupt_handler(c);
+        console_interrupt_handler(tty->console, c);
     }
 }
 
-void bcm2835_aux_uart_putc(int32_t c) { bcm2835_aux_uart_putc_sync(c); }
-
-void bcm2835_aux_uart_putc_sync(int32_t c)
+void bcm2835_aux_uart_putc(struct TTY_Device *tty, int32_t c)
 {
+    bcm2835_aux_uart_putc_sync(tty, c);
+}
+
+void bcm2835_aux_uart_putc_sync(struct TTY_Device *tty, int32_t c)
+{
+    struct bcm2835_aux_uart *aux_uart = bcm2835_aux_uart_from_tty(tty);
+
     // wait until we can send
     do
     {
         ARCH_ASM_NOP;
-    } while (!(MMIO_READ_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_LSR) &
+    } while (!(MMIO_READ_UINT_32(aux_uart->mmio_base, AUX_MU_LSR) &
                AUX_MU_LSR_T_EMPTY));
 
     // write the character to the buffer
-    MMIO_WRITE_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_IO, c);
+    MMIO_WRITE_UINT_32(aux_uart->mmio_base, AUX_MU_IO, c);
 }
 
-int bcm2835_aux_uart_getc()
+int bcm2835_aux_uart_getc(struct bcm2835_aux_uart *aux_uart)
 {
     // wait until something is in the buffer
     do
     {
         ARCH_ASM_NOP;
-    } while (!(MMIO_READ_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_LSR) &
+    } while (!(MMIO_READ_UINT_32(aux_uart->mmio_base, AUX_MU_LSR) &
                AUX_MU_LSR_DATA_READY));
 
     // read it and return
-    return MMIO_READ_UINT_32(g_bcm2835_aux_uart.mmio_base, AUX_MU_IO) & 0xFF;
+    return MMIO_READ_UINT_32(aux_uart->mmio_base, AUX_MU_IO) & 0xFF;
 }

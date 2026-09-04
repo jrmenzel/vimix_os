@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 
+#include <drivers/tty/tty_device.h>
 #include <kernel/kernel.h>
 #include <kernel/stdatomic.h>
 
@@ -18,3 +19,6 @@ static inline size_t kticks_get_ticks() { return atomic_load(&g_ticks); }
 
 size_t seconds_since_boot();
 size_t msec_since_boot();
+
+bool kticks_register_tty_callback(device_poll_callback callback,
+                                  struct TTY_Device *payload);

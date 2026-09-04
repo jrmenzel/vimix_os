@@ -33,7 +33,7 @@ struct PrintK g_printk = {0};
 
 // store printk output until a console driver is available, then flush it to the
 // console.
-#define EARLY_PRINT_BUFFER_SIZE (512)
+#define EARLY_PRINT_BUFFER_SIZE (1024)
 char g_early_printk_buffer[EARLY_PRINT_BUFFER_SIZE];
 
 // print_impl compatible callback to print a char via the current putc()
@@ -59,9 +59,11 @@ void printk_init()
     cbuffer_init(&g_printk.cb, g_early_printk_buffer, EARLY_PRINT_BUFFER_SIZE);
 }
 
-void printk_redirect_to_console(struct Console_Device *console)
+bool printk_has_console() { return (g_printk.console != NULL); }
+
+void printk_set_console(struct Console_Device *console)
 {
-    printk("Redirecting printk to console device...\n");
+    printk("Redirecting printk to first console device...\n");
     g_printk.console = console;
 
     // flush early printk buffer to new console:
@@ -69,17 +71,19 @@ void printk_redirect_to_console(struct Console_Device *console)
     size_t available_space = cbuffer_available_space(&g_printk.cb);
     if (available_data > 0)
     {
-        char temp_buffer[EARLY_PRINT_BUFFER_SIZE];
-        cbuffer_read(&g_printk.cb, temp_buffer, available_data);
-
         printk("Flushing early printk buffer to console:\n");
         if (available_space == 0)
         {
-            printk("[lost data]\n%s", temp_buffer);
+            printk("[lost data]\n");
         }
-        else
+
+        // Circular buffers contain bytes, not NUL-terminated strings. Flush
+        // exactly the bytes that were present when the console was selected.
+        for (size_t i = 0; i < available_data; ++i)
         {
-            printk("%s", temp_buffer);
+            char c;
+            cbuffer_read(&g_printk.cb, &c, 1);
+            console_putc(console, c);
         }
     }
 }

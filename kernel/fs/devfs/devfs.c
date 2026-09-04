@@ -193,6 +193,8 @@ syserr_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
         struct kobject *kobj = kobject_from_child_list(pos);
         struct Device *dev = device_from_kobj(kobj);
 
+        if (dev->type == OTHER) continue;
+
         size_t inode_idx = devfs_itable.used_inodes;
 
         devfs_itable.inode[inode_idx].inum = ++found_devices;
@@ -207,7 +209,7 @@ syserr_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
         {
             devfs_itable.inode[inode_idx].i_mode |= S_IFCHR;
         }
-        else
+        else if (dev->type == BLOCK)
         {
             devfs_itable.inode[inode_idx].i_mode |= S_IFBLK;
         }

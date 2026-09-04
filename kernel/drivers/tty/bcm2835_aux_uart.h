@@ -8,16 +8,6 @@
 dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_param,
                             const char *name);
 
-void bcm2835_aux_uart_interrupt_handler(dev_t dev);
-
-void bcm2835_aux_uart_poll_input();
-
-void bcm2835_aux_uart_putc(int32_t c);
-
-void bcm2835_aux_uart_putc_sync(int32_t c);
-
-int bcm2835_aux_uart_getc();
-
 /// @brief A UART found for example on the Raspberry Pi 4
 struct bcm2835_aux_uart
 {
@@ -27,3 +17,11 @@ struct bcm2835_aux_uart
     size_t mmio_base;  ///< memory map start
     size_t clock_hz;
 };
+
+#define bcm2835_aux_uart_from_tty(ptr) \
+    container_of(ptr, struct bcm2835_aux_uart, tty)
+
+void bcm2835_aux_uart_putc(struct TTY_Device *tty, int32_t c);
+void bcm2835_aux_uart_putc_sync(struct TTY_Device *tty, int32_t c);
+void bcm2835_aux_uart_interrupt_handler(dev_t dev);
+void bcm2835_aux_uart_poll_input(struct TTY_Device *tty);

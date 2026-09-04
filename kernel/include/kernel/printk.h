@@ -15,11 +15,14 @@ struct Console_Device;
 // Call at boot before calling any printk().
 // Until a console driver (or SBI based fallback) is found, printk will store
 // the output in a buffer and flush it to the console when
-// printk_redirect_to_console() is called later.
+// printk_set_console() is called later.
 void printk_init();
 
 // call after a console device was initialized
-void printk_redirect_to_console(struct Console_Device *console);
+void printk_set_console(struct Console_Device *console);
+
+// true if there is a console to print to
+bool printk_has_console();
 
 // called on panic to prevent deadlocks from printing the last messages
 // only used in ccase of kernel panics

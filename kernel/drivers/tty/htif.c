@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
+#include <arch/asm.h>
+#include <arch/irq.h>
 #include <drivers/driver.h>
 #include <drivers/tty/console.h>
 #include <drivers/tty/htif.h>
@@ -7,8 +9,6 @@
 #include <kernel/reset.h>
 
 REGISTER_DRIVER("ucb,htif0", htif_init);
-
-bool htif_is_initialized = false;
 
 /// HTIF is a simple debug interface to emulators and (rarely) hardware.
 /// It's used as a console and to halt the machine / emulator.
@@ -36,13 +36,14 @@ bool htif_is_initialized = false;
 /// locations to communicate.
 /// This can be found in Spike.
 
-volatile uint64_t tohost = 0;
-volatile uint64_t fromhost = 0;
+extern volatile uint64_t tohost;
+extern volatile uint64_t fromhost;
 
-volatile uint64_t *htif_tohost = NULL;
-volatile uint64_t *htif_fromhost = NULL;
+// there should be only one
+struct HTIF *g_htif = NULL;
 
-uint64_t htif_send_command(uint32_t device, uint32_t command, uint64_t data)
+static void htif_send_command(struct HTIF *htif, uint32_t device,
+                              uint32_t command, uint64_t data)
 {
     // upper 8 bit device
     uint64_t request = 0;
@@ -53,11 +54,11 @@ uint64_t htif_send_command(uint32_t device, uint32_t command, uint64_t data)
     data = data & 0xFFFFFFFF;
     request = data;
 #else
-    device = device & 0x0F;
+    device = device & 0xFF;
     request = (uint64_t)device << 56;
 
     // next 8 bit the command
-    uint64_t command64 = command & 0x0F;
+    uint64_t command64 = command & 0xFF;
     command64 = command64 << 48;
     request = request | command64;
 
@@ -66,47 +67,87 @@ uint64_t htif_send_command(uint32_t device, uint32_t command, uint64_t data)
     request = request | data;
 #endif
 
-    // Communication protocol:
-    // 1. write 0 to HTIF_REGISTER_FROMHOST
-    // 2. write the request to HTIF_REGISTER_TOHOST
-    // 3. read response from HTIF_REGISTER_FROMHOST
-    *htif_fromhost = 0;
-    *htif_tohost = request;
-    return *htif_fromhost;
+    // Do not overwrite a command which Spike has not consumed yet. Not every
+    // command has a response (console writes do not), so tohost becoming zero
+    // is the command-completion indication on this side of the interface.
+    while (*htif->tohost != 0)
+    {
+        ARCH_ASM_NOP;
+    }
+    atomic_thread_fence(memory_order_seq_cst);
+    *htif->tohost = request;
+    atomic_thread_fence(memory_order_seq_cst);
 }
 
 void htif_machine_power_off()
 {
-    htif_send_command(HTIF_DEVICE_HALT, HTIF_HALT_HALT, 1);
+    spin_lock(&g_htif->lock);
+    htif_send_command(g_htif, HTIF_DEVICE_HALT, HTIF_HALT_HALT, 1);
 
     // at least on Spike the shutdown is not instant, prevent a panic
     infinite_loop;
 }
 
-void htif_putc(int32_t c)
+void htif_putc(struct TTY_Device *tty, int32_t c)
 {
-    htif_send_command(HTIF_DEVICE_CONSOLE, HTIF_CONSOLE_PUTCHAR, c);
+    struct HTIF *htif = htif_from_tty(tty);
+
+    spin_lock(&htif->lock);
+    htif_send_command(htif, HTIF_DEVICE_CONSOLE, HTIF_CONSOLE_PUTCHAR, c);
+    spin_unlock(&htif->lock);
 }
 
-ssize_t htif_getc()
+ssize_t htif_getc(struct HTIF *htif)
 {
-    // 0 if nothing to read, char+1 otherwise -> -1 for char and -1 on error
-    uint64_t v =
-        htif_send_command(HTIF_DEVICE_CONSOLE, HTIF_CONSOLE_GETCHAR, 0);
-    return (ssize_t)v - 1;
+    ssize_t result = -1;
+
+    spin_lock(&htif->lock);
+
+    uint64_t response = *htif->fromhost;
+    if (response != 0)
+    {
+        *htif->fromhost = 0;
+        atomic_thread_fence(memory_order_seq_cst);
+        htif->console_read_pending = false;
+
+        uint32_t device = (uint32_t)(response >> 56);
+        uint32_t command = (uint32_t)((response >> 48) & 0xFF);
+        uint64_t payload = response & 0xFFFFFFFFFFFFull;
+
+        // Spike's console response uses bit 8 as the "character available"
+        // flag and stores the character in the low byte.
+        if (device == HTIF_DEVICE_CONSOLE && command == HTIF_CONSOLE_GETCHAR &&
+            (payload & 0x100) != 0)
+        {
+            result = (ssize_t)(payload & 0xFF);
+        }
+    }
+
+    // A read request receives no response until input is available. Keep at
+    // most one outstanding request and collect it on a later timer poll.
+    if (!htif->console_read_pending)
+    {
+        htif_send_command(htif, HTIF_DEVICE_CONSOLE, HTIF_CONSOLE_GETCHAR, 0);
+        htif->console_read_pending = true;
+    }
+
+    spin_unlock(&htif->lock);
+    return result;
 }
 
-void htif_console_poll_input()
+void htif_console_poll_input(struct TTY_Device *tty)
 {
+    struct HTIF *htif = htif_from_tty(tty);
+
     // read and process incoming characters.
     while (true)
     {
-        ssize_t c = htif_getc();
+        ssize_t c = htif_getc(htif);
         if (c == -1)
         {
             break;
         }
-        console_interrupt_handler(c);
+        console_interrupt_handler(tty->console, c);
     }
 }
 
@@ -117,36 +158,62 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
     DEBUG_EXTRA_PANIC(init_parameters != NULL,
                       "Driver init parameters are NULL");
 
-    if (htif_is_initialized)
+    dev_t dev_id = MKDEV(HTIF_MAJOR, 0);
+    if (g_htif != NULL)
     {
         // can happen as htif might get initialized as a boot console and later
         // hoping to get reboot/halt functions
-        return MKDEV(HTIF_MAJOR, 0);
+        return dev_id;
     }
+
+    g_htif = kmalloc(sizeof(struct HTIF), ALLOC_FLAG_ZERO_MEMORY);
+    if (g_htif == NULL)
+    {
+        return INVALID_DEVICE;
+    }
+    spin_lock_init(&g_htif->lock, "htif");
 
     if (init_parameters->mem[0].start_pa == 0)
     {
         // kernel defined tohost/fromhost
-        htif_tohost = &tohost;
-        htif_fromhost = &fromhost;
+        g_htif->tohost = &tohost;
+        g_htif->fromhost = &fromhost;
     }
     else
     {
         size_t htif_mmio_base = init_parameters->mem[0].start_va;
-        htif_tohost =
+        g_htif->tohost =
             (volatile uint64_t *)(htif_mmio_base + HTIF_REGISTER_TOHOST);
-        htif_fromhost =
+        g_htif->fromhost =
             (volatile uint64_t *)(htif_mmio_base + HTIF_REGISTER_FROMHOST);
     }
     printk("register HTIF shutdown function\n");
     g_machine_power_off_func = &htif_machine_power_off;
 
-    // struct TTY_Device tty;
-    // tty.putc = htif_putc;
-    // tty.putc_sync = htif_putc;
-    // tty.poll_callback = htif_console_poll_input;
+    if (printk_has_console() == false)
+    {
+        // Use HTIF as a fallback console only if no other one was found before.
+        // HTIF is only used in emulators and the emulated other TTY likely
+        // collides with this by both being wired to one stdin/stdout of the
+        // emulator.
+        g_htif->tty.putc = htif_putc;
+        g_htif->tty.putc_sync = htif_putc;
+        g_htif->tty.poll_callback = htif_console_poll_input;
 
-    htif_is_initialized = true;
+        g_htif->tty.console = console_init(&g_htif->tty);
+        if (g_htif->tty.console == NULL)
+        {
+            kfree(g_htif);
+            g_htif = NULL;
+            return INVALID_DEVICE;
+        }
+    }
 
-    return MKDEV(HTIF_MAJOR, 0);
+    // init device and register it in the system
+    dev_init(&g_htif->tty.dev, OTHER, dev_id, "htif",
+             init_parameters->interrupts, init_parameters->interrupt_count,
+             NULL);
+    register_device(&g_htif->tty.dev);
+
+    return dev_id;
 }

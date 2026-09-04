@@ -37,7 +37,8 @@ dev_t dev_zero_init(struct Device_Init_Parameters *init_parameters,
 {
     // init device and register it in the system
     dev_init(&g_dev_zero.cdev.dev, CHAR, MKDEV(DEV_ZERO_MAJOR, 0), "zero",
-             INVALID_IRQ_NUMBER, NULL);
+             init_parameters->interrupts, init_parameters->interrupt_count,
+             NULL);
     g_dev_zero.cdev.ops.read = dev_zero_read;
     g_dev_zero.cdev.ops.write = dev_zero_write;
     g_dev_zero.cdev.ops.ioctl = NULL;
