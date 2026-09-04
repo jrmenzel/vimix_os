@@ -27,15 +27,13 @@ atomic_size_t g_arm_pl011_next_minor = 0;
 
 #define ICR_ALL (0x7FF)
 
-#define PL011_DEFAULT_UART_CLOCK_HZ 24000000U
-#define PL011_DEFAULT_BAUDRATE 115200U
-
-void calculate_divisors(uint32_t *integer, uint32_t *fractional)
+void calculate_divisors(uint32_t *integer, uint32_t *fractional,
+                        uint32_t baud_rate)
 {
+    const uint32_t PL011_DEFAULT_UART_CLOCK_HZ = 24000000U;
     // 64 * F_UARTCLK / (16 * B) = 4 * F_UARTCLK / B
     uint32_t base_clock = PL011_DEFAULT_UART_CLOCK_HZ;
-    uint32_t baudrate = PL011_DEFAULT_BAUDRATE;
-    const uint32_t div = 4 * base_clock / baudrate;
+    const uint32_t div = 4 * base_clock / baud_rate;
 
     *fractional = div & 0x3f;
     *integer = (div >> 6) & 0xffff;
@@ -81,6 +79,20 @@ void calculate_divisors(uint32_t *integer, uint32_t *fractional)
 #define PL011_PCell_ID2 (0x0FF8)
 #define PL011_PCell_ID3 (0x0FFC)
 
+syserr_t arm_pl011_set_baud_rate(struct TTY_Device *tty,
+                                 enum UART_BAUD_RATE rate)
+{
+    struct Arm_pl011 *arm_pl011 = arm_pl011_from_tty(tty);
+
+    uint32_t integer = 0;
+    uint32_t fractional = 0;
+    calculate_divisors(&integer, &fractional, tty_get_baud_value(rate));
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_IBRD, integer);
+    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_FBRD, fractional);
+
+    return 0;
+}
+
 dev_t arm_pl011_init(struct Device_Init_Parameters *init_parameters,
                      const char *name)
 {
@@ -115,11 +127,7 @@ dev_t arm_pl011_init(struct Device_Init_Parameters *init_parameters,
     MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_ICR, ICR_ALL);
 
     // Configure baud rate for the default QEMU virt PL011 clock.
-    uint32_t integer = 0;
-    uint32_t fractional = 0;
-    calculate_divisors(&integer, &fractional);
-    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_IBRD, integer);
-    MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_FBRD, fractional);
+    arm_pl011_set_baud_rate(&arm_pl011->tty, BAUD_115200);
 
     // 8N1 and FIFO enabled.
     MMIO_WRITE_UINT_32(arm_pl011->mmio_base, PL011_UART_LCRH,
@@ -134,6 +142,7 @@ dev_t arm_pl011_init(struct Device_Init_Parameters *init_parameters,
     arm_pl011->tty.putc = arm_pl011_putc;
     arm_pl011->tty.putc_sync = arm_pl011_putc;
     arm_pl011->tty.poll_callback = NULL;
+    arm_pl011->tty.set_baud_rate = arm_pl011_set_baud_rate;
 
     arm_pl011->tty.console = console_init(&arm_pl011->tty);
     if (arm_pl011->tty.console == NULL)

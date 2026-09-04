@@ -143,7 +143,7 @@ dev_t uart_init(struct Device_Init_Parameters *init_parameters,
     //   disable interrupts.
     write_register(uart, IER, 0x00);
 
-    uart_set_baud_rate(uart, BAUD_115200);
+    uart_set_baud_rate(&uart->tty, BAUD_115200);
 
     // reset and enable FIFOs.
     write_register(uart, FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
@@ -159,6 +159,7 @@ dev_t uart_init(struct Device_Init_Parameters *init_parameters,
     uart->tty.putc = uart_putc;
     uart->tty.putc_sync = uart_putc_sync;
     uart->tty.poll_callback = NULL;
+    uart->tty.set_baud_rate = uart_set_baud_rate;
 
     uart->tty.console = console_init(&uart->tty);
     if (uart->tty.console == NULL)
@@ -186,8 +187,10 @@ dev_t uart_init(struct Device_Init_Parameters *init_parameters,
     return dev_id;
 }
 
-bool uart_set_baud_rate(struct uart_16550 *uart, enum UART_BAUD_RATE rate)
+syserr_t uart_set_baud_rate(struct TTY_Device *tty, enum UART_BAUD_RATE rate)
 {
+    struct uart_16550 *uart = uart_16550_from_tty(tty);
+
     // the BAUD rate is the system clock / 16 / [DLM DLL] / (PSD+1)
     // the PSD register is not present in all 16650 UARTS
     // values below should work for 1.8432 MHz
@@ -204,7 +207,7 @@ bool uart_set_baud_rate(struct uart_16550 *uart, enum UART_BAUD_RATE rate)
         case BAUD_38400: DLL_value = 0x03; break;
         case BAUD_57600: DLL_value = 0x02; break;
         case BAUD_115200: DLL_value = 0x01; break;
-        default: return false;
+        default: return -EINVAL;
     }
 
     // special mode to set baud rate.
@@ -217,7 +220,7 @@ bool uart_set_baud_rate(struct uart_16550 *uart, enum UART_BAUD_RATE rate)
     // and set word length to 8 bits, no parity.
     write_register(uart, LCR, LCR_EIGHT_BITS);
 
-    return true;
+    return 0;
 }
 
 void uart_putc(struct TTY_Device *tty, int32_t c)

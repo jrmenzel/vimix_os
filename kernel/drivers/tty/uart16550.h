@@ -38,24 +38,12 @@ struct uart_16550
 
 #define uart_16550_from_tty(ptr) container_of(ptr, struct uart_16550, tty)
 
-enum UART_BAUD_RATE
-{
-    BAUD_1200,
-    BAUD_2400,
-    BAUD_4800,
-    BAUD_9600,
-    BAUD_19200,
-    BAUD_38400,
-    BAUD_57600,
-    BAUD_115200
-};
-
 /// @brief Inits the hardware, creates a uart_16550 object
 /// and adds it to the devices list.
 dev_t uart_init(struct Device_Init_Parameters *init_parameters,
                 const char *name);
 
-bool uart_set_baud_rate(struct uart_16550 *uart, enum UART_BAUD_RATE rate);
+syserr_t uart_set_baud_rate(struct TTY_Device *tty, enum UART_BAUD_RATE rate);
 
 void uart_send_buffer(struct uart_16550 *uart);
 

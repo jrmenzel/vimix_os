@@ -19,14 +19,15 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	$(ARCH_DIR)/arch_timer.o \
 	$(ARCH_DIR)/arch_trap.o \
 	drivers/device.o \
-	drivers/tty/console.o \
-	drivers/tty/uart16550.o \
 	drivers/cdev/dev_null.o \
 	drivers/cdev/dev_random.o \
 	drivers/cdev/dev_zero.o \
 	drivers/devices_list.o \
 	drivers/driver_list.o \
+	drivers/tty/console.o \
 	drivers/tty/htif.o \
+	drivers/tty/tty_device.o \
+	drivers/tty/uart16550.o \
 	drivers/bdev/ramdisk.o \
 	drivers/rtc/goldfish_rtc.o \
 	drivers/misc/syscon.o \

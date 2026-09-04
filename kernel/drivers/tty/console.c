@@ -13,11 +13,7 @@
 #include <arch/irq.h>
 #include <arch/riscv/sbi.h>
 #include <drivers/driver.h>
-#include <drivers/tty/arm_pl011.h>
-#include <drivers/tty/bcm2835_aux_uart.h>
 #include <drivers/tty/console.h>
-#include <drivers/tty/htif.h>
-#include <drivers/tty/uart16550.h>
 #include <fs/dentry_cache.h>
 #include <kernel/container_of.h>
 #include <kernel/errno.h>

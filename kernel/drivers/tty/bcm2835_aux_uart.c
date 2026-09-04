@@ -41,8 +41,6 @@ atomic_size_t g_bcm2835_aux_uart_next_minor = 0;
 #define AUX_MU_STAT (0x24)
 #define AUX_MU_BAUD (0x28)
 
-// struct bcm2835_aux_uart g_bcm2835_aux_uart;
-
 static int32_t bcm2835_aux_uart_getc_nonblocking(
     struct bcm2835_aux_uart *aux_uart)
 {
@@ -55,11 +53,16 @@ static int32_t bcm2835_aux_uart_getc_nonblocking(
     return MMIO_READ_UINT_32(aux_uart->mmio_base, AUX_MU_IO) & 0xFF;
 }
 
-void bcm2835_aux_uart_set_baud_rate(struct bcm2835_aux_uart *aux_uart,
-                                    size_t baud_rate)
+syserr_t bcm2835_aux_uart_set_baud_rate(struct TTY_Device *tty,
+                                        enum UART_BAUD_RATE rate)
 {
+    struct bcm2835_aux_uart *aux_uart = bcm2835_aux_uart_from_tty(tty);
+
+    uint32_t baud_rate = tty_get_baud_value(rate);
     uint32_t reg_value = ((aux_uart->clock_hz) / (baud_rate * 8)) - 1;
     MMIO_WRITE_UINT_32(aux_uart->mmio_base, AUX_MU_BAUD, reg_value);
+
+    return 0;
 }
 
 static size_t bcm2835_aux_uart_get_clock(const void *dtb, int uart_node_offset)
@@ -191,7 +194,7 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_parameters,
     MMIO_WRITE_UINT_32(
         aux_uart->mmio_base, AUX_MU_IIR,
         AUX_MU_IIR_FIFO_ENABLE | AUX_MU_IIR_T_FIFO | AUX_MU_IIR_R_FIFO);
-    bcm2835_aux_uart_set_baud_rate(aux_uart, 115200);
+    bcm2835_aux_uart_set_baud_rate(&aux_uart->tty, BAUD_115200);
 
     // setup GPIO pins:
     bcm2835_gpio_set_pin_to_function(14, GPFSEL_FUNC_ALT_5);
@@ -205,7 +208,8 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_parameters,
 
     aux_uart->tty.putc = bcm2835_aux_uart_putc;
     aux_uart->tty.putc_sync = bcm2835_aux_uart_putc_sync;
-    aux_uart->tty.poll_callback = NULL;  // bcm2835_aux_uart_poll_input;
+    aux_uart->tty.poll_callback = NULL;
+    aux_uart->tty.set_baud_rate = bcm2835_aux_uart_set_baud_rate;
 
     aux_uart->tty.console = console_init(&aux_uart->tty);
     if (aux_uart->tty.console == NULL)

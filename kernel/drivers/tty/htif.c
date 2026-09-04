@@ -199,6 +199,7 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
         g_htif->tty.putc = htif_putc;
         g_htif->tty.putc_sync = htif_putc;
         g_htif->tty.poll_callback = htif_console_poll_input;
+        g_htif->tty.set_baud_rate = tty_set_baud_rate_unsupported;
 
         g_htif->tty.console = console_init(&g_htif->tty);
         if (g_htif->tty.console == NULL)

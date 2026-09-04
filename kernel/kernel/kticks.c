@@ -23,7 +23,7 @@ void kticks_init()
     spin_lock_init(&g_tty_callbacks_lock, "tty_cb");
 }
 
-bool kticks_register_tty_callback(device_poll_callback callback,
+bool kticks_register_tty_callback(tty_poll_callback callback,
                                   struct TTY_Device *payload)
 {
     struct TTY_Callback *new_entry =
