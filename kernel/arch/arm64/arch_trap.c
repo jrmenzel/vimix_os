@@ -30,9 +30,8 @@ void dump_pre_int_kthread_state(size_t *stack)
            smp_processor_id());
     for (size_t i = 0; i < 30; ++i)
     {
-        size_t stack_pos = 29 - i;
         if (i < 10) printk(" ");
-        printk("x%zd = " FORMAT_REG_SIZE " ", i, stack[stack_pos]);
+        printk("x%zd = " FORMAT_REG_SIZE " ", i, stack[i]);
         if (i % 4 == 3) printk("\n");
     }
     printk("x30 = " FORMAT_REG_SIZE "\n", stack[30]);

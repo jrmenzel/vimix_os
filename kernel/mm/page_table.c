@@ -293,7 +293,10 @@ syserr_t page_table_sync_text_with_data(struct Page_Table *pagetable)
             (region->type == MM_REGION_USER_TEXT) ||
             (region->type == MM_REGION_USER_RW_TEXT))
         {
-            cpu_flush_dcache_range(region->start_va, region->size);
+            // The target page table is not active yet. Don't use start_va
+            // but calculate the VA.
+            cpu_flush_dcache_range(phys_to_virt(region->start_pa),
+                                   region->size);
         }
     }
     cpu_flush_instruction_cache();

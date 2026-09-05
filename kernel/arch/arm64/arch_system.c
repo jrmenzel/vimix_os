@@ -126,6 +126,9 @@ syserr_t system_boot_cpu(size_t cpu_idx, const void *dtb, size_t start_pa)
     bool requested = false;
     size_t psci_ctx_pa = 0;
 
+    cpu_flush_dcache_range((size_t)&g_kernel_pgtable_reg_value,
+                           sizeof(g_kernel_pgtable_reg_value));
+
     // printk("Enable method for CPU %zd: '%s'\n", cpu_idx, enable_method);
 
     if (strncmp(enable_method, "psci", 4) == 0)

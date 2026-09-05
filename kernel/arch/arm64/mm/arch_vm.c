@@ -22,6 +22,6 @@ size_t mmu_make_page_table_reg_pa(size_t phys_addr_of_first_block,
 {
     size_t value = (phys_addr_of_first_block & ~TTBR_ASID_MASK) |
                    (((size_t)asid << TTBR_ASID_POS) & TTBR_ASID_MASK);
-    value |= TTBR_CNP;
+    // All processes currently reuse ASID 0
     return value;
 }
