@@ -99,7 +99,21 @@ static void get_login_config(struct login_config *lconfig)
 int main(int argc, char **argv)
 {
     struct login_config config = {0};
-    get_login_config(&config);
+
+    bool enable_autologin = false;
+    int username_arg = 1;
+    if (argc > 1 && strcmp(argv[1], "--autologin") == 0)
+    {
+        enable_autologin = true;
+        username_arg++;
+        get_login_config(&config);
+    }
+
+    if (argc > username_arg + 1)
+    {
+        fprintf(stderr, "usage: login [--autologin] [username]\n");
+        return 1;
+    }
 
     char *username = NULL;
     char *password = NULL;
@@ -113,7 +127,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (config.autologin == true)
+    if (enable_autologin && config.autologin)
     {
         struct stat st;
         if (stat(config.autorun_script, &st) == 0)
@@ -133,7 +147,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (argc < 2)
+    if (argc <= username_arg)
     {
         printf("username: ");
         fflush(stdout);
@@ -147,7 +161,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        username = argv[1];
+        username = argv[username_arg];
     }
 
     if (username[0] == '\0')

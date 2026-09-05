@@ -69,7 +69,9 @@ static int launch_login(struct Console *console)
 
         // start login:
         const char *login_path = "/usr/bin/login";
-        char *login_argv[] = {"login", 0};
+        bool enable_autologin = strcmp(console->device, "/dev/console0") == 0;
+        char *login_argv[] = {"login", enable_autologin ? "--autologin" : NULL,
+                              NULL};
         printf("init starting %s\n", login_path);
         execv(login_path, login_argv);
         fprintf(stderr, "init: execv %s failed, %s\n", login_path,

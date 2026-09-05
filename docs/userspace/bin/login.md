@@ -4,7 +4,7 @@ Login asks for a user name and password and checks the credentials against the c
 
 It is run from [init](init.md) which will re-start it in case it returns (wrong login data or the user called `exit` in the shell).
 
-Login parses `/etc/login.conf` to enable automatic login and a shell script to automatically run (e.g. for automated testing, see: [getting started](../../development/getting_started.md)).
+When started with with `--autologin`, login parses `/etc/login.conf` to enable automatic login and a shell script to automatically run (e.g. for automated testing, see: [getting started](../../development/getting_started.md)). [init](init.md) passes this option only to the login process attached to `/dev/console0`.
 
 ---
 **Up:** [user space](../userspace.md)
