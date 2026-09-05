@@ -92,6 +92,7 @@ endif
 ifeq ($(VIRTIO_DISK), yes)
 QEMU_OPTS += -drive file=$(FILESYSTEM_IMG_DEPLOY),if=none,format=raw,id=x0
 QEMU_OPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+QEMU_OPTS += -global virtio-mmio.force-legacy=false
 #QEMU_OPTS += -d int,mmu,in_asm -D qemu_mmu.log
 # add a second file system if it is present
 ifneq ("$(wildcard home.img)","")
@@ -105,6 +106,23 @@ QEMU_OPTS += -initrd $(FILESYSTEM_IMG_DEPLOY)
 endif
 ifdef RAMDISK_LOAD_ADDR
 QEMU_OPTS += -device loader,file=$(FILESYSTEM_IMG_DEPLOY),addr=$(RAMDISK_LOAD_ADDR)
+endif
+
+QEMU_OPTS += -serial mon:stdio
+
+ifeq ($(VIRTIO_CONSOLE), yes)
+QEMU_OPTS += -device virtio-serial-device,id=vserial
+
+# Port 0 is available without negotiating the multiport feature and is driven
+# by the kernel's virtio console TTY driver.
+QEMU_OPTS += -chardev socket,id=vconsole,path=/tmp/vimixos-vconsole.sock,server=on,wait=off
+QEMU_OPTS += -device virtconsole,bus=vserial.0,nr=0,chardev=vconsole,name=vimixos.console
+
+# QEMU_OPTS += -chardev socket,id=vport1,path=/tmp/vimixos-vport1.sock,server=on,wait=off
+# QEMU_OPTS += -device virtserialport,bus=vserial.0,nr=1,chardev=vport1,name=vimixos.port1
+# 
+# QEMU_OPTS += -chardev socket,id=vport2,path=/tmp/vimixos-vport2.sock,server=on,wait=off
+# QEMU_OPTS += -device virtserialport,bus=vserial.0,nr=2,chardev=vport2,name=vimixos.port2
 endif
 
 #

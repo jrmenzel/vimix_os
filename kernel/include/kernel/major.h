@@ -37,9 +37,10 @@
 // special case: not a device itself but needs a device number for its inodes
 #define DEVFS_MAJOR 24
 #define SYSFS_MAJOR 25
+#define VIRTIO_CONSOLE_MAJOR 26
 
 // highest major device number to check for invalid device numbers
-#define MAX_MAJOR_DEVICE_NUMBER (SYSFS_MAJOR)
+#define MAX_MAJOR_DEVICE_NUMBER 27
 
 // macro values from Linux kdev_t.h:
 #define MINORBITS 20

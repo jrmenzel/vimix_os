@@ -21,8 +21,8 @@ void printk_init();
 // call after a console device was initialized
 void printk_set_console(struct Console_Device *console);
 
-// true if there is a console to print to
-bool printk_has_console();
+// returns the console printk prints to
+struct Console_Device *printk_get_console();
 
 // called on panic to prevent deadlocks from printing the last messages
 // only used in ccase of kernel panics

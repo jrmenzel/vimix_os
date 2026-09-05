@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <termios.h>
 #include <tomlc17.h>
 #include <unistd.h>
 #include <vimixutils/minmax.h>
@@ -18,19 +19,26 @@
 #define MAX_USERNAME_LEN 64
 #define MAX_PASSWORD_LEN 64
 
-char *remove_newline(char *s)
+static bool read_line(char *buffer, size_t size)
 {
-    char *p = s;
-    while (*p != '\0')
+    if (fgets(buffer, size, stdin) == NULL) return false;
+
+    for (char *p = buffer; *p != '\0'; p++)
     {
         if (*p == '\n' || *p == '\r')
         {
             *p = '\0';
-            break;
+            return true;
         }
-        p++;
     }
-    return s;
+
+    // Reject truncated input and consume the rest so it cannot become the
+    // answer to the next prompt.
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF)
+    {
+    }
+    return false;
 }
 
 struct login_config
@@ -40,7 +48,7 @@ struct login_config
     char autorun_script[PATH_MAX];
 };
 
-void get_login_config(struct login_config *lconfig)
+static void get_login_config(struct login_config *lconfig)
 {
     toml_result_t config = toml_parse_file_ex("/etc/login.conf");
     if (!config.ok)
@@ -54,24 +62,35 @@ void get_login_config(struct login_config *lconfig)
         toml_seek(config.toptab, "autologin.username");
     if (autologin_datum.type == TOML_STRING)
     {
-        size_t copy_len =
-            min(autologin_datum.u.str.len, sizeof(lconfig->username) - 1);
-        strncpy(lconfig->username, autologin_datum.u.str.ptr, copy_len);
-
-        lconfig->username[copy_len] = '\0';
-        lconfig->autologin = true;
+        if (autologin_datum.u.str.len > 0 &&
+            autologin_datum.u.str.len < sizeof(lconfig->username))
+        {
+            size_t copy_len = autologin_datum.u.str.len;
+            strncpy(lconfig->username, autologin_datum.u.str.ptr, copy_len);
+            lconfig->username[copy_len] = '\0';
+            lconfig->autologin = true;
+        }
+        else
+        {
+            fprintf(stderr, "login: invalid autologin username\n");
+        }
     }
 
     toml_datum_t autorun_script_datum =
         toml_seek(config.toptab, "autologin.autorun_script");
     if (autorun_script_datum.type == TOML_STRING)
     {
-        size_t copy_len = min(autorun_script_datum.u.str.len,
-                              sizeof(lconfig->autorun_script) - 1);
-        strncpy(lconfig->autorun_script, autorun_script_datum.u.str.ptr,
-                copy_len);
-
-        lconfig->autorun_script[copy_len] = '\0';
+        if (autorun_script_datum.u.str.len < sizeof(lconfig->autorun_script))
+        {
+            size_t copy_len = autorun_script_datum.u.str.len;
+            strncpy(lconfig->autorun_script, autorun_script_datum.u.str.ptr,
+                    copy_len);
+            lconfig->autorun_script[copy_len] = '\0';
+        }
+        else
+        {
+            fprintf(stderr, "login: autologin script path too long\n");
+        }
     }
 
     toml_free(config);
@@ -79,7 +98,7 @@ void get_login_config(struct login_config *lconfig)
 
 int main(int argc, char **argv)
 {
-    struct login_config config;
+    struct login_config config = {0};
     get_login_config(&config);
 
     char *username = NULL;
@@ -99,7 +118,7 @@ int main(int argc, char **argv)
         struct stat st;
         if (stat(config.autorun_script, &st) == 0)
         {
-            impersonate_user(config.username, true, true, false);
+            if (!impersonate_user(config.username, true, true, false)) return 1;
             // start autorun script
             char *shell_argv[] = {"usr/bin/sh", config.autorun_script, NULL};
             execv("/usr/bin/sh", shell_argv);
@@ -109,7 +128,7 @@ int main(int argc, char **argv)
         else
         {
             // just login the user
-            impersonate_user(config.username, true, true, true);
+            if (!impersonate_user(config.username, true, true, true)) return 1;
         }
         return 1;
     }
@@ -117,25 +136,50 @@ int main(int argc, char **argv)
     if (argc < 2)
     {
         printf("username: ");
-        if (fgets(buf_name, sizeof(buf_name), stdin) == NULL)
+        fflush(stdout);
+        if (!read_line(buf_name, sizeof(buf_name)))
         {
-            fprintf(stderr, "login: failed to read username\n");
+            fprintf(stderr,
+                    "login: failed to read username or username too long\n");
             return 1;
         }
-        username = remove_newline(buf_name);
+        username = buf_name;
     }
     else
     {
         username = argv[1];
     }
 
-    printf("password: ");
-    if (fgets(buf_password, sizeof(buf_password), stdin) == NULL)
+    if (username[0] == '\0')
     {
-        fprintf(stderr, "login: failed to read password\n");
+        fprintf(stderr, "login: username must not be empty\n");
         return 1;
     }
-    password = remove_newline(buf_password);
+
+    struct termios saved_termios;
+    bool restore_echo = tcgetattr(STDIN_FILENO, &saved_termios) == 0;
+    if (restore_echo)
+    {
+        struct termios password_termios = saved_termios;
+        password_termios.c_lflag &= ~ECHO;
+        restore_echo = tcsetattr(STDIN_FILENO, TCSANOW, &password_termios) == 0;
+    }
+
+    printf("password: ");
+    fflush(stdout);
+    bool password_ok = read_line(buf_password, sizeof(buf_password));
+    if (restore_echo)
+    {
+        tcsetattr(STDIN_FILENO, TCSANOW, &saved_termios);
+        printf("\n");
+    }
+    if (!password_ok)
+    {
+        fprintf(stderr,
+                "login: failed to read password or password too long\n");
+        return 1;
+    }
+    password = buf_password;
 
     // check password
     struct spwd *spw = getspnam(username);

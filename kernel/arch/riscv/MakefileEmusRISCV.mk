@@ -38,7 +38,6 @@ endif
 QEMU := qemu-system-riscv$(EMU_BITWIDTH)
 
 QEMU_OPTS_ARCH := -machine $(QEMU_MACHINE) -bios $(QEMU_BIOS)
-QEMU_OPTS_ARCH += -global virtio-mmio.force-legacy=false
 
 #
 # Spike simulator

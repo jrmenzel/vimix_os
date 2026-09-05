@@ -105,16 +105,16 @@ dev_t arm_pl011_init(struct Device_Init_Parameters *init_parameters,
         return INVALID_DEVICE;
     }
 
-    size_t minor = (size_t)atomic_fetch_add(&g_arm_pl011_next_minor, 1);
-    const size_t NAME_LEN = 16;
-    char *device_name = kmalloc(NAME_LEN, ALLOC_FLAG_NONE);
-    if (device_name == NULL)
+    syserr_t err = dev_init(
+        &arm_pl011->tty.dev, OTHER, ARM_PL011_MAJOR, &g_arm_pl011_next_minor,
+        "arm_pl011_", init_parameters->interrupts,
+        init_parameters->interrupt_count, arm_pl011_interrupt_handler);
+
+    if (err != 0)
     {
-        printk("uart: out of memory\n");
         kfree(arm_pl011);
         return INVALID_DEVICE;
     }
-    snprintf(device_name, NAME_LEN, "arm_pl011_%zd", minor);
 
     arm_pl011->mmio_base = init_parameters->mem[0].start_va;
     spin_lock_init(&arm_pl011->arm_pl011_lock, "arm_pl011_lock");
@@ -147,20 +147,15 @@ dev_t arm_pl011_init(struct Device_Init_Parameters *init_parameters,
     arm_pl011->tty.console = console_init(&arm_pl011->tty);
     if (arm_pl011->tty.console == NULL)
     {
+        kfree(&arm_pl011->tty.dev.name);
         kfree(arm_pl011);
-        kfree(device_name);
         return INVALID_DEVICE;
     }
 
-    dev_t dev_id = MKDEV(ARM_PL011_MAJOR, minor);
-
-    // init device and register it in the system
-    dev_init(&arm_pl011->tty.dev, OTHER, dev_id, device_name,
-             init_parameters->interrupts, init_parameters->interrupt_count,
-             arm_pl011_interrupt_handler);
+    // register device in the system
     register_device(&arm_pl011->tty.dev);
 
-    return dev_id;
+    return arm_pl011->tty.dev.device_number;
 }
 
 void arm_pl011_interrupt_handler(dev_t dev)

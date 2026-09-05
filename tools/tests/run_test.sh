@@ -26,7 +26,7 @@ EMU_APP="${6:-qemu}"
 # qemu-run does not rebuild, but Make still needs the target in order to select
 # architecture-specific settings such as the deployed kernel file format.
 case "$EMU" in
-  arm64|raspi4|kvm)
+  arm64|raspi4|kvm|arm64-rdisk|kvm-rdisk)
     TARGET="arm64"
     ;;
   sbi32|sbi-rdisk32)

@@ -136,18 +136,19 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_parameters,
         return INVALID_DEVICE;
     }
 
-    aux_uart->mmio_base = init_parameters->mem[0].start_va;
+    syserr_t err =
+        dev_init(&aux_uart->tty.dev, OTHER, BCM2835_UART_AUX_MAJOR,
+                 &g_bcm2835_aux_uart_next_minor, "bcm2835_aux_uart",
+                 init_parameters->interrupts, init_parameters->interrupt_count,
+                 bcm2835_aux_uart_interrupt_handler);
 
-    size_t minor = (size_t)atomic_fetch_add(&g_bcm2835_aux_uart_next_minor, 1);
-    const size_t NAME_LEN = 20;
-    char *device_name = kmalloc(NAME_LEN, ALLOC_FLAG_NONE);
-    if (device_name == NULL)
+    if (err != 0)
     {
-        printk("uart: out of memory\n");
         kfree(aux_uart);
         return INVALID_DEVICE;
     }
-    snprintf(device_name, NAME_LEN, "bcm2835_aux_uart%zd", minor);
+
+    aux_uart->mmio_base = init_parameters->mem[0].start_va;
 
     size_t clock;
     if (getSystemCompatible() == SYSTEM_ARM64_RASPBERRY_PI_4)
@@ -214,20 +215,14 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_parameters,
     aux_uart->tty.console = console_init(&aux_uart->tty);
     if (aux_uart->tty.console == NULL)
     {
+        kfree(&aux_uart->tty.dev.name);
         kfree(aux_uart);
-        kfree(device_name);
         return INVALID_DEVICE;
     }
 
-    dev_t dev_id = MKDEV(BCM2835_UART_AUX_MAJOR, minor);
-
-    // init device and register it in the system
-    dev_init(&aux_uart->tty.dev, OTHER, dev_id, device_name,
-             init_parameters->interrupts, init_parameters->interrupt_count,
-             bcm2835_aux_uart_interrupt_handler);
     register_device(&aux_uart->tty.dev);
 
-    return dev_id;
+    return aux_uart->tty.dev.device_number;
 }
 
 void bcm2835_aux_uart_interrupt_handler(dev_t dev)

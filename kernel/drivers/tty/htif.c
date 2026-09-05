@@ -190,7 +190,7 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
     printk("register HTIF shutdown function\n");
     g_machine_power_off_func = &htif_machine_power_off;
 
-    if (printk_has_console() == false)
+    if (printk_get_console() == false)
     {
         // Use HTIF as a fallback console only if no other one was found before.
         // HTIF is only used in emulators and the emulated other TTY likely
@@ -211,9 +211,9 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
     }
 
     // init device and register it in the system
-    dev_init(&g_htif->tty.dev, OTHER, dev_id, "htif",
-             init_parameters->interrupts, init_parameters->interrupt_count,
-             NULL);
+    dev_init_named(&g_htif->tty.dev, OTHER, dev_id, "htif",
+                   init_parameters->interrupts,
+                   init_parameters->interrupt_count, NULL);
     register_device(&g_htif->tty.dev);
 
     return dev_id;

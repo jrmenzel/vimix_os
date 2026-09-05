@@ -9,10 +9,34 @@
 #include <kernel/interrupt_controller.h>
 #include <kernel/kernel.h>
 #include <kernel/proc.h>
+#include <kernel/string.h>
+#include <mm/kalloc.h>
 
-void dev_init(struct Device *dev, device_type type, dev_t device_number,
-              const char *name, struct Device_Interrupt *irqs, size_t irq_count,
-              interrupt_handler_p interrupt_handler)
+syserr_t dev_init(struct Device *dev, device_type type, size_t major,
+                  atomic_size_t *minor_counter, const char *name,
+                  struct Device_Interrupt *irqs, size_t irq_count,
+                  interrupt_handler_p interrupt_handler)
+{
+    size_t name_len = strlen(name);
+    name_len += 2;  // assume max 100 minor numbers
+
+    char *device_name = kmalloc(name_len, ALLOC_FLAG_NONE);
+    if (device_name == NULL)
+    {
+        printk("dev_init: out of memory\n");
+        return -ENOMEM;
+    }
+    size_t minor = (size_t)atomic_fetch_add(minor_counter, 1);
+    snprintf(device_name, name_len, "%s%zd", name, minor);
+
+    return dev_init_named(dev, type, MKDEV(major, minor), device_name, irqs,
+                          irq_count, interrupt_handler);
+}
+
+syserr_t dev_init_named(struct Device *dev, device_type type,
+                        dev_t device_number, const char *name,
+                        struct Device_Interrupt *irqs, size_t irq_count,
+                        interrupt_handler_p interrupt_handler)
 {
     dev->type = type;
     dev->interrupt_count = irq_count;
@@ -27,6 +51,8 @@ void dev_init(struct Device *dev, device_type type, dev_t device_number,
 
     // init kobject
     kobject_init(&dev->kobj, NULL);
+
+    return 0;
 }
 
 struct Device *dev_by_device_number(dev_t device_number)

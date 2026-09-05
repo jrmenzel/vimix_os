@@ -58,9 +58,17 @@ struct Device
 
 #define device_from_kobj(ptr) container_of(ptr, struct Device, kobj)
 
-void dev_init(struct Device *dev, device_type type, dev_t device_number,
-              const char *name, struct Device_Interrupt *irqs, size_t irq_count,
-              interrupt_handler_p interrupt_handler);
+syserr_t dev_init_named(struct Device *dev, device_type type,
+                        dev_t device_number, const char *name,
+                        struct Device_Interrupt *irqs, size_t irq_count,
+                        interrupt_handler_p interrupt_handler);
+
+/// @brief Device init where the name is generated based on the minor counter.
+/// @return Can fail wirh out of memory
+syserr_t dev_init(struct Device *dev, device_type type, size_t major,
+                  atomic_size_t *minor_counter, const char *name,
+                  struct Device_Interrupt *irqs, size_t irq_count,
+                  interrupt_handler_p interrupt_handler);
 
 struct Device *dev_by_device_number(dev_t device_number);
 

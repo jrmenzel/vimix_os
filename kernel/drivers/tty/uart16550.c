@@ -125,20 +125,29 @@ dev_t uart_init(struct Device_Init_Parameters *init_parameters,
         return INVALID_DEVICE;
     }
 
-    uart->mmio_base = init_parameters->mem[0].start_va;
-    uart->reg_io_width = init_parameters->reg_io_width;
-    uart->reg_shift = init_parameters->reg_shift;
-
-    size_t minor = (size_t)atomic_fetch_add(&g_uart_next_minor, 1);
-    const size_t NAME_LEN = 16;
-    char *device_name = kmalloc(NAME_LEN, ALLOC_FLAG_NONE);
-    if (device_name == NULL)
+    // Spike work around
+    if ((g_system.compatible == SYSTEM_RISCV_SPIKE) &&
+        (init_parameters->interrupt_count > 1))
     {
-        printk("uart: out of memory\n");
+        // Spike emits "interrupts = <irq 4>" for its one-cell PLIC. The
+        // second value is intended as an active-high flag, not another IRQ.
+        init_parameters->interrupt_count = 1;
+    }
+
+    syserr_t err =
+        dev_init(&uart->tty.dev, OTHER, UART_16550_MAJOR, &g_uart_next_minor,
+                 "uart16550_", init_parameters->interrupts,
+                 init_parameters->interrupt_count, uart_interrupt_handler);
+
+    if (err != 0)
+    {
         kfree(uart);
         return INVALID_DEVICE;
     }
-    snprintf(device_name, NAME_LEN, "uart16550_%zd", minor);
+
+    uart->mmio_base = init_parameters->mem[0].start_va;
+    uart->reg_io_width = init_parameters->reg_io_width;
+    uart->reg_shift = init_parameters->reg_shift;
 
     //   disable interrupts.
     write_register(uart, IER, 0x00);
@@ -164,27 +173,14 @@ dev_t uart_init(struct Device_Init_Parameters *init_parameters,
     uart->tty.console = console_init(&uart->tty);
     if (uart->tty.console == NULL)
     {
+        kfree(&uart->tty.dev.name);
         kfree(uart);
-        kfree(device_name);
         return INVALID_DEVICE;
     }
 
-    dev_t dev_id = MKDEV(UART_16550_MAJOR, minor);
-
-    // init device and register it in the system
-    size_t interrupt_count = init_parameters->interrupt_count;
-    if ((g_system.compatible == SYSTEM_RISCV_SPIKE) && (interrupt_count > 1))
-    {
-        // Spike emits "interrupts = <irq 4>" for its one-cell PLIC. The
-        // second value is intended as an active-high flag, not another IRQ.
-        interrupt_count = 1;
-    }
-    dev_init(&uart->tty.dev, OTHER, dev_id, device_name,
-             init_parameters->interrupts, interrupt_count,
-             uart_interrupt_handler);
     register_device(&uart->tty.dev);
 
-    return dev_id;
+    return uart->tty.dev.device_number;
 }
 
 syserr_t uart_set_baud_rate(struct TTY_Device *tty, enum UART_BAUD_RATE rate)

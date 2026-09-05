@@ -59,7 +59,7 @@ void printk_init()
     cbuffer_init(&g_printk.cb, g_early_printk_buffer, EARLY_PRINT_BUFFER_SIZE);
 }
 
-bool printk_has_console() { return (g_printk.console != NULL); }
+struct Console_Device *printk_get_console() { return g_printk.console; }
 
 void printk_set_console(struct Console_Device *console)
 {

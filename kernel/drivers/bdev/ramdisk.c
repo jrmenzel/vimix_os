@@ -101,9 +101,9 @@ dev_t ramdisk_init(struct Device_Init_Parameters *init_parameters,
     snprintf(device_name, NAME_LEN, "ramdisk%zd", minor);
 
     // init device and register it in the system
-    dev_init(&rdisk->disk.bdev.dev, BLOCK, MKDEV(RAMDISK_MAJOR, minor),
-             device_name, init_parameters->interrupts,
-             init_parameters->interrupt_count, NULL);
+    dev_init_named(&rdisk->disk.bdev.dev, BLOCK, MKDEV(RAMDISK_MAJOR, minor),
+                   device_name, init_parameters->interrupts,
+                   init_parameters->interrupt_count, NULL);
     rdisk->disk.bdev.ops.read_buf = ramdisk_block_device_read;
     rdisk->disk.bdev.ops.write_buf = ramdisk_block_device_write;
     rdisk->disk.bdev.dev.mode = 0600;

@@ -19,6 +19,8 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	$(ARCH_DIR)/arch_timer.o \
 	$(ARCH_DIR)/arch_trap.o \
 	drivers/device.o \
+	drivers/bdev/ramdisk.o \
+	drivers/bdev/virtio_disk.o \
 	drivers/cdev/dev_null.o \
 	drivers/cdev/dev_random.o \
 	drivers/cdev/dev_zero.o \
@@ -29,10 +31,10 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/tty/htif.o \
 	drivers/tty/tty_device.o \
 	drivers/tty/uart16550.o \
-	drivers/bdev/ramdisk.o \
+	drivers/tty/virtio_console.o \
 	drivers/rtc/goldfish_rtc.o \
 	drivers/misc/syscon.o \
-	drivers/bdev/virtio_disk.o \
+	drivers/misc/virtio.o \
 	fs/dentry.o \
 	fs/dentry_cache.o \
 	fs/dentry_cache_sysfs.o \

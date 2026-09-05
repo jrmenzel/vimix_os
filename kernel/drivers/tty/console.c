@@ -256,7 +256,12 @@ bool console_handle_control_keys(struct Console_Device *console, int32_t c)
 
     switch (c)
     {
-        case CONTROL_KEY('H'): dbg_con_activate(console->dbg_con); break;
+        case CONTROL_KEY('H'):
+            if (printk_get_console() == console)
+            {
+                dbg_con_activate(console->dbg_con);
+            }
+            break;
         case DELETE_KEY:
             if (console->e != console->w)
             {
@@ -351,31 +356,19 @@ struct Console_Device *console_init(struct TTY_Device *tty)
         return NULL;
     }
 
+    syserr_t err = dev_init(&console->cdev.dev, CHAR, CONSOLE_DEVICE_MAJOR,
+                            &g_console_next_minor, "console", NULL, 0, NULL);
+
+    if (err != 0)
+    {
+        kfree(console->dbg_con);
+        kfree(console);
+        return INVALID_DEVICE;
+    }
+
     spin_lock_init(&console->lock, "cons");
 
-    size_t minor = (size_t)atomic_fetch_add(&g_console_next_minor, 1);
-
-    const size_t NAME_LEN = 16;
-    char *device_name = kmalloc(NAME_LEN, ALLOC_FLAG_NONE);
-    if (device_name == NULL)
-    {
-        kfree(console);
-        printk("console: out of memory\n");
-        return NULL;
-    }
-    if (minor == 0)
-    {
-        // call the first just console
-        strncpy(device_name, "console", NAME_LEN);
-    }
-    else
-    {
-        snprintf(device_name, NAME_LEN, "console%zd", minor);
-    }
-
     // init device and register it in the system
-    dev_init(&console->cdev.dev, CHAR, MKDEV(CONSOLE_DEVICE_MAJOR, minor),
-             device_name, NULL, 0, NULL);
     console->cdev.ops.read = console_read;
     console->cdev.ops.write = console_write;
     console->cdev.ops.ioctl = console_ioctl;
@@ -400,7 +393,7 @@ struct Console_Device *console_init(struct TTY_Device *tty)
 
     register_device(&console->cdev.dev);
 
-    if (printk_has_console() == false)
+    if (printk_get_console() == NULL)
     {
         printk_set_console(console);
     }

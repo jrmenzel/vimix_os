@@ -164,17 +164,19 @@ ssize_t dtb_add_driver_if_compatible(const void *dtb, const char *device_name,
                                      int device_offset,
                                      struct Devices_List *dev_list)
 {
+    bool found_at_least_one = false;
     for_each_driver(driver)
     {
         if ((driver->type == PHYSICAL) &&
             (dtb_is_str_in_str_list(device_name, driver->dtb_name)))
         {
-            return dev_list_add_from_dtb(dev_list, dtb, device_name,
-                                         device_offset, driver);
+            found_at_least_one = true;
+            dev_list_add_from_dtb(dev_list, dtb, device_name, device_offset,
+                                  driver);
         }
     }
 
-    return -1;
+    return (found_at_least_one) ? 0 : -1;
 }
 
 /// @brief Look for supported devices in the DTB and add them to the dev_list
