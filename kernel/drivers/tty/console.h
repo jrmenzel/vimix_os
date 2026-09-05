@@ -5,6 +5,10 @@
 #include <drivers/devices_list.h>
 #include <drivers/tty/tty_device.h>
 
+#define BACKSPACE 0x100
+#define DELETE_KEY '\x7f'
+#define CONTROL_KEY(x) ((x) - '@')  // Control-x
+
 struct Console_Device;
 
 /// init console, called from TTY/UART hardware

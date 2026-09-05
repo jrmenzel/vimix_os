@@ -5,33 +5,18 @@
 // Reads are line at a time.
 //
 
-#ifdef __ARCH_riscv
-#include <arch/riscv/sbi.h>
-#include <arch/riscv/sbi_defs.h>
-#endif
-
-#include <arch/irq.h>
-#include <arch/riscv/sbi.h>
-#include <drivers/driver.h>
 #include <drivers/tty/console.h>
-#include <fs/dentry_cache.h>
+#include <drivers/tty/debug_console.h>
 #include <kernel/container_of.h>
 #include <kernel/errno.h>
-#include <kernel/file.h>
-#include <kernel/fs.h>
 #include <kernel/ioctl.h>
-#include <kernel/kobject.h>
 #include <kernel/kticks.h>
 #include <kernel/proc.h>
-#include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <kernel/termios.h>
 #include <kernel/timer.h>
-
-#define BACKSPACE 0x100
-#define DELETE_KEY '\x7f'
-#define CONTROL_KEY(x) ((x) - '@')  // Control-x
+#include <mm/kalloc.h>
 
 /// max line length: real UNIXes allow 4096 bytes
 #define CONSOLE_INPUT_BUF_SIZE 128
@@ -53,6 +38,7 @@ struct Console_Device
     bool add_cr;  ///< add a CR / 'r' for every '\n' written
 
     struct TTY_Device *tty;
+    struct Debug_Console *dbg_con;
 };
 
 #define console_driver_from_cdev(ptr) \
@@ -125,6 +111,13 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
     bool canonical_mode = (console->termios.c_lflag & ICANON);
 
     spin_lock(&console->lock);
+
+    // if a debug console is active wait
+    while (console->dbg_con->is_active)
+    {
+        sleep(&g_ticks, &console->lock);
+    }
+
     while (n > 0)
     {
         size_t timeout = console->termios.c_cc[VTIME];  // 1/10s
@@ -221,7 +214,6 @@ int console_ioctl(struct Device *dev, struct inode *ip, int req, void *ttyctl)
     }
     else if (req == TCSETA)
     {
-        // cons.termios = *termios_p;
         struct termios *termios_in = (struct termios *)ttyctl;
 
         if (either_copyin((void *)&(console->termios), true, (size_t)termios_in,
@@ -258,74 +250,14 @@ int console_ioctl(struct Device *dev, struct inode *ip, int req, void *ttyctl)
     return 0;
 }
 
-void console_debug_print_help()
-{
-    printk("\n");
-    printk("CTRL+H: Print this help\n");
-    printk("CTRL+N: Print inodes\n");
-    printk("CTRL+D: Print dentry cache\n");
-    printk("CTRL+P: Print process list\n");
-    printk("CTRL+L: Print process list\n");
-    printk("CTRL+T: Print process list with page tables\n");
-    printk("CTRL+Z: Print kernel memory map\n");
-    printk("CTRL+B: Print kernel page table (warning, long!)\n");
-    printk("CTRL+U: Print process list with user call stack\n");
-    printk("CTRL+S: Print process list with kernel call stack\n");
-    printk("CTRL+O: Print process list with open files\n");
-    printk("CTRL+Y: Print sys tree\n");
-    printk("Time: %zd ticks\n", kticks_get_ticks());
-}
-
-void print_epochs()
-{
-    for (size_t i = 0; i < MAX_CPUS; i++)
-    {
-        if (g_cpus[i].state == CPU_UNUSED) continue;
-
-        printk("CPU %zd: kernel page table epoch seen: %zu\n", i,
-               g_cpus[i].kernel_pgtable_epoch_seen);
-    }
-}
-
 bool console_handle_control_keys(struct Console_Device *console, int32_t c)
 {
     bool processed = true;
 
     switch (c)
     {
-        case CONTROL_KEY('H'): console_debug_print_help(); break;
-        case CONTROL_KEY('P'):  // Print process list.
-        case CONTROL_KEY('L'):  // Print process _L_ist, alternative for VSCode
-                                // which grabs CTRL+P
-            debug_print_process_list(false, false, false, false);
-            break;
-        case CONTROL_KEY('T'):  // Process list with page _T_ables
-            debug_print_process_list(false, false, false, true);
-            break;
-        case CONTROL_KEY('U'):  // Process list with _U_ser call stack
-            debug_print_process_list(true, false, false, false);
-            break;
-        case CONTROL_KEY('S'):  // Process list with kernel call _S_tack
-            debug_print_process_list(false, true, false, false);
-            break;
-        case CONTROL_KEY('O'):  // Process list with open files
-            debug_print_process_list(false, false, true, false);
-            break;
-        case CONTROL_KEY('N'):  // print i_N_odes
-            debug_print_inodes();
-            break;
-        case CONTROL_KEY('B'):  // kernel page table - running out of memorable
-                                // key combos don't collide with VSCode
-            printk("Kernel page table:\n");
-            debug_vm_print_page_table(g_kernel_pagetable);
-            break;
-        case CONTROL_KEY('Z'):
-            debug_print_memory_map(&g_kernel_pagetable->memory_map);
-            print_epochs();
-            break;
-        case CONTROL_KEY('Y'): debug_print_kobject_tree(); break;
-        case CONTROL_KEY('D'): debug_print_dentry_cache(); break;
-        case DELETE_KEY:  // Delete key
+        case CONTROL_KEY('H'): dbg_con_activate(console->dbg_con); break;
+        case DELETE_KEY:
             if (console->e != console->w)
             {
                 console->e--;
@@ -348,6 +280,14 @@ bool console_handle_control_keys(struct Console_Device *console, int32_t c)
 void console_interrupt_handler(struct Console_Device *console, int32_t c)
 {
     spin_lock(&console->lock);
+
+    // if a debug console is active rout input there and skip normal processing
+    if (console->dbg_con->is_active)
+    {
+        dbg_con_handle_input(console->dbg_con, c);
+        spin_unlock(&console->lock);
+        return;
+    }
 
     bool input_processed = false;
     if (console->termios.c_lflag & ICANON)
@@ -402,6 +342,12 @@ struct Console_Device *console_init(struct TTY_Device *tty)
         kmalloc(sizeof(struct Console_Device), ALLOC_FLAG_ZERO_MEMORY);
     if (console == NULL)
     {
+        return NULL;
+    }
+    console->dbg_con = alloc_init_debug_console(console);
+    if (console->dbg_con == NULL)
+    {
+        kfree(console);
         return NULL;
     }
 

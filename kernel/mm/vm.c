@@ -833,7 +833,7 @@ void debug_vm_print_page_table(struct Page_Table *pagetable)
     }
     printk("\n");
 
-    debug_print_memory_map(&pagetable->memory_map);
+    // debug_print_memory_map(&pagetable->memory_map);
 }
 
 size_t debug_vm_get_size_level(pagetable_t pgtable, size_t level)

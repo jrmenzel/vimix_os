@@ -25,6 +25,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/devices_list.o \
 	drivers/driver_list.o \
 	drivers/tty/console.o \
+	drivers/tty/debug_console.o \
 	drivers/tty/htif.o \
 	drivers/tty/tty_device.o \
 	drivers/tty/uart16550.o \
