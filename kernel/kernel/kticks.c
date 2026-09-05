@@ -15,13 +15,8 @@ atomic_size_t g_ticks = 0;
 uint64_t g_boot_time = 0;
 
 struct TTY_Callback *g_tty_callbacks = NULL;
-struct spinlock g_tty_callbacks_lock;
 
-void kticks_init()
-{
-    atomic_init(&g_ticks, 0);
-    spin_lock_init(&g_tty_callbacks_lock, "tty_cb");
-}
+void kticks_init() { atomic_init(&g_ticks, 0); }
 
 bool kticks_register_tty_callback(tty_poll_callback callback,
                                   struct TTY_Device *payload)
@@ -33,9 +28,7 @@ bool kticks_register_tty_callback(tty_poll_callback callback,
     new_entry->callback = callback;
     new_entry->payload = payload;
     new_entry->next = g_tty_callbacks;
-    spin_lock(&g_tty_callbacks_lock);
     g_tty_callbacks = new_entry;
-    spin_unlock(&g_tty_callbacks_lock);
 
     return true;
 }
@@ -46,14 +39,11 @@ void kticks_inc_ticks()
 
     // The htif and SBI consoles can be a fallback for UART,
     // but without IRQs we need to poll the input manually
-    spin_lock(&g_tty_callbacks_lock);
-    struct TTY_Callback *tty_callback = g_tty_callbacks;
-    while (tty_callback != NULL)
+    for (struct TTY_Callback *tty_callback = g_tty_callbacks;
+         tty_callback != NULL; tty_callback = tty_callback->next)
     {
         tty_callback->callback(tty_callback->payload);
-        tty_callback = tty_callback->next;
     }
-    spin_unlock(&g_tty_callbacks_lock);
 }
 
 size_t seconds_since_boot()
