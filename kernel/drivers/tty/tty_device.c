@@ -3,18 +3,6 @@
 #include <drivers/tty/tty_device.h>
 #include <kernel/errno.h>
 
-enum UART_BAUD_RATE
-{
-    BAUD_1200,
-    BAUD_2400,
-    BAUD_4800,
-    BAUD_9600,
-    BAUD_19200,
-    BAUD_38400,
-    BAUD_57600,
-    BAUD_115200
-};
-
 syserr_t tty_set_baud_rate_unsupported(struct TTY_Device *tty,
                                        enum UART_BAUD_RATE rate)
 {
