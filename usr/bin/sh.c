@@ -27,7 +27,7 @@
 #define LIST 4
 #define BACK 5
 
-#define MAX_EXEC_ARGSS 10
+#define MAX_EXEC_ARGSS 16
 
 struct cmd
 {
@@ -522,7 +522,11 @@ struct cmd *parseexec(char **ps, char *es)
         cmd->argv[argc] = q;
         cmd->eargv[argc] = eq;
         argc++;
-        if (argc >= MAX_EXEC_ARGSS) sh_panic("too many args");
+        if (argc >= MAX_EXEC_ARGSS)
+        {
+            printf("parsing error, argc: %d (max: %d)\n", argc, MAX_EXEC_ARGSS);
+            sh_panic("too many args");
+        }
         ret = parseredirs(ret, ps, es);
     }
     cmd->argv[argc] = 0;
