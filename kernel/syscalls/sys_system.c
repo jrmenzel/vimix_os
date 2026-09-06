@@ -5,6 +5,7 @@
 //
 
 #include <arch/trap.h>
+#include <fs/mount.h>
 #include <kernel/kernel.h>
 #include <kernel/kticks.h>
 #include <kernel/proc.h>
@@ -65,8 +66,14 @@ void system_shutdown()
             }
         }
     }
-
     printk("All other CPUs halted.\n");
+
+    printk("Sync mounted filesystems...\n");
+    syserr_t error = sync_mounted_fs();
+    if (error != 0)
+    {
+        printk("Failed to sync mounted filesystems: error %zd\n", -error);
+    }
 }
 
 syserr_t sys_reboot()

@@ -7,4 +7,4 @@ Prints info on available and used memory. Queries these from [sysfs](../../kerne
 ---
 **Up:** [user space](../userspace.md)
 
-**System:** [fsbench](fsbench.md) | [fsinfo](fsinfo.md) | [meminfo](meminfo.md) | [mount](mount.md) | [shutdown](shutdown.md) | [sh](sh.md) | [su](su.md) | [umount](umount.md) | [which](which.md)
+**System:** [fsbench](fsbench.md) | [fsinfo](fsinfo.md) | [meminfo](meminfo.md) | [mount](mount.md) | [shutdown](shutdown.md) | [sh](sh.md) | [su](su.md) | [sync](sync.md) | [umount](umount.md) | [which](which.md)

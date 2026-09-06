@@ -4,6 +4,9 @@
 #include <fs/vfs.h>
 #include <kernel/kernel.h>
 
+/// @brief Call during boot in init_virtual_file_system()
+void mount_init();
+
 /// @brief Mounts a file system.
 /// @param source Path to the source block device.
 /// @param target Path to the target directory.
@@ -48,3 +51,7 @@ ssize_t do_umount(const char *target);
 syserr_t umount_internal(struct dentry *d_target,
                          struct dentry *d_target_mountpoint,
                          struct super_block *sb);
+
+/// @brief Sync all mounted file systems.
+/// @return Error code of first failed sync call.
+syserr_t sync_mounted_fs();

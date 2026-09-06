@@ -180,6 +180,7 @@ static syserr_t (*const syscalls[])() = {
     [SYS_getgroups] sys_getgroups,
     [SYS_umask] sys_umask,
     [SYS_getcwdlen] sys_getcwdlen,
+    [SYS_sync] sys_sync,
 };
 // clang-format on
 

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <fs/fs_lookup.h>
-#include <kernel/mount.h>
+#include <fs/mount.h>
 #include <kernel/statvfs.h>
 #include <syscalls/syscall.h>
 
@@ -112,4 +112,10 @@ syserr_t do_statvfs(struct super_block *sb, size_t buf_addr)
         return -EFAULT;
     }
     return 0;
+}
+
+syserr_t sys_sync()
+{
+    // no parameters for sync()
+    return sync_mounted_fs();
 }

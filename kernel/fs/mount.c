@@ -3,6 +3,7 @@
 #include <fs/dentry_cache.h>
 #include <fs/devfs/devfs.h>
 #include <fs/fs_lookup.h>
+#include <fs/mount.h>
 #include <fs/vfs.h>
 #include <fs/vimixfs/vimixfs.h>
 #include <kernel/bio.h>
@@ -13,7 +14,6 @@
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
-#include <kernel/mount.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
@@ -33,6 +33,15 @@ struct super_block *ROOT_SUPER_BLOCK = NULL;
 /// validation / error checks). This means only one process can mount or umount
 /// at a time, but that limitation is fine.
 struct sleeplock g_mount_lock;
+
+/// @brief List of all mounted file systems
+struct list_head g_mount_list;
+
+void mount_init(void)
+{
+    sleep_lock_init(&g_mount_lock, "mount");
+    list_init(&g_mount_list);
+}
 
 syserr_t do_mount(const char *source, const char *target,
                   const char *filesystemtype, unsigned long mountflags,
@@ -205,6 +214,7 @@ syserr_t mount_internal(dev_t source, struct dentry *d_target,
         root_dp = new_target;
     }
     sb->d_root = root_dp;
+    list_add_tail(&sb->mount_list, &g_mount_list);
 
     // add to kobject tree
     kobject_add(&sb->kobj, &g_kobjects_fs, "%s_%d_%d", sb->s_type->name,
@@ -281,6 +291,8 @@ syserr_t umount_internal(struct dentry *d_target,
     DEBUG_EXTRA_ASSERT(d_target_mountpoint->ip->is_mounted_on != NULL,
                        "imounted_on not set on mountpoint");
 
+    list_del(&sb->mount_list);
+
     inode_lock(d_target_mountpoint->ip);
     sb->s_type->kill_sb(sb);  // free file system specific data
     sb_free(sb);              // free generic super block itself
@@ -290,4 +302,25 @@ syserr_t umount_internal(struct dentry *d_target,
     inode_unlock(d_target_mountpoint->ip);
 
     return 0;
+}
+
+syserr_t sync_mounted_fs(void)
+{
+    syserr_t first_error = 0;
+
+    sleep_lock(&g_mount_lock);
+
+    struct list_head *pos;
+    list_for_each(pos, &g_mount_list)
+    {
+        struct super_block *sb = super_block_from_mount_list(pos);
+        syserr_t error = VFS_SUPER_SYNC_FS(sb);
+        if ((error != 0) && (first_error == 0))
+        {
+            first_error = error;
+        }
+    }
+
+    sleep_unlock(&g_mount_lock);
+    return first_error;
 }

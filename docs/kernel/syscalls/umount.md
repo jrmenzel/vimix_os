@@ -21,4 +21,4 @@ Implemented in `sys_system.c` as `sys_umount()`.
 
 **Overview:** [syscalls](syscalls.md)
 
-**System:** [mount](mount.md) | [umount](umount.md) | [uptime](uptime.md)
+**System:** [mount](mount.md) | [umount](umount.md) | [sync](sync.md) | [uptime](uptime.md)

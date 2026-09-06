@@ -56,6 +56,7 @@ See also: [calling_syscall](calling_syscall.md).
 - [umount](umount.md) - unmount file system
 - [uptime](uptime.md) - returns how long the system is running
 - [statvfs](statvfs.md) - get file system statistics
+- [sync](sync.md) - sync file systems to disk
 
 ## Communication
 

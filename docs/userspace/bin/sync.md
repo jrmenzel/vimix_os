@@ -1,16 +1,10 @@
-# umount
+# sync - syncs mounted file systems
 
-Unmounts a [file_system](../../kernel/file_system/file_system.md).
+Syncs all [mounted](mount.md) [file systems](../../kernel/file_system/file_system.md), writing cached data to disks.
 
-> umount `target dir`
+> sync
 
-- `target dir` must be a directory and and a mount point
-
-**Returns:**
-
-- 0 on success and sets errno
-
-**Syscall:** [umount](../../kernel/syscalls/umount.md)
+**Syscall:** [sync](../../kernel/syscalls/sync.md)
 
 ---
 **Up:** [user space](../userspace.md)

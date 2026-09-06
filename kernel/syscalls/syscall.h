@@ -131,6 +131,9 @@ syserr_t sys_statvfs();
 /// @brief Syscall "int fstatvfs(int fd, struct statvfs *buf);" from statvfs.h
 syserr_t sys_fstatvfs();
 
+/// @brief Syscall "void sync();" from unistd.h
+syserr_t sys_sync();
+
 // ********************************************************
 // File metadata control from sys_file_meta.c
 //

@@ -37,7 +37,8 @@ struct super_operations vimixfs_s_op = {
     iget_root : vimixfs_sops_iget_root,
     alloc_inode : vimixfs_sops_alloc_inode,
     write_inode : vimixfs_sops_write_inode,
-    statvfs : vimix_sops_statvfs
+    statvfs : vimix_sops_statvfs,
+    sync_fs : sops_sync_fs_default
 };
 
 // inode operations

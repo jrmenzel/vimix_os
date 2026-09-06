@@ -11,6 +11,7 @@
 // routines.  The (higher-level) system call implementations
 // are in sys_file.c.
 
+#include <fs/mount.h>
 #include <fs/vfs.h>
 #include <kernel/bio.h>
 #include <kernel/buf.h>
@@ -19,7 +20,6 @@
 #include <kernel/fs.h>
 #include <kernel/kernel.h>
 #include <kernel/major.h>
-#include <kernel/mount.h>
 #include <kernel/proc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
@@ -34,6 +34,8 @@ struct super_block *sb_alloc_init()
 
     list_init(&sb->fs_inode_list);
     rwspin_lock_init(&sb->fs_inode_list_lock, "fs_inode_list_lock");
+
+    list_init(&sb->mount_list);
 
     return sb;
 }

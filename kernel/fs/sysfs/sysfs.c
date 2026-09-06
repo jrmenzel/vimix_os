@@ -22,7 +22,8 @@ struct super_operations sysfs_s_op = {
     iget_root : sysfs_sops_iget_root,
     alloc_inode : sops_alloc_inode_default_ro,
     write_inode : sops_write_inode_default_ro,
-    statvfs : sops_statvfs_default
+    statvfs : sops_statvfs_default,
+    sync_fs : sops_sync_fs_default
 };
 
 // inode operations

@@ -60,6 +60,7 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [shutdown](bin/shutdown.md) - Halts or shuts down the OS
 - [meminfo](bin/meminfo.md) - prints info on memory usage
 - [su](bin/su.md) - switch user
+- [sync](bin/sync.md) - sync [file systems](../kernel/file_system/file_system.md)
 
 **Games:**
 

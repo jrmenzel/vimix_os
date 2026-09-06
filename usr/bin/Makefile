@@ -33,6 +33,7 @@ UPROGS_NAME := cat\
 	sleep\
 	stat\
 	statvfs\
+	sync\
 	time\
 	wc\
 	which\

@@ -47,9 +47,14 @@ struct super_block
 
     struct list_head fs_inode_list;  ///< list of all inodes on this FS
     struct rwspinlock fs_inode_list_lock;
+
+    struct list_head mount_list;  ///< list of all mounted file systems
 };
 
 #define super_block_from_kobj(ptr) container_of(ptr, struct super_block, kobj)
+
+#define super_block_from_mount_list(ptr) \
+    container_of(ptr, struct super_block, mount_list)
 
 /// @brief Returns a new initialized super_block for mounting.
 ///        Indirectly protected by g_mount_lock.

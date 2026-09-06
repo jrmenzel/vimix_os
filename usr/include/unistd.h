@@ -130,6 +130,9 @@ extern off_t lseek(int fd, off_t offset, int whence);
 ///////////////////////////////////////
 // 3. Device Management
 
+// flush all mounted file systems to their disks
+extern void sync();
+
 ///////////////////////////////////////
 // 4. Information Management
 

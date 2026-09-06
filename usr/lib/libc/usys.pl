@@ -98,3 +98,4 @@ entry("setgroups");
 entry("getgroups");
 entry("umask");
 entry("getcwdlen");
+entry("sync");

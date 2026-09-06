@@ -20,6 +20,8 @@ struct super_operations
     int (*write_inode)(struct inode *ip);
 
     syserr_t (*statvfs)(struct super_block *sb, struct statvfs *to_fill);
+
+    syserr_t (*sync_fs)(struct super_block *sb);
 };
 
 /// @brief Get root inode of file system. Not locked.
@@ -27,6 +29,7 @@ struct super_operations
 #define VFS_SUPER_ALLOC_INODE(sb, mode) (sb)->s_op->alloc_inode((sb), (mode))
 #define VFS_SUPER_WRITE_INODE(ip) (ip)->i_sb->s_op->write_inode((ip))
 #define VFS_SUPER_STATVFS(sb, buf) (sb)->s_op->statvfs((sb), (buf))
+#define VFS_SUPER_SYNC_FS(sb) (sb)->s_op->sync_fs((sb))
 
 struct inode_operations
 {
