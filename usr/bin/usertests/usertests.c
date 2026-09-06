@@ -29,6 +29,8 @@ bool run(void f(char *), char *s)
     }
     if (pid == 0)
     {
+        // clear old errors before each test
+        errno = 0;
         f(s);
         exit(EXIT_SUCCESS);
     }
@@ -93,6 +95,7 @@ int runtests(struct test *tests, char *justone, test_mask_t mask)
 int drivetests(test_mask_t mask, int continuous, char *justone)
 {
     mkdir("/tmp/utests", 0755);
+    errno = 0;  // clear error: e.g. if the dir already existed
     if (chdir("/tmp/utests") < 0) return -1;
 
     do

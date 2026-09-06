@@ -11,4 +11,6 @@ echo starting concurrency related usertests
 cd /
 usertests -m 4
 meminfo
+
+rm -r /tmp/utests
 shutdown -h

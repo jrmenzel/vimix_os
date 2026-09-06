@@ -25,14 +25,12 @@ mkdir -p root/tmp
 mkdir -p root/usr/bin
 mkdir -p root/usr/local/bin
 mkdir -p root/xdbg/usr/bin
-#mkdir -p root/xdbg/usr/local/bin
 
-$MKFS --fs $FS_IMAGE --create 12288
+$MKFS --fs $FS_IMAGE --create 16384
 $MKFS --fs $FS_IMAGE --in ./root/ / $META_DEFAULT
 $MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/usr/bin/ /usr/bin/ $META_BINARIES
 $MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/usr/local/bin/ /usr/local/bin/ $META_BINARIES
 $MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/xdbg/usr/bin/ /xdbg/usr/bin/ $META_DEFAULT
-#$MKFS --fs $FS_IMAGE --in ${BUILD_DIR}/root/xdbg/usr/local/bin/ /xdbg/usr/local/bin/ $META_DEFAULT
 $MKFS --fs $FS_IMAGE --in ./README.md /README.md $META_DEFAULT
 $MKFS --fs $FS_IMAGE --meta /root/ $META_ROOT
 $MKFS --fs $FS_IMAGE --meta /home/user/ $META_USER

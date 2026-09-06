@@ -117,12 +117,6 @@ QEMU_OPTS += -device virtio-serial-device,id=vserial
 # by the kernel's virtio console TTY driver.
 QEMU_OPTS += -chardev socket,id=vconsole,path=/tmp/vimixos-vconsole.sock,server=on,wait=off
 QEMU_OPTS += -device virtconsole,bus=vserial.0,nr=0,chardev=vconsole,name=vimixos.console
-
-# QEMU_OPTS += -chardev socket,id=vport1,path=/tmp/vimixos-vport1.sock,server=on,wait=off
-# QEMU_OPTS += -device virtserialport,bus=vserial.0,nr=1,chardev=vport1,name=vimixos.port1
-# 
-# QEMU_OPTS += -chardev socket,id=vport2,path=/tmp/vimixos-vport2.sock,server=on,wait=off
-# QEMU_OPTS += -device virtserialport,bus=vserial.0,nr=2,chardev=vport2,name=vimixos.port2
 endif
 
 #

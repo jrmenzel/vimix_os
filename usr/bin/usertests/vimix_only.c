@@ -2967,7 +2967,6 @@ void USER_VA_ENDplus(char *s)
 void sbrkfail(char *s)
 {
     long page_size = sysconf(_SC_PAGE_SIZE);
-    pid_t child_pid = -1;
 
     int fds[2];
     if (pipe(fds) != 0)
@@ -2979,9 +2978,8 @@ void sbrkfail(char *s)
 
     size_t mem_free_before_fork = get_from_sysfs("/sys/kmem/mem_free");
 
-    child_pid = fork();
-
-    if (errno != 0)
+    pid_t child_pid = fork();
+    if (child_pid < 0)
     {
         printf("%s: fork failed with error %s\n", s, strerror(errno));
         printf("free memory: %zd bytes\n",

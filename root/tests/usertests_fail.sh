@@ -11,4 +11,6 @@ echo starting often failing usertests
 cd /
 usertests -m 64
 meminfo
+
+rm -r /tmp/utests
 shutdown -h

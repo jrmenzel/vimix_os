@@ -11,4 +11,6 @@ echo starting usertests
 cd /
 usertests
 meminfo
+
+rm -r /tmp/utests
 shutdown -h
