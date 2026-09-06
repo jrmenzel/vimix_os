@@ -213,7 +213,7 @@ dev_t htif_init(struct Device_Init_Parameters *init_parameters,
     // init device and register it in the system
     dev_init_named(&g_htif->tty.dev, OTHER, dev_id, "htif",
                    init_parameters->interrupts,
-                   init_parameters->interrupt_count, NULL);
+                   init_parameters->interrupt_count, NULL, NULL);
     register_device(&g_htif->tty.dev);
 
     return dev_id;

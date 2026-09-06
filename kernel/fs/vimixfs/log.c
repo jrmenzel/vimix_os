@@ -140,8 +140,10 @@ static void recover_from_log(struct log *log)
 {
     read_head(log);
     install_trans(log, true);  // if committed, copy from log to disk
+    bio_flush(log->dev);
     log->lh_n = 0;
     write_head(log);  // clear the log
+    bio_flush(log->dev);
 }
 
 /// called at the start of each FS system call.
@@ -283,11 +285,19 @@ static void commit(struct log *log)
 {
     if (log->lh_n > 0)
     {
-        write_log(log);             // Write modified blocks from cache to log
-        write_head(log);            // Write header to disk -- the real commit
+        write_log(log);       // Write modified blocks from cache to log
+        bio_flush(log->dev);  // Persistenly write to disk
+
+        write_head(log);  // Write header to disk -- the real commit
+        bio_flush(log->dev);
+
         install_trans(log, false);  // Now install writes to home locations
+        bio_flush(log->dev);
+
         log->lh_n = 0;
         write_head(log);  // Erase the transaction from the log
+        bio_flush(log->dev);
+
         log->blocks_used_old_clients = 0;
     }
 }

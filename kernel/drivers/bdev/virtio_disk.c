@@ -8,6 +8,7 @@
 
 #include <drivers/bdev/virtio_blk.h>
 #include <drivers/bdev/virtio_disk.h>
+#include <drivers/bdev/virtio_disk_sysfs.h>
 #include <drivers/driver.h>
 #include <kernel/buf.h>
 #include <kernel/fs.h>
@@ -25,6 +26,7 @@ atomic_size_t g_virtio_disk_next_minor = 0;
 
 void virtio_block_device_read(struct Block_Device *bd, struct buf *b);
 void virtio_block_device_write(struct Block_Device *bd, struct buf *b);
+syserr_t virtio_block_device_flush(struct Block_Device *bd);
 void virtio_block_device_interrupt(dev_t dev);
 
 dev_t virtio_disk_init(struct Device_Init_Parameters *init_parameters,
@@ -46,10 +48,11 @@ dev_t virtio_disk_init(struct Device_Init_Parameters *init_parameters,
         return INVALID_DEVICE;
     }
 
-    syserr_t err = dev_init(
-        &disk->disk.bdev.dev, BLOCK, QEMU_VIRT_IO_DISK_MAJOR,
-        &g_virtio_disk_next_minor, "virtio_disk", init_parameters->interrupts,
-        init_parameters->interrupt_count, virtio_block_device_interrupt);
+    syserr_t err =
+        dev_init(&disk->disk.bdev.dev, BLOCK, QEMU_VIRT_IO_DISK_MAJOR,
+                 &g_virtio_disk_next_minor, "virtio_disk",
+                 init_parameters->interrupts, init_parameters->interrupt_count,
+                 virtio_block_device_interrupt, &virtio_disk_kobj_ktype);
     if (err != 0)
     {
         virtio_device_fail(&disk->virtio);
@@ -58,8 +61,9 @@ dev_t virtio_disk_init(struct Device_Init_Parameters *init_parameters,
     }
 
     spin_lock_init(&disk->vdisk_lock, "virtio_disk");
+    uint64_t supported_features = VIRTIO_FEATURE(VIRTIO_BLK_F_FLUSH);
     if (!virtio_device_begin(&disk->virtio, init_parameters,
-                             VIRTIO_DEVICE_ID_BLOCK, 0) ||
+                             VIRTIO_DEVICE_ID_BLOCK, supported_features) ||
         !virtio_queue_init(&disk->virtio, &disk->requestq, 0))
     {
         virtio_device_fail(&disk->virtio);
@@ -77,6 +81,7 @@ dev_t virtio_disk_init(struct Device_Init_Parameters *init_parameters,
     disk->disk.bdev.size = config->capacity * 512;
     disk->disk.bdev.ops.read_buf = virtio_block_device_read;
     disk->disk.bdev.ops.write_buf = virtio_block_device_write;
+    disk->disk.bdev.ops.flush = virtio_block_device_flush;
     disk->disk.bdev.dev.mode = 0600;
 
     register_device(&disk->disk.bdev.dev);
@@ -182,6 +187,7 @@ void virtio_disk_rw(struct Virtio_Disk *disk, struct buf *b, bool write)
     // record struct buf for virtio_block_device_interrupt().
     b->owned_by_driver = true;
     disk->info[idx[0]].b = b;
+    disk->info[idx[0]].completed = false;
 
     virtio_queue_submit(&disk->requestq, idx[0]);
 
@@ -197,13 +203,66 @@ void virtio_disk_rw(struct Virtio_Disk *disk, struct buf *b, bool write)
     spin_unlock(&disk->vdisk_lock);
 }
 
+syserr_t virtio_block_device_flush(struct Block_Device *bd)
+{
+    struct Generic_Disc *gdisk = generic_disk_from_block_device(bd);
+    struct Virtio_Disk *disk = virtio_disk_from_generic_disk(gdisk);
+
+    if (!(disk->virtio.features & VIRTIO_FEATURE(VIRTIO_BLK_F_FLUSH)))
+    {
+        return -EOTHER;
+    }
+
+    spin_lock(&disk->vdisk_lock);
+
+    int32_t request = virtio_queue_alloc_desc(&disk->requestq);
+    int32_t status = virtio_queue_alloc_desc(&disk->requestq);
+    if (request < 0 || status < 0)
+    {
+        if (request >= 0) virtio_queue_free_desc(&disk->requestq, request);
+        if (status >= 0) virtio_queue_free_desc(&disk->requestq, status);
+        spin_unlock(&disk->vdisk_lock);
+        return -EOTHER;
+    }
+
+    struct virtio_blk_req *header = &disk->ops[request];
+    header->type = VIRTIO_BLK_T_FLUSH;
+    header->reserved = 0;
+    header->sector = 0;
+
+    struct virtq_desc *desc = disk->requestq.desc;
+    desc[request].addr = virt_to_phys((size_t)header);
+    desc[request].len = sizeof(*header);
+    desc[request].flags = VRING_DESC_F_NEXT;
+    desc[request].next = status;
+
+    disk->info[request].b = NULL;
+    disk->info[request].status = 0xff;
+    disk->info[request].completed = false;
+    desc[status].addr = virt_to_phys((size_t)&disk->info[request].status);
+    desc[status].len = 1;
+    desc[status].flags = VRING_DESC_F_WRITE;
+    desc[status].next = 0;
+
+    virtio_queue_submit(&disk->requestq, request);
+    while (!disk->info[request].completed)
+    {
+        sleep(&disk->info[request].completed, &disk->vdisk_lock);
+    }
+
+    syserr_t result = disk->info[request].status == 0 ? 0 : -EOTHER;
+    virtio_queue_free_chain(&disk->requestq, request);
+    spin_unlock(&disk->vdisk_lock);
+    return result;
+}
+
 /// @brief Read function as mandated for a Block_Device
 /// @param bd Pointer to the device
 /// @param b The buffer to fill.
 void virtio_block_device_read(struct Block_Device *bd, struct buf *b)
 {
     struct Generic_Disc *gdisk = generic_disk_from_block_device(bd);
-    struct Virtio_Disk *vdisk = virtio_from_generic_disk(gdisk);
+    struct Virtio_Disk *vdisk = virtio_disk_from_generic_disk(gdisk);
 
     virtio_disk_rw(vdisk, b, false);
 }
@@ -214,7 +273,7 @@ void virtio_block_device_read(struct Block_Device *bd, struct buf *b)
 void virtio_block_device_write(struct Block_Device *bd, struct buf *b)
 {
     struct Generic_Disc *gdisk = generic_disk_from_block_device(bd);
-    struct Virtio_Disk *vdisk = virtio_from_generic_disk(gdisk);
+    struct Virtio_Disk *vdisk = virtio_disk_from_generic_disk(gdisk);
 
     virtio_disk_rw(vdisk, b, true);
 }
@@ -224,7 +283,7 @@ void virtio_block_device_interrupt(dev_t dev)
 {
     struct Block_Device *bd = get_block_device(dev);
     struct Generic_Disc *gdisk = generic_disk_from_block_device(bd);
-    struct Virtio_Disk *disk = virtio_from_generic_disk(gdisk);
+    struct Virtio_Disk *disk = virtio_disk_from_generic_disk(gdisk);
 
     spin_lock(&disk->vdisk_lock);
 
@@ -247,8 +306,13 @@ void virtio_block_device_interrupt(dev_t dev)
         }
 
         struct buf *b = disk->info[id].b;
-        b->owned_by_driver = false;  // disk is done with buf
-        wakeup(b);
+        if (b != NULL)
+        {
+            b->owned_by_driver = false;  // disk is done with buf
+            wakeup(b);
+        }
+        disk->info[id].completed = true;
+        wakeup(&disk->info[id].completed);
     }
 
     spin_unlock(&disk->vdisk_lock);

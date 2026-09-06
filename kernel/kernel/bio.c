@@ -126,6 +126,23 @@ void bio_write(struct buf *b)
     bdevice->ops.write_buf(bdevice, b);
 }
 
+syserr_t bio_flush(dev_t dev)
+{
+    struct Block_Device *bdevice = get_block_device(dev);
+    if (!bdevice)
+    {
+        return -ENODEV;
+    }
+
+    // optional to implement
+    if (bdevice->ops.flush == NULL)
+    {
+        return 0;
+    }
+
+    return bdevice->ops.flush(bdevice);
+}
+
 bool bio_has_too_many_buffers()
 {
     if (g_buf_cache.num_buffers <= g_buf_cache.min_buffers)

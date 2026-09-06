@@ -356,8 +356,9 @@ struct Console_Device *console_init(struct TTY_Device *tty)
         return NULL;
     }
 
-    syserr_t err = dev_init(&console->cdev.dev, CHAR, CONSOLE_DEVICE_MAJOR,
-                            &g_console_next_minor, "console", NULL, 0, NULL);
+    syserr_t err =
+        dev_init(&console->cdev.dev, CHAR, CONSOLE_DEVICE_MAJOR,
+                 &g_console_next_minor, "console", NULL, 0, NULL, NULL);
 
     if (err != 0)
     {

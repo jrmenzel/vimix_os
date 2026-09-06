@@ -24,7 +24,7 @@ $(LIB_BUILD_DIR)/tomlc17.a : $(TOMLC17)
 	@$(AR) rc $(LIB_BUILD_DIR)/tomlc17.a $(TOMLC17)
 
 # generic rule to compile .c files to .o files on target
-$(TOMLC17_BUILD_DIR)/%.o: src/%.c
+$(TOMLC17_BUILD_DIR)/%.o: src/%.c | directories
 	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 

@@ -108,7 +108,7 @@ dev_t arm_pl011_init(struct Device_Init_Parameters *init_parameters,
     syserr_t err = dev_init(
         &arm_pl011->tty.dev, OTHER, ARM_PL011_MAJOR, &g_arm_pl011_next_minor,
         "arm_pl011_", init_parameters->interrupts,
-        init_parameters->interrupt_count, arm_pl011_interrupt_handler);
+        init_parameters->interrupt_count, arm_pl011_interrupt_handler, NULL);
 
     if (err != 0)
     {

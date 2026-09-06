@@ -69,7 +69,7 @@ dev_t dev_random_init(struct Device_Init_Parameters *init_parameters,
     // init device and register it in the system
     dev_init_named(&g_dev_random.cdev.dev, CHAR, MKDEV(DEV_RANDOM_MAJOR, 0),
                    "random", init_parameters->interrupts,
-                   init_parameters->interrupt_count, NULL);
+                   init_parameters->interrupt_count, NULL, NULL);
     struct timespec time = rtc_get_time();
     g_dev_random.rand_next = (unsigned long)(time.tv_nsec ^ time.tv_sec);
     g_dev_random.cdev.ops.read = dev_random_read;

@@ -15,15 +15,15 @@ SHARED_O_FILES := $(B_BUILD_DIR)/libvimixfs.o
 ###########################################################
 # compiling apps for VIMIX
 
-$(B_DEPLOY_DIR)/mkfs: $(B_BUILD_DIR)/mkfs.o $(SHARED_O_FILES) $(COMMON_LIBS) 
+$(B_DEPLOY_DIR)/mkfs: $(B_BUILD_DIR)/mkfs.o $(SHARED_O_FILES) $(COMMON_LIBS) | directories
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LINKER)  $(LDFLAGS) -o $@ $^
 
-$(B_DEPLOY_DIR)/fsck.vimixfs: $(B_BUILD_DIR)/fsck.vimixfs.o $(SHARED_O_FILES) $(COMMON_LIBS) 
+$(B_DEPLOY_DIR)/fsck.vimixfs: $(B_BUILD_DIR)/fsck.vimixfs.o $(SHARED_O_FILES) $(COMMON_LIBS) | directories
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LINKER)  $(LDFLAGS) -o $@ $^
 
-$(B_BUILD_DIR)/%.o: %.c 
+$(B_BUILD_DIR)/%.o: %.c | directories
 	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
@@ -31,6 +31,7 @@ $(B_BUILD_DIR)/%.o: %.c
 
 directories: # make temp build directories
 	@mkdir -p $(B_BUILD_DIR)
+	@mkdir -p $(B_DEPLOY_DIR)
 
 clean: # delete binary
 	-@rm -rf $(B_DEPLOY_DIR)/mkfs

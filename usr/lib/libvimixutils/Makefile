@@ -27,7 +27,7 @@ $(LIB_BUILD_DIR)/vimixutils.a : $(LIB_VIMIXUTILS)
 	@$(AR) rc $(LIB_BUILD_DIR)/vimixutils.a $^
 
 # generic rule to compile .c files to .o files on target
-$(LIB_VIMIXUTILS_BUILD_DIR)/%.o: %.c
+$(LIB_VIMIXUTILS_BUILD_DIR)/%.o: %.c | directories
 	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 

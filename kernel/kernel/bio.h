@@ -59,6 +59,9 @@ void bio_release(struct buf *b);
 /// Wont release/free the buffer, call bio_release for that explicitly.
 void bio_write(struct buf *b);
 
+/// @brief Flush all previously completed writes to the underlying device.
+syserr_t bio_flush(dev_t dev);
+
 /// @brief Increase the buffers reference count.
 void bio_get(struct buf *b);
 

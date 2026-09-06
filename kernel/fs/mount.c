@@ -207,7 +207,7 @@ syserr_t mount_internal(dev_t source, struct dentry *d_target,
     sb->d_root = root_dp;
 
     // add to kobject tree
-    kobject_add(&sb->kobj, &g_kobjects_fs, "%s_(%d,%d)", sb->s_type->name,
+    kobject_add(&sb->kobj, &g_kobjects_fs, "%s_%d_%d", sb->s_type->name,
                 MAJOR(sb->dev), MINOR(sb->dev));
     kobject_put(
         &sb->kobj);  // drop reference now that the kobject tree holds one

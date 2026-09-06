@@ -140,7 +140,7 @@ dev_t bcm2835_aux_uart_init(struct Device_Init_Parameters *init_parameters,
         dev_init(&aux_uart->tty.dev, OTHER, BCM2835_UART_AUX_MAJOR,
                  &g_bcm2835_aux_uart_next_minor, "bcm2835_aux_uart",
                  init_parameters->interrupts, init_parameters->interrupt_count,
-                 bcm2835_aux_uart_interrupt_handler);
+                 bcm2835_aux_uart_interrupt_handler, NULL);
 
     if (err != 0)
     {

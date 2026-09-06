@@ -25,8 +25,11 @@ struct virtio_blk_config
 // these are specific to virtio block devices, e.g. disks,
 // described in Section 5.2 of the spec.
 
-#define VIRTIO_BLK_T_IN 0   ///< read the disk
-#define VIRTIO_BLK_T_OUT 1  ///< write the disk
+#define VIRTIO_BLK_F_FLUSH 9  ///< Cache flush command support
+
+#define VIRTIO_BLK_T_IN 0     ///< read the disk
+#define VIRTIO_BLK_T_OUT 1    ///< write the disk
+#define VIRTIO_BLK_T_FLUSH 4  ///< make completed writes durable
 
 /// the format of the first descriptor in a disk request.
 /// to be followed by two more descriptors containing

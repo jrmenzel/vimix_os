@@ -21,6 +21,7 @@ OBJS +=	$(ARCH_DIR)/context.o \
 	drivers/device.o \
 	drivers/bdev/ramdisk.o \
 	drivers/bdev/virtio_disk.o \
+	drivers/bdev/virtio_disk_sysfs.o \
 	drivers/cdev/dev_null.o \
 	drivers/cdev/dev_random.o \
 	drivers/cdev/dev_zero.o \

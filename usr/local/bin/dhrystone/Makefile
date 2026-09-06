@@ -9,11 +9,11 @@ all: directories $(B_DEPLOY_DIR)/dhrystone
 
 ###########################################################
 # compiling
-$(B_DEPLOY_DIR)/dhrystone: $(B_BUILD_DIR)/dhry_1.o $(B_BUILD_DIR)/dhry_2.o $(COMMON_LIBS)
+$(B_DEPLOY_DIR)/dhrystone: $(B_BUILD_DIR)/dhry_1.o $(B_BUILD_DIR)/dhry_2.o $(COMMON_LIBS) | directories
 	@printf "$(TASK_COLOR)Link binary: $(@)\n$(NO_COLOR)"
 	@$(LINKER)  $(LDFLAGS) $^ -o $@
 
-$(B_BUILD_DIR)/%.o: %.c
+$(B_BUILD_DIR)/%.o: %.c | directories
 	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 

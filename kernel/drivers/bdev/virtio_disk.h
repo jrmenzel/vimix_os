@@ -24,6 +24,7 @@ struct Virtio_Disk
     {
         struct buf *b;
         char status;
+        bool completed;
     } info[VIRTIO_DESCRIPTORS];
 
     /// disk command headers.
@@ -33,7 +34,7 @@ struct Virtio_Disk
     struct spinlock vdisk_lock;
 };
 
-#define virtio_from_generic_disk(ptr) \
+#define virtio_disk_from_generic_disk(ptr) \
     container_of(ptr, struct Virtio_Disk, disk)
 
 /// @brief Inits the virtio disk driver (for qemu) and inits the hardware.
@@ -41,3 +42,5 @@ struct Virtio_Disk
 /// @return device number of the created device
 dev_t virtio_disk_init(struct Device_Init_Parameters *init_parameters,
                        const char *name);
+
+syserr_t virtio_block_device_flush(struct Block_Device *bd);

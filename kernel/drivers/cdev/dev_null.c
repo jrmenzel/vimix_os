@@ -32,7 +32,7 @@ dev_t dev_null_init(struct Device_Init_Parameters *init_parameters,
     // init device and register it in the system
     dev_init_named(&g_dev_null.cdev.dev, CHAR, MKDEV(DEV_NULL_MAJOR, 0), "null",
                    init_parameters->interrupts,
-                   init_parameters->interrupt_count, NULL);
+                   init_parameters->interrupt_count, NULL, NULL);
     g_dev_null.cdev.ops.read = dev_null_read;
     g_dev_null.cdev.ops.write = dev_null_write;
     g_dev_null.cdev.ops.ioctl = NULL;

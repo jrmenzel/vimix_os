@@ -134,10 +134,10 @@ dev_t uart_init(struct Device_Init_Parameters *init_parameters,
         init_parameters->interrupt_count = 1;
     }
 
-    syserr_t err =
-        dev_init(&uart->tty.dev, OTHER, UART_16550_MAJOR, &g_uart_next_minor,
-                 "uart16550_", init_parameters->interrupts,
-                 init_parameters->interrupt_count, uart_interrupt_handler);
+    syserr_t err = dev_init(
+        &uart->tty.dev, OTHER, UART_16550_MAJOR, &g_uart_next_minor,
+        "uart16550_", init_parameters->interrupts,
+        init_parameters->interrupt_count, uart_interrupt_handler, NULL);
 
     if (err != 0)
     {

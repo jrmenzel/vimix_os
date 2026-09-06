@@ -21,6 +21,11 @@ struct block_device_ops
 
     /// write one block of data into the buffer.
     void (*write_buf)(struct Block_Device *bd, struct buf *b);
+
+    /// flush caches to disk making previous writes persistent. Simple block
+    /// devices like the RAM disk don't need this and can set the pointer to
+    /// NULL.
+    syserr_t (*flush)(struct Block_Device *bd);
 };
 
 /// @brief Represents one block device.

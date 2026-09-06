@@ -15,7 +15,8 @@
 syserr_t dev_init(struct Device *dev, device_type type, size_t major,
                   atomic_size_t *minor_counter, const char *name,
                   struct Device_Interrupt *irqs, size_t irq_count,
-                  interrupt_handler_p interrupt_handler)
+                  interrupt_handler_p interrupt_handler,
+                  const struct kobj_type *ktype)
 {
     size_t name_len = strlen(name);
     name_len += 2;  // assume max 100 minor numbers
@@ -30,13 +31,14 @@ syserr_t dev_init(struct Device *dev, device_type type, size_t major,
     snprintf(device_name, name_len, "%s%zd", name, minor);
 
     return dev_init_named(dev, type, MKDEV(major, minor), device_name, irqs,
-                          irq_count, interrupt_handler);
+                          irq_count, interrupt_handler, ktype);
 }
 
 syserr_t dev_init_named(struct Device *dev, device_type type,
                         dev_t device_number, const char *name,
                         struct Device_Interrupt *irqs, size_t irq_count,
-                        interrupt_handler_p interrupt_handler)
+                        interrupt_handler_p interrupt_handler,
+                        const struct kobj_type *ktype)
 {
     dev->type = type;
     dev->interrupt_count = irq_count;
@@ -50,7 +52,7 @@ syserr_t dev_init_named(struct Device *dev, device_type type,
     dev->mode = 0600;  ///< default mode, can be changed later
 
     // init kobject
-    kobject_init(&dev->kobj, NULL);
+    kobject_init(&dev->kobj, ktype);
 
     return 0;
 }

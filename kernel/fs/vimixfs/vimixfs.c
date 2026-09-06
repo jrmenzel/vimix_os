@@ -87,9 +87,9 @@ syserr_t vimixfs_init_fs_super_block(struct super_block *sb_in,
     // ignore those here
     dev_t dev = sb_in->dev;
     struct buf *first_block = bio_read(dev, VIMIXFS_SUPER_BLOCK_NUMBER);
-    struct vimixfs_superblock *vx6_sb =
+    struct vimixfs_superblock *fs_sb =
         (struct vimixfs_superblock *)first_block->data;
-    if (vx6_sb->magic != VIMIXFS_MAGIC)
+    if (fs_sb->magic != VIMIXFS_MAGIC)
     {
         // wrong file system
         printk("vimixfs error: wrong file system\n");
@@ -106,7 +106,7 @@ syserr_t vimixfs_init_fs_super_block(struct super_block *sb_in,
     }
     sb_in->s_fs_info = (void *)priv;
 
-    memmove(&(priv->sb), vx6_sb, sizeof(struct vimixfs_superblock));
+    memmove(&(priv->sb), fs_sb, sizeof(struct vimixfs_superblock));
     ssize_t log_ok = log_init(&(priv->log), dev, &(priv->sb));
     bio_release(first_block);
 

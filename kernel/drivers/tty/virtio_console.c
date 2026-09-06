@@ -74,7 +74,7 @@ dev_t virtio_console_init(struct Device_Init_Parameters *init_parameters,
     syserr_t err = dev_init(
         &console->tty.dev, OTHER, VIRTIO_CONSOLE_MAJOR,
         &g_virtio_console_next_minor, "virtcon", init_parameters->interrupts,
-        init_parameters->interrupt_count, virtio_console_interrupt);
+        init_parameters->interrupt_count, virtio_console_interrupt, NULL);
     if (err != 0)
     {
         virtio_device_fail(&console->virtio);

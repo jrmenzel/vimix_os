@@ -40,7 +40,7 @@ $(LIB_BUILD_DIR)/stdlib.a : $(STD_LIBC)
 	@$(AR) rc $(LIB_BUILD_DIR)/stdlib.a $(STD_LIBC)
 
 # generic rule to compile .c files to .o files on target
-$(LIBC_BUILD_DIR)/%.o: %.c
+$(LIBC_BUILD_DIR)/%.o: %.c | directories
 	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) $(USER_SPACE_INC_PARAMS) -c $< -o $@
 
@@ -49,7 +49,7 @@ $(LIBC_BUILD_DIR)/usys.S : usys.pl | directories
 	@printf "$(TASK_COLOR)Generate $(@) from libc/usys.pl\n$(NO_COLOR)"
 	@perl usys.pl -$(ARCH) > $(LIBC_BUILD_DIR)/usys.S
 
-$(LIBC_BUILD_DIR)/usys.o : $(LIBC_BUILD_DIR)/usys.S
+$(LIBC_BUILD_DIR)/usys.o : $(LIBC_BUILD_DIR)/usys.S | directories
 	@printf "$(TASK_COLOR)Compile with $(CC): $(@)\n$(NO_COLOR)"
 	@$(CC) $(CFLAGS) -c -o $(LIBC_BUILD_DIR)/usys.o $(LIBC_BUILD_DIR)/usys.S $(USER_SPACE_INC_PARAMS)
 
