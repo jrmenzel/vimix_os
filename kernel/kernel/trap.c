@@ -139,7 +139,7 @@ void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2,
     }
     else if (int_ctx_source_is_device(&ctx))
     {
-        handle_device_interrupt();
+        handle_device_interrupt(&ctx);
     }
     else if (int_ctx_source_is_spurious(&ctx))
     {
@@ -177,6 +177,8 @@ void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2,
         // some other cause
         dump_exception_cause_and_kill_proc(proc, &ctx);
     }
+
+    int_ctx_complete(&ctx);
 
     if (proc_is_killed(proc))
     {
@@ -274,7 +276,7 @@ void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
     }
     else if (int_ctx_source_is_device(&ctx))
     {
-        handle_device_interrupt();
+        handle_device_interrupt(&ctx);
     }
     else if (int_ctx_source_is_spurious(&ctx))
     {
@@ -296,6 +298,8 @@ void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
         panic("kernel_mode_interrupt_handler");
     }
 
+    int_ctx_complete(&ctx);
+
     if (yield_process)
     {
         // give up the CPU if a process is running
@@ -312,10 +316,10 @@ void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2)
     int_ctx_restore(&ctx);
 }
 
-void handle_device_interrupt()
+void handle_device_interrupt(struct Interrupt_Context *ctx)
 {
     // irq indicates which device interrupted.
-    int irq = g_int_con.claim();
+    int irq = int_ctx_claim_device(ctx);
 
     if (irq == INVALID_IRQ_NUMBER)
     {
@@ -336,10 +340,7 @@ void handle_device_interrupt()
         printk("unexpected interrupt irq=%d\n", irq);
     }
 
-    // the PLIC allows each device to raise at most one
-    // interrupt at a time; tell the PLIC the device is
-    // now allowed to interrupt again.
-    g_int_con.complete(irq);
+    int_ctx_complete_device(ctx, irq);
 }
 
 bool handle_ipi_interrupt()

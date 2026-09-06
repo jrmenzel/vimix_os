@@ -6,6 +6,7 @@
 #include <arch/riscv/riscv.h>
 #include <arch/riscv/sbi.h>
 #include <arch/riscv/scause.h>
+#include <kernel/interrupt_controller.h>
 #include <kernel/proc.h>
 #include <kernel/smp.h>
 #include <kernel/spinlock.h>
@@ -111,3 +112,17 @@ static inline size_t int_ctx_get_async_timer_state(
     (void)ctx;
     return 0;
 }
+
+// RISC-V identifies external interrupts in scause; only that path claims PLIC.
+static inline int32_t int_ctx_claim_device(struct Interrupt_Context *ctx)
+{
+    return g_int_con.claim();
+}
+
+static inline void int_ctx_complete_device(struct Interrupt_Context *ctx,
+                                           int32_t irq)
+{
+    g_int_con.complete(irq);
+}
+
+static inline void int_ctx_complete(struct Interrupt_Context *ctx) {}

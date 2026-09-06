@@ -18,6 +18,7 @@ struct Interrupt_Context
     size_t spsr;
     size_t far;
     int32_t pending_irq;
+    uint32_t ack_token;
 };
 
 // ARM generic timer virtual timer interrupt is PPI 11 -> GIC ID 27.
@@ -98,18 +99,32 @@ static inline size_t int_ctx_get_exception_pc(struct Interrupt_Context *ctx)
     return ctx->elr;
 }
 
-static inline void acknowledge_gic2_claim()
+// The GIC interrupt was already acknowledged when creating the context.
+static inline void int_acknowledge_timer() {}
+
+static inline void int_acknowledge_ipi() {}
+
+static inline int32_t int_ctx_claim_device(struct Interrupt_Context *ctx)
 {
-    int32_t irq = gic2_claim();
-    if (irq != INVALID_IRQ_NUMBER)
-    {
-        gic2_complete(irq);
-    }
+    return ctx->pending_irq;
 }
 
-static inline void int_acknowledge_timer() { acknowledge_gic2_claim(); }
+static inline void int_ctx_complete_device(struct Interrupt_Context *ctx,
+                                           int32_t irq)
+{
+    // All ARM interrupt types are completed together before leaving the trap.
+}
 
-static inline void int_acknowledge_ipi() { acknowledge_gic2_claim(); }
+static inline void int_ctx_complete(struct Interrupt_Context *ctx)
+{
+    if (ctx->pending_irq != INVALID_IRQ_NUMBER)
+    {
+        // Complete source updates before deactivating the level interrupt.
+        dsb(sy);
+        gic2_end_interrupt(ctx->ack_token);
+        ctx->pending_irq = INVALID_IRQ_NUMBER;
+    }
+}
 
 bool int_ctx_source_is_ipi(struct Interrupt_Context *ctx);
 
@@ -137,7 +152,7 @@ static inline bool int_ctx_source_is_unclassified_async(
 
 static inline void int_consume_unclassified_async(struct Interrupt_Context *ctx)
 {
-    acknowledge_gic2_claim();
+    // int_ctx_complete() releases the interrupt claimed on entry.
 }
 
 static inline int32_t int_ctx_get_pending_irq(struct Interrupt_Context *ctx)

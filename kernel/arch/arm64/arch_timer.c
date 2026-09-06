@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 
 #include <arch/arm64/arm64.h>
+#include <arch/barrier.h>
 #include <kernel/timer.h>
 
 static void enable_timer()
@@ -29,6 +30,7 @@ void arm_schedule_interrupt(uint64_t time, uint64_t interval)
     disable_timer();
     reload_timer(interval);
     enable_timer();
+    isb();
 }
 
 timer_schedule_interrupt_p *arch_timer_interrupt_func()

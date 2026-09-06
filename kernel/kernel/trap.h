@@ -14,7 +14,9 @@ void kernel_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2);
 void user_mode_interrupt_handler(size_t *stack, size_t ctx_1, size_t ctx_2,
                                  size_t kernel_page_table_epoch);
 
-void handle_device_interrupt();
+struct Interrupt_Context;
+
+void handle_device_interrupt(struct Interrupt_Context *ctx);
 
 //
 // the following functions are implemented per ARCH:

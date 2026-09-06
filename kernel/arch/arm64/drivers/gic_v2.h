@@ -25,8 +25,9 @@ void gic2_init_per_cpu();
 /// ask the GICv2 what interrupt we should serve.
 int32_t gic2_claim();
 
-/// ask the GICv2 what interrupt is pending without acknowledging it.
-int32_t gic2_peek_pending();
+/// Acknowledge once and retain the full IAR token, including SGI source CPU.
+uint32_t gic2_acknowledge();
+void gic2_end_interrupt(uint32_t token);
 
 /// tell the GICv2 we've served this IRQ.
 void gic2_complete(int32_t irq);

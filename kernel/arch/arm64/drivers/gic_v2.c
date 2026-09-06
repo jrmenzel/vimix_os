@@ -173,7 +173,7 @@ void gic2_init_per_cpu()
 int32_t gic2_claim()
 {
     const uint32_t GICC_IAR_MASK = 0x3ff;  // lower 10 bits are the interrupt ID
-    uint32_t iar = MMIO_READ_UINT_32(g_gic2.mmio_base_cpu, GICC_IAR);
+    uint32_t iar = gic2_acknowledge();
     uint32_t irq = iar & GICC_IAR_MASK;
 
     size_t cpu_id = smp_processor_id();
@@ -190,16 +190,14 @@ int32_t gic2_claim()
     return irq;
 }
 
-int32_t gic2_peek_pending()
+uint32_t gic2_acknowledge()
 {
-    uint32_t hppir = MMIO_READ_UINT_32(g_gic2.mmio_base_cpu, GICC_HPPIR);
-    uint32_t irq = hppir & 0x3ff;  // lower 10 bits are the interrupt ID
-    // 1020..1023 are special IDs, not dispatchable device/IPI IRQs.
-    if (irq >= 1020)
-    {
-        return INVALID_IRQ_NUMBER;
-    }
-    return irq;
+    return MMIO_READ_UINT_32(g_gic2.mmio_base_cpu, GICC_IAR);
+}
+
+void gic2_end_interrupt(uint32_t token)
+{
+    MMIO_WRITE_UINT_32(g_gic2.mmio_base_cpu, GICC_EOIR, token);
 }
 
 /// tell the GICv2 we've served this IRQ.
@@ -217,5 +215,5 @@ void gic2_complete(int32_t irq)
         g_gic2_last_ack_token[cpu_id] = 0;
     }
 
-    MMIO_WRITE_UINT_32(g_gic2.mmio_base_cpu, GICC_EOIR, eoir);
+    gic2_end_interrupt(eoir);
 }
