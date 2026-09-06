@@ -43,7 +43,7 @@ struct super_operations devfs_s_op = {
     alloc_inode : sops_alloc_inode_default_ro,
     write_inode : sops_write_inode_default_ro,
     statvfs : sops_statvfs_default,
-    sync_fs : sops_sync_fs_default
+    sync_fs : sops_sync_fs_noop
 };
 
 struct dentry *devfs_iops_lookup(struct inode *parent, struct dentry *dp)

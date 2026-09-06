@@ -37,7 +37,7 @@ struct sleeplock g_mount_lock;
 /// @brief List of all mounted file systems
 struct list_head g_mount_list;
 
-void mount_init(void)
+void mount_init()
 {
     sleep_lock_init(&g_mount_lock, "mount");
     list_init(&g_mount_list);
@@ -304,7 +304,7 @@ syserr_t umount_internal(struct dentry *d_target,
     return 0;
 }
 
-syserr_t sync_mounted_fs(void)
+syserr_t sync_mounted_fs()
 {
     syserr_t first_error = 0;
 

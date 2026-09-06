@@ -47,6 +47,8 @@ syserr_t sops_statvfs_default(struct super_block *sb, struct statvfs *to_fill);
 
 syserr_t sops_sync_fs_default(struct super_block *sb);
 
+syserr_t sops_sync_fs_noop(struct super_block *sb);
+
 /// @brief Can be used for iops_create of read-only file systems.
 /// @return NULL which means no new inodes can get created.
 syserr_t iops_create_default_ro(struct inode *parent, struct dentry *dp,

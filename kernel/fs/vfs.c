@@ -91,6 +91,8 @@ syserr_t sops_sync_fs_default(struct super_block *sb)
     return bio_flush(sb->dev);
 }
 
+syserr_t sops_sync_fs_noop(struct super_block *sb) { return 0; }
+
 syserr_t iops_create_default_ro(struct inode *parent, struct dentry *dp,
                                 mode_t mode, int32_t flags)
 {
