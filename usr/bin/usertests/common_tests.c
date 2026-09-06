@@ -8,6 +8,7 @@
 #include <grp.h>
 #include <pwd.h>
 #include <stdlib.h>
+#include <sys/statvfs.h>
 #include <vimixutils/minmax.h>
 #include "usertests.h"
 
@@ -781,9 +782,32 @@ void truncate_test(char *s)
     unlink(file_name);
 
     {
+        errno = 0;
         int fd = open(file_name, O_CREAT | O_WRONLY | O_TRUNC, 0755);
         assert_open_ok_fd(s, fd, file_name);
         assert_no_error(close(fd));
+    }
+
+    struct statvfs stat_fs;
+    if (statvfs(file_name, &stat_fs) < 0)
+    {
+        fprintf(stderr, "%s: error: cant statvfs\n", s);
+        exit(1);
+    }
+    size_t free_space = stat_fs.f_bsize * stat_fs.f_bfree;
+    const size_t MAX_FILE_CONTENT = 4 * 1024 * 1024;
+
+    // allow a handful extra blocks for FS management
+    // just needs to be a ballpark number to no fail for out of space but
+    // still run on small file systems
+    const size_t REQUIRED_FREE = MAX_FILE_CONTENT + 16 * stat_fs.f_bsize;
+    if (free_space < REQUIRED_FREE)
+    {
+        fprintf(stderr,
+                "%s: error: not enough space to run test, free: %zd KB, need: "
+                "%zd KB\n",
+                s, free_space / 1024, REQUIRED_FREE / 1024);
+        exit(1);
     }
 
     truncate_to(s, file_name, 0);
@@ -809,7 +833,7 @@ void truncate_test(char *s)
     truncate_to(s, file_name, 2 * BLOCK_SIZE + 128);
 
     truncate_to(s, file_name, 0);
-    truncate_to(s, file_name, 4 * 1024 * 1024);
+    truncate_to(s, file_name, MAX_FILE_CONTENT);
 
     assert_no_error(unlink(file_name));
 }
