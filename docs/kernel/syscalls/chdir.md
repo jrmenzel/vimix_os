@@ -1,17 +1,20 @@
-# Syscall chdir
+# Syscalls chdir and fchdir
 
 ## User Mode
 
 ```C
 #include <unistd.h>
 int32_t chdir(const char *path);
+
+int32_t fchdir(int fd);
 ```
 
-Change working directory of process.
+Change the working directory of the process.
+`chdir()` identifies the new directory by path, while `fchdir()` uses an open file descriptor.
 
 ## Kernel Mode
 
-Implemented in `sys_process.c` as `sys_chdir()`.
+Implemented in `sys_file.c` as `sys_chdir()` and `sys_fchdir()`.
 
 ## See also
 

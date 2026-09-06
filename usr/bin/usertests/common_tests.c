@@ -185,6 +185,85 @@ void lseek_test(char *s)
     assert_no_error(unlink(file_name));
 }
 
+static void assert_current_directory(char *s, const char *expected)
+{
+    size_t buffer_size = strlen(expected) + 1;
+    char *cwd = malloc(buffer_size);
+    assert_no_ptr_error(cwd);
+    assert_no_ptr_error(getcwd(cwd, buffer_size));
+    assert_same_string(cwd, expected);
+    free(cwd);
+
+    cwd = get_current_dir_name();
+    assert_no_ptr_error(cwd);
+    assert_same_string(cwd, expected);
+    free(cwd);
+}
+
+void cwd_chdir_test(char *s)
+{
+    const char *test_dir = "cwd_chdir_test";
+    const char *path_dir = "cwd_chdir_test/by_path";
+    const char *fd_dir = "cwd_chdir_test/by_fd";
+    const char *regular_file = "cwd_chdir_test/regular_file";
+    const char *missing_dir = "cwd_chdir_test/does_not_exist";
+
+    char *original_dir = get_current_dir_name();
+    assert_no_ptr_error(original_dir);
+    assert_current_directory(s, original_dir);
+
+    assert_no_error(mkdir(test_dir, 0755));
+    assert_no_error(mkdir(path_dir, 0755));
+    assert_no_error(mkdir(fd_dir, 0755));
+
+    int original_fd = open(".", O_RDONLY);
+    assert_open_ok_fd(s, original_fd, ".");
+    int target_fd = open(fd_dir, O_RDONLY);
+    assert_open_ok_fd(s, target_fd, fd_dir);
+    int file_fd = open(regular_file, O_CREAT | O_RDWR, 0644);
+    assert_open_ok_fd(s, file_fd, regular_file);
+
+    assert_error(chdir(missing_dir));
+    assert_errno(ENOENT);
+    assert_current_directory(s, original_dir);
+
+    assert_error(chdir(regular_file));
+    assert_errno(ENOTDIR);
+    assert_current_directory(s, original_dir);
+
+    assert_error(fchdir(file_fd));
+    assert_errno(ENOTDIR);
+    assert_current_directory(s, original_dir);
+
+    size_t prefix_len =
+        strcmp(original_dir, "/") == 0 ? 0 : strlen(original_dir);
+    char *expected = malloc(prefix_len + 1 + strlen(path_dir) + 1);
+    assert_no_ptr_error(expected);
+    memcpy(expected, original_dir, prefix_len);
+    expected[prefix_len] = '/';
+    memcpy(expected + prefix_len + 1, path_dir, strlen(path_dir) + 1);
+
+    assert_no_error(chdir(path_dir));
+    assert_current_directory(s, expected);
+
+    memcpy(expected + prefix_len + 1, fd_dir, strlen(fd_dir) + 1);
+    assert_no_error(fchdir(target_fd));
+    assert_current_directory(s, expected);
+
+    assert_no_error(fchdir(original_fd));
+    assert_current_directory(s, original_dir);
+
+    assert_no_error(close(file_fd));
+    assert_no_error(close(target_fd));
+    assert_no_error(close(original_fd));
+    assert_no_error(unlink(regular_file));
+    assert_no_error(rmdir(path_dir));
+    assert_no_error(rmdir(fd_dir));
+    assert_no_error(rmdir(test_dir));
+    free(expected);
+    free(original_dir);
+}
+
 char ctype_results_isprint[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1199,6 +1278,7 @@ struct test tests_common[] = {
     {dev_null, "dev_null", TEST_MASK_NONE},
     {dev_zero, "dev_zero", TEST_MASK_NONE},
     {lseek_test, "lseek", TEST_MASK_FILESYSTEM},
+    {cwd_chdir_test, "cwd_chdir", TEST_MASK_FILESYSTEM},
     {ctype_test, "ctype", TEST_MASK_NONE},
     {printf_test, "printf", TEST_MASK_BITWIDTH},
     {getc_test, "getc", TEST_MASK_FILESYSTEM},

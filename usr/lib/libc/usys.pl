@@ -67,6 +67,7 @@ entry("fstat");
 entry("link");
 entry("mkdir");
 entry("chdir");
+entry("fchdir");
 entry("dup");
 entry("getpid");
 entry("sbrk");

@@ -39,9 +39,6 @@ syserr_t sys_ms_sleep();
 /// @brief Syscall "pid_t wait(int *wstatus)" from wait.h
 syserr_t sys_wait();
 
-/// @brief Syscall "int32_t chdir(const char *path)" from unistd.h.
-syserr_t sys_chdir();
-
 /// @brief Syscall "void *sbrk(intptr_t increment)" from unistd.h.
 syserr_t sys_sbrk();
 
@@ -86,6 +83,12 @@ syserr_t sys_write();
 
 /// @brief Syscall "int dup(int fd)" from unistd.h.
 syserr_t sys_dup();
+
+/// @brief Syscall "int32_t chdir(const char *path)" from unistd.h.
+syserr_t sys_chdir();
+
+/// @brief Syscall "int32_t fchdir(int fd)" from unistd.h.
+syserr_t sys_fchdir();
 
 /// @brief Syscall "int32_t link(const char *from, const char *to)" from
 /// unistd.h.

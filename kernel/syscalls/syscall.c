@@ -181,6 +181,7 @@ static syserr_t (*const syscalls[])() = {
     [SYS_umask] sys_umask,
     [SYS_getcwdlen] sys_getcwdlen,
     [SYS_sync] sys_sync,
+    [SYS_fchdir] sys_fchdir,
 };
 // clang-format on
 
@@ -261,6 +262,9 @@ static const char *g_syscall_names[] = {
     [SYS_setgroups] "setgroups",
     [SYS_getgroups] "getgroups",
     [SYS_umask] "umask",
+    [SYS_getcwdlen] "getcwdlen",
+    [SYS_sync] "sync",
+    [SYS_fchdir] "fchdir",
 };
 // clang-format on
 

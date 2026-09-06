@@ -116,39 +116,27 @@ syserr_t sys_open()
     return ret;
 }
 
-syserr_t sys_chdir()
+static inline syserr_t do_chdir(struct dentry *dp)
 {
-    // parameter 0: const char *path
-    char path[PATH_MAX];
-    uint32_t could_fetch_path = argstr(0, path, PATH_MAX);
-    if (could_fetch_path < 0)
-    {
-        return -EFAULT;
-    }
-
-    syserr_t error = 0;
-    struct process *proc = get_current();
-    struct dentry *dp = dentry_from_path(path, &error);
     if (dp == NULL)
     {
-        return error;
+        return -ENOTDIR;
     }
+
     if (dentry_is_invalid(dp))
     {
-        dentry_put(dp);
         return -ENOENT;
     }
 
     if (!S_ISDIR(dp->ip->i_mode))
     {
-        dentry_put(dp);
         return -ENOTDIR;
     }
 
+    struct process *proc = get_current();
     syserr_t perm_check = check_dentry_permission(proc, dp, MAY_EXEC);
     if (perm_check < 0)
     {
-        dentry_put(dp);
         return perm_check;
     }
 
@@ -164,9 +152,42 @@ syserr_t sys_chdir()
         proc->cwd_dentry = dentry_get(dp);
     }
     dcache_read_unlock();
-    dentry_put(dp);
 
     return 0;
+}
+
+syserr_t sys_chdir()
+{
+    // parameter 0: const char *path
+    char path[PATH_MAX];
+    uint32_t could_fetch_path = argstr(0, path, PATH_MAX);
+    if (could_fetch_path < 0)
+    {
+        return -EFAULT;
+    }
+
+    syserr_t error = 0;
+    struct dentry *dp = dentry_from_path(path, &error);
+    if (dp == NULL)
+    {
+        return error;
+    }
+    syserr_t ret = do_chdir(dp);
+    dentry_put(dp);
+
+    return ret;
+}
+
+syserr_t sys_fchdir()
+{
+    // parameter 0: int fd
+    struct file *f;
+    if (argfd(0, NULL, &f) < 0)
+    {
+        return -EBADF;
+    }
+
+    return do_chdir(f->dp);
 }
 
 syserr_t do_get_dirent(struct file *f, size_t dir_entry_addr, ssize_t seek_pos)

@@ -51,6 +51,7 @@
 #define SYS_umask 47
 #define SYS_getcwdlen 48
 #define SYS_sync 49
+#define SYS_fchdir 50
 
 #define SEEK_SET 0  //< Seek from beginning of file
 #define SEEK_CUR 1  //< Seek from current position

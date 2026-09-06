@@ -10,7 +10,7 @@ See also: [calling_syscall](calling_syscall.md).
 - [kill](kill.md) - Send signal to a process.
 - [ms_sleep](ms_sleep.md) - Sleep for some time.
 - [wait](wait.md) - Wait for child process to exit.
-- [chdir](chdir.md) - Change the current directory (see proc cwd).
+- [chdir / fchdir](chdir.md) - Change the current directory (see proc cwd).
 - [sbrk](sbrk.md) - Allocate/free process heap.
 
 ## Process Information

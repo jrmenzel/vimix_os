@@ -117,6 +117,9 @@ extern int rmdir(const char *path);
 // change working directory
 extern int32_t chdir(const char *path);
 
+// change working directory using an open directory descriptor
+extern int32_t fchdir(int fd);
+
 // duplicate open file descriptor. Returns new file descriptor or -1 on error
 extern int dup(int fd);
 
