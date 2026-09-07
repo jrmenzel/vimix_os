@@ -106,11 +106,25 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
     struct Character_Device *cdev = character_device_from_device(dev);
     struct Console_Device *console = console_driver_from_cdev(cdev);
 
-    size_t target = n;
-    ssize_t termios_target = console->termios.c_cc[VMIN];
-    bool canonical_mode = (console->termios.c_lflag & ICANON);
-
     spin_lock(&console->lock);
+
+    size_t target = n;
+    bool canonical_mode = (console->termios.c_lflag & ICANON);
+    size_t minimum = console->termios.c_cc[VMIN];
+    if (minimum > n) minimum = n;
+
+    // convert timeout from 1/10s to kernel ticks:
+    size_t timeout_ticks = console->termios.c_cc[VTIME];  // 1/10s
+    timeout_ticks = timeout_ticks * TIMER_INTERRUPTS_PER_SECOND / 10;
+    size_t deadline = 0;
+
+    // With MIN == 0, TIME is a timer from the start of read().
+    // With both nonzero, TIME is an inter-byte timer which starts after the
+    // first byte.
+    if (!canonical_mode && minimum == 0 && timeout_ticks > 0)
+    {
+        deadline = kticks_get_ticks() + timeout_ticks;
+    }
 
     // if a debug console is active wait
     while (console->dbg_con->is_active)
@@ -120,10 +134,6 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
 
     while (n > 0)
     {
-        size_t timeout = console->termios.c_cc[VTIME];  // 1/10s
-        timeout = timeout * TIMER_INTERRUPTS_PER_SECOND / 10;
-        timeout += kticks_get_ticks();
-
         // wait until interrupt handler has put some
         // input into console->buffer.
         while (console->r == console->w)
@@ -137,26 +147,38 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
             {
                 sleep(&console->r, &console->lock);
             }
+            else if ((minimum == 0) && (timeout_ticks == 0))
+            {
+                // MIN == 0, TIME == 0: return immediately with whatever is
+                // already available.
+                spin_unlock(&console->lock);
+                return target - n;
+            }
+            else if ((timeout_ticks == 0) || ((minimum > 0) && (n == target)))
+            {
+                // MIN > 0, TIME == 0 waits for MIN bytes.
+                // If both are nonzero, the first byte has no timeout.
+                sleep(&console->r, &console->lock);
+            }
             else
             {
                 size_t now = kticks_get_ticks();
-                if (now >= timeout)
+                if (now >= deadline)
                 {
-                    // timeout expired
                     spin_unlock(&console->lock);
-                    return 0;
+                    return target - n;
                 }
-                // wake up eack kernel tick to check for input
-                // if we wait here for a console interrupt, we miss the
-                // timeout
+                // Wake up each kernel tick to check for input.
+                // Waiting only for a console interrupt could miss the timeout.
                 sleep(&g_ticks, &console->lock);
             }
         }
 
         int32_t c = console->buf[console->r++ % CONSOLE_INPUT_BUF_SIZE];
 
-        if (c == CONTROL_KEY('D'))
-        {  // end-of-file
+        if (canonical_mode && c == CONTROL_KEY('D'))
+        {
+            // end-of-file
             if (n < target)
             {
                 // Save ^D for next time, to make sure
@@ -172,7 +194,6 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
 
         dst++;
         --n;
-        --termios_target;
 
         if (canonical_mode)
         {
@@ -183,9 +204,14 @@ ssize_t console_read(struct Device *dev, bool addr_is_userspace, size_t dst,
                 break;
             }
         }
-        else if (termios_target <= 0)
+        else if (minimum == 0 || target - n >= minimum)
         {
             break;
+        }
+        else if (timeout_ticks > 0)
+        {
+            // MIN > 0, TIME > 0 uses an inter-byte timeout.
+            deadline = kticks_get_ticks() + timeout_ticks;
         }
     }
     spin_unlock(&console->lock);
@@ -305,7 +331,7 @@ void console_interrupt_handler(struct Console_Device *console, int32_t c)
         if (c != 0 && console->e - console->r < CONSOLE_INPUT_BUF_SIZE)
         {
             // carriage return to newline
-            if (console->termios.c_lflag & ICRNL)
+            if (console->termios.c_iflag & ICRNL)
             {
                 c = (c == '\r') ? '\n' : c;
             }
@@ -376,7 +402,8 @@ struct Console_Device *console_init(struct TTY_Device *tty)
     console->cdev.dev.mode = 0666;
 
     memset(&console->termios, 0, sizeof(struct termios));
-    console->termios.c_lflag = ECHO | ICANON | ICRNL;
+    console->termios.c_iflag = ICRNL;
+    console->termios.c_lflag = ECHO | ICANON;
     console->termios.c_cc[VMIN] = 1;   // read() blocks for at least one byte
     console->termios.c_cc[VTIME] = 0;  // no timeout in read()
 

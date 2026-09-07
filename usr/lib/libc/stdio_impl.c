@@ -136,6 +136,11 @@ FILE *fopen(const char *filename, const char *modes)
 
     memset(file, 0, sizeof(FILE));
     file->fd = open(filename, flags, mode);
+    if (file->fd < 0)
+    {
+        free(file);
+        return NULL;
+    }
     file->returned_char = _FILE_NO_RETURNED_CHAR;
 
     return file;

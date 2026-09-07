@@ -1,0 +1,4 @@
+shutdown -h
+usertests
+pwd
+meminfo
