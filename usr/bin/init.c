@@ -29,8 +29,23 @@ struct Console
     struct Console *next;
 };
 
+bool g_autologin_executed = false;
+
 static int launch_login(struct Console *console)
 {
+    // The parent must keep track if autologin was triggered before
+    // do this before the fork to pass on if the child should skip
+    // the manual login.
+    // This way the first login in console0 just works which is required for
+    // automated tests and is convenient for manual testing while still
+    // getting a login after the first shell exit.
+    bool enable_autologin = ((strcmp(console->device, "/dev/console0") == 0) &&
+                             (g_autologin_executed == false));
+    if (enable_autologin)
+    {
+        g_autologin_executed = true;
+    }
+
     console->pid = fork();
     if (console->pid < 0)
     {
@@ -69,7 +84,6 @@ static int launch_login(struct Console *console)
 
         // start login:
         const char *login_path = "/usr/bin/login";
-        bool enable_autologin = strcmp(console->device, "/dev/console0") == 0;
         char *login_argv[] = {"login", enable_autologin ? "--autologin" : NULL,
                               NULL};
         printf("init starting %s\n", login_path);
