@@ -123,6 +123,10 @@ syserr_t sys_truncate();
 /// @brief Syscall "int32_t ftruncate(int fd, off_t length);" from unistd.h
 syserr_t sys_ftruncate();
 
+/// @brief Syscall "int utimes(const char *path, const struct timeval
+/// times[2]);" from utimes.h
+syserr_t sys_utimes();
+
 // ********************************************************
 // System information and control from sys_filesystem.c
 //

@@ -367,6 +367,7 @@ void sysfs_iops_put(struct inode *ip)
 
         struct sysfs_inode *sysfs_ip = sysfs_inode_from_inode(ip);
         sysfs_ip->node->sysfs_ip = NULL;    // tell the node that inode is gone
+        sysfs_ip->node->ctime = ip->ctime;  // preserve ctime
         sysfs_ip->node->mtime = ip->mtime;  // preserve mtime
         inode_del(ip);
 
@@ -537,6 +538,15 @@ syserr_t sysfs_fops_write(struct file *f, size_t addr, size_t n)
         sysfs_ops->store(sysfs_ip->node->kobj, attribute_idx, dst_buf, n);
 
     kfree(dst_buf);
+
+    if (res > 0)
+    {
+        inode_lock(&sysfs_ip->ino);
+        inode_update_mtime_ctime(&sysfs_ip->ino);
+        sysfs_ip->node->mtime = sysfs_ip->ino.mtime;
+        sysfs_ip->node->ctime = sysfs_ip->ino.ctime;
+        inode_unlock(&sysfs_ip->ino);
+    }
 
     return res;
 }

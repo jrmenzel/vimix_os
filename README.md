@@ -19,52 +19,61 @@ Compile and try out:
 How it looks like (text mode via UART only) running on [qemu](docs/development/run_on_qemu.md):
 
 ```
-Early console detected: SBI
+Flushing early printk buffer to console:
 
-VIMIX OS 64 bit (RISC V) kernel version 62ff674 is booting
-Timer source: sstc extension
-SBI implementation: OpenSBI (version 65543)
+VIMIX OS 64 bit (RISC V) kernel version 9934d509 is booting
+SBI implementation: OpenSBI (version 65544)
 SBI specification: v3.0
+System model: riscv-virtio,qemu
+System compatible: riscv-virtio
+Using boot loader provided DTB
 init early memory management...
 init new page table...
 init devices list...
 init console: ns16550a
 init device riscv,plic0... OK (8,0)
+Redirecting printk to first console device...
 init device ns16550a... OK (13,0)
-Redirecting printk to console device...
 init remaining devices...
 init device /dev/null... OK (3,0)
-init device /dev/zero... OK (4,0)
 init device /dev/random... OK (10,0)
-init device google,goldfish-rtc... OK (6,0)
+init device /dev/zero... OK (4,0)
 init device syscon... OK (7,0)
+init device google,goldfish-rtc... OK (6,0)
 init device virtio,mmio... OK (1,0)
 init filesystem...
 found root file system on device: virtio,mmio (1,0)
 init userspace...
+CPU 1 entering scheduler 
 CPU 0 entering scheduler (boot CPU)
+CPU 2 entering scheduler 
+CPU 3 entering scheduler 
 forkret() mounting /... OK
-Loaded kernel debug symbols from /kernel-vimix.xdbg.
 forkret() loading /usr/bin/init... OK
 init mounting /dev... OK
 init mounting /sys... OK
 init starting /usr/bin/login
 $ ls /
 /:
-drwxr-xr-x root root     2048 B  22.4.2026  20:41:14 .
-drwxr-xr-x root root     2048 B  22.4.2026  20:41:14 ..
-.rw-r--r-- root root     6413 B  5.4.2026   19:17:33 README.md
-drwxr-xr-x root root        0 B  22.4.2026  20:41:14 dev
-drwxr-xr-x root root     5120 B  29.3.2026  11:00:31 etc
-drwxr-xr-x root root      256 B  4.1.2026   20:23:49 home
-.rw-r--r-- root root   367488 B  22.4.2026  20:41:13 kernel-vimix.xdbg
-drwxr-x--- root root      128 B  4.1.2026   20:23:49 root
-drwxr-xr-x root root        0 B  22.4.2026  20:41:14 sys
-drwxr-xr-x root root     9216 B  12.4.2026  18:38:11 tests
-drwxrwxrwt root root      128 B  4.1.2026   20:23:49 tmp
-drwxr-xr-x root root      256 B  4.1.2026   20:23:49 usr
+drwxr-xr-x root root     2048 B  8.9.2026   17:25:28 .
+drwxr-xr-x root root     2048 B  8.9.2026   17:25:28 ..
+.rw-r--r-- root root     6961 B  8.9.2026   17:24:40 README.md
+drwxr-xr-x root root        0 B  8.9.2026   17:25:28 dev
+drwxr-xr-x root root     5120 B  7.9.2026   18:35:43 etc
+drwxr-xr-x root root      256 B  7.9.2026   19:02:32 home
+.rw-r--r-- root root   437943 B  8.9.2026   17:03:32 kernel-vimix.xdbg
+drwxr-x--- root root      192 B  7.9.2026   19:02:32 root
+drwxr-xr-x root root        0 B  8.9.2026   17:25:28 sys
+drwxr-xr-x root root    10240 B  6.9.2026   13:43:12 tests
+drwxrwxrwt root root      128 B  23.8.2026  07:42:45 tmp
+drwxr-xr-x root root      256 B  23.8.2026  07:42:45 usr
+drwxr-xr-x root root      192 B  23.8.2026  07:42:45 xdbg
+$ id
+uid=0(root) gid=0(root) groups=0(root),42(wheel)
+$ pwd
+/root
 $ cat /README.md | grep RISC | wc
-4 78 607
+5 91 734 
 $ fortune
 I'd spell creat with an e. - Ken Thompson when asked what he would do differently if he were to redesign UNIX
 $
@@ -96,6 +105,7 @@ $
 	- [umask](docs/kernel/syscalls/umask.md)
 	- [getcwdlen](docs/kernel/syscalls/getcwdlen.md)
 	- [sync](docs/kernel/syscalls/sync.md)
+	- [utimes](docs/kernel/syscalls/utimes.md)
 - Support multiple [devices](docs/kernel/devices/devices.md), not just two hard coded ones.
 - Added devices:
 	- [/dev/null](docs/userspace/dev/null.md), [/dev/zero](docs/userspace/dev/zero.md), [/dev/random](docs/userspace/dev/random.md)

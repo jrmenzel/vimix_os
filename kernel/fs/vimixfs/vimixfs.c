@@ -23,7 +23,7 @@
 #include <mm/kalloc.h>
 
 /// @brief Truncate inode (discard contents), does not call
-/// vimixfs_sops_write_inode() and does not start a FS log!
+/// vimixfs_write_inode() and does not start a FS log!
 /// @param ip inode to truncate.
 /// @param first_trunc_block First block to truncate, previous blocks are kept.
 void vimixfs_trunc(struct inode *ip, size_t first_trunc_block);
@@ -174,7 +174,7 @@ struct inode *vimixfs_iops_create_internal(struct inode *iparent,
     struct process *proc = get_current();
     ip->uid = proc->cred.euid;
     ip->gid = proc->cred.egid;
-    vimixfs_sops_write_inode(ip);
+    vimixfs_write_inode(ip);
 
     if (S_ISDIR(mode))
     {
@@ -197,7 +197,7 @@ struct inode *vimixfs_iops_create_internal(struct inode *iparent,
     {
         // now that success is guaranteed:
         iparent->nlink++;  // for ".."
-        vimixfs_sops_write_inode(iparent);
+        vimixfs_write_inode(iparent);
     }
 
     inode_unlock(iparent);
@@ -207,7 +207,7 @@ struct inode *vimixfs_iops_create_internal(struct inode *iparent,
 fail:
     // something went wrong. de-allocate ip.
     ip->nlink = 0;
-    vimixfs_sops_write_inode(ip);
+    vimixfs_write_inode(ip);
     inode_unlock_put(ip);
     inode_unlock(iparent);
     return NULL;
@@ -223,7 +223,8 @@ syserr_t vimixfs_fops_open(struct inode *ip, struct file *f)
         // test above only read static data of the inode
         inode_lock(ip);
         vimixfs_trunc(ip, 0);
-        vimixfs_sops_write_inode(ip);
+        inode_update_mtime_ctime(ip);
+        vimixfs_write_inode(ip);
         inode_unlock(ip);
         log_end_fs_transaction(ip->i_sb);
     }
@@ -341,7 +342,7 @@ struct inode *vimixfs_sops_alloc_inode(struct super_block *sb, mode_t mode)
     return NULL;
 }
 
-int vimixfs_sops_write_inode(struct inode *ip)
+int vimixfs_write_inode(struct inode *ip)
 {
     struct vimixfs_sb_private *priv =
         (struct vimixfs_sb_private *)ip->i_sb->s_fs_info;
@@ -375,6 +376,15 @@ int vimixfs_sops_write_inode(struct inode *ip)
     bio_release(bp);
 
     return 0;
+}
+
+int vimixfs_sops_write_inode(struct inode *ip)
+{
+    log_begin_fs_transaction(ip->i_sb);
+    int ret = vimixfs_write_inode(ip);
+    log_end_fs_transaction(ip->i_sb);
+
+    return ret;
 }
 
 syserr_t vimix_sops_statvfs(struct super_block *sb, struct statvfs *to_fill)
@@ -701,7 +711,7 @@ void vimixfs_iops_put(struct inode *ip)
 
         vimixfs_trunc(ip, 0);
         ip->i_mode = 0;
-        vimixfs_sops_write_inode(ip);
+        vimixfs_write_inode(ip);
 
         sleep_unlock(&ip->lock);
 
@@ -903,6 +913,8 @@ syserr_t vimixfs_dir_link_unchecked(struct inode *dir, const char *name,
                     (struct vimixfs_sb_private *)dir->i_sb->s_fs_info;
                 log_write(&(priv->log), bp);
                 bio_release(bp);
+                inode_update_mtime_ctime(dir);
+                vimixfs_write_inode(dir);
                 return 0;
             }
         }
@@ -1040,10 +1052,15 @@ syserr_t vimixfs_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
         ip->size = off;
     }
 
+    if (tot > 0)
+    {
+        inode_update_mtime_ctime(ip);
+    }
+
     // write the i-node back to disk even if the size didn't change
     // because the loop above might have called bmap_get_block_address() and
     // added a new block to ip->addrs[].
-    vimixfs_sops_write_inode(ip);
+    vimixfs_write_inode(ip);
 
     return tot;
 }
@@ -1055,8 +1072,10 @@ syserr_t vimixfs_iops_link(struct dentry *file_from, struct inode *dir_to,
     log_begin_fs_transaction(sb);
     inode_lock_2(dir_to, file_from->ip);
 
+    time_t old_ctime = file_from->ip->ctime;
     file_from->ip->nlink++;
-    vimixfs_sops_write_inode(file_from->ip);
+    inode_update_ctime(file_from->ip);
+    vimixfs_write_inode(file_from->ip);
     inode_unlock(file_from->ip);
 
     if (vimixfs_dir_link(dir_to, new_link->name, file_from->ip->inum) < 0)
@@ -1065,7 +1084,8 @@ syserr_t vimixfs_iops_link(struct dentry *file_from, struct inode *dir_to,
 
         inode_lock(file_from->ip);
         file_from->ip->nlink--;
-        vimixfs_sops_write_inode(file_from->ip);
+        file_from->ip->ctime = old_ctime;
+        vimixfs_write_inode(file_from->ip);
         inode_unlock(file_from->ip);
         log_end_fs_transaction(sb);
         return -EOTHER;
@@ -1197,7 +1217,8 @@ syserr_t vimixfs_iops_unlink(struct inode *parent, struct dentry *dp)
     inode_unlock(parent);
 
     ip->nlink--;
-    vimixfs_sops_write_inode(ip);
+    inode_update_ctime(ip);
+    vimixfs_write_inode(ip);
     inode_unlock_put(ip);
 
     log_end_fs_transaction(sb);
@@ -1250,7 +1271,8 @@ syserr_t vimixfs_iops_rmdir(struct inode *parent, struct dentry *dp)
     inode_unlock(parent);
 
     ip->nlink--;
-    vimixfs_sops_write_inode(ip);
+    inode_update_ctime(ip);
+    vimixfs_write_inode(ip);
     inode_unlock_put(ip);
 
     log_end_fs_transaction(sb);
@@ -1398,6 +1420,17 @@ syserr_t vimixfs_iops_truncate(struct dentry *dp, off_t new_size)
     // worst case requirements for a size change <= 1 BLOCK_SIZE:
     const size_t MIN_BLOCKS_FOR_TRUNCATE = 5;
 
+    if (ip->size == new_size)
+    {
+        log_begin_fs_transaction_explicit(ip->i_sb, 1, 1);
+        inode_lock(ip);
+        inode_update_mtime_ctime(ip);
+        vimixfs_write_inode(ip);
+        inode_unlock(ip);
+        log_end_fs_transaction(ip->i_sb);
+        return 0;
+    }
+
     // loop until we have truncated to the desired size
     // because we might need multiple FS transactions
     while (ip->size != new_size)
@@ -1418,7 +1451,8 @@ syserr_t vimixfs_iops_truncate(struct dentry *dp, off_t new_size)
         }
 
         // update metadata
-        vimixfs_sops_write_inode(ip);
+        inode_update_mtime_ctime(ip);
+        vimixfs_write_inode(ip);
         inode_unlock(ip);
         log_end_fs_transaction(ip->i_sb);
 
@@ -1441,7 +1475,8 @@ syserr_t vimixfs_iops_chmod(struct dentry *dp, mode_t mode)
     inode_lock(ip);
     mode_t type = ip->i_mode & S_IFMT;
     ip->i_mode = mode | type;
-    vimixfs_sops_write_inode(ip);
+    inode_update_ctime(ip);
+    vimixfs_write_inode(ip);
     inode_unlock(ip);
 
     log_end_fs_transaction(ip->i_sb);
@@ -1459,7 +1494,8 @@ syserr_t vimixfs_iops_chown(struct dentry *dp, uid_t uid, gid_t gid)
     inode_lock(ip);
     if (uid >= 0) ip->uid = uid;
     if (gid >= 0) ip->gid = gid;
-    vimixfs_sops_write_inode(ip);
+    inode_update_ctime(ip);
+    vimixfs_write_inode(ip);
     inode_unlock(ip);
 
     log_end_fs_transaction(ip->i_sb);

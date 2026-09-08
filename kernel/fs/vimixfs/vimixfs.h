@@ -41,6 +41,13 @@ struct inode *vimixfs_sops_alloc_inode(struct super_block *sb, mode_t mode);
 /// Must be called after every change to an ip->xxx field
 /// that lives on disk.
 /// Caller must hold ip->lock.
+/// Caller must begin/end a log.
+int vimixfs_write_inode(struct inode *ip);
+
+/// @brief Copy a modified in-memory inode to disk.
+/// Must be called after every change to an ip->xxx field
+/// that lives on disk.
+/// Caller must hold ip->lock.
 int vimixfs_sops_write_inode(struct inode *ip);
 
 /// @brief Exposes file system statistics.

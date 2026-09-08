@@ -1,23 +1,21 @@
-# Syscalls chmod and fchmod
+# Syscall utimes
 
 ## User Mode
 
 ```C
-#include <sys/stat.h>
-int chmod(const char *path, mode_t mode);
+#include <utimes.h>
+int utimes(const char *path, const struct timeval times[2]);
 
-int fchmod(int fd, mode_t mode);
+// wrapper:
+#include <sys/time.h>
+int utime(const char *path, const struct utimbuf *times);
 ```
 
-Change the file mode.
-
-## User Apps
-
-The app [chmod](../../userspace/bin/chmod.md) exposes this syscall.
+Change the files modification time. 
 
 ## Kernel Mode
 
-Implemented in `sys_file_meta.c` as `sys_chmod()` / `sys_fchmod()`.
+Implemented in `sys_file_meta.c` as `sys_utimes()`.
 
 ## See also
 

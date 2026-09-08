@@ -9,6 +9,7 @@
 #include <kernel/permission.h>
 #include <kernel/proc.h>
 #include <kernel/process.h>
+#include <kernel/rtc.h>
 #include <syscalls/syscall.h>
 
 syserr_t do_chmod(struct dentry *dp, mode_t mode);
@@ -218,4 +219,71 @@ syserr_t do_stat(struct dentry *dp, size_t addr)
         return -EFAULT;
     }
     return 0;
+}
+
+syserr_t do_utimes(struct dentry *dp, size_t times_addr)
+{
+    struct timespec time_to_set[2];
+    struct timespec now = rtc_get_time();
+
+    // passing in NULL means set to current time
+    if (times_addr == 0)
+    {
+        time_to_set[1] = now;
+    }
+    else
+    {
+        // copy in both time values, the first one (access time) is ignored
+        struct process *proc = get_current();
+        if (uvm_copy_in(proc->pagetable, (char *)time_to_set, times_addr,
+                        sizeof(time_to_set)) < 0)
+        {
+            return -EFAULT;
+        }
+    }
+
+    syserr_t ret = 0;
+
+    inode_lock(dp->ip);
+    inode_set_mtime(dp->ip, time_to_set[1]);
+    // ctime get always set to the current time, set it explicitly as "now" to
+    // have the time match mtime if times_addr was 0
+    inode_set_ctime(dp->ip, now);
+
+    ret = VFS_SUPER_WRITE_INODE(dp->ip);
+    inode_unlock(dp->ip);
+
+    return ret;
+}
+
+syserr_t sys_utimes()
+{
+    // parameter 0: const char *path
+    char path[PATH_MAX];
+    if (argstr(0, path, PATH_MAX) < 0)
+    {
+        return -EFAULT;
+    }
+
+    // parameter 1: const struct timeval times[2]
+    size_t times_addr;  // user pointer to struct
+    argaddr(1, &times_addr);
+
+    // get dentry from path
+    syserr_t error = 0;
+    struct dentry *dp = dentry_from_path(path, &error);
+    if (dp == NULL)
+    {
+        return error;
+    }
+    if (dentry_is_invalid(dp))
+    {
+        dentry_put(dp);
+        return -ENOENT;
+    }
+
+    syserr_t ret = do_utimes(dp, times_addr);
+    dentry_put(dp);
+
+    return ret;
 }

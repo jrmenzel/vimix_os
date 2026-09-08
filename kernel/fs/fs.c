@@ -21,6 +21,7 @@
 #include <kernel/kernel.h>
 #include <kernel/major.h>
 #include <kernel/proc.h>
+#include <kernel/rtc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
@@ -59,6 +60,28 @@ void inode_init(struct inode *ip, struct super_block *sb, ino_t inum)
     // don't add to super block inode list yet, that is done when the inode
     // is fully initialized (might need to read data from disk first)
     list_init(&ip->fs_inode_list);
+}
+
+void inode_update_ctime(struct inode *ip)
+{
+    inode_set_ctime(ip, rtc_get_time());
+}
+
+void inode_update_mtime_ctime(struct inode *ip)
+{
+    struct timespec now = rtc_get_time();
+    inode_set_mtime(ip, now);
+    inode_set_ctime(ip, now);
+}
+
+void inode_set_mtime(struct inode *ip, struct timespec mtime)
+{
+    ip->mtime = mtime.tv_sec;
+}
+
+void inode_set_ctime(struct inode *ip, struct timespec ctime)
+{
+    ip->ctime = ctime.tv_sec;
 }
 
 void inode_del(struct inode *ip)

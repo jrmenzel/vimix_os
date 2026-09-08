@@ -9,6 +9,8 @@
 #include <pwd.h>
 #include <stdlib.h>
 #include <sys/statvfs.h>
+#include <sys/time.h>
+#include <utime.h>
 #include <vimixutils/minmax.h>
 #include "usertests.h"
 
@@ -917,6 +919,262 @@ void truncate_test(char *s)
     assert_no_error(unlink(file_name));
 }
 
+static void stat_path(char *s, const char *path, struct stat *st)
+{
+    if (stat(path, st) < 0)
+    {
+        fprintf(stderr, "%s: error: stat(%s) failed (errno: %s)\n", s, path,
+                strerror(errno));
+        exit(1);
+    }
+}
+
+static void assert_times_advanced(char *s, const struct stat *before,
+                                  const struct stat *after, bool check_mtime,
+                                  bool check_ctime)
+{
+    if ((check_mtime && after->st_mtime <= before->st_mtime) ||
+        (check_ctime && after->st_ctime <= before->st_ctime))
+    {
+        fprintf(stderr,
+                "%s: error: timestamps did not advance: mtime %ld -> %ld, "
+                "ctime %ld -> %ld\n",
+                s, (long)before->st_mtime, (long)after->st_mtime,
+                (long)before->st_ctime, (long)after->st_ctime);
+        exit(1);
+    }
+}
+
+void file_write_timestamps_test(char *s)
+{
+    const char *file_name = "file_write_timestamps_test";
+    struct stat before;
+    struct stat after;
+
+    unlink(file_name);
+    int fd = open(file_name, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, fd, file_name);
+    stat_path(s, file_name, &before);
+
+    sleep(1);
+    assert_write_to_file(s, fd, "timestamp data");
+    assert_no_error(fstat(fd, &after));
+    assert_times_advanced(s, &before, &after, true, true);
+
+    before = after;
+    assert_same_value(lseek(fd, 0, SEEK_SET), 0);
+    assert_same_value(read(fd, buf, 1), 1);
+    assert_no_error(fstat(fd, &after));
+    assert_same_value(after.st_mtime, before.st_mtime);
+    assert_same_value(after.st_ctime, before.st_ctime);
+
+    assert_no_error(close(fd));
+    assert_no_error(unlink(file_name));
+}
+
+void file_metadata_timestamp_test(char *s)
+{
+    const char *file_name = "file_metadata_timestamp_test";
+    struct stat before;
+    struct stat after;
+
+    unlink(file_name);
+    int fd = open(file_name, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, fd, file_name);
+    assert_write_to_file(s, fd, "data");
+    assert_no_error(fstat(fd, &before));
+
+    sleep(1);
+    assert_no_error(chmod(file_name, 0600));
+    assert_no_error(fstat(fd, &after));
+    assert_times_advanced(s, &before, &after, false, true);
+    assert_same_value(after.st_mtime, before.st_mtime);
+
+    assert_no_error(close(fd));
+    assert_no_error(unlink(file_name));
+}
+
+void file_truncate_timestamps_test(char *s)
+{
+    const char *file_name = "file_truncate_timestamps_test";
+    struct stat before;
+    struct stat after;
+
+    unlink(file_name);
+    int fd = open(file_name, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, fd, file_name);
+    assert_write_to_file(s, fd, "some data");
+    assert_no_error(fstat(fd, &before));
+
+    sleep(1);
+    assert_no_error(truncate(file_name, 2));
+    stat_path(s, file_name, &after);
+    assert_same_value(after.st_size, 2);
+    assert_times_advanced(s, &before, &after, true, true);
+
+    before = after;
+    sleep(1);
+    int trunc_fd = open(file_name, O_WRONLY | O_TRUNC);
+    assert_open_ok_fd(s, trunc_fd, file_name);
+    assert_no_error(fstat(trunc_fd, &after));
+    assert_same_value(after.st_size, 0);
+    assert_times_advanced(s, &before, &after, true, true);
+
+    assert_no_error(close(trunc_fd));
+    assert_no_error(close(fd));
+    assert_no_error(unlink(file_name));
+}
+
+void utime_test(char *s)
+{
+    const char *file_name = "utime_test";
+    const time_t explicit_mtime = 123456789;
+    struct stat before;
+    struct stat after;
+    struct utimbuf times = {
+        .actime = 987654321,  // VIMIX intentionally ignores atime
+        .modtime = explicit_mtime,
+    };
+
+    unlink(file_name);
+    int fd = open(file_name, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, fd, file_name);
+    assert_no_error(close(fd));
+    stat_path(s, file_name, &before);
+
+    sleep(1);
+    assert_no_error(utime(file_name, &times));
+    stat_path(s, file_name, &after);
+    assert_same_value(after.st_mtime, explicit_mtime);
+    assert_times_advanced(s, &before, &after, false, true);
+
+    before = after;
+    sleep(1);
+    time_t earliest = time(NULL);
+    assert_no_error(utime(file_name, NULL));
+    time_t latest = time(NULL);
+    stat_path(s, file_name, &after);
+    if (after.st_mtime < earliest || after.st_mtime > latest)
+    {
+        fprintf(stderr,
+                "%s: error: utime(NULL) set mtime %ld outside [%ld, %ld]\n", s,
+                (long)after.st_mtime, (long)earliest, (long)latest);
+        exit(1);
+    }
+    assert_times_advanced(s, &before, &after, false, true);
+
+    errno = 0;
+    assert_error(utime("utime_missing_file", &times));
+    assert_errno(ENOENT);
+    assert_no_error(unlink(file_name));
+}
+
+void utimes_test(char *s)
+{
+    const char *file_name = "utimes_test";
+    const time_t explicit_mtime = 234567890;
+    struct stat before;
+    struct stat after;
+    struct timeval times[2] = {
+        {.tv_sec = 876543210, .tv_usec = 0},
+        {.tv_sec = explicit_mtime, .tv_usec = 0},
+    };
+
+    unlink(file_name);
+    int fd = open(file_name, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, fd, file_name);
+    assert_no_error(close(fd));
+    stat_path(s, file_name, &before);
+
+    sleep(1);
+    assert_no_error(utimes(file_name, times));
+    stat_path(s, file_name, &after);
+    // struct stat currently exposes timestamps with one-second resolution.
+    assert_same_value(after.st_mtime, explicit_mtime);
+    assert_times_advanced(s, &before, &after, false, true);
+
+    before = after;
+    sleep(1);
+    time_t earliest = time(NULL);
+    assert_no_error(utimes(file_name, NULL));
+    time_t latest = time(NULL);
+    stat_path(s, file_name, &after);
+    if (after.st_mtime < earliest || after.st_mtime > latest)
+    {
+        fprintf(stderr,
+                "%s: error: utimes(NULL) set mtime %ld outside [%ld, %ld]\n", s,
+                (long)after.st_mtime, (long)earliest, (long)latest);
+        exit(1);
+    }
+    assert_times_advanced(s, &before, &after, false, true);
+
+    errno = 0;
+    assert_error(utimes("utimes_missing_file", times));
+    assert_errno(ENOENT);
+    assert_no_error(unlink(file_name));
+}
+
+void directory_entry_timestamps_test(char *s)
+{
+    const char *dir_name = "directory_entry_timestamps_test";
+    const char *file_name = "directory_entry_timestamps_test/file";
+    const char *link_name = "directory_entry_timestamps_test/link";
+    const char *subdir_name = "directory_entry_timestamps_test/subdir";
+    struct stat dir_before;
+    struct stat dir_after;
+    struct stat file_before;
+    struct stat file_after;
+
+    unlink(link_name);
+    unlink(file_name);
+    rmdir(subdir_name);
+    rmdir(dir_name);
+    assert_no_error(mkdir(dir_name, 0755));
+    stat_path(s, dir_name, &dir_before);
+
+    sleep(1);
+    int fd = open(file_name, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, fd, file_name);
+    stat_path(s, dir_name, &dir_after);
+    assert_times_advanced(s, &dir_before, &dir_after, true, true);
+
+    dir_before = dir_after;
+    assert_no_error(fstat(fd, &file_before));
+    sleep(1);
+    assert_no_error(link(file_name, link_name));
+    stat_path(s, dir_name, &dir_after);
+    assert_no_error(fstat(fd, &file_after));
+    assert_times_advanced(s, &dir_before, &dir_after, true, true);
+    assert_times_advanced(s, &file_before, &file_after, false, true);
+    assert_same_value(file_after.st_mtime, file_before.st_mtime);
+
+    dir_before = dir_after;
+    file_before = file_after;
+    sleep(1);
+    assert_no_error(unlink(link_name));
+    stat_path(s, dir_name, &dir_after);
+    assert_no_error(fstat(fd, &file_after));
+    assert_times_advanced(s, &dir_before, &dir_after, true, true);
+    assert_times_advanced(s, &file_before, &file_after, false, true);
+    assert_same_value(file_after.st_mtime, file_before.st_mtime);
+
+    dir_before = dir_after;
+    sleep(1);
+    assert_no_error(mkdir(subdir_name, 0755));
+    stat_path(s, dir_name, &dir_after);
+    assert_times_advanced(s, &dir_before, &dir_after, true, true);
+
+    dir_before = dir_after;
+    sleep(1);
+    assert_no_error(rmdir(subdir_name));
+    stat_path(s, dir_name, &dir_after);
+    assert_times_advanced(s, &dir_before, &dir_after, true, true);
+
+    assert_no_error(close(fd));
+    assert_no_error(unlink(file_name));
+    assert_no_error(rmdir(dir_name));
+}
+
 void assert_user_is_root(char *s)
 {
     uid_t uid = getuid();
@@ -1290,6 +1548,12 @@ struct test tests_common[] = {
     {file_access, "file_access", TEST_MASK_NONE},
     {qsort_test, "qsort", TEST_MASK_NONE},
     {truncate_test, "truncate", TEST_MASK_FILESYSTEM},
+    {file_write_timestamps_test, "file_write_time", TEST_MASK_FILESYSTEM},
+    {file_metadata_timestamp_test, "file_meta_time", TEST_MASK_FILESYSTEM},
+    {file_truncate_timestamps_test, "file_trunc_time", TEST_MASK_FILESYSTEM},
+    {utime_test, "utime", TEST_MASK_FILESYSTEM},
+    {utimes_test, "utimes", TEST_MASK_FILESYSTEM},
+    {directory_entry_timestamps_test, "dir_time", TEST_MASK_FILESYSTEM},
 
     {0, 0, 0},
 };

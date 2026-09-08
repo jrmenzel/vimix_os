@@ -13,3 +13,17 @@ struct timespec
     time_t tv_sec;    ///< seconds
     int64_t tv_nsec;  ///< nanoseconds [0..999999999]
 };
+
+struct timeval
+{
+    time_t tv_sec;  ///< seconds
+    long tv_usec;   ///< Microseconds.
+};
+
+/// @brief Used in utimes() to set the file modification time with second
+/// accuracy.
+struct utimbuf
+{
+    time_t actime;   ///< Access time, ignored in VIMIX
+    time_t modtime;  ///< Modification time
+};

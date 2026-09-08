@@ -17,7 +17,6 @@
 #include <kernel/major.h>
 #include <kernel/permission.h>
 #include <kernel/proc.h>
-#include <kernel/rtc.h>
 #include <kernel/sleeplock.h>
 #include <kernel/spinlock.h>
 #include <kernel/stat.h>
@@ -321,18 +320,6 @@ syserr_t do_read(struct file *f, size_t addr, size_t n)
     return (syserr_t)read_bytes;
 }
 
-void file_update_mtime(struct file *f)
-{
-    DEBUG_EXTRA_PANIC((S_ISREG(f->mode) || S_ISDIR(f->mode)),
-                      "file_update_mtime() on non-regular file");
-
-    struct timespec time = rtc_get_time();
-    time_t now = time.tv_sec;
-    inode_lock(f->dp->ip);
-    f->dp->ip->mtime = now;
-    inode_unlock(f->dp->ip);
-}
-
 syserr_t do_write(struct file *f, size_t addr, size_t n)
 {
     syserr_t ret = 0;
@@ -381,7 +368,6 @@ syserr_t do_write(struct file *f, size_t addr, size_t n)
         else if (S_ISREG(f->mode))
         {
             ret = VFS_FILE_WRITE(f, addr, n);
-            if (ret > 0) file_update_mtime(f);
         }
         else
         {

@@ -124,6 +124,22 @@ struct inode
 
 void inode_init(struct inode *ip, struct super_block *sb, ino_t inum);
 
+/// @brief Set the inode change time to the current real time.
+/// Caller must provide any synchronization required for the inode.
+void inode_update_ctime(struct inode *ip);
+
+/// @brief Set the inode modification and change times to the current real time.
+/// Caller must provide any synchronization required for the inode.
+void inode_update_mtime_ctime(struct inode *ip);
+
+/// @brief Set the inode modification time to the given value.
+/// Caller must provide any synchronization required for the inode.
+void inode_set_mtime(struct inode *ip, struct timespec mtime);
+
+/// @brief Set the inode change time to the given value.
+/// Caller must provide any synchronization required for the inode.
+void inode_set_ctime(struct inode *ip, struct timespec ctime);
+
 /// @brief De-initialize inode, does not free the memory.
 /// @param ip The inode.
 void inode_del(struct inode *ip);

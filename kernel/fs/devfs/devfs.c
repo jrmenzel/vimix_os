@@ -6,7 +6,6 @@
 #include <kernel/file.h>
 #include <kernel/param.h>
 #include <kernel/proc.h>
-#include <kernel/rtc.h>
 #include <kernel/string.h>
 
 struct file_system_type devfs_file_system_type;
@@ -165,9 +164,6 @@ void devfs_init()
 
 syserr_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
 {
-    struct timespec time = rtc_get_time();
-    time_t now = time.tv_sec;
-
     sb_in->s_fs_info = NULL;
     sb_in->s_type = &devfs_file_system_type;
     sb_in->s_op = &devfs_s_op;
@@ -181,8 +177,7 @@ syserr_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
     devfs_itable.inode[0].i_sb = sb_in;
     devfs_itable.inode[0].uid = 0;
     devfs_itable.inode[0].gid = 0;
-    devfs_itable.inode[0].ctime = now;
-    devfs_itable.inode[0].mtime = now;
+    inode_update_mtime_ctime(&devfs_itable.inode[0]);
     kref_init(&devfs_itable.inode[0].ref);
     devfs_itable.used_inodes = 1;
 
@@ -202,8 +197,7 @@ syserr_t devfs_init_fs_super_block(struct super_block *sb_in, const void *data)
         devfs_itable.inode[inode_idx].i_sb = sb_in;
         devfs_itable.inode[inode_idx].uid = 0;
         devfs_itable.inode[inode_idx].gid = 0;
-        devfs_itable.inode[inode_idx].ctime = now;
-        devfs_itable.inode[inode_idx].mtime = now;
+        inode_update_mtime_ctime(&devfs_itable.inode[inode_idx]);
         devfs_itable.inode[inode_idx].i_mode = dev->mode & 0777;
 
         if (dev->type == CHAR)
