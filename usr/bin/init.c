@@ -157,6 +157,43 @@ static struct Console *enumerate_consoles(void)
     return consoles;
 }
 
+void mount_additional_partitions()
+{
+#define DEV_NAME "/dev/virtio_diskN"
+#define MOUNT_TARGET "/mnt/virtN"
+    char dev_name[] = DEV_NAME;
+    const size_t dev_name_index = sizeof(DEV_NAME) - 2;
+    char mount_target[] = MOUNT_TARGET;
+    const size_t mount_target_index = sizeof(MOUNT_TARGET) - 2;
+
+    struct stat st_root;
+    stat("/", &st_root);
+
+    for (size_t i = 0; i < 10; ++i)
+    {
+        dev_name[dev_name_index] = '0' + i;
+        mount_target[mount_target_index] = '0' + i;
+
+        struct stat st;
+        if ((stat(dev_name, &st) == 0) && S_ISBLK(st.st_mode) &&
+            (st.st_rdev != st_root.st_rdev))
+        {
+            mkdir(mount_target, 0755);
+
+            printf("init mounting %s to %s...", dev_name, mount_target);
+            int ret = mount(dev_name, mount_target, "vimixfs", 0, NULL);
+            if (ret < 0)
+            {
+                printf("failed. Error %d\n", errno);
+            }
+            else
+            {
+                printf("OK\n");
+            }
+        }
+    }
+}
+
 int main()
 {
     // init is executed from the kernel explicitly and has no open files.
@@ -198,21 +235,7 @@ int main()
         printf("init mounting /sys... OK\n");
     }
 
-    int fd_dev = open("/dev/virtio1", O_RDONLY);
-    if (fd_dev >= 0)
-    {
-        close(fd_dev);
-        printf("init mounting /home... ");
-        int ret = mount("/dev/virtio1", "/home", "vimixfs", 0, NULL);
-        if (ret < 0)
-        {
-            printf("failed. Error %d\n", errno);
-        }
-        else
-        {
-            printf("OK\n");
-        }
-    }
+    mount_additional_partitions();
 
     struct Console *consoles = enumerate_consoles();
     if (consoles == NULL)

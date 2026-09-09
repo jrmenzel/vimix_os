@@ -95,9 +95,21 @@ QEMU_OPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 QEMU_OPTS += -global virtio-mmio.force-legacy=false
 #QEMU_OPTS += -d int,mmu,in_asm -D qemu_mmu.log
 # add a second file system if it is present
-ifneq ("$(wildcard home.img)","")
-	QEMU_OPTS += -drive file=home.img,if=none,format=raw,id=x1
+ifneq ("$(wildcard disk1.img)","")
+	QEMU_OPTS += -drive file=disk1.img,if=none,format=raw,id=x1
 	QEMU_OPTS += -device virtio-blk-device,drive=x1,bus=virtio-mmio-bus.1
+endif
+ifneq ("$(wildcard disk2.img)","")
+	QEMU_OPTS += -drive file=disk2.img,if=none,format=raw,id=x2
+	QEMU_OPTS += -device virtio-blk-device,drive=x2,bus=virtio-mmio-bus.2
+endif
+ifneq ("$(wildcard disk3.img)","")
+	QEMU_OPTS += -drive file=disk3.img,if=none,format=raw,id=x3
+	QEMU_OPTS += -device virtio-blk-device,drive=x3,bus=virtio-mmio-bus.3
+endif
+ifneq ("$(wildcard disk4.img)","")
+	QEMU_OPTS += -drive file=disk4.img,if=none,format=raw,id=x4
+	QEMU_OPTS += -device virtio-blk-device,drive=x4,bus=virtio-mmio-bus.4
 endif
 endif
 
