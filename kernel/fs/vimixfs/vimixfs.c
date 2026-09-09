@@ -28,6 +28,8 @@
 /// @param first_trunc_block First block to truncate, previous blocks are kept.
 void vimixfs_trunc(struct inode *ip, size_t first_trunc_block);
 
+static int isdirempty(struct inode *dir);
+
 struct file_system_type vimixfs_file_system_type;
 
 const char *VIMIXFS_FS_NAME = "vimixfs";
@@ -51,6 +53,7 @@ struct inode_operations vimixfs_i_op = {
     iops_get_dirent : vimixfs_iops_get_dirent,
     iops_read : vimixfs_iops_read,
     iops_link : vimixfs_iops_link,
+    iops_rename : vimixfs_iops_rename,
     iops_unlink : vimixfs_iops_unlink,
     iops_rmdir : vimixfs_iops_rmdir,
     iops_truncate : vimixfs_iops_truncate,
@@ -1099,6 +1102,189 @@ syserr_t vimixfs_iops_link(struct dentry *file_from, struct inode *dir_to,
 
     inode_unlock(dir_to);
 
+    return 0;
+}
+
+static void vimixfs_write_dirent(struct inode *dir, uint32_t offset,
+                                 const char *name, ino_t inum)
+{
+    struct vimixfs_dirent de;
+    memset(&de, 0, sizeof(de));
+    if (name != NULL)
+    {
+        strncpy(de.name, name, VIMIXFS_NAME_MAX);
+        de.inum = (uint32_t)inum;
+    }
+
+    if (vimixfs_write(dir, false, (size_t)&de, offset, sizeof(de)) !=
+        sizeof(de))
+    {
+        panic("vimixfs_write_dirent: vimixfs_write failed");
+    }
+}
+
+syserr_t vimixfs_iops_rename(struct inode *old_parent,
+                             struct dentry *old_dentry,
+                             struct inode *new_parent,
+                             struct dentry *new_dentry)
+{
+    struct super_block *sb = old_parent->i_sb;
+    log_begin_fs_transaction(sb);
+    inode_lock_2_safe(old_parent, new_parent);
+
+    uint32_t old_offset;
+    struct inode *source =
+        vimixfs_lookup(old_parent, old_dentry->name, &old_offset);
+    if ((source == NULL) || (source != dentry_inode(old_dentry)))
+    {
+        if (source != NULL) inode_put(source);
+        inode_unlock_2_safe(old_parent, new_parent);
+        log_end_fs_transaction(sb);
+        return -ENOENT;
+    }
+
+    uint32_t new_offset = 0;
+    struct inode *target =
+        vimixfs_lookup(new_parent, new_dentry->name, &new_offset);
+    if (target != dentry_inode(new_dentry))
+    {
+        if (target != NULL) inode_put(target);
+        inode_put(source);
+        inode_unlock_2_safe(old_parent, new_parent);
+        log_end_fs_transaction(sb);
+        return -ENOENT;
+    }
+
+    if (target == NULL)
+    {
+        inode_lock(source);
+    }
+    else
+    {
+        inode_lock_2(source, target);
+    }
+
+    bool source_is_dir = S_ISDIR(source->i_mode);
+    bool target_is_dir = (target != NULL) && S_ISDIR(target->i_mode);
+    if ((source_is_dir && (target != NULL) && !target_is_dir) ||
+        (!source_is_dir && target_is_dir))
+    {
+        syserr_t ret = source_is_dir ? -ENOTDIR : -EISDIR;
+
+        if (target == NULL)
+        {
+            inode_unlock(source);
+        }
+        else
+        {
+            inode_unlock_2(source, target);
+        }
+        if (target != NULL) inode_put(target);
+        inode_put(source);
+        inode_unlock_2_safe(old_parent, new_parent);
+        log_end_fs_transaction(sb);
+        return ret;
+    }
+    if (target_is_dir && !isdirempty(target))
+    {
+        inode_unlock_2(source, target);
+        inode_put(target);
+        inode_put(source);
+        inode_unlock_2_safe(old_parent, new_parent);
+        log_end_fs_transaction(sb);
+        return -ENOTEMPTY;
+    }
+
+    uint32_t dotdot_offset = 0;
+    if (source_is_dir && (old_parent != new_parent))
+    {
+        struct inode *dotdot = vimixfs_lookup(source, "..", &dotdot_offset);
+        if ((dotdot == NULL) || (dotdot != old_parent))
+        {
+            if (dotdot != NULL) inode_put(dotdot);
+            if (target == NULL)
+            {
+                inode_unlock(source);
+            }
+            else
+            {
+                inode_unlock_2(source, target);
+            }
+            if (target != NULL) inode_put(target);
+            inode_put(source);
+            inode_unlock_2_safe(old_parent, new_parent);
+            log_end_fs_transaction(sb);
+            return -EIO;
+        }
+        inode_put(dotdot);
+    }
+
+    // Add or replace the destination before clearing the source.
+    // The journal commits the complete operation atomically.
+    if ((old_parent == new_parent) && (target == NULL))
+    {
+        vimixfs_write_dirent(old_parent, old_offset, new_dentry->name,
+                             source->inum);
+    }
+    else
+    {
+        if (target == NULL)
+        {
+            syserr_t ret = vimixfs_dir_link_unchecked(
+                new_parent, new_dentry->name, source->inum);
+            if (ret < 0)
+            {
+                inode_unlock(source);
+                inode_put(source);
+                inode_unlock_2_safe(old_parent, new_parent);
+                log_end_fs_transaction(sb);
+                return ret;
+            }
+        }
+        else
+        {
+            vimixfs_write_dirent(new_parent, new_offset, new_dentry->name,
+                                 source->inum);
+        }
+        vimixfs_write_dirent(old_parent, old_offset, NULL, INVALID_INODE);
+    }
+
+    if (source_is_dir && (old_parent != new_parent))
+    {
+        vimixfs_write_dirent(source, dotdot_offset, "..", new_parent->inum);
+        old_parent->nlink--;
+        new_parent->nlink++;
+    }
+    if (target_is_dir)
+    {
+        new_parent->nlink--;
+    }
+    if ((source_is_dir && (old_parent != new_parent)) || target_is_dir)
+    {
+        vimixfs_write_inode(old_parent);
+        if (new_parent != old_parent) vimixfs_write_inode(new_parent);
+    }
+
+    // update meta data
+    inode_update_ctime(source);
+    vimixfs_write_inode(source);
+
+    if (target != NULL)
+    {
+        DEBUG_EXTRA_ASSERT(target->nlink > 0, "rename target must have a link");
+        // update meta data + link
+        target->nlink--;
+        inode_update_ctime(target);
+        vimixfs_write_inode(target);
+
+        inode_unlock(target);
+        inode_put(target);
+    }
+    inode_unlock(source);
+    inode_put(source);
+
+    inode_unlock_2_safe(old_parent, new_parent);
+    log_end_fs_transaction(sb);
     return 0;
 }
 

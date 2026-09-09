@@ -56,6 +56,10 @@ struct inode_operations
     syserr_t (*iops_link)(struct dentry *file_from, struct inode *dir_to,
                           struct dentry *new_link);
 
+    syserr_t (*iops_rename)(struct inode *old_parent, struct dentry *old_dentry,
+                            struct inode *new_parent,
+                            struct dentry *new_dentry);
+
     syserr_t (*iops_unlink)(struct inode *parent, struct dentry *dp);
 
     syserr_t (*iops_rmdir)(struct inode *parent, struct dentry *dp);
@@ -122,6 +126,11 @@ struct inode_operations
 
 #define VFS_INODE_LINK(file_from, dir_to, new_link) \
     (dir_to)->i_sb->i_op->iops_link((file_from), (dir_to), (new_link))
+
+#define VFS_INODE_RENAME(old_parent, old_dentry, new_parent, new_dentry)    \
+    (old_parent)                                                            \
+        ->i_sb->i_op->iops_rename((old_parent), (old_dentry), (new_parent), \
+                                  (new_dentry))
 
 #define VFS_INODE_UNLINK(parent, dp) \
     (parent)->i_sb->i_op->iops_unlink((parent), (dp))

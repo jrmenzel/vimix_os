@@ -118,6 +118,13 @@ syserr_t do_open(char *pathname, int32_t flags, mode_t mode)
 
     if (dentry_is_valid(dp))
     {
+        if ((flags & O_CREAT) && (flags & O_EXCL))
+        {
+            dentry_put(dp);
+            file_close(f);
+            return -EEXIST;
+        }
+
         if (S_ISDIR(dp->ip->i_mode) && flags != O_RDONLY)
         {
             dentry_put(dp);
@@ -170,6 +177,14 @@ syserr_t do_open(char *pathname, int32_t flags, mode_t mode)
         {
             // created concurrently
             inode_unlock_exclusive(parent_ip);
+
+            if (flags & O_EXCL)
+            {
+                dentry_put(dp);
+                dentry_put(parent);
+                file_close(f);
+                return -EEXIST;
+            }
 
             syserr_t perm_ok = check_dentry_permission(
                 get_current(), dp, perm_mask_from_open_flags(flags));

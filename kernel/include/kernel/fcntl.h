@@ -14,6 +14,9 @@
 #define O_CREAT 0x200
 #define O_CREATE O_CREAT
 
+/// fail with EEXIST if O_CREAT is set and the file already exists
+#define O_EXCL 0x100
+
 /// if the file exists and is writeable, reset it to size 0
 #define O_TRUNC 0x400
 

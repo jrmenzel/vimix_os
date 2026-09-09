@@ -166,6 +166,20 @@ static inline void inode_unlock_2(struct inode *ip0, struct inode *ip1)
     inode_unlock(ip1);
 }
 
+static inline void inode_lock_2_safe(struct inode *ip0, struct inode *ip1)
+{
+    if (ip0 == ip1)
+        inode_lock(ip0);
+    else
+        inode_lock_2(ip0, ip1);
+}
+
+static inline void inode_unlock_2_safe(struct inode *ip1, struct inode *ip2)
+{
+    inode_unlock(ip1);
+    if (ip1 != ip2) inode_unlock(ip2);
+}
+
 /// @brief Increase reference count for the inode.
 /// @param ip The inode.
 static inline struct inode *inode_get(struct inode *ip)
@@ -192,7 +206,32 @@ void inode_lock_exclusive(struct inode *ip);
 /// @param ip Unlocked inode.
 void inode_unlock_exclusive(struct inode *ip);
 
+/// @brief Lock two inodes at the same time. Can not be identical!
+/// @param ip1 first inode to lock
+/// @param ip2 second inode to lock
 void inode_lock_exclusive_2(struct inode *ip1, struct inode *ip2);
+
+/// @brief Locks two inodes, is save if both point to the same ip.
+/// @param ip1 first inode to lock
+/// @param ip2 second inode to lock
+static inline void inode_lock_exclusive_2_safe(struct inode *ip1,
+                                               struct inode *ip2)
+{
+    if (ip1 == ip2)
+        inode_lock_exclusive(ip1);
+    else
+        inode_lock_exclusive_2(ip1, ip2);
+}
+
+/// @brief Unlocks two inodes, is save if both point to the same ip.
+/// @param ip1 first inode to unlock
+/// @param ip2 second inode to unlock
+static inline void inode_unlock_exclusive_2_save(struct inode *ip1,
+                                                 struct inode *ip2)
+{
+    inode_unlock_exclusive(ip1);
+    if (ip1 != ip2) inode_unlock_exclusive(ip2);
+}
 
 static inline void inode_unlock_exclusive_2(struct inode *ip1,
                                             struct inode *ip2)

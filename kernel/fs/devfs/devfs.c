@@ -117,6 +117,7 @@ struct inode_operations devfs_i_op = {
     iops_get_dirent : devfs_iops_get_dirent,
     iops_read : devfs_iops_read,
     iops_link : iops_link_default_ro,
+    iops_rename : iops_rename_default_ro,
     iops_unlink : iops_unlink_default_ro,
     iops_rmdir : iops_rmdir_default_ro,
     iops_truncate : iops_truncate_default_ro,

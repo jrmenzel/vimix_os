@@ -27,8 +27,8 @@ bool impersonate_user(const char *user, bool set_groups, bool change_cwd,
             fprintf(stderr, "Failed to change directory to '%s': %s\n",
                     pw->pw_dir, strerror(errno));
             // not a critical error, allow users to log in if their home is
-            // missing
-            chdir("/");
+            // missing, but al least chdir to root must work
+            if (chdir("/") < 0) return false;
         }
     }
 

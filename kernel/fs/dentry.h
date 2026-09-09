@@ -38,7 +38,7 @@ struct dentry
     struct kref ref;             ///< reference count
     struct spinlock lock;        ///< protects the dentry metadata below
     _Atomic(struct inode *) ip;  ///< write-once, atomically set inode
-    const char *name;            ///< immutable file name
+    const char *name;  ///< immutable except while rename holds tree write lock
 
     struct dentry *parent;          ///< parent dentry, NULL for root dentry
     struct list_head child_list;    ///< list of child dentries

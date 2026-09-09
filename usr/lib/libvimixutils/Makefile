@@ -8,6 +8,7 @@ include ../../MakefileCommonUser.mk
 LIB_VIMIXUTILS_BUILD_DIR := $(LIB_BUILD_DIR)/libvimixutils
 
 LIB_VIMIXUTILS_O := \
+	file.o \
 	path.o \
 	security.o \
 	sysfs.o \

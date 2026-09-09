@@ -108,6 +108,9 @@ extern int32_t ftruncate(int fd, off_t length);
 // create a (hard)link [from] existing file [to] link
 extern int32_t link(const char *from, const char *to);
 
+// atomically change a file or directory name within one file system
+extern int32_t rename(const char *oldpath, const char *newpath);
+
 // remove link [name]
 extern int32_t unlink(const char *pathname);
 

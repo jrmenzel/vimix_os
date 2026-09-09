@@ -1025,6 +1025,22 @@ void file_truncate_timestamps_test(char *s)
     assert_no_error(unlink(file_name));
 }
 
+void open_exclusive_test(char *s)
+{
+    const char *file_name = "open_exclusive_test";
+
+    unlink(file_name);
+    int fd = open(file_name, O_CREAT | O_EXCL | O_WRONLY, 0644);
+    assert_open_ok_fd(s, fd, file_name);
+    assert_no_error(close(fd));
+
+    errno = 0;
+    assert_error(open(file_name, O_CREAT | O_EXCL | O_WRONLY, 0644));
+    assert_errno(EEXIST);
+
+    assert_no_error(unlink(file_name));
+}
+
 void utime_test(char *s)
 {
     const char *file_name = "utime_test";
@@ -1173,6 +1189,117 @@ void directory_entry_timestamps_test(char *s)
     assert_no_error(close(fd));
     assert_no_error(unlink(file_name));
     assert_no_error(rmdir(dir_name));
+}
+
+void rename_test(char *s)
+{
+    const char *root = "rename_test_dir";
+    const char *source = "rename_test_dir/source";
+    const char *moved = "rename_test_dir/moved";
+    const char *target = "rename_test_dir/target";
+    const char *hardlink = "rename_test_dir/hardlink";
+    const char *subdir = "rename_test_dir/subdir";
+    const char *directory = "rename_test_dir/directory";
+    const char *child = "rename_test_dir/directory/child";
+    const char *moved_directory = "rename_test_dir/subdir/moved_directory";
+    const char *moved_child = "rename_test_dir/subdir/moved_directory/child";
+    const char *empty_directory = "rename_test_dir/empty_directory";
+    const char *replaced_child = "rename_test_dir/empty_directory/child";
+    const char *nested_directory = "rename_test_dir/empty_directory/nested";
+    const char *nonempty_directory = "rename_test_dir/nonempty_directory";
+    const char *nonempty_child = "rename_test_dir/nonempty_directory/child";
+    struct stat before;
+    struct stat after;
+
+    assert_no_error(mkdir(root, 0755));
+    assert_no_error(mkdir(subdir, 0755));
+
+    int source_fd = open(source, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, source_fd, source);
+    assert_write_to_file(s, source_fd, "source contents");
+    assert_no_error(fstat(source_fd, &before));
+
+    assert_no_error(rename(source, moved));
+    errno = 0;
+    assert_error(stat(source, &after));
+    assert_errno(ENOENT);
+    assert_no_error(stat(moved, &after));
+    assert_same_value(after.st_ino, before.st_ino);
+    assert_no_error(lseek(source_fd, 0, SEEK_SET));
+    memset(buf, 0, 32);
+    assert_same_value(read(source_fd, buf, 15), 15);
+    assert_same_string(buf, "source contents");
+
+    int target_fd = open(target, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, target_fd, target);
+    assert_write_to_file(s, target_fd, "old target");
+    assert_no_error(rename(moved, target));
+    assert_no_error(stat(target, &after));
+    assert_same_value(after.st_ino, before.st_ino);
+    assert_no_error(lseek(target_fd, 0, SEEK_SET));
+    memset(buf, 0, 32);
+    assert_same_value(read(target_fd, buf, 10), 10);
+    assert_same_string(buf, "old target");
+    assert_no_error(close(target_fd));
+
+    assert_no_error(rename(target, target));
+    assert_no_error(link(target, hardlink));
+    assert_no_error(rename(target, hardlink));
+    assert_no_error(stat(target, &before));
+    assert_no_error(stat(hardlink, &after));
+    assert_same_value(before.st_ino, after.st_ino);
+    assert_no_error(unlink(hardlink));
+
+    assert_no_error(mkdir(directory, 0755));
+    int child_fd = open(child, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    assert_open_ok_fd(s, child_fd, child);
+    assert_no_error(close(child_fd));
+    assert_no_error(chdir(directory));
+    assert_no_error(rename("../directory", "../subdir/moved_directory"));
+    char cwd[PATH_MAX];
+    assert_no_ptr_error(getcwd(cwd, sizeof(cwd)));
+    assert_same_string(cwd,
+                       "/tmp/utests/rename_test_dir/subdir/moved_directory");
+    assert_no_error(chdir("/tmp/utests"));
+    assert_no_error(stat(moved_child, &after));
+
+    assert_no_error(mkdir(empty_directory, 0755));
+    assert_no_error(rename(moved_directory, empty_directory));
+    assert_no_error(stat(replaced_child, &after));
+
+    assert_no_error(mkdir(nonempty_directory, 0755));
+    int nonempty_fd = open(nonempty_child, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    assert_open_ok_fd(s, nonempty_fd, nonempty_child);
+    assert_no_error(close(nonempty_fd));
+    errno = 0;
+    assert_error(rename(empty_directory, nonempty_directory));
+    assert_errno(ENOTEMPTY);
+    assert_no_error(stat(replaced_child, &after));
+
+    errno = 0;
+    assert_error(rename(target, empty_directory));
+    assert_errno(EISDIR);
+    errno = 0;
+    assert_error(rename(empty_directory, target));
+    assert_errno(ENOTDIR);
+    assert_no_error(mkdir(nested_directory, 0755));
+    errno = 0;
+    assert_error(rename(empty_directory,
+                        "rename_test_dir/empty_directory/nested/moved"));
+    assert_errno(EINVAL);
+    errno = 0;
+    assert_error(rename("rename_test_dir/missing", moved));
+    assert_errno(ENOENT);
+
+    assert_no_error(close(source_fd));
+    assert_no_error(unlink(target));
+    assert_no_error(unlink(replaced_child));
+    assert_no_error(rmdir(nested_directory));
+    assert_no_error(rmdir(empty_directory));
+    assert_no_error(unlink(nonempty_child));
+    assert_no_error(rmdir(nonempty_directory));
+    assert_no_error(rmdir(subdir));
+    assert_no_error(rmdir(root));
 }
 
 void assert_user_is_root(char *s)
@@ -1551,9 +1678,11 @@ struct test tests_common[] = {
     {file_write_timestamps_test, "file_write_time", TEST_MASK_FILESYSTEM},
     {file_metadata_timestamp_test, "file_meta_time", TEST_MASK_FILESYSTEM},
     {file_truncate_timestamps_test, "file_trunc_time", TEST_MASK_FILESYSTEM},
+    {open_exclusive_test, "open_exclusive", TEST_MASK_FILESYSTEM},
     {utime_test, "utime", TEST_MASK_FILESYSTEM},
     {utimes_test, "utimes", TEST_MASK_FILESYSTEM},
     {directory_entry_timestamps_test, "dir_time", TEST_MASK_FILESYSTEM},
+    {rename_test, "rename", TEST_MASK_FILESYSTEM},
 
     {0, 0, 0},
 };

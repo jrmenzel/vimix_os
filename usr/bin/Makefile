@@ -27,6 +27,7 @@ UPROGS_NAME := cat\
 	ls\
 	mkdir\
 	mknod\
+	mv\
 	rm\
 	rmdir\
 	sh\

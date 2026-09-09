@@ -19,6 +19,8 @@
 
 syserr_t do_link(char *path_from, char *path_to);
 
+syserr_t do_rename(char *old_path, char *new_path);
+
 syserr_t do_rm(char *path, bool is_rmdir);
 
 /// @brief Syscall unlink
@@ -41,6 +43,17 @@ syserr_t sys_link()
     }
 
     return do_link(path_from, path_to);
+}
+
+syserr_t sys_rename()
+{
+    char old_path[PATH_MAX], new_path[PATH_MAX];
+    if (argstr(0, old_path, PATH_MAX) < 0 || argstr(1, new_path, PATH_MAX) < 0)
+    {
+        return -EFAULT;
+    }
+
+    return do_rename(old_path, new_path);
 }
 
 syserr_t sys_unlink()
@@ -132,6 +145,219 @@ syserr_t do_link(char *path_from, char *path_to)
     dentry_put(dir_to);
     dentry_put(dentry_to);
     dentry_put(dentry_from);
+
+    return ret;
+}
+
+static bool path_ends_in_dot_or_dotdot(const char *path)
+{
+    size_t len = strlen(path);
+    while (len > 1 && path[len - 1] == '/') len--;
+
+    size_t start = len;
+    while (start > 0 && path[start - 1] != '/') start--;
+    size_t component_len = len - start;
+
+    bool ends_in_dot = (component_len == 1) && (path[start] == '.');
+    bool ends_in_dot_dot = (component_len == 2) && (path[start] == '.') &&
+                           (path[start + 1] == '.');
+
+    return (ends_in_dot || ends_in_dot_dot);
+}
+
+// helper to reduce duplicated code
+static inline void dentry_put_4(struct dentry *a, struct dentry *b,
+                                struct dentry *c, struct dentry *d)
+{
+    dentry_put(a);
+    dentry_put(b);
+    dentry_put(c);
+    dentry_put(d);
+}
+
+/// @brief Atomically rename an object within one mounted file system.
+syserr_t do_rename(char *old_path, char *new_path)
+{
+    if (path_ends_in_dot_or_dotdot(old_path) ||
+        path_ends_in_dot_or_dotdot(new_path))
+    {
+        return -EINVAL;
+    }
+
+    syserr_t ret = 0;
+    struct dentry *old_dentry = dentry_from_path(old_path, &ret);
+    if (old_dentry == NULL) return ret;
+    if (dentry_is_invalid(old_dentry))
+    {
+        dentry_put(old_dentry);
+        return -ENOENT;
+    }
+
+    struct dentry *new_dentry = dentry_from_path(new_path, &ret);
+    if (new_dentry == NULL)
+    {
+        dentry_put(old_dentry);
+        return ret;
+    }
+
+    dcache_read_lock();
+    struct dentry *old_parent =
+        old_dentry->parent == NULL ? NULL : dentry_get(old_dentry->parent);
+    struct dentry *new_parent =
+        new_dentry->parent == NULL ? NULL : dentry_get(new_dentry->parent);
+    dcache_read_unlock();
+
+    if ((old_parent == NULL) || (new_parent == NULL))
+    {
+        if (new_parent != NULL) dentry_put(new_parent);
+        if (old_parent != NULL) dentry_put(old_parent);
+        dentry_put(new_dentry);
+        dentry_put(old_dentry);
+        return -EINVAL;
+    }
+
+    struct inode *old_parent_ip = dentry_inode(old_parent);
+    struct inode *new_parent_ip = dentry_inode(new_parent);
+    struct inode *old_ip = dentry_inode(old_dentry);
+    struct inode *new_ip = dentry_inode(new_dentry);
+
+    if ((old_parent_ip == NULL) || (new_parent_ip == NULL) || (old_ip == NULL))
+    {
+        dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+        return -ENOENT;
+    }
+    if (old_parent_ip->i_sb != new_parent_ip->i_sb)
+    {
+        dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+        return -EXDEV;
+    }
+    // A mounted root is not an entry in its visible parent's backing file
+    // system, whether it is used as the source or destination.
+    if (old_ip->i_sb != old_parent_ip->i_sb)
+    {
+        dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+        return -EXDEV;
+    }
+    if (new_ip != NULL && new_ip->i_sb != new_parent_ip->i_sb)
+    {
+        dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+        return -EXDEV;
+    }
+
+    ret = check_dentry_permission(get_current(), old_parent, MAY_UNLINK);
+    if (ret < 0)
+    {
+        dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+        return ret;
+    }
+    if (new_parent != old_parent)
+    {
+        ret = check_dentry_permission(get_current(), new_parent, MAY_UNLINK);
+        if (ret < 0)
+        {
+            dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+            return ret;
+        }
+    }
+
+    bool old_is_dir = S_ISDIR(old_ip->i_mode);
+    if (new_ip != NULL)
+    {
+        bool new_is_dir = S_ISDIR(new_ip->i_mode);
+        if (old_is_dir && !new_is_dir)
+        {
+            dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+            return -ENOTDIR;
+        }
+        if (!old_is_dir && new_is_dir)
+        {
+            dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+            return -EISDIR;
+        }
+    }
+
+    // POSIX specifies success when both names already identify one inode.
+    if (new_ip == old_ip)
+    {
+        dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+        return 0;
+    }
+
+    if (old_is_dir)
+    {
+        dcache_read_lock();
+        for (struct dentry *ancestor = new_parent; ancestor != NULL;
+             ancestor = ancestor->parent)
+        {
+            if (ancestor == old_dentry)
+            {
+                ret = -EINVAL;
+                break;
+            }
+        }
+        dcache_read_unlock();
+        if (ret < 0)
+        {
+            dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+            return ret;
+        }
+    }
+
+    // This dentry donates its allocated new name to old_dentry after the
+    // backend succeeds, while retaining the old name as a negative cache entry.
+    struct dentry *old_name_placeholder =
+        dentry_alloc_init_orphan(new_dentry->name, NULL);
+    if (old_name_placeholder == NULL)
+    {
+        dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+        return -ENOMEM;
+    }
+
+    inode_lock_exclusive_2_safe(old_parent_ip, new_parent_ip);
+
+    dcache_read_lock();
+    bool lookup_is_current = old_dentry->parent == old_parent &&
+                             new_dentry->parent == new_parent &&
+                             dentry_inode(old_dentry) == old_ip &&
+                             dentry_inode(new_dentry) == new_ip;
+    dcache_read_unlock();
+    if (!lookup_is_current)
+    {
+        inode_unlock_exclusive_2_save(old_parent_ip, new_parent_ip);
+        dentry_put(old_name_placeholder);
+        dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
+        return -ENOENT;
+    }
+
+    ret =
+        VFS_INODE_RENAME(old_parent_ip, old_dentry, new_parent_ip, new_dentry);
+    if (ret == 0)
+    {
+        dcache_write_lock();
+        const char *old_name = old_dentry->name;
+        old_dentry->name = old_name_placeholder->name;
+        old_name_placeholder->name = old_name;
+
+        struct dentry *old_dentry_parent =
+            dentry_unregister_from_parent(old_dentry);
+        struct dentry *new_dentry_parent =
+            dentry_unregister_from_parent(new_dentry);
+        dentry_register_with_parent(new_parent, old_dentry);
+        dentry_register_with_parent(old_parent, old_name_placeholder);
+        if (new_ip != NULL)
+        {
+            dentry_register_with_parent(g_dentry_cache.unlinked_root,
+                                        new_dentry);
+        }
+        dcache_write_unlock();
+
+        dentry_put(new_dentry_parent);
+        dentry_put(old_dentry_parent);
+    }
+
+    inode_unlock_exclusive_2_save(old_parent_ip, new_parent_ip);
+    dentry_put(old_name_placeholder);
+    dentry_put_4(new_parent, old_parent, new_dentry, old_dentry);
 
     return ret;
 }

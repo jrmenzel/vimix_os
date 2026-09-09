@@ -1,21 +1,22 @@
-# Syscall mknod
+# Syscall rename
 
 ## User Mode
 
 ```C
-#include <stat.h>
-int32_t mknod(const char *path, mode_t mode, dev_t dev);
+#include <unistd.h>
+int32_t rename(const char *oldpath, const char *newpath);
 ```
 
-Create a special or ordinary file ("make node (in file system)"). Since research UNIX v4.
+Atomically changes the name or parent directory of a file or directory. An existing compatible destination is replaced.
+Both paths must be on the same mounted file system.
 
 ## User Apps
 
-The app [mknod](../../userspace/bin/mknod.md) exposes this syscall.
+The app [mv](../../userspace/bin/mv.md) exposes this syscall.
 
 ## Kernel Mode
 
-Implemented in `sys_file.c` as `sys_mknod()`.
+Implemented in `sys_link.c` as `sys_rename()`.
 
 ## See also
 

@@ -29,6 +29,7 @@ char *strerror(int errnum)
         CODE_STRING(EFAULT, "Address fault");
         CODE_STRING(ENOTBLK, "Block device required");
         CODE_STRING(EEXIST, "File exists");
+        CODE_STRING(EXDEV, "Cross-device link");
         CODE_STRING(ENODEV, "No such device");
         CODE_STRING(ENOTDIR, "Not a directory");
         CODE_STRING(EISDIR, "Is a directory");
@@ -38,6 +39,7 @@ char *strerror(int errnum)
         CODE_STRING(EFBIG, "File too large");
         CODE_STRING(ENOSPC, "No space left on device");
         CODE_STRING(ESPIPE, "Illegal seek, fd is a pipe");
+        CODE_STRING(ERANGE, "Math or buffer size out of range");
         CODE_STRING(ENOTEMPTY, "Dir not empty");
         CODE_STRING(EOTHER, "Other error");
         CODE_STRING(EINVALSCALL, "Invalid syscall number");

@@ -94,6 +94,10 @@ syserr_t sys_fchdir();
 /// unistd.h.
 syserr_t sys_link();
 
+/// @brief Syscall "int32_t rename(const char *oldpath, const char *newpath)"
+/// from unistd.h.
+syserr_t sys_rename();
+
 /// @brief Syscall "int32_t unlink(const char *pathname)" from unistd.h.
 syserr_t sys_unlink();
 

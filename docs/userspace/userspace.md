@@ -31,6 +31,7 @@ Stored in `/usr/bin` or `/usr/local/bin`.
 - [rmdir](bin/rmdir.md) - remove directories
 - [stat](bin/stat.md) - get file status
 - [statvfs](bin/statvfs.md) - get [file system](../kernel/file_system/file_system.md) statistics
+- [mv](bin/mv.md) - move or rename files and directories
 
 **File Ownership:**
 

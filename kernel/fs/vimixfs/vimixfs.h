@@ -165,6 +165,11 @@ syserr_t vimixfs_write(struct inode *ip, bool src_addr_is_userspace, size_t src,
 syserr_t vimixfs_iops_link(struct dentry *file_from, struct inode *dir_to,
                            struct dentry *new_link);
 
+syserr_t vimixfs_iops_rename(struct inode *old_parent,
+                             struct dentry *old_dentry,
+                             struct inode *new_parent,
+                             struct dentry *new_dentry);
+
 syserr_t vimixfs_iops_unlink(struct inode *parent, struct dentry *dp);
 
 syserr_t vimixfs_iops_rmdir(struct inode *parent, struct dentry *dp);

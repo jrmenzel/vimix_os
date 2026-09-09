@@ -70,6 +70,13 @@ void iops_put_default(struct inode *ip);
 syserr_t iops_link_default_ro(struct dentry *file_from, struct inode *dir_to,
                               struct dentry *new_link);
 
+/// @brief Default implementation of iops_rename for read-only file systems.
+/// @return -EACCES
+syserr_t iops_rename_default_ro(struct inode *old_parent,
+                                struct dentry *old_dentry,
+                                struct inode *new_parent,
+                                struct dentry *new_dentry);
+
 /// @brief Default implementation of iops_rmdir for read-only file systems.
 /// @return -EACCES
 syserr_t iops_rmdir_default_ro(struct inode *parent, struct dentry *dp);

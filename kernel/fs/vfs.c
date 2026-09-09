@@ -129,6 +129,14 @@ syserr_t iops_link_default_ro(struct dentry *file_from, struct inode *dir_to,
     return -EACCES;
 }
 
+syserr_t iops_rename_default_ro(struct inode *old_parent,
+                                struct dentry *old_dentry,
+                                struct inode *new_parent,
+                                struct dentry *new_dentry)
+{
+    return -EACCES;
+}
+
 syserr_t iops_unlink_default_ro(struct inode *parent, struct dentry *dp)
 {
     return -EACCES;

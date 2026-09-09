@@ -33,6 +33,7 @@ See also: [calling_syscall](calling_syscall.md).
 - [link](link.md) - create hard link
 - [unlink](unlink.md) - remove a hard link, also used to delete files
 - [rmdir](rmdir.md) - remove empty directories
+- [rename](rename.md) - rename or move a file or directory
 
 ## File Meta Data Management
 

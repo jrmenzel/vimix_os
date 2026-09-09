@@ -65,6 +65,7 @@ entry("unlink");
 entry("stat");
 entry("fstat");
 entry("link");
+entry("rename");
 entry("mkdir");
 entry("chdir");
 entry("fchdir");

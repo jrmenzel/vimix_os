@@ -17,8 +17,8 @@
 #define EFAULT 14   ///< Address fault, e.g. memory not owned by process
 #define ENOTBLK 15  ///< Block device required
 // #define EBUSY 16    ///< Device or resource busy
-#define EEXIST 17  ///< File exists
-// #define EXDEV 18    ///< Cross-device link
+#define EEXIST 17   ///< File exists
+#define EXDEV 18    ///< Cross-device link
 #define ENODEV 19   ///< No such device
 #define ENOTDIR 20  ///< Not a directory
 #define EISDIR 21   ///< Is a directory
