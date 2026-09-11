@@ -77,6 +77,7 @@ char type_to_char(mode_t mode)
     if (S_ISCHR(mode)) return 'c';
     if (S_ISDIR(mode)) return 'd';
     if (S_ISREG(mode)) return '.';
+    if (S_ISLNK(mode)) return 'l';
     if (S_ISFIFO(mode)) return 'p';
     return ' ';
 }
@@ -174,6 +175,7 @@ enum FileVisibility get_visibility(const char *file_name)
 struct entry_node
 {
     char name[NAME_MAX + 1];
+    char *link_target;
     mode_t mode;
     uid_t uid;
     gid_t gid;
@@ -186,9 +188,9 @@ struct entry_node *entry_node_create(struct entry_node *head, const char *name,
                                      const char *full_path)
 {
     struct stat st;
-    if (stat(full_path, &st) < 0)
+    if (lstat(full_path, &st) < 0)
     {
-        fprintf(stderr, "stat (%s) error (errno: %s)\n", full_path,
+        fprintf(stderr, "lstat (%s) error (errno: %s)\n", full_path,
                 strerror(errno));
         return head;
     }
@@ -210,7 +212,39 @@ struct entry_node *entry_node_create(struct entry_node *head, const char *name,
     new_node->mtime = st.st_mtime;
     new_node->next = head;
 
+    if (S_ISLNK(new_node->mode))
+    {
+        new_node->link_target = malloc(PATH_MAX + 1);
+        if (new_node->link_target != NULL)
+        {
+            ssize_t read = readlink(full_path, new_node->link_target, PATH_MAX);
+            if (read < 0)
+            {
+                fprintf(stderr, "readlink error (errno: %s)\n",
+                        strerror(errno));
+                snprintf(new_node->link_target, PATH_MAX, "???");
+            }
+            else
+            {
+                new_node->link_target[read] = '\0';
+            }
+        }
+    }
+    else
+    {
+        new_node->link_target = NULL;
+    }
+
     return new_node;
+}
+
+void entry_node_free(struct entry_node *head)
+{
+    if (head->link_target != NULL)
+    {
+        free(head->link_target);
+    }
+    free(head);
 }
 
 int entry_node_cmp(const void *a, const void *b)
@@ -237,7 +271,14 @@ void entry_node_print(struct entry_node *entry, struct Parameters *parameters)
     printf("%02d:%02d:%02d ", cal_time->tm_hour, cal_time->tm_min,
            cal_time->tm_sec);
 
-    printf("%s\n", entry->name);
+    if (entry->link_target == NULL)
+    {
+        printf("%s\n", entry->name);
+    }
+    else
+    {
+        printf("%s -> %s\n", entry->name, entry->link_target);
+    }
 }
 
 int print_dir(const char *path_name, struct Parameters *parameters)
@@ -359,7 +400,7 @@ int ls(const char *path_name, struct Parameters *parameters)
         else
         {
             entry_node_print(entry, parameters);
-            free(entry);
+            entry_node_free(entry);
             return_code = S_OK;
         }
     }

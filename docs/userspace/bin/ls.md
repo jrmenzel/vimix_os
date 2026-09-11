@@ -8,7 +8,7 @@ List contents of provided directories or the content of the CWD if no directory 
 
 - 0 on success
 
-**Syscall:** [get_dirent](../../kernel/syscalls/get_dirent.md)
+**Syscalls:** [get_dirent](../../kernel/syscalls/get_dirent.md), [lstat](../../kernel/syscalls/lstat.md), [readlink](../../kernel/syscalls/readlink.md)
 
 ---
 **Up:** [user space](../userspace.md)

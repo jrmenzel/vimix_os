@@ -21,7 +21,8 @@ syserr_t sys_statvfs()
     argaddr(1, &buf_addr);
 
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(path, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(path, FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;

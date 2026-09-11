@@ -102,3 +102,6 @@ entry("umask");
 entry("getcwdlen");
 entry("sync");
 entry("utimes");
+entry("symlink");
+entry("lstat");
+entry("readlink");

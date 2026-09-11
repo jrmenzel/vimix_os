@@ -31,6 +31,7 @@ See also: [calling_syscall](calling_syscall.md).
 - [truncate](truncate.md) - Change file size.
 - [dup](dup.md) - duplicate file handle
 - [link](link.md) - create hard link
+- [symlink](symlink.md) - create symbolic link
 - [unlink](unlink.md) - remove a hard link, also used to delete files
 - [rmdir](rmdir.md) - remove empty directories
 - [rename](rename.md) - rename or move a file or directory
@@ -49,7 +50,8 @@ See also: [calling_syscall](calling_syscall.md).
 
 ## File Information
 
-- [stat / fstat](stat.md) - get file metadata
+- [stat / fstat / lstat](stat.md) - get file / symlink meta data
+- [readlink](readlink.md) - read a symbolic link target
 
 ## System
 

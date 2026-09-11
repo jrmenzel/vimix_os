@@ -105,3 +105,8 @@ syserr_t iops_chmod_default_ro(struct dentry *dp, mode_t mode);
 syserr_t iops_chown_default_ro(struct dentry *dp, uid_t uid, gid_t gid);
 
 syserr_t fops_open_default(struct inode *ip, struct file *f);
+
+syserr_t iops_symlink_default_ro(struct inode *parent, struct dentry *dp,
+                                 const char *target, size_t length);
+
+syserr_t iops_readlink_default_ro(struct inode *ip, size_t dst, size_t length);

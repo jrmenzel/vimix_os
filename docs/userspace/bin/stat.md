@@ -1,6 +1,6 @@
 # stat
 
-Prints file or directory stats like size and [inode](../../kernel/file_system/inode.md) number.
+Prints file or directory stats like size and [inode](../../kernel/file_system/inode.md) number. Symbolic links are displayed as links rather than followed.
 
 > stat `FILE`
 
@@ -8,7 +8,7 @@ Prints file or directory stats like size and [inode](../../kernel/file_system/in
 
 - 0 on success
 
-**Syscall:** [stat](../../kernel/syscalls/stat.md)
+**Syscall:** [lstat](../../kernel/syscalls/lstat.md)
 
 ---
 **Up:** [user space](../userspace.md)

@@ -69,7 +69,8 @@ syserr_t sys_mknod()
 syserr_t do_mkdir(const char *pathname, mode_t mode)
 {
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(pathname, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(pathname, DONT_FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;
@@ -120,7 +121,8 @@ syserr_t do_mknod(const char *pathname, mode_t mode, dev_t device)
 
     syserr_t error = 0;
 
-    struct dentry *dp = dentry_from_path(pathname, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(pathname, DONT_FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;

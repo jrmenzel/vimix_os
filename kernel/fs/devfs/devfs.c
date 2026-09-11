@@ -122,7 +122,9 @@ struct inode_operations devfs_i_op = {
     iops_rmdir : iops_rmdir_default_ro,
     iops_truncate : iops_truncate_default_ro,
     iops_chmod : iops_chmod_default_ro,
-    iops_chown : iops_chown_default_ro
+    iops_chown : iops_chown_default_ro,
+    iops_symlink : iops_symlink_default_ro,
+    iops_readlink : iops_readlink_default_ro,
 };
 
 syserr_t devfs_fops_write(struct file *f, size_t addr, size_t n)

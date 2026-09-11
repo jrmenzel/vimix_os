@@ -36,8 +36,10 @@
 // #define EMLINK 31   ///< Too many links
 // #define EPIPE 32    ///< Broken pipe
 // #define EDOM 33     ///< Math argument out of domain of func
-#define ERANGE 34     ///< Math result not representable, buffer too small
-#define ENOTEMPTY 39  ///< Dir not empty
+#define ERANGE 34        ///< Math result not representable, buffer too small
+#define ENAMETOOLONG 36  ///< File name / symlink target too long
+#define ENOTEMPTY 39     ///< Dir not empty
+#define ELOOP 40         ///< Symlink chain too long or has loop in path lookup
 
 #define EOTHER 0xFFF0       ///< todos to find the right error codes ;-)
 #define EINVALSCALL 0xFFFF  ///< Invalid syscall number

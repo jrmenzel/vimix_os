@@ -41,7 +41,9 @@ struct inode_operations sysfs_i_op = {
     iops_rmdir : iops_rmdir_default_ro,
     iops_truncate : iops_truncate_default_ro,
     iops_chmod : iops_chmod_default_ro,
-    iops_chown : iops_chown_default_ro
+    iops_chown : iops_chown_default_ro,
+    iops_symlink : iops_symlink_default_ro,
+    iops_readlink : iops_readlink_default_ro,
 };
 
 struct file_operations sysfs_f_op = {

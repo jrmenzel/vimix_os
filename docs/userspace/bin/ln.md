@@ -1,17 +1,19 @@
 # ln - link
 
-Creates a new (hard) link for a file. This means that another directory entry points to the same inode.
+Creates a new hard link for a file. This means that another directory entry
+points to the same inode.
 
 > ln `EXISTING_FILE` `NEW_NAME`
 
-**Note:**
-Soft links (via `ln -s ...`) are not supported.
+Create a symbolic link with:
+
+> ln -s `TARGET` `LINK_NAME`
 
 **Returns:**
 
 - 0 on success
 
-**Syscall:** [link](../../kernel/syscalls/link.md)
+**Syscalls:** [link](../../kernel/syscalls/link.md), [symlink](../../kernel/syscalls/symlink.md)
 
 ---
 **Up:** [user space](../userspace.md)

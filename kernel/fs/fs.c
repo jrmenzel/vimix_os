@@ -203,7 +203,7 @@ void debug_print_inode(struct inode *ip)
            MINOR(ip->i_sb->dev));
     printk("ref:%3d, ", kref_read(&ip->ref));
 
-    printk("link:%3d, ", ip->nlink);
+    printk("#links:%3d, ", ip->nlink);
 
     if (S_ISREG(ip->i_mode))
     {
@@ -212,6 +212,10 @@ void debug_print_inode(struct inode *ip)
     else if (S_ISDIR(ip->i_mode))
     {
         printk("directory");
+    }
+    else if (S_ISLNK(ip->i_mode))
+    {
+        printk("symlink");
     }
     else if (S_ISCHR(ip->i_mode))
     {

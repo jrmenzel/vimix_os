@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     }
 
     struct stat st;
-    if (stat(argv[1], &st) < 0)
+    if (lstat(argv[1], &st) < 0)
     {
         fprintf(stderr, "stat: file or directory %s not found\n", argv[1]);
         return 1;
@@ -33,6 +33,10 @@ int main(int argc, char *argv[])
     else if (S_ISREG(st.st_mode))
     {
         printf("regular file\n");
+    }
+    else if (S_ISLNK(st.st_mode))
+    {
+        printf("symlink\n");
     }
     else if (S_ISCHR(st.st_mode))
     {

@@ -40,7 +40,9 @@ char *strerror(int errnum)
         CODE_STRING(ENOSPC, "No space left on device");
         CODE_STRING(ESPIPE, "Illegal seek, fd is a pipe");
         CODE_STRING(ERANGE, "Math or buffer size out of range");
+        CODE_STRING(ENAMETOOLONG, "File name / symlink target too long");
         CODE_STRING(ENOTEMPTY, "Dir not empty");
+        CODE_STRING(ELOOP, "Symlink chain too long or has loop in path lookup");
         CODE_STRING(EOTHER, "Other error");
         CODE_STRING(EINVALSCALL, "Invalid syscall number");
 

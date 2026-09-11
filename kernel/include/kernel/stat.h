@@ -57,12 +57,14 @@ struct stat
 /// The following macros test st_mode (from POSIX Sec. 5.6.1.1).
 #define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)   ///< is a reg file
 #define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)   ///< is a directory
+#define S_ISLNK(m) (((m) & S_IFMT) == S_IFLNK)   ///< is a symbolic link
 #define S_ISCHR(m) (((m) & S_IFMT) == S_IFCHR)   ///< is a char spec
 #define S_ISBLK(m) (((m) & S_IFMT) == S_IFBLK)   ///< is a block spec
 #define S_ISFIFO(m) (((m) & S_IFMT) == S_IFIFO)  ///< is a pipe/FIFO
 
-#define INODE_HAS_TYPE(i) \
-    ((S_ISREG(i)) || (S_ISDIR(i)) || (S_ISCHR(i) || S_ISBLK(i) || S_ISFIFO(i)))
+#define INODE_HAS_TYPE(i)                                            \
+    ((S_ISREG(i)) || (S_ISDIR(i)) || (S_ISCHR(i)) || (S_ISBLK(i)) || \
+     (S_ISFIFO(i)) || (S_ISLNK(i)))
 
 /// File types
 ///

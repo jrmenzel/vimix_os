@@ -7,7 +7,6 @@ Some device drivers are architecture specific and naturally are only available o
 Real known limits exposed by one architecture but not the other:
 
 - Maximum of supported CPUs is 8 on [ARM 64](../aarch64/ARM%2064.md) based on a limitation of the supported interrupt controller.
-- qemus `virtio` "harddrive" is only working on [RISC V](../riscv/RISCV.md).
 
 ## RISC V
 
@@ -32,7 +31,7 @@ Only sv39 [memory_management](kernel/mm/memory_management.md) is supported.
 
 ### RISC V Platforms
 
-- [qemu emulator](../development/run_on_qemu.md)
+- [qemu virt device](../development/run_on_qemu.md)
 - [spike emulator](../development/run_on_spike.md)
 - [Visionfive 2 development board](../development/run_on_visionfive2.md)
 - [OrangePI RV2 development board](../development/run_on_orangepi.md)

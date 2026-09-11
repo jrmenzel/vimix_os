@@ -1041,6 +1041,257 @@ void open_exclusive_test(char *s)
     assert_no_error(unlink(file_name));
 }
 
+void symlink_test(char *s)
+{
+    const char *root = "symlink_test_dir";
+    const char *target = "symlink_test_dir/target";
+    const char *file_link = "symlink_test_dir/file_link";
+    const char *renamed_link = "symlink_test_dir/renamed_link";
+    const char *hard_link = "symlink_test_dir/hard_link";
+    const char *chain = "symlink_test_dir/chain";
+    const char *directory = "symlink_test_dir/directory";
+    const char *directory_link = "symlink_test_dir/directory_link";
+    const char *nested = "symlink_test_dir/directory/nested";
+    const char *nested_via_link = "symlink_test_dir/directory_link/nested";
+    const char *absolute_link = "symlink_test_dir/absolute_link";
+    const char *contents = "symbolic link data";
+
+    assert_no_error(mkdir(root, 0755));
+    assert_no_error(mkdir(directory, 0755));
+
+    int fd = open(target, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, fd, target);
+    assert_write_to_file(s, fd, contents);
+    assert_no_error(close(fd));
+
+    fd = open(nested, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, fd, nested);
+    assert_write_to_file(s, fd, "nested");
+    assert_no_error(close(fd));
+
+    // Relative targets are interpreted relative to the link's directory.
+    assert_no_error(symlink("target", file_link));
+    struct stat target_stat;
+    struct stat link_stat;
+    assert_no_error(stat(target, &target_stat));
+    assert_no_error(stat(file_link, &link_stat));
+    assert_same_value(link_stat.st_ino, target_stat.st_ino);
+    assert_same_value(S_ISREG(link_stat.st_mode), true);
+
+    assert_no_error(lstat(file_link, &link_stat));
+    assert_same_value(S_ISLNK(link_stat.st_mode), true);
+    assert_same_value(link_stat.st_size, strlen("target"));
+    assert_same_value((link_stat.st_ino == target_stat.st_ino), false);
+
+    char link_contents[32];
+    memset(link_contents, 0x7f, sizeof(link_contents));
+    ssize_t link_length =
+        readlink(file_link, link_contents, sizeof(link_contents));
+    assert_same_value(link_length, strlen("target"));
+    // readlink() does not append a null byte.
+    assert_same_value(link_contents[link_length], 0x7f);
+    link_contents[link_length] = '\0';
+    assert_same_string(link_contents, "target");
+
+    memset(link_contents, 0, sizeof(link_contents));
+    link_length = readlink(file_link, link_contents, 3);
+    assert_same_value(link_length, 3);
+    assert_same_value(memcmp(link_contents, "tar", 3), 0);
+
+    // Opening and truncating through a symlink operate on its target.
+    fd = open(file_link, O_RDONLY);
+    assert_open_ok_fd(s, fd, file_link);
+    memset(buf, 0, strlen(contents) + 1);
+    assert_same_value(read(fd, buf, strlen(contents)), strlen(contents));
+    assert_same_string(buf, contents);
+    assert_no_error(close(fd));
+    assert_no_error(truncate(file_link, 4));
+    assert_no_error(stat(target, &target_stat));
+    assert_same_value(target_stat.st_size, 4);
+
+    // Symlinks in intermediate path components are always followed.
+    assert_no_error(symlink("directory", directory_link));
+    fd = open(nested_via_link, O_RDONLY);
+    assert_open_ok_fd(s, fd, nested_via_link);
+    assert_no_error(close(fd));
+
+    int original_dir = open(".", O_RDONLY);
+    assert_open_ok_fd(s, original_dir, ".");
+    assert_no_error(chdir(directory_link));
+    fd = open("nested", O_RDONLY);
+    assert_open_ok_fd(s, fd, "nested");
+    assert_no_error(close(fd));
+    assert_no_error(fchdir(original_dir));
+    assert_no_error(close(original_dir));
+
+    char cwd[PATH_MAX];
+    char absolute_target[PATH_MAX];
+    assert_no_ptr_error(getcwd(cwd, sizeof(cwd)));
+    int absolute_length = snprintf(absolute_target, sizeof(absolute_target),
+                                   "%s/%s", cwd, target);
+    assert_same_value((absolute_length > 0), true);
+    assert_same_value(((size_t)absolute_length < sizeof(absolute_target)),
+                      true);
+    assert_no_error(symlink(absolute_target, absolute_link));
+    assert_no_error(stat(absolute_link, &link_stat));
+    assert_same_value(link_stat.st_ino, target_stat.st_ino);
+
+    // Chained links and hard links to a symlink preserve link semantics.
+    assert_no_error(symlink("file_link", chain));
+    assert_no_error(stat(chain, &link_stat));
+    assert_same_value(link_stat.st_ino, target_stat.st_ino);
+    assert_no_error(link(file_link, hard_link));
+    assert_no_error(lstat(file_link, &link_stat));
+    struct stat hard_link_stat;
+    assert_no_error(lstat(hard_link, &hard_link_stat));
+    assert_same_value(hard_link_stat.st_ino, link_stat.st_ino);
+    assert_same_value(hard_link_stat.st_nlink, 2);
+    assert_same_value(S_ISLNK(hard_link_stat.st_mode), true);
+    assert_no_error(unlink(hard_link));
+
+    // rename() and unlink() operate on the link rather than its target.
+    assert_no_error(rename(file_link, renamed_link));
+    assert_no_error(lstat(renamed_link, &link_stat));
+    assert_same_value(S_ISLNK(link_stat.st_mode), true);
+    assert_no_error(stat(target, &target_stat));
+    assert_no_error(unlink(renamed_link));
+    assert_no_error(stat(target, &target_stat));
+
+    assert_no_error(unlink(chain));
+    assert_no_error(unlink(absolute_link));
+    assert_no_error(unlink(directory_link));
+    assert_no_error(unlink(nested));
+    assert_no_error(rmdir(directory));
+    assert_no_error(unlink(target));
+    assert_no_error(rmdir(root));
+}
+
+void symlink_error_test(char *s)
+{
+    const char *root = "symlink_error_test_dir";
+    const char *target = "symlink_error_test_dir/target";
+    const char *dangling = "symlink_error_test_dir/dangling";
+    const char *missing_target = "symlink_error_test_dir/missing";
+    const char *create_link = "symlink_error_test_dir/create_link";
+    const char *created_target = "symlink_error_test_dir/created_target";
+    const char *loop1 = "symlink_error_test_dir/loop1";
+    const char *loop2 = "symlink_error_test_dir/loop2";
+    char link_contents[32];
+    struct stat st;
+
+    assert_no_error(mkdir(root, 0755));
+    int fd = open(target, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    assert_open_ok_fd(s, fd, target);
+    assert_no_error(close(fd));
+
+    errno = 0;
+    assert_error(symlink("anything", target));
+    assert_errno(EEXIST);
+
+    errno = 0;
+    assert_error(symlink("", "symlink_error_test_dir/empty"));
+    assert_errno(ENOENT);
+
+    char long_target[PATH_MAX + 1];
+    memset(long_target, 'a', PATH_MAX);
+    long_target[PATH_MAX] = '\0';
+    errno = 0;
+    assert_error(symlink(long_target, "symlink_error_test_dir/too_long"));
+    assert_errno(ENAMETOOLONG);
+
+    errno = 0;
+    assert_error(symlink("target", "symlink_error_test_dir/missing/link"));
+    assert_errno(ENOENT);
+
+    errno = 0;
+    assert_error(readlink(target, link_contents, sizeof(link_contents)));
+    assert_errno(EINVAL);
+
+    errno = 0;
+    assert_error(readlink("symlink_error_test_dir/absent", link_contents,
+                          sizeof(link_contents)));
+    assert_errno(ENOENT);
+
+    errno = 0;
+    assert_error(readlink("", link_contents, sizeof(link_contents)));
+    assert_errno(ENOENT);
+
+    assert_no_error(symlink("missing", dangling));
+    assert_no_error(lstat(dangling, &st));
+    assert_same_value(S_ISLNK(st.st_mode), true);
+    errno = 0;
+    assert_error(stat(dangling, &st));
+    assert_errno(ENOENT);
+
+    ssize_t link_length =
+        readlink(dangling, link_contents, sizeof(link_contents));
+    assert_same_value(link_length, strlen("missing"));
+    link_contents[link_length] = '\0';
+    assert_same_string(link_contents, "missing");
+
+    errno = 0;
+    assert_error(readlink(dangling, link_contents, 0));
+    assert_errno(EINVAL);
+
+    diagnostic_push;
+    diagnostic_stringop_overflow;
+    errno = 0;
+    char *invalid_buffer = (char *)(uintptr_t)1;
+    assert_error(readlink(dangling, invalid_buffer, 1));
+    assert_errno(EFAULT);
+    diagnostic_pop;
+
+    // O_EXCL must reject an existing directory entry, even if dangling.
+    errno = 0;
+    assert_error(open(dangling, O_CREAT | O_EXCL | O_WRONLY, 0644));
+    assert_errno(EEXIST);
+    errno = 0;
+    assert_error(lstat(missing_target, &st));
+    assert_errno(ENOENT);
+
+    // Without O_EXCL, O_CREAT follows a dangling link and creates its target.
+    assert_no_error(symlink("created_target", create_link));
+    fd = open(create_link, O_CREAT | O_WRONLY, 0644);
+    assert_open_ok_fd(s, fd, create_link);
+    assert_no_error(close(fd));
+    assert_no_error(lstat(create_link, &st));
+    assert_same_value(S_ISLNK(st.st_mode), true);
+    assert_no_error(stat(created_target, &st));
+
+    errno = 0;
+    assert_error(mkdir(dangling, 0755));
+    assert_errno(EEXIST);
+
+    errno = 0;
+    assert_error(rmdir(dangling));
+    assert_errno(ENOTDIR);
+
+    assert_no_error(symlink("loop2", loop1));
+    assert_no_error(symlink("loop1", loop2));
+    errno = 0;
+    assert_error(stat(loop1, &st));
+    assert_errno(ELOOP);
+    errno = 0;
+    // The symlink loop makes open() fail with ELOOP; GCC's analyzer cannot
+    // infer that and assumes the intentionally failing probe leaks its fd.
+    diagnostic_push;
+    diagnostic_ignore_fd_leak;
+    assert_error(open(loop1, O_RDONLY));
+    diagnostic_pop;
+    assert_errno(ELOOP);
+
+    assert_no_error(unlink(loop1));
+    errno = 0;
+    assert_error(stat(loop2, &st));
+    assert_errno(ENOENT);
+    assert_no_error(unlink(loop2));
+    assert_no_error(unlink(create_link));
+    assert_no_error(unlink(created_target));
+    assert_no_error(unlink(dangling));
+    assert_no_error(unlink(target));
+    assert_no_error(rmdir(root));
+}
+
 void utime_test(char *s)
 {
     const char *file_name = "utime_test";
@@ -1679,6 +1930,8 @@ struct test tests_common[] = {
     {file_metadata_timestamp_test, "file_meta_time", TEST_MASK_FILESYSTEM},
     {file_truncate_timestamps_test, "file_trunc_time", TEST_MASK_FILESYSTEM},
     {open_exclusive_test, "open_exclusive", TEST_MASK_FILESYSTEM},
+    {symlink_test, "symlink", TEST_MASK_FILESYSTEM},
+    {symlink_error_test, "symlink_errors", TEST_MASK_FILESYSTEM},
     {utime_test, "utime", TEST_MASK_FILESYSTEM},
     {utimes_test, "utimes", TEST_MASK_FILESYSTEM},
     {directory_entry_timestamps_test, "dir_time", TEST_MASK_FILESYSTEM},

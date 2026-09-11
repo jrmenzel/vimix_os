@@ -39,7 +39,7 @@
 extern pid_t fork();
 
 // replace current process with one from path
-extern int32_t execv(const char *pathname, char *argv[]);
+extern int execv(const char *pathname, char *argv[]);
 
 // terminates program with status as return code
 extern void exit(int32_t status) __attribute__((noreturn));
@@ -89,39 +89,53 @@ extern ssize_t read(int fd, void *buffer, size_t n);
 extern ssize_t write(int fd, const void *buffer, size_t n);
 
 // closes [fd]
-extern int32_t close(int fd);
+extern int close(int fd);
 
 /// @brief Resize file to length bytes, discards data beyond length, fills new
 /// space with zeros.
 /// @param path file path, file must be write-able
 /// @param length New file size in bytes.
 /// @return 0 on success, -1 on failure; sets errno.
-extern int32_t truncate(const char *path, off_t length);
+extern int truncate(const char *path, off_t length);
 
 /// @brief Resize file to length bytes, discards data beyond length, fills new
 /// space with zeros.
 /// @param fd file descriptor of file opened for writing
 /// @param length New file size in bytes.
 /// @return 0 on success, -1 on failure; sets errno.
-extern int32_t ftruncate(int fd, off_t length);
+extern int ftruncate(int fd, off_t length);
+
+/// @brief Create a symbolic link at link_path containing target.
+/// @param target Path stored in the new symbolic link.
+/// @param link_path Path of the new symbolic link.
+/// @return 0 on success, -1 on failure; sets errno.
+extern int symlink(const char *target, const char *link_path);
+
+/// @brief Write the symbolic link contents into buffer without a terminating
+/// null byte.
+/// @param path Path to a symlink.
+/// @param buffer Buffer to copy into.
+/// @param buffer_size Size of buffer.
+/// @return Number of bytes copied on success, -1 on failure; sets errno.
+extern ssize_t readlink(const char *path, char *buffer, size_t buffer_size);
 
 // create a (hard)link [from] existing file [to] link
-extern int32_t link(const char *from, const char *to);
-
-// atomically change a file or directory name within one file system
-extern int32_t rename(const char *oldpath, const char *newpath);
+extern int link(const char *from, const char *to);
 
 // remove link [name]
-extern int32_t unlink(const char *pathname);
+extern int unlink(const char *pathname);
+
+// atomically change a file or directory name within one file system
+extern int rename(const char *oldpath, const char *newpath);
 
 // remove directory (must be empty)
 extern int rmdir(const char *path);
 
 // change working directory
-extern int32_t chdir(const char *path);
+extern int chdir(const char *path);
 
 // change working directory using an open directory descriptor
-extern int32_t fchdir(int fd);
+extern int fchdir(int fd);
 
 // duplicate open file descriptor. Returns new file descriptor or -1 on error
 extern int dup(int fd);
@@ -155,7 +169,7 @@ extern long sysconf(int name);
 
 // create a (one-way) pipe. pipe_descriptors[0] for reading,
 // pipe_descriptors[1] for writing.
-extern int32_t pipe(int pipe_descriptors[2]);
+extern int pipe(int pipe_descriptors[2]);
 
 ///////////////////////////////////////
 // 6. Protection
@@ -266,6 +280,6 @@ extern int fchown(int fd, uid_t owner, gid_t group);
 /// errno will be set to ENOMEM
 extern void *sbrk(intptr_t increment);
 
-extern int32_t uptime();
+extern int uptime();
 
 int isatty(int fd);

@@ -183,3 +183,8 @@ syserr_t vimixfs_fops_write(struct file *f, size_t addr, size_t n);
 syserr_t vimixfs_iops_chmod(struct dentry *dp, mode_t mode);
 
 syserr_t vimixfs_iops_chown(struct dentry *dp, uid_t uid, gid_t gid);
+
+syserr_t vimixfs_iops_symlink(struct inode *parent, struct dentry *dp,
+                              const char *target, size_t length);
+
+syserr_t vimixfs_iops_readlink(struct inode *ip, size_t dst, size_t length);

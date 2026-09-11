@@ -101,7 +101,11 @@ syserr_t do_open(char *pathname, int32_t flags, mode_t mode)
     mode = mode & 0777;  // only permission bits
 
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(pathname, &error);
+    /* O_EXCL tests the directory entry itself; all other opens follow it. */
+    enum Lookup_Mode lookup_mode = ((flags & O_CREAT) && (flags & O_EXCL))
+                                       ? DONT_FOLLOW_FINAL_SYMLINK
+                                       : FOLLOW_FINAL_SYMLINK;
+    struct dentry *dp = dentry_from_path_mode(pathname, lookup_mode, &error);
     if (dp == NULL)
     {
         return error;
@@ -317,7 +321,7 @@ syserr_t do_read(struct file *f, size_t addr, size_t n)
                 f->off += read_bytes;
             }
         }
-        else if (S_ISREG(f->mode))
+        else if S_ISREG (f->mode)
         {
             read_bytes = VFS_FILE_READ(f, addr, n);
             if (read_bytes > 0)

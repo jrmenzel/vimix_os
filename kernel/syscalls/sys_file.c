@@ -167,7 +167,8 @@ syserr_t sys_chdir()
     }
 
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(path, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(path, FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;
@@ -278,7 +279,8 @@ syserr_t sys_truncate()
     argssize_t(1, &length);
 
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(path, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(path, FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;

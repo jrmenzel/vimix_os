@@ -49,7 +49,6 @@ struct inode_operations
     syserr_t (*iops_get_dirent)(struct inode *dir, struct dirent *dir_entry,
                                 ssize_t seek_pos);
 
-    // to file ops?
     syserr_t (*iops_read)(struct inode *ip, size_t off, size_t dst, size_t n,
                           bool addr_is_userspace);
 
@@ -69,10 +68,16 @@ struct inode_operations
     syserr_t (*iops_chmod)(struct dentry *dp, mode_t mode);
 
     syserr_t (*iops_chown)(struct dentry *dp, uid_t uid, gid_t gid);
+
+    syserr_t (*iops_symlink)(struct inode *parent, struct dentry *dp,
+                             const char *target, size_t length);
+
+    syserr_t (*iops_readlink)(struct inode *ip, size_t dst, size_t length);
 };
 
-/// @brief Opens the inode inside of directory iparent with the given name
-/// or creates one if none existed.
+/// @brief Opens the inode inside of directory
+/// iparent with the given name or creates one if
+/// none existed.
 /// @param parent Parent directory inode, unlocked
 /// @param dp File dentry to create
 /// @param mode File mode
@@ -87,39 +92,48 @@ struct inode_operations
 #define VFS_INODE_MKDIR(parent, dp, mode) \
     (parent)->i_sb->i_op->iops_mkdir((parent), (dp), (mode))
 
-/// @brief Decreases ref count. If the inode was "deleted" (zero links) and this
-/// was the last reference, delete on disk. Note that this can require a new log
-/// begin/end.
+/// @brief Decreases ref count. If the inode was
+/// "deleted" (zero links) and this was the last
+/// reference, delete on disk. Note that this can
+/// require a new log begin/end.
 /// @param ip Inode with held reference.
 #define VFS_INODE_PUT(ip) (ip)->i_sb->i_op->iops_put((ip))
 
-/// @brief Look for a directory entry in a directory.
-/// Increases ref count.
+/// @brief Look for a directory entry in a
+/// directory. Increases ref count.
 /// @param parent Directory dentry.
 /// @param dp Dentry with name to look for.
-/// @return dentry with ip set to found inode or NULL if not found.
+/// @return dentry with ip set to found inode or
+/// NULL if not found.
 #define VFS_INODE_LOOKUP(parent, dp) \
     (parent)->i_sb->i_op->iops_lookup((parent), (dp))
 
-/// @brief For the syscall to get directory entries get_dirent() from dirent.h.
+/// @brief For the syscall to get directory entries
+/// get_dirent() from dirent.h.
 /// @param dir Directory inode
-/// @param dir_entry address of buffer to fill with one struct dirent
-/// @param seek_pos A seek pos previously returned by inode_get_dirent or 0.
-/// @return next seek_pos on success, 0 on dir end and -1 on error.
+/// @param dir_entry address of buffer to fill with
+/// one struct dirent
+/// @param seek_pos A seek pos previously returned
+/// by inode_get_dirent or 0.
+/// @return next seek_pos on success, 0 on dir end
+/// and -1 on error.
 #define VFS_INODE_GET_DIRENT(dir, dir_entry, seek_pos) \
     (dir)->i_sb->i_op->iops_get_dirent((dir), (dir_entry), (seek_pos))
 
 /// @brief Read data from inode.
 /// Caller must hold ip->lock.
 /// @param ip Inode belonging to a file system
-/// @param dst_addr_is_userspace If true, dst_addr is a user virtual address
-/// (kernel addr otherwise)
+/// @param dst_addr_is_userspace If true, dst_addr
+/// is a user virtual address (kernel addr
+/// otherwise)
 /// @param dst_addr Destination address.
 /// @param off Offset in file where to read from.
 /// @param n Maximum number of bytes to read.
 /// @return Number of bytes successfully read.
-// #define VFS_INODE_READ(ip, addr_is_userspace, dst, off, n)
-//     (ip)->i_sb->i_op->iops_read((ip), (addr_is_userspace), (dst), (off), (n))
+// #define VFS_INODE_READ(ip, addr_is_userspace,
+// dst, off, n)
+//     (ip)->i_sb->i_op->iops_read((ip),
+//     (addr_is_userspace), (dst), (off), (n))
 
 #define VFS_INODE_READ_KERNEL(ip, off, dst, n) \
     (ip)->i_sb->i_op->iops_read((ip), (off), (dst), (n), (false))
@@ -138,7 +152,8 @@ struct inode_operations
 #define VFS_INODE_RMDIR(parent, dp) \
     (parent)->i_sb->i_op->iops_rmdir((parent), (dp))
 
-/// @brief Resize inode (discard extra contents or create empty data).
+/// @brief Resize inode (discard extra contents or
+/// create empty data).
 #define VFS_INODE_TRUNCATE(dp, length) \
     (dp)->ip->i_sb->i_op->iops_truncate((dp), (length))
 
@@ -154,9 +169,16 @@ struct file_operations
     syserr_t (*fops_write)(struct file *f, size_t addr, size_t n);
 };
 
+#define VFS_INODE_SYMLINK(parent, dp, target, length) \
+    (parent)->i_sb->i_op->iops_symlink((parent), (dp), (target), (length))
+
+#define VFS_INODE_READLINK(ip, dst, length) \
+    (ip)->i_sb->i_op->iops_readlink((ip), (dst), (length))
+
 #define VFS_FILE_OPEN(ip, f) (ip)->i_sb->f_op->fops_open((ip), (f))
 
-/// @brief Write n bytes from buffer at addr to file f.
+/// @brief Write n bytes from buffer at addr to
+/// file f.
 /// @param f File to write to.
 /// @param addr Source address of data to write.
 /// @param n Number of bytes to write

@@ -98,6 +98,7 @@ void panic(char *error_message)
 void debug_print_pc(size_t pc, struct debug_info *debug_info)
 {
     const struct instruction *instr = NULL;
+    const struct debug_info *info_used = debug_info;
     if (debug_info != NULL)
     {
         // try to find calling instruction
@@ -107,8 +108,9 @@ void debug_print_pc(size_t pc, struct debug_info *debug_info)
     {
         // fallback: kernel xdbg info
         instr = debug_info_lookup_instruction(g_kernel_debug_info, pc);
+        info_used = g_kernel_debug_info;
     }
-    debug_info_print_instruction(debug_info, instr);
+    debug_info_print_instruction(info_used, instr);
 }
 
 void debug_print_ra(size_t ra, struct debug_info *debug_info)
@@ -116,6 +118,7 @@ void debug_print_ra(size_t ra, struct debug_info *debug_info)
     printk("ra: " FORMAT_REG_SIZE " ", ra);
 
     const struct instruction *instr = NULL;
+    const struct debug_info *info_used = debug_info;
     if (debug_info != NULL)
     {
         // try to find calling instruction
@@ -124,11 +127,12 @@ void debug_print_ra(size_t ra, struct debug_info *debug_info)
     if (instr == NULL)
     {
         // fallback: kernel xdbg info
-        instr = debug_info_lookup_instruction(g_kernel_debug_info, ra);
+        instr = debug_info_lookup_caller(g_kernel_debug_info, ra);
+        info_used = g_kernel_debug_info;
     }
 
     printk(" caller: ");
-    debug_info_print_instruction(debug_info, instr);
+    debug_info_print_instruction(info_used, instr);
 
     printk("\n");
 }
@@ -178,7 +182,8 @@ syserr_t panic_load_debug_symbols(const char *debug_file_path,
                                   struct debug_info **debug_info_out)
 {
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(debug_file_path, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(debug_file_path, FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;

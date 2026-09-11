@@ -11,14 +11,14 @@
 #define diagnostic_ignore_fd_use_without_check
 #define diagnostic_ignore_infinite_recursion
 #define diagnostic_ignore_malloc_leak
-
-#define diagnostic_ignore_format_security \
-    _Pragma("clang diagnostic ignored \"-Wformat-security\"");
-
 #define diagnostic_infinite_recursion
 #define diagnostic_fd_access_mode_mismatch
 #define diagnostic_fd_use_without_check
 #define diagnostic_null_dereference
+
+#define diagnostic_ignore_format_security \
+    _Pragma("clang diagnostic ignored \"-Wformat-security\"");
+#define diagnostic_stringop_overflow
 
 #elif defined(__GNUC__)
 
@@ -38,9 +38,6 @@
 #define diagnostic_ignore_malloc_leak \
     _Pragma("GCC diagnostic ignored \"-Wanalyzer-malloc-leak\"");
 
-#define diagnostic_ignore_format_security \
-    _Pragma("GCC diagnostic ignored \"-Wformat-security\"");
-
 #define diagnostic_infinite_recursion \
     _Pragma("GCC diagnostic ignored \"-Wanalyzer-infinite-recursion\"");
 
@@ -52,6 +49,12 @@
 
 #define diagnostic_null_dereference \
     _Pragma("GCC diagnostic ignored \"-Wanalyzer-null-dereference\"");
+
+#define diagnostic_ignore_format_security \
+    _Pragma("GCC diagnostic ignored \"-Wformat-security\"");
+
+#define diagnostic_stringop_overflow \
+    _Pragma("GCC diagnostic ignored \"-Wstringop-overflow\"");
 
 #else
 #error "Unknown compiler"

@@ -60,7 +60,8 @@ syserr_t do_mount(const char *source, const char *target,
     if ((strcmp(source, "dev") == 0) || (strcmp(source, "sys") == 0))
     {
         syserr_t error = 0;
-        struct dentry *d_target = dentry_from_path(target, &error);
+        struct dentry *d_target =
+            dentry_from_path_mode(target, FOLLOW_FINAL_SYMLINK, &error);
         if (d_target == NULL)
         {
             return error;
@@ -89,7 +90,8 @@ syserr_t do_mount(const char *source, const char *target,
     // normal filesystem on a device:
 
     syserr_t error = 0;
-    struct dentry *d_src = dentry_from_path(source, &error);
+    struct dentry *d_src =
+        dentry_from_path_mode(source, FOLLOW_FINAL_SYMLINK, &error);
     if (d_src == NULL)
     {
         return error;
@@ -106,7 +108,8 @@ syserr_t do_mount(const char *source, const char *target,
         return -ENOTBLK;
     }
 
-    struct dentry *d_target = dentry_from_path(target, &error);
+    struct dentry *d_target =
+        dentry_from_path_mode(target, FOLLOW_FINAL_SYMLINK, &error);
     if (d_target == NULL)
     {
         dentry_put(d_src);
@@ -228,7 +231,8 @@ syserr_t mount_internal(dev_t source, struct dentry *d_target,
 syserr_t do_umount(const char *target)
 {
     syserr_t error = 0;
-    struct dentry *d_target = dentry_from_path(target, &error);
+    struct dentry *d_target =
+        dentry_from_path_mode(target, FOLLOW_FINAL_SYMLINK, &error);
     if (d_target == NULL)
     {
         return error;

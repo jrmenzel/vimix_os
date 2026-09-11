@@ -65,10 +65,10 @@ bool rwspin_write_lock_is_held_by_this_cpu(struct rwspinlock *lk);
 
 /// verifies that the CPU does not hold the lock
 /// lock is a struct rwspinlock*
-#define DEBUG_ASSERT_CPU_DOES_NOT_HOLD_RWLOCK(lock)             \
-    if (rwspin_write_lock_is_held_by_this_cpu(lock) == true)    \
-    {                                                           \
-        panic("debug assert failed: spin lock is held by CPU"); \
+#define DEBUG_ASSERT_CPU_DOES_NOT_HOLD_RWLOCK(lock)               \
+    if (rwspin_write_lock_is_held_by_this_cpu(lock) == true)      \
+    {                                                             \
+        panic("debug assert failed: rwspin lock is held by CPU"); \
     }
 
 #else

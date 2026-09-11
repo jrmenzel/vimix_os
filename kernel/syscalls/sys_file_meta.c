@@ -30,7 +30,8 @@ syserr_t sys_chmod()
     argint(1, &mode);
 
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(path, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(path, FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;
@@ -83,7 +84,8 @@ syserr_t sys_chown()
     argint(2, &gid);
 
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(path, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(path, FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;
@@ -146,7 +148,8 @@ syserr_t sys_stat()
     argaddr(1, &stat_buffer);
 
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(path, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(path, FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;
@@ -178,6 +181,37 @@ syserr_t sys_fstat()
     argaddr(1, &stat_buffer);
 
     return do_stat(f->dp, stat_buffer);
+}
+
+syserr_t sys_lstat()
+{  // parameter 0: const char *path
+    char path[PATH_MAX];
+    if (argstr(0, path, PATH_MAX) < 0)
+    {
+        return -EFAULT;
+    }
+
+    // parameter 1: stat *buffer
+    size_t stat_buffer;  // user pointer to struct stat
+    argaddr(1, &stat_buffer);
+
+    syserr_t error = 0;
+    struct dentry *dp =
+        dentry_from_path_mode(path, DONT_FOLLOW_FINAL_SYMLINK, &error);
+    if (dp == NULL)
+    {
+        return error;
+    }
+    if (dentry_is_invalid(dp))
+    {
+        dentry_put(dp);
+        return -ENOENT;
+    }
+
+    syserr_t ret = do_stat(dp, stat_buffer);
+    dentry_put(dp);
+
+    return ret;
 }
 
 syserr_t do_chmod(struct dentry *dp, mode_t mode)
@@ -271,7 +305,8 @@ syserr_t sys_utimes()
 
     // get dentry from path
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(path, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(path, FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;

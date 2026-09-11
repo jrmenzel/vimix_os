@@ -2,3 +2,5 @@ shutdown -h
 usertests
 pwd
 meminfo
+ln test.txt hardlink
+ln -s test.txt symlink

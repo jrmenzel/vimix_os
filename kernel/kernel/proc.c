@@ -597,7 +597,17 @@ void forkret()
         mount_root(ROOT_DEVICE_NUMBER, VIMIXFS_FS_NAME);
         printk("forkret() mounting /... OK\n");
 
-        panic_load_debug_symbols("/kernel-vimix.xdbg", &g_kernel_debug_info);
+        syserr_t debug_error = panic_load_debug_symbols("/kernel-vimix.xdbg",
+                                                        &g_kernel_debug_info);
+        if (debug_error < 0)
+        {
+            printk("forkret() loading kernel debug symbols failed: %zd\n",
+                   -debug_error);
+        }
+        else
+        {
+            printk("forkret() loading kernel debug symbols... OK\n");
+        }
 
         // We can involve execv() after file system is initialized.
         char *init_path = "/usr/bin/init";

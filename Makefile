@@ -17,12 +17,19 @@ endif
 include kernel/arch/arm64/MakefileEmusARM64.mk
 include kernel/arch/riscv/MakefileEmusRISCV.mk
 
-.PHONY: all directories kernel userspace host
+.PHONY: all directories kernel kernel-xdbg userspace host FORCE
+
+# The xdbg debug info file is a target in kernel/Makefile.
+# This forces the source dependencies to be checked before mkfs
+# packages the file into the filesystems.
+FORCE:
 
 FILESYSTEM_IMG_NAME := filesystem_$(TARGET)$(BUILD_TYPE_SHORT).img
 FILESYSTEM_IMG := $(BUILD_DIR)/$(FILESYSTEM_IMG_NAME)
 FILESYSTEM_IMG_DEPLOY := $(BUILD_DIR)/boot/filesystem.img
 DEPLOYED_TARGET_FILE := $(BUILD_DIR)/boot/current_target_$(TARGET)$(BUILD_TYPE_SHORT).txt
+KERNEL_XDBG_DEPLOY := $(BUILD_DIR)/boot/$(KERNEL_NAME).xdbg
+KERNEL_XDBG_BUILD := $(BUILD_DIR)/kernel_$(TARGET)$(BUILD_TYPE_SHORT)/$(KERNEL_NAME).xdbg
 
 all: directories $(EXTRACTDGB_TOOL) $(DEPLOYED_TARGET_FILE)
 
@@ -71,11 +78,23 @@ $(DEPLOYED_TARGET_FILE): $(FILESYSTEM_IMG) $(BUILD_DIR)/boot/boot.scr
 
 
 # filesystem in a file containing userspace as initrd (kernel is set manually)
+# The kernel xdbg file must exist before mkfs packages the boot filesystem.
+# For an embedded ramdisk that would make a dependency cycle (the kernel itself
+# needs the filesystem first), so retain the existing two-stage workflow there.
+ifneq ($(RAMDISK_EMBEDDED),yes)
+$(FILESYSTEM_IMG): $(KERNEL_XDBG_DEPLOY)
+endif
 $(FILESYSTEM_IMG): host userspace | directories
 	@rm -f $(BUILD_DIR)/root
 	@ln -s root$(TARGET_SUFFIX) $(BUILD_DIR)/root
 	@printf "$(TASK_COLOR)Create file system: $(@)\n$(NO_COLOR)"
 	@./tools/make_filesystem.sh $(BUILD_DIR) $(BUILD_DIR_HOST) $(FILESYSTEM_IMG_NAME)
+
+kernel-xdbg: $(EXTRACTDGB_TOOL) | directories
+	@$(MAKE) -C kernel ../$(KERNEL_XDBG_BUILD);
+
+$(KERNEL_XDBG_DEPLOY): FORCE kernel-xdbg | directories
+	@cp $(KERNEL_XDBG_BUILD) $@
 
 ###
 # qemu

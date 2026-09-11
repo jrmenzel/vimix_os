@@ -18,20 +18,25 @@
 #include <syscalls/syscall.h>
 
 syserr_t do_link(char *path_from, char *path_to);
-
+syserr_t do_symlink(const char *path_target, char *link_path);
 syserr_t do_rename(char *old_path, char *new_path);
-
-syserr_t do_rm(char *path, bool is_rmdir);
+syserr_t do_rm(char *path, enum Lookup_Mode lookup_mode, bool is_rmdir);
 
 /// @brief Syscall unlink
 /// @param path path name
 /// @return 0 on success, -errno on error
-static inline syserr_t do_unlink(char *path) { return do_rm(path, false); }
+static inline syserr_t do_unlink(char *path)
+{
+    return do_rm(path, DONT_FOLLOW_FINAL_SYMLINK, false);
+}
 
 /// @brief Syscall rmdir
 /// @param path path name
 /// @return 0 on success, -errno on error
-static inline syserr_t do_rmdir(char *path) { return do_rm(path, true); }
+static inline syserr_t do_rmdir(char *path)
+{
+    return do_rm(path, DONT_FOLLOW_FINAL_SYMLINK, true);
+}
 
 syserr_t sys_link()
 {
@@ -43,6 +48,157 @@ syserr_t sys_link()
     }
 
     return do_link(path_from, path_to);
+}
+
+syserr_t do_symlink(const char *path_target, char *link_path)
+{
+    size_t target_len = strlen(path_target);
+    if (target_len == 0)
+    {
+        return -ENOENT;
+    }
+    if (target_len >= PATH_MAX)
+    {
+        return -ENAMETOOLONG;
+    }
+
+    syserr_t error = 0;
+    struct dentry *dp =
+        dentry_from_path_mode(link_path, DONT_FOLLOW_FINAL_SYMLINK, &error);
+    if (dp == NULL)
+    {
+        return error;
+    }
+
+    if (dentry_is_valid(dp))
+    {
+        dentry_put(dp);
+        return -EEXIST;
+    }
+
+    dcache_read_lock();
+    if (dp->parent == NULL)
+    {
+        // parent was unlinked
+        dcache_read_unlock();
+        dentry_put(dp);
+        return -ENOENT;
+    }
+    struct dentry *parent = dentry_get(dp->parent);
+    dcache_read_unlock();
+
+    struct process *proc = get_current();
+    syserr_t perm_ok = check_dentry_permission(proc, parent, MAY_WRITE);
+    if (perm_ok < 0)
+    {
+        dentry_put(parent);
+        dentry_put(dp);
+        return perm_ok;
+    }
+
+    struct inode *parent_ip = parent->ip;
+
+    inode_lock_exclusive(parent_ip);
+    if (dp->ip != NULL)
+    {
+        // created concurrently
+        error = -EEXIST;
+    }
+    else
+    {
+        error = VFS_INODE_SYMLINK(parent_ip, dp, path_target, target_len);
+    }
+    inode_unlock_exclusive(parent_ip);
+    dentry_put(parent);
+    dentry_put(dp);
+
+    return error;
+}
+
+syserr_t sys_symlink()
+{
+    // parameter 0 / 1: const char *target / *link_path
+    char path_target[PATH_MAX + 1] = {0};
+    char link_path[PATH_MAX];
+
+    int32_t target_length = argstr(0, path_target, sizeof(path_target));
+    if ((target_length < 0) || (argstr(1, link_path, PATH_MAX) < 0))
+    {
+        return -EFAULT;
+    }
+    if ((size_t)target_length >= PATH_MAX)
+    {
+        return -ENAMETOOLONG;
+    }
+
+    if (link_path[0] == 0)
+    {
+        return -ENOENT;
+    }
+
+    return do_symlink(path_target, link_path);
+}
+
+syserr_t do_readlink(char *path, size_t buffer, size_t buffer_size)
+{
+    if (buffer_size == 0)
+    {
+        return -EINVAL;
+    }
+
+    syserr_t error = 0;
+    struct dentry *dp =
+        dentry_from_path_mode(path, DONT_FOLLOW_FINAL_SYMLINK, &error);
+    if (dp == NULL)
+    {
+        return error;
+    }
+
+    if (!dentry_is_valid(dp))
+    {
+        dentry_put(dp);
+        return -ENOENT;
+    }
+
+    if (!S_ISLNK(dp->ip->i_mode))
+    {
+        dentry_put(dp);
+        return -EINVAL;
+    }
+
+    // readlink(2) needs search permission on path components, which path
+    // lookup has already checked. Symlink mode bits do not grant or deny
+    // access to its target text, so do not apply a read permission check to
+    // the final dentry here.
+    inode_lock(dp->ip);
+    error = VFS_INODE_READLINK(dp->ip, buffer, buffer_size);
+    inode_unlock(dp->ip);
+    dentry_put(dp);
+    return error;
+}
+
+syserr_t sys_readlink()
+{
+    // parameter 0: const char *path
+    char path[PATH_MAX];
+    if (argstr(0, path, PATH_MAX) < 0)
+    {
+        return -EFAULT;
+    }
+    if (path[0] == '\0')
+    {
+        return -ENOENT;
+    }
+
+    // parameter 1: char *buffer (user pointer)
+    size_t buffer;
+    argaddr(1, &buffer);
+
+    // parameter 2: size_t buffer_size
+    size_t buffer_size;
+    argsize_t(2, &buffer_size);
+
+    return do_readlink(path, buffer, buffer_size);
 }
 
 syserr_t sys_rename()
@@ -87,7 +243,9 @@ syserr_t sys_rmdir()
 syserr_t do_link(char *path_from, char *path_to)
 {
     syserr_t error = 0;
-    struct dentry *dentry_from = dentry_from_path(path_from, &error);
+    /* link(2) links the symlink itself, rather than its target. */
+    struct dentry *dentry_from =
+        dentry_from_path_mode(path_from, DONT_FOLLOW_FINAL_SYMLINK, &error);
     if (dentry_from == NULL)
     {
         return error;
@@ -104,11 +262,12 @@ syserr_t do_link(char *path_from, char *path_to)
         return -EISDIR;
     }
 
-    struct dentry *dentry_to = dentry_from_path(path_to, &error);
+    struct dentry *dentry_to =
+        dentry_from_path_mode(path_to, DONT_FOLLOW_FINAL_SYMLINK, &error);
     if (dentry_to == NULL)
     {
         dentry_put(dentry_from);
-        return -ENOENT;
+        return error;
     }
 
     if (dentry_is_valid(dentry_to))
@@ -131,12 +290,13 @@ syserr_t do_link(char *path_from, char *path_to)
         return perm_ok;
     }
 
-    if (dentry_from->ip->dev != dir_to->ip->dev)
+    // no cross device hardlinks!
+    if (dentry_from->ip->i_sb != dir_to->ip->i_sb)
     {
         dentry_put(dir_to);
         dentry_put(dentry_to);
         dentry_put(dentry_from);
-        return -EOTHER;
+        return -EXDEV;
     }
 
     inode_lock_exclusive_2(dir_to->ip, dentry_from->ip);
@@ -185,7 +345,8 @@ syserr_t do_rename(char *old_path, char *new_path)
     }
 
     syserr_t ret = 0;
-    struct dentry *old_dentry = dentry_from_path(old_path, &ret);
+    struct dentry *old_dentry =
+        dentry_from_path_mode(old_path, DONT_FOLLOW_FINAL_SYMLINK, &ret);
     if (old_dentry == NULL) return ret;
     if (dentry_is_invalid(old_dentry))
     {
@@ -193,7 +354,8 @@ syserr_t do_rename(char *old_path, char *new_path)
         return -ENOENT;
     }
 
-    struct dentry *new_dentry = dentry_from_path(new_path, &ret);
+    struct dentry *new_dentry =
+        dentry_from_path_mode(new_path, DONT_FOLLOW_FINAL_SYMLINK, &ret);
     if (new_dentry == NULL)
     {
         dentry_put(old_dentry);
@@ -362,10 +524,10 @@ syserr_t do_rename(char *old_path, char *new_path)
     return ret;
 }
 
-syserr_t do_rm(char *path, bool is_rmdir)
+syserr_t do_rm(char *path, enum Lookup_Mode lookup_mode, bool is_rmdir)
 {
     syserr_t error = 0;
-    struct dentry *file = dentry_from_path(path, &error);
+    struct dentry *file = dentry_from_path_mode(path, lookup_mode, &error);
 
     if (file == NULL)
     {

@@ -5,6 +5,7 @@ include ../MakefileCommon.mk
 include lib/libfdt/Makefile.libfdt
 K_BUILD_DIR := ../$(BUILD_DIR)/kernel_$(TARGET)$(BUILD_TYPE_SHORT)
 KERNEL_PATH := $(K_BUILD_DIR)/$(KERNEL_NAME)
+KERNEL_XDBG_PATH := $(KERNEL_PATH).xdbg
 ARCH_DIR    := arch/$(ARCH)
 INIT_BUILD_DIR := $(K_BUILD_DIR)/$(ARCH_DIR)/asm
 
@@ -195,8 +196,15 @@ KBUILD_CFLAGS += -std=gnu23
 KBUILD_CFLAGS += --embed-dir=".." # embed relative to project root
 endif
 
-.PHONY: all directories clean
-all: directories $(KERNEL_PATH) # build all
+.PHONY: all directories clean deploy
+
+ifeq ($(CREATE_DEBUG_INFO), yes)
+KERNEL_BUILD_ARTIFACTS := $(KERNEL_PATH) $(KERNEL_XDBG_PATH)
+else
+KERNEL_BUILD_ARTIFACTS := $(KERNEL_PATH)
+endif
+
+all: directories $(KERNEL_BUILD_ARTIFACTS)
 
 directories: # create temp build directories
 	@mkdir -p ../$(BUILD_DIR)/boot
@@ -261,17 +269,27 @@ ifeq ($(CREATE_ASSEMBLY), yes)
 	@$(OBJDUMP) -S $(KERNEL_PATH) > $(K_BUILD_DIR)/$(KERNEL_NAME).asm
 endif
 	@$(OBJCOPY) -O binary $(KERNEL_PATH) $(KERNEL_PATH).img
+
 ifeq ($(CREATE_DEBUG_INFO), yes)
-	@printf "$(TASK_COLOR)Extract debug info: $(KERNEL_PATH).xdbg\n$(NO_COLOR)"
-	@$(EXTRACTDGB_TOOL) $(KERNEL_PATH) $(KERNEL_PATH).xdbg
+$(KERNEL_XDBG_PATH): $(KERNEL_PATH) $(EXTRACTDGB_TOOL)
+	@printf "$(TASK_COLOR)Extract debug info: $@\n$(NO_COLOR)"
+	@$(EXTRACTDGB_TOOL) $(KERNEL_PATH) $@
 endif
 
 deploy: $(KERNEL_PATH)
+ifeq ($(CREATE_DEBUG_INFO), yes)
+deploy: $(KERNEL_XDBG_PATH)
+endif
 ifneq ($(KERNEL_FORMAT), elf)
 	@cp $(KERNEL_PATH).img ../$(BUILD_DIR)/boot/$(KERNEL_NAME).img
 endif
 	@cp $(KERNEL_PATH) ../$(BUILD_DIR)/boot/$(KERNEL_NAME)
+
+ifeq ($(CREATE_DEBUG_INFO), yes)
 	@cp $(KERNEL_PATH).xdbg ../$(BUILD_DIR)/boot/$(KERNEL_NAME).xdbg
+else
+	@rm -f ../$(BUILD_DIR)/boot/$(KERNEL_NAME).xdbg
+endif
 
 clean:
 	-@rm -f $(KERNEL_PATH)

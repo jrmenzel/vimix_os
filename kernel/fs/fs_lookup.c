@@ -10,6 +10,13 @@
 
 // Paths
 
+/*
+ * Keep link expansion bounded even when every expanded path fits PATH_MAX.
+ * This is deliberately independent of the path-length limit: a/b -> c/d ->
+ * a/b is otherwise an infinite walk.
+ */
+#define MAX_SYMLINK_FOLLOWS 40
+
 /// Copy the next path element from path into name.
 /// Return a pointer to the element following the copied one.
 /// The returned path has no leading slashes,
@@ -54,7 +61,7 @@ static const char *skipelem(const char *path, char *name, syserr_t *error)
     size_t len = path - s;
     if (len > NAME_MAX)
     {
-        *error = -ENOENT;
+        *error = -ENAMETOOLONG;
         return path;
     }
     else
@@ -70,7 +77,9 @@ static const char *skipelem(const char *path, char *name, syserr_t *error)
     return path;
 }
 
-struct dentry *dentry_from_path(const char *path, syserr_t *error)
+struct dentry *dentry_from_path_mode(const char *path,
+                                     enum Lookup_Mode lookup_mode,
+                                     syserr_t *error)
 {
     DEBUG_EXTRA_PANIC(path != NULL, "dentry_from_path: path is NULL");
     DEBUG_EXTRA_PANIC(error != NULL, "dentry_from_path: error is NULL");
@@ -101,10 +110,39 @@ struct dentry *dentry_from_path(const char *path, syserr_t *error)
         dcache_read_unlock();
     }
 
+    return dentry_from_path_at(dp, path, lookup_mode, error);
+}
+
+struct dentry *dentry_from_path_at(struct dentry *dp, const char *path,
+                                   enum Lookup_Mode lookup_mode,
+                                   syserr_t *error)
+{
+    DEBUG_EXTRA_PANIC(dp != NULL, "dentry_from_path_at: dp is NULL");
+    DEBUG_EXTRA_PANIC(path != NULL, "dentry_from_path_at: path is NULL");
+    DEBUG_EXTRA_PANIC(error != NULL, "dentry_from_path_at: error is NULL");
+
     *error = 0;
-    char name[NAME_MAX + 1];
-    while ((path = skipelem(path, name, error)) != NULL)
+
+    // copy the path for link lookup
+    char pending_path[PATH_MAX];
+    size_t path_length = strnlen(path, sizeof(pending_path));
+    if (path_length == sizeof(pending_path))
     {
+        dentry_put(dp);
+        *error = -ENAMETOOLONG;
+        return NULL;
+    }
+    memmove(pending_path, path, path_length + 1);
+
+    const char *remaining_path = pending_path;
+    size_t followed_links =
+        0;  // to limit lookup / prevent recursion in the path
+    char name[NAME_MAX + 1];
+    while (true)
+    {
+        remaining_path = skipelem(remaining_path, name, error);
+        if (remaining_path == NULL) break;
+
         if (*error != 0)
         {
             dentry_put(dp);
@@ -204,6 +242,90 @@ struct dentry *dentry_from_path(const char *path, syserr_t *error)
                     next = lookup_result;
                 }
             }
+        }
+
+        // follow symlinks
+        bool final_component = *remaining_path == '\0';
+        if (dentry_is_valid(next) && S_ISLNK(next->ip->i_mode) &&
+            (!final_component || lookup_mode == FOLLOW_FINAL_SYMLINK))
+        {
+            if (followed_links++ == MAX_SYMLINK_FOLLOWS)
+            {
+                dentry_put(next);
+                dentry_put(dp);
+                *error = -ELOOP;
+                return NULL;
+            }
+
+            // A symlink target is interpreted relative to the symlink's
+            // parent directory, not relative to the original dp (CWD or root).
+            // Retain that directory before replacing the current dentry.
+            struct dentry *link_parent = dentry_get(dp);
+            char target[PATH_MAX];
+            inode_lock(next->ip);
+            size_t target_length = next->ip->size;
+            syserr_t bytes_read = 0;
+            if (target_length != 0 && target_length < PATH_MAX)
+            {
+                bytes_read = VFS_INODE_READ_KERNEL(next->ip, 0, (size_t)target,
+                                                   target_length);
+            }
+            inode_unlock(next->ip);
+            if ((target_length == 0) || (target_length >= PATH_MAX))
+            {
+                dentry_put(link_parent);
+                dentry_put(next);
+                dentry_put(dp);
+                *error = target_length == 0 ? -ENOENT : -ENAMETOOLONG;
+                return NULL;
+            }
+            if ((bytes_read < 0) || ((size_t)bytes_read != target_length))
+            {
+                dentry_put(link_parent);
+                dentry_put(next);
+                dentry_put(dp);
+                *error = bytes_read < 0 ? bytes_read : -EIO;
+                return NULL;
+            }
+            target[target_length] = '\0';
+
+            size_t remainder_length = strlen(remaining_path);
+            size_t separator_length = remainder_length == 0 ? 0 : 1;
+            if (target_length + separator_length + remainder_length >=
+                sizeof(pending_path))
+            {
+                dentry_put(link_parent);
+                dentry_put(next);
+                dentry_put(dp);
+                *error = -ENAMETOOLONG;
+                return NULL;
+            }
+
+            // Use a separate buffer: remaining_path points into pending_path.
+            char expanded_path[PATH_MAX];
+            memmove(expanded_path, target, target_length);
+            if (separator_length != 0)
+            {
+                expanded_path[target_length] = '/';
+            }
+            memmove(expanded_path + target_length + separator_length,
+                    remaining_path, remainder_length + 1);
+            memmove(pending_path, expanded_path,
+                    target_length + separator_length + remainder_length + 1);
+
+            dentry_put(next);
+            dentry_put(dp);
+            if (target[0] == '/')
+            {
+                dentry_put(link_parent);
+                dp = dentry_cache_get_root();
+            }
+            else
+            {
+                dp = link_parent;
+            }
+            remaining_path = pending_path;
+            continue;
         }
 
         dentry_put(dp);

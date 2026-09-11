@@ -114,7 +114,8 @@ bool load_program_to_memory(struct inode *ip, struct elfhdr *elf,
 syserr_t do_execv(char *path, char **argv)
 {
     syserr_t error = 0;
-    struct dentry *dp = dentry_from_path(path, &error);
+    struct dentry *dp =
+        dentry_from_path_mode(path, FOLLOW_FINAL_SYMLINK, &error);
     if (dp == NULL)
     {
         return error;

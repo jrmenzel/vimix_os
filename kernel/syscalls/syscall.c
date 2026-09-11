@@ -184,6 +184,9 @@ static syserr_t (*const syscalls[])() = {
     [SYS_fchdir] sys_fchdir,
     [SYS_utimes] sys_utimes,
     [SYS_rename] sys_rename,
+    [SYS_symlink] sys_symlink,
+    [SYS_lstat] sys_lstat,
+    [SYS_readlink] sys_readlink,
 };
 // clang-format on
 
@@ -269,6 +272,9 @@ static const char *g_syscall_names[] = {
     [SYS_fchdir] "fchdir",
     [SYS_utimes] "utimes",
     [SYS_rename] "rename",
+    [SYS_symlink] "symlink",
+    [SYS_lstat] "lstat",
+    [SYS_readlink] "readlink",
 };
 // clang-format on
 

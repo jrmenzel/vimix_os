@@ -8,7 +8,7 @@
 
 /// @brief Get file status
 /// @param path Path to the file.
-/// @param buffer Buffer for teh stat struct to be written into.
+/// @param buffer Buffer for the stat struct to be written into.
 /// @return -1 on failure, 0 otherwise
 extern int stat(const char *path, struct stat *buffer);
 
@@ -17,6 +17,13 @@ extern int stat(const char *path, struct stat *buffer);
 /// @param buffer buffer to copy stat into
 /// @return -1 on failure, 0 otherwise
 extern int fstat(int fd, struct stat *buffer);
+
+/// @brief Get file status just like stat, but do not follow a symbolic link in
+/// the final path component.
+/// @param path Path to the file or symlink.
+/// @param buffer Buffer for the stat struct to be written into.
+/// @return -1 on failure, 0 otherwise
+extern int lstat(const char *path, struct stat *buffer);
 
 /// @brief make a directory, special file, or regular file
 /// @param path File path of the new node

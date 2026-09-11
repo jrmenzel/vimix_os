@@ -54,6 +54,9 @@
 #define SYS_fchdir 50
 #define SYS_utimes 51
 #define SYS_rename 52
+#define SYS_symlink 53
+#define SYS_lstat 54
+#define SYS_readlink 55
 
 #define SEEK_SET 0  //< Seek from beginning of file
 #define SEEK_CUR 1  //< Seek from current position

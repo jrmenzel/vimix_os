@@ -144,7 +144,8 @@ int main(int argc, char *argv[])
 
     int flags = 0;
     size_t file_arg_begin = 1;
-    if ((argc > 2) && (argv[1][0] == '-') && (argv[1][1] == 'r'))
+    if ((argc > 2) && (argv[1][0] == '-') && (argv[1][1] == 'r') &&
+        (argv[1][2] == 0))
     {
         file_arg_begin++;
         flags |= FLAG_RECURSIVE;
